@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build scratch
+dist/
+
+# macOS
+.DS_Store
+
+# Never commit secrets. API keys live in the browser's localStorage, never in files.
+.env
+.env.*
+*.key
+secrets.json
+
+# Word/Office lock files
+~$*

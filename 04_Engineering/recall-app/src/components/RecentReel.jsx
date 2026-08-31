@@ -1,0 +1,21 @@
+import { timeAgo } from '../lib/format.js';
+import { logEvent } from '../lib/db.js';
+
+// UC-6: reverse-chronological browse. No folders, no filters.
+export default function RecentReel({ items, onOpenItem, onBack }) {
+  return (
+    <div>
+      <button className="back" onClick={onBack}>‹ Home</button>
+      <h2>Recent photos</h2>
+      {items.length === 0 && <p className="sub">Nothing saved yet.</p>}
+      <div className="reel">
+        {items.map((it) => (
+          <button key={it.id} className="tile" onClick={() => { logEvent('reel_open', { itemId: it.id }); onOpenItem(it); }}>
+            <img src={it.thumb} alt={it.name} />
+            <div className="tile-label cap"><b>{it.name}</b><br />{it.location}<br /><span style={{ color: '#6B7A78' }}>{timeAgo(it.lastSeenAt)}</span></div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
