@@ -11,7 +11,7 @@ Proves one loop: **snap a photo → AI names the item + location → ask later �
 - **React 18** (JSX, modular components) bundled by **esbuild** — no heavy toolchain.
   React, ReactDOM and Firebase load from CDN via an import map in `../../docs/index.html`,
   so `node_modules` stays tiny and the source migrates to Vite unchanged later.
-- **Firebase** (`tanya-command-center`, same project as SwiftUp/SAT tools):
+- **Firebase** (`recall-d9886` — ReCall's own project, on Tanya's Google account):
   anonymous auth + Firestore. Photos are compressed JPEGs (~100–180KB) stored inline
   in Firestore docs — no Storage bucket / CORS setup needed at v0 scale.
   Offline cache enabled, so browsing works without a connection.
@@ -84,13 +84,20 @@ Branch: **`main`**, Folder: **`/docs`** → Save. The URL appears in about a min
 
 ### 3. Firestore rules
 
-In the [Firebase console](https://console.firebase.google.com/project/tanya-command-center/firestore/rules),
-ADD these inside `match /databases/{database}/documents {`:
+In the [Firebase console](https://console.firebase.google.com/project/recall-d9886/firestore/rules),
+replace the rules with:
 
 ```
-match /recall_items/{d}  { allow read, write: if request.auth != null; }
-match /recall_events/{d} { allow read, write: if request.auth != null; }
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /recall_items/{d}  { allow read, write: if request.auth != null; }
+    match /recall_events/{d} { allow read, write: if request.auth != null; }
+  }
+}
 ```
+
+Also enable **Authentication → Sign-in method → Anonymous**, or the app cannot boot.
 
 ### 4. API key — once per device
 

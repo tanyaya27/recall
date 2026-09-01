@@ -8,6 +8,26 @@ Format: date — decision — why — what would change our mind.
 
 ---
 
+## 2026-08-31 — ReCall gets its own Firebase project, on Tanya's Google account
+
+**Decision:** new Firebase project `recall-d9886` (Spark plan, us-west1), owned by Tanya's
+own Google account. ReCall no longer shares `tanya-command-center` with SwiftUp and the
+SAT tools.
+
+**Why:** three reasons. Ownership — it is her project and she should not need a parent's
+login to administer it. Separation — ReCall's data is far more privacy-sensitive than SAT
+practice questions, and entangling them makes any future clinical-advisor or research
+involvement painful to untangle. Timing — there was zero data in the old project's
+`recall_*` collections, so the move cost exactly one config object. That price only rises.
+
+**Alternative rejected:** staying on `tanya-command-center` and transferring ownership
+later via IAM. Possible, but leaves ReCall's data mixed into an unrelated project forever,
+and the project ID would still read `tanya-command-center`.
+
+**Would change our mind:** nothing. Do the same for any future app.
+
+---
+
 ## 2026-08-31 — One git repo for the whole ReCall folder, not just the app
 
 **Decision:** the repo root is `ReCall/`, so design docs, strategy, spec and code all

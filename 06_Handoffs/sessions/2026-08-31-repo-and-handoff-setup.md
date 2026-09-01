@@ -27,14 +27,44 @@ any Mac, starts fully informed.
 `../../docs/app.js` (18.0kb) with no errors. Byte-identical to the pre-move bundle, which
 confirms the restructure changed paths only, not the build.
 
-## Not done — still pending for the next session
+## Shipped later the same day
 
-- Git repo has **not** been initialized or pushed yet. Ravi is running the setup steps by
-  hand (git init, GitHub repo, first push, Pages config).
-- Firestore rules for `recall_items` / `recall_events` not yet added in the Firebase console.
-- App has still **never been run in a browser**. First-deploy debugging is the next real task.
-- The root `README.md` still says folders 03–05 are empty; 03 and 04 are now populated.
-  Worth a refresh.
+- **Repo created under Tanya's own GitHub account: `github.com/tanyaya27/recall`.**
+  Deliberately not under Ravi's `raviancv` — the commit history and URL should carry her
+  name, since this is part of her college-application spike. Ravi added as a collaborator.
+- Commit authorship set to Tanya via her GitHub **noreply** address
+  (`323371502+tanyaya27@users.noreply.github.com`) — the repo is public, and commit emails
+  in public git history get scraped. `git config user.email` is set locally in this repo.
+- First push: 61 objects, 45 files, `main` tracking `origin/main`.
+- GitHub Pages enabled: `main` / `/docs`. **Live at https://tanyaya27.github.io/recall/**
+
+### Gotcha that cost time: fine-grained tokens can't push to someone else's repo
+
+Ravi's push kept failing with `403 Permission to tanyaya27/recall.git denied to raviancv`
+even after the collaborator invite was accepted. Cause: a **fine-grained** personal access
+token is scoped to a single resource owner and cannot reach repos owned by another user,
+even when you are a collaborator. Outside collaborators need a **classic** PAT (or SSH).
+Promoted to LESSONS.md.
+
+## First browser run — the app boots
+
+Loaded the live URL: `index.html`, `styles.css` and `app.js` all return 200, React renders,
+Firebase anonymous auth succeeds, and the onboarding checklist paints correctly (Keys,
+Wallet, Glasses, Phone, Medications, TV remote, Hearing aids, Bag or purse). Better than
+expected for a build that had never run.
+
+**One error, and it is the expected one:**
+`watchItems FirebaseError: Missing or insufficient permissions` — the Firestore rules for
+`recall_items` / `recall_events` have not been added yet.
+
+## Still pending
+
+- Add the two Firestore rules in the Firebase console. Nothing saves or loads until then.
+- Paste the Anthropic API key into the deployed app's Settings (per device).
+- Run the first-capture smoke test: onboarding → snap keys → confirm → tap the Keys tile.
+- Claim the GitHub Student Developer Pack (school email) → free Pro → private repo with
+  Pages, before real photos go in.
+- The root `README.md` folder index was refreshed; 03 and 04 are no longer described as empty.
 
 ## Open question flagged to Ravi
 

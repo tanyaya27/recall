@@ -1,4 +1,4 @@
-// Firebase bootstrap — reuses the existing tanya-command-center project.
+// Firebase bootstrap — ReCall's own project, owned by Tanya's Google account.
 // This web config is public by design; security comes from Firestore rules.
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
@@ -7,12 +7,12 @@ import {
 } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyBU3e5gV7MDMs2z5k7YNcEIJxbFfMrBEKg',
-  authDomain: 'tanya-command-center.firebaseapp.com',
-  projectId: 'tanya-command-center',
-  storageBucket: 'tanya-command-center.firebasestorage.app',
-  messagingSenderId: '1070932154654',
-  appId: '1:1070932154654:web:e682a544d824750le1d10f',
+  apiKey: 'AIzaSyARIwu-2ui-SERUWSQsUxtLRCriWSBWBDw',
+  authDomain: 'recall-d9886.firebaseapp.com',
+  projectId: 'recall-d9886',
+  storageBucket: 'recall-d9886.firebasestorage.app',
+  messagingSenderId: '595363085339',
+  appId: '1:595363085339:web:e06619ef8f93de84fdccbe',
 };
 
 export const app = initializeApp(firebaseConfig);

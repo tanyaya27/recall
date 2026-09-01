@@ -19,6 +19,16 @@ Keep entries short and imperative. The test of a good entry: would it have saved
   to lose a day.
 - **`npm install` before the first build on a new machine.** `node_modules/` is gitignored
   by design; `package-lock.json` is committed so the install reproduces exactly.
+- **Pushing to someone else's repo needs a *classic* personal access token, not a
+  fine-grained one.** A fine-grained PAT is scoped to a single resource owner and cannot
+  reach repos owned by another user — even when you are an accepted collaborator. Symptom:
+  `403 Permission to tanyaya27/recall.git denied to <you>` that survives accepting the
+  invite. Use a classic PAT with `repo` scope, or SSH keys. This bit us on 2026-08-31.
+- **Set `git config user.email` per repo before the first commit.** Commits are attributed
+  by email match. Use Tanya's GitHub **noreply** address
+  (`323371502+tanyaya27@users.noreply.github.com`) — the repo is public and commit emails
+  in public history get scraped. `git commit --amend --reset-author --no-edit` fixes an
+  already-made commit, but only before it is pushed.
 
 ## Security & privacy
 

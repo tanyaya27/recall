@@ -41,15 +41,19 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-- **v0 walking skeleton is built** and compiles: all 8 spec use cases, in
-  `04_Engineering/recall-app/`.
-- **Not yet runtime-verified.** It has never been loaded in a real browser with a real
-  API key. Expect first-deploy bugs.
-- **Not yet deployed.** GitHub repo, Pages, and Firestore rules setup are pending —
-  see `04_Engineering/recall-app/README.md`.
+- **v0 walking skeleton is built**: all 8 spec use cases, in `04_Engineering/recall-app/`.
+- **DEPLOYED and booting cleanly** (2026-08-31) at **https://tanyaya27.github.io/recall/**
+  Repo: `github.com/tanyaya27/recall` (Tanya's own account; Ravi is a collaborator).
+  First load verified: HTML/CSS/JS all 200, React renders, Firebase anonymous auth
+  succeeds, onboarding checklist paints correctly.
+- **Blocked on Firestore rules.** Console shows
+  `watchItems FirebaseError: Missing or insufficient permissions` — the `recall_items` /
+  `recall_events` rules have not been added in the Firebase console yet. Nothing can be
+  saved or read until they are. See `04_Engineering/recall-app/README.md` step 3.
+- **API key not yet entered.** Per device, via the app's Settings.
 
-Next up: deploy, then the first-capture smoke test (onboarding → snap keys → confirm →
-tap the Keys tile), then fix whatever breaks.
+Next up: add the Firestore rules, paste the API key, then run the first-capture smoke test
+(onboarding → snap keys → confirm → tap the Keys tile) and fix whatever breaks.
 
 ## Repo layout
 
@@ -75,7 +79,8 @@ it is generated from `04_Engineering/recall-app/src/`.
 
 - **React 18**, JSX, modular components, bundled by **esbuild**. React, ReactDOM and
   Firebase load from a CDN import map in `docs/index.html`, so `node_modules` is ~10MB.
-- **Firebase** project `tanya-command-center` (shared with Tanya's other tools):
+- **Firebase** project `recall-d9886`, owned by Tanya's own Google account (NOT the shared
+  `tanya-command-center` project — ReCall was deliberately separated, see DECISIONS.md):
   anonymous auth + Firestore. Photos are compressed JPEGs stored inline in Firestore docs.
   Collections: `recall_items`, `recall_events`.
 - **AI is abstracted.** The app only ever calls `engine.tagPhoto()` and
