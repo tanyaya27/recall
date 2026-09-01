@@ -46,13 +46,16 @@ Full background lives in the numbered folders — see `README.md` for the index.
   Repo: `github.com/tanyaya27/recall` (Tanya's own account; Ravi is a collaborator).
   First load verified: HTML/CSS/JS all 200, React renders, Firebase anonymous auth
   succeeds, onboarding checklist paints correctly.
-- **Blocked on Firestore rules.** Console shows
-  `watchItems FirebaseError: Missing or insufficient permissions` — the `recall_items` /
-  `recall_events` rules have not been added in the Firebase console yet. Nothing can be
-  saved or read until they are. See `04_Engineering/recall-app/README.md` step 3.
+- **Firebase fully wired and verified** (2026-08-31): project `recall-d9886` on Tanya's own
+  Google account, Spark plan, Firestore in `us-west1` (default database), Anonymous
+  sign-in enabled, rules published. Live app loads with **zero console errors**; anonymous
+  auth returns a uid and the `watchItems` listener attaches cleanly, so the auth + read
+  path is confirmed end to end.
+- **Write path still unproven.** Nothing has been saved yet — that needs a real camera
+  capture, which is the smoke test below.
 - **API key not yet entered.** Per device, via the app's Settings.
 
-Next up: add the Firestore rules, paste the API key, then run the first-capture smoke test
+Next up: paste the Anthropic API key, then run the first-capture smoke test on a phone
 (onboarding → snap keys → confirm → tap the Keys tile) and fix whatever breaks.
 
 ## Repo layout

@@ -57,6 +57,26 @@ expected for a build that had never run.
 `watchItems FirebaseError: Missing or insufficient permissions` — the Firestore rules for
 `recall_items` / `recall_events` have not been added yet.
 
+## Firebase moved to Tanya's own account, and verified
+
+Created project `recall-d9886` under Tanya's Google account (Spark plan), rather than
+continuing on the shared `tanya-command-center`. Rationale in DECISIONS.md — the short
+version is that the `recall_*` collections were still empty, so the move cost one config
+object today and would have cost a data migration later.
+
+Setup: Firestore `(default)` database in **us-west1** (permanent), Production mode,
+rules published for `recall_items` / `recall_events`; Authentication → Anonymous enabled.
+`src/lib/firebase.js` updated, rebuilt, pushed.
+
+**Verified on the live URL:** zero console errors, anonymous sign-in returns a uid
+(`isAnonymous: true`, no provider data), and the `watchItems` Firestore listener attaches
+without the earlier `permission-denied`. Auth and the read path are confirmed end to end.
+The **write path is still unproven** — that needs a real camera capture.
+
+Minor note: a browser that loaded the app before the config swap keeps a stale
+`firestore/[DEFAULT]/tanya-command-center/main` IndexedDB cache. Harmless and browser-local
+(both projects' collections were empty), but that is why an old tab may look odd.
+
 ## Still pending
 
 - Add the two Firestore rules in the Firebase console. Nothing saves or loads until then.
