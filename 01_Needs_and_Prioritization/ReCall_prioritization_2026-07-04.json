@@ -886,5 +886,17 @@
     "description": "Susan is burned out. She will delete the app if it sends her a notification a week. She needs a mode that says: \"We'll only contact you if something is actually wrong.\" Labeled Reverse because forcing this mode on Daniel would make him rage-quit — it MUST be opt-in per family member.",
     "voicedBy": "Susan (need); Daniel (reject if imposed)",
     "designNotes": "Clear opt-in flow. User sees explicitly what qualifies as \"wrong\" (medication missed 24h, safety check red, caregiver alert). Reversible at any time."
+  },
+  {
+    "id": "how-to-videos",
+    "name": "How-to videos (caregiver-recorded)",
+    "kano": "attractive",
+    "release": "phase-2",
+    "source": "panel",
+    "category": 3,
+    "shortDesc": "Caregiver records a 20-second clip — \"how to turn on the massager\" — patient asks and watches.",
+    "description": "A third class of memory need alongside Find (where is it?) and Do (did it happen today?): How (how do I work this?). Patients lose procedural knowledge for household devices — the TV input, the alarm clock, the massager, a phone feature — and ask the same how-to question repeatedly. The caregiver records a short video once, tags it (\"massager\"), and the patient retrieves it by tile or voice exactly as they retrieve a photo. Caregiver-originated, so the patient never has to author anything. Proposed by Ravster 2026-09-02 during the day-in-the-life walkthrough.",
+    "voicedBy": "Ravster; Margaret and Robert by implication",
+    "designNotes": "Same retrieval grammar as Find: a tile or an Ask returns a playback card, not a new screen type. Caregiver-side record UI only; patient side is play and replay. Needs Firebase Storage (video cannot be inline in Firestore) — the reason this is phase-2, not MVP. Keep clips under 30 seconds. Never auto-play. Log each playback as a retrieval event with class=how."
   }
 ]

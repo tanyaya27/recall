@@ -1,49 +1,169 @@
-// Data layer. Two collections, shared by the whole household (v0 tradeoff —
-// any signed-in anonymous user of this Firebase project can read/write; real
-// roles arrive in the MVP).
-//   recall_items:  one doc per item; latest photo inline (compressed JPEG data URL)
-//   recall_events: silent usage log for the one-week test
+// Data layer, v0.1.
+//
+// ONE Firestore collection for household data (`recall_items`) with a `kind` field,
+// plus `recall_events` for the silent research log. Why one collection: the
+// published Firestore rules cover exactly these two names, and v0.1 must be
+// testable without a console change. Split into real collections at MVP.
+//
+//   kind: 'item'    — a thing. latest photo inline, pinnedOrder = fixed slot (0-7) or null
+//   kind: 'snap'    — one historical photo of an item (itemId, photo, thumb, location, at)
+//   kind: 'routine' — something the app asks for at a fixed time of day
+//   kind: 'check'   — one photo taken in answer to a routine on a given day
+//
+// Shared household vault: any anonymous user of this Firebase project can read/write.
 import {
-  collection, doc, addDoc, updateDoc, onSnapshot, query, orderBy, getDocs,
+  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, where,
 } from 'firebase/firestore';
 import { db } from './firebase.js';
+import { dayKey, timeOfDay } from './format.js';
 
-const itemsCol = collection(db, 'recall_items');
+const col = collection(db, 'recall_items');
 const eventsCol = collection(db, 'recall_events');
 
-export function watchItems(cb) {
-  const q = query(itemsCol, orderBy('lastSeenAt', 'desc'));
+export const MAX_PINNED = 8;
+
+// ---------- live data ----------
+
+// One listener; caller gets everything split by kind. Snap photos are heavy, so
+// snaps are NOT included here — fetch them per item with loadSnaps().
+export function watchAll(cb) {
+  const q = query(col, where('kind', 'in', ['item', 'routine', 'check']));
   return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  }, (err) => console.error('watchItems', err));
+    const out = { items: [], routines: [], checks: [] };
+    snap.docs.forEach((d) => {
+      const data = { id: d.id, ...d.data() };
+      if (data.kind === 'routine') out.routines.push(data);
+      else if (data.kind === 'check') out.checks.push(data);
+      else out.items.push(data);
+    });
+    out.items.sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
+    out.routines.sort((a, b) => (a.order || 0) - (b.order || 0));
+    out.checks.sort((a, b) => (b.at || 0) - (a.at || 0));
+    cb(out);
+  }, (err) => console.error('watchAll', err));
 }
 
-export async function addItem({ name, location, description, photo, thumb, pinned }) {
+// ---------- items ----------
+
+export async function addItem({ name, location, description, photo, thumb, pinnedOrder = null, by = 'self' }) {
   const now = Date.now();
-  const ref = await addDoc(itemsCol, {
-    name, location, description: description || '', photo, thumb,
-    pinned: !!pinned, createdAt: now, updatedAt: now, lastSeenAt: now,
+  const ref = await addDoc(col, {
+    kind: 'item', name, location, description: description || '', photo, thumb,
+    pinnedOrder, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }],
   });
+  await addDoc(col, { kind: 'snap', itemId: ref.id, photo, thumb, location, at: now, by });
   return ref.id;
 }
 
 export async function updateItem(id, patch) {
-  await updateDoc(doc(itemsCol, id), { ...patch, updatedAt: Date.now() });
+  await updateDoc(doc(col, id), { ...patch, updatedAt: Date.now() });
 }
 
-// Re-snap: fresh photo + location for an existing item (UC-7)
-export async function resnapItem(item, { photo, thumb, location }) {
+// Re-snap: fresh photo + location; the old photo is kept as a snap
+export async function resnapItem(item, { photo, thumb, location, by = 'self' }) {
   const now = Date.now();
-  const history = [...(item.history || []), { location, at: now }].slice(-50);
-  await updateDoc(doc(itemsCol, item.id), {
-    photo, thumb, location, lastSeenAt: now, updatedAt: now, history,
+  const history = [...(item.history || []), { location, at: now }].slice(-100);
+  await updateDoc(doc(col, item.id), {
+    photo, thumb, location, lastSeenAt: now, updatedAt: now, history, capturedBy: by,
   });
+  await addDoc(col, { kind: 'snap', itemId: item.id, photo, thumb, location, at: now, by });
 }
+
+// Earlier photos of one item, newest first (the "not there?" scroll)
+export async function loadSnaps(itemId) {
+  const snap = await getDocs(query(col, where('kind', '==', 'snap'), where('itemId', '==', itemId)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => b.at - a.at);
+}
+
+// Pinning: fixed slots 0..MAX_PINNED-1. Returns 'pinned' | 'full'.
+export async function pinItem(item, items) {
+  const used = new Set(items.filter((i) => i.pinnedOrder != null && i.id !== item.id).map((i) => i.pinnedOrder));
+  for (let slot = 0; slot < MAX_PINNED; slot++) {
+    if (!used.has(slot)) { await updateItem(item.id, { pinnedOrder: slot }); return 'pinned'; }
+  }
+  return 'full';
+}
+export async function replacePinned(item, victim) {
+  await updateItem(victim.id, { pinnedOrder: null });
+  await updateItem(item.id, { pinnedOrder: victim.pinnedOrder });
+}
+export async function unpinItem(item) { await updateItem(item.id, { pinnedOrder: null }); }
+
+export function knownLocations(items, limit = 5) {
+  const counts = new Map();
+  items.forEach((it) => {
+    (it.history || [{ location: it.location, at: it.lastSeenAt }]).forEach(({ location, at }) => {
+      if (!location) return;
+      const c = counts.get(location) || { n: 0, last: 0 };
+      c.n += 1; c.last = Math.max(c.last, at || 0);
+      counts.set(location, c);
+    });
+  });
+  return [...counts.entries()]
+    .sort((a, b) => (b[1].last - a[1].last) || (b[1].n - a[1].n))
+    .slice(0, limit).map(([loc]) => loc);
+}
+
+// ---------- routines (what the app asks for, and when) ----------
+
+export const DEFAULT_ROUTINES = [
+  { name: 'Morning pills', window: 'morning', type: 'medication', order: 0,
+    instruction: 'Open the lid and show me today’s row.' },
+  { name: 'Stove', window: 'evening', type: 'stove', order: 10,
+    instruction: 'Show me the dials.' },
+  { name: 'Front door', window: 'evening', type: 'door', order: 11,
+    instruction: 'Show me the lock.' },
+  { name: 'Back door', window: 'evening', type: 'door', order: 12,
+    instruction: 'Show me the lock.' },
+];
+
+export async function seedRoutinesIfEmpty(existing) {
+  if (existing.length) return;
+  for (const r of DEFAULT_ROUTINES) await addDoc(col, { kind: 'routine', active: true, ...r, createdAt: Date.now() });
+}
+export async function addRoutine(r) {
+  await addDoc(col, { kind: 'routine', active: true, createdAt: Date.now(), ...r });
+}
+export async function updateRoutine(id, patch) { await updateDoc(doc(col, id), patch); }
+export async function deleteRoutine(id) { await deleteDoc(doc(col, id)); }
+
+// A check is a photo taken for a routine. claim = what the AI could honestly say.
+export async function addCheck({ routineId, photo, thumb, claim, retakes = 0, by = 'self' }) {
+  const now = Date.now();
+  const ref = await addDoc(col, {
+    kind: 'check', routineId, photo, thumb, claim, retakes, by, at: now, dayKey: dayKey(new Date(now)),
+  });
+  return ref.id;
+}
+export function todaysCheck(checks, routineId) {
+  const today = dayKey();
+  return checks.find((c) => c.routineId === routineId && c.dayKey === today) || null;
+}
+
+// ---------- silent research log ----------
+//
+// Every event carries: type, at (ms), dayKey, hour, timeOfDay, deviceId, sessionId,
+// role, schema. Never surfaced to the patient as a number.
+export const EVENT_SCHEMA = 2;
+const DEVICE_KEY = 'recall-device-id';
+function deviceId() {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) { id = Math.random().toString(36).slice(2, 10); localStorage.setItem(DEVICE_KEY, id); }
+    return id;
+  } catch { return 'unknown'; }
+}
+const SESSION_ID = Math.random().toString(36).slice(2, 10);
+const ROLE = (() => { try { return localStorage.getItem('recall-role') || 'patient'; } catch { return 'patient'; } })();
 
 export function logEvent(type, meta = {}) {
-  // Fire-and-forget; never block or surface errors to the user (silent logging)
-  addDoc(eventsCol, { type, ...meta, at: Date.now() }).catch(() => {});
+  const now = new Date();
+  addDoc(eventsCol, {
+    type, ...meta,
+    at: now.getTime(), dayKey: dayKey(now), hour: now.getHours(), timeOfDay: timeOfDay(now),
+    deviceId: deviceId(), sessionId: SESSION_ID, role: ROLE, schema: EVENT_SCHEMA,
+  }).catch(() => {});
 }
 
 export async function exportEvents() {

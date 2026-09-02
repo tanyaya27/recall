@@ -5,17 +5,17 @@ import { logEvent } from '../lib/db.js';
 export default function RecentReel({ items, onOpenItem, onBack }) {
   return (
     <div>
-      <button className="back" onClick={onBack}>‹ Home</button>
       <h2>Recent photos</h2>
       {items.length === 0 && <p className="sub">Nothing saved yet.</p>}
       <div className="reel">
         {items.map((it) => (
-          <button key={it.id} className="tile" onClick={() => { logEvent('reel_open', { itemId: it.id }); onOpenItem(it); }}>
+          <button key={it.id} className="tile" onClick={() => { logEvent('lookup', { entryMode: 'recent', itemId: it.id, itemName: it.name, answerAgeMin: Math.round((Date.now() - it.lastSeenAt) / 60000), matched: 1 }); onOpenItem(it); }}>
             <img src={it.thumb} alt={it.name} />
             <div className="tile-label cap"><b>{it.name}</b><br />{it.location}<br /><span style={{ color: '#6B7A78' }}>{timeAgo(it.lastSeenAt)}</span></div>
           </button>
         ))}
       </div>
+      <button className="btn-back" onClick={onBack}>Back</button>
     </div>
   );
 }

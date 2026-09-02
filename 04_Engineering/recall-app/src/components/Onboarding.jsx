@@ -19,10 +19,9 @@ export default function Onboarding({ onCaptureStarter, onFinish }) {
 
   return (
     <div>
-      <h1>Welcome to ReCall</h1>
+      <h2>Let’s photograph a few everyday things</h2>
       <p className="sub">
-        Let's photograph the things you look for most, right where they usually live.
-        Five minutes now makes the app useful today. Skip anything you like.
+        Do them together, in any order, right where they usually live. Skip anything that isn’t nearby.
       </p>
       {STARTER_ITEMS.map((name) => (
         <div className="check-row" key={name}>
@@ -34,7 +33,7 @@ export default function Onboarding({ onCaptureStarter, onFinish }) {
       ))}
       <div style={{ marginTop: 20 }}>
         <button className="btn-primary" onClick={() => { logEvent('onboarding_done', { count: doneCount }); onFinish(); }}>
-          {doneCount > 0 ? "Done — take me home" : 'Skip for now'}
+          {doneCount > 0 ? 'Done — show the home screen' : 'Skip for now'}
         </button>
       </div>
     </div>

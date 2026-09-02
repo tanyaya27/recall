@@ -53,6 +53,39 @@ Reply with ONLY a JSON object, no other text:
     return parseJSON(text);
   }
 
+  // Prompted capture: the app asked for a specific photo, so it may check what it got.
+  // Returns { visible, state, text }. state is one of the routine's allowed states or
+  // 'unknown'. The app NEVER claims more than the photo shows.
+  async verifyRoutinePhoto(photoDataUrl, routine, { weekday, timeOfDay, sensitivity = 'personal' } = {}) {
+    const specs = {
+      medication: {
+        subject: 'a pill organiser with its lid open',
+        question: `Is the slot for ${weekday} ${timeOfDay} empty?`,
+        states: ['empty', 'full', 'unknown'],
+      },
+      stove: { subject: 'a stove or cooktop with its control dials', question: 'Are all the dials in the off position?', states: ['off', 'on', 'unknown'] },
+      door: { subject: 'a door with its lock', question: 'Is the lock clearly engaged (deadbolt turned / latch set)?', states: ['locked', 'unlocked', 'unknown'] },
+      generic: { subject: routine.name, question: `Does the photo clearly show ${routine.name}?`, states: ['shown', 'unknown'] },
+    };
+    const spec = specs[routine.type] || specs.generic;
+    const prompt =
+`You are checking a photo taken by someone with memory loss, in answer to the app's request: "${routine.name} — ${routine.instruction}".
+Expected subject: ${spec.subject}.
+${spec.question}
+Be strict: if you cannot clearly see enough to answer, say "unknown". Never guess.
+Reply with ONLY a JSON object, no other text:
+{"visible": <true if the expected subject is clearly visible, else false>,
+ "state": "<one of: ${spec.states.join(' | ')}>",
+ "text": "<one short calm sentence stating only what the photo shows, e.g. 'Wednesday morning slot is empty.' or 'I can't see the dials clearly.'>"}`;
+    const text = await this.provider.visionJSON(this.cfg, prompt, photoDataUrl, { sensitivity });
+    const out = parseJSON(text);
+    return {
+      visible: !!out.visible,
+      state: spec.states.includes(out.state) ? out.state : 'unknown',
+      text: out.text || '',
+    };
+  }
+
   async answerQuery(question, items, { sensitivity = 'personal' } = {}) {
     const catalog = items.map((it, i) =>
       `${i}: ${it.name} — ${it.location} — ${it.description || ''} (last seen ${new Date(it.lastSeenAt).toLocaleString()})`
