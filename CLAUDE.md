@@ -55,8 +55,14 @@ Full background lives in the numbered folders — see `README.md` for the index.
   capture, which is the smoke test below.
 - **API key not yet entered.** Per device, via the app's Settings.
 
-Next up: paste the Anthropic API key, then run the first-capture smoke test on a phone
-(onboarding → snap keys → confirm → tap the Keys tile) and fix whatever breaks.
+**Next session's job is the UI/UX rework — read `06_Handoffs/NEXT_SESSION_BRIEF.md` first.**
+The v0 interface is a functional skeleton and looks it. The next session produces a
+self-contained prompt for Claude's Design tool covering the 22-item MVP set plus two or
+three showcase features.
+
+Still open in parallel: the first-capture smoke test on a phone (Settings → paste the
+Anthropic key → onboarding → snap keys → confirm → tap the Keys tile). The write path has
+never been exercised.
 
 ## Repo layout
 

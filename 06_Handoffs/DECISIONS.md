@@ -8,6 +8,25 @@ Format: date — decision — why — what would change our mind.
 
 ---
 
+## 2026-08-31 — MVP scope: the 22 committed features plus a few showcase ones
+
+**Decision:** design and build to the agreed 22-item MVP set (9 must-be, 9 performance,
+4 attractive), plus two or three features pulled forward from mvp-plus/phase-2 purely for
+demo impact.
+
+**Why:** Ravi's framing — the MVP has to be attractive enough that the first adopters use
+it *confidently*, not just correctly. A strictly minimal MVP risks being technically
+complete and emotionally unconvincing, which for a dementia app means abandonment.
+
+**Guardrail:** showcase features must be labelled as such wherever they appear, so a
+mockup is never mistaken for a commitment. Feature scope stays owned by the prioritizer
+JSON, not by design documents.
+
+**Would change our mind:** if showcase work starts displacing must-be work, cut the
+showcase features. The 9 must-be items are the ones whose absence causes abandonment.
+
+---
+
 ## 2026-08-31 — ReCall gets its own Firebase project, on Tanya's Google account
 
 **Decision:** new Firebase project `recall-d9886` (Spark plan, us-west1), owned by Tanya's

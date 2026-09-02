@@ -77,6 +77,17 @@ Minor note: a browser that loaded the app before the config swap keeps a stale
 `firestore/[DEFAULT]/tanya-command-center/main` IndexedDB cache. Harmless and browser-local
 (both projects' collections were empty), but that is why an old tab may look odd.
 
+## Handoff to the next session
+
+The infrastructure phase is finished. The next session's job is the **UI/UX rework** —
+produce a self-contained prompt for Claude's Design tool. Full instructions, required
+reading, agreed scope and the non-negotiable design constraints are in
+`06_Handoffs/NEXT_SESSION_BRIEF.md`.
+
+Scope agreed with Ravi this session: **the 22-item MVP set plus two or three showcase
+features**, chosen for demo impact on first adopters. Reasoning: the MVP has to be
+attractive enough that early adopters use it *confidently*, not merely correctly.
+
 ## Still pending
 
 - Add the two Firestore rules in the Firebase console. Nothing saves or loads until then.
