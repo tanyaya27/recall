@@ -8,6 +8,45 @@ Format: date — decision — why — what would change our mind.
 
 ---
 
+## 2026-04-16 — Four architectural commitments that must hold through the MVP build
+
+From the AI Capability Scan (`02_Strategy/ReCall_AI_Capability_Scan.docx`). These are locked
+because each is expensive to retrofit and cheap to build in from the start.
+
+1. **Use a multimodal VLM for object recognition, not a plain image classifier.** Default
+   Claude, with a Gemini fallback. A classifier gives labels; ReCall needs "reading glasses
+   on the kitchen counter", which is a reasoning task.
+2. **Embeddings-backed semantic search from day one**, indexed in Firestore vector search —
+   not keyword matching. v0 deliberately ships LLM-over-captions instead, which is correct
+   below ~500 items and must be replaced before that.
+3. **All LLM calls behind a single client with a `sensitivity` flag.** Already built in
+   `src/ai/engine.js`. This is what makes Phase-2 on-device routing additive rather than a
+   rewrite. Do not let any component call a vendor directly.
+4. **Voice-cloning consent scaffolding designed during MVP privacy work**, even though the
+   feature itself ships Phase 2+. Consent collected after the fact is not consent.
+
+**Would change our mind:** #1 and #2 only if cost per capture becomes prohibitive at scale.
+#3 and #4 are not negotiable.
+
+---
+
+## 2026-04-16 — Multi-device architecture: Option B, cloud-first from MVP
+
+**Decision:** Firebase Firestore from day one, with Patient and Caregiver roles in the MVP.
+Facility / multi-patient deferred to Phase 3.
+
+**Why:** Priya (remote daughter) and Robert (spouse caregiver) are named must-be users, and
+their value proposition requires each person using their own device. Retrofitting
+multi-device later was estimated at 4–6 weeks, landing concurrently with the college
+application sprint.
+
+**Status:** still needs Tanya's explicit sign-off on three points — approve Option B,
+confirm MVP roles are Patient + Caregiver only, and confirm data residency. Note the third
+point is now settled differently: data lives in ReCall's own `recall-d9886` project, not
+`tanya-command-center` as the original memo proposed.
+
+---
+
 ## 2026-08-31 — MVP scope: the 22 committed features plus a few showcase ones
 
 **Decision:** design and build to the agreed 22-item MVP set (9 must-be, 9 performance,

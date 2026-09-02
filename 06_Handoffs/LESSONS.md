@@ -49,6 +49,31 @@ Keep entries short and imperative. The test of a good entry: would it have saved
 - Photos are stored inline in Firestore documents. Firestore has a 1MB per-document limit —
   compression is not optional, it is load-bearing.
 
+## Rejected — do not re-propose
+
+Evaluated and ruled out in the April 2026 AI Capability Scan. Each is the kind of idea that
+sounds good enough to keep resurfacing, so the reason is recorded rather than the verdict.
+
+- **Speaker-personalized speech-to-text fine-tuning.** No major vendor (Whisper,
+  AssemblyAI, Deepgram) exposes per-speaker tuning in production. Re-evaluate only if one
+  ships it.
+- **OpenAI Voice Engine.** Still restricted to a small partner set. Build voice cloning on
+  ElevenLabs instead.
+- **Generative imagery of absent loved ones.** Technically easy, clinically
+  contraindicated — dissociation risk in dementia populations. Vetoed by the panel's
+  clinical persona. This one is a values call, not a capability gap; do not revisit on the
+  grounds that the tech improved.
+
+## Working with AI capability claims
+
+- **Never assert an AI capability from training data.** Every capability in the scan cites
+  a named commercial product or research demo verified by web search at the time. Anything
+  unverified goes in a "watch" tier with an explicit re-evaluation trigger, never into a
+  plan. Same discipline as the professor-verification rule on the college-application side.
+- Two claims in the competitive analysis were later corrected this way: Samsung Brain
+  Health is a B2B research partnership, not a shipping consumer product, and the Apple ×
+  Eli Lilly collaboration is unverified for 2026. Both were overstated on first pass.
+
 ## Working style
 
 - Verify things work end to end before declaring them done. "It compiles" is not "it works".
