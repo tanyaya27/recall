@@ -116,7 +116,7 @@ input.edit-inline, textarea.edit-inline { font: inherit; width: 100%; border: 1.
 .add-row input { flex: 1; }
 .add-row button { background: var(--accent); color: #fff; padding: 8px 14px; font-weight: 600; }
 .settings label { display: block; font-size: 16px; color: var(--ink-soft); margin: 14px 0 4px; }
-.settings input[type=password], .settings input:not(.inline-name):not(.add-row input), .settings select { width: 100%; font: inherit; font-size: 17px; padding: 10px;
+.settings .card > input, .settings .card > select { width: 100%; font: inherit; font-size: 17px; padding: 10px;
   border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
 .notice { font-size: 17px; color: var(--accent); background: var(--accent-soft); border-radius: 12px;
   padding: 12px 14px; margin: 12px 0; }
