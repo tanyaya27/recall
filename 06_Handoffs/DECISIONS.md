@@ -6,6 +6,70 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-02 — The patient never navigates: one home screen shaped by the clock
+
+**Decision:** the patient side has no tabs, no menu, no "Back" as a corner link. One home screen
+whose shape follows the time of day (morning routines, then things; bedtime routines from a set
+hour until 5am), plus camera, answer, and a full-width Back button near the bottom of deeper screens.
+
+**Why:** two rounds of Design-tool mockups built from the 22-feature list produced screens Ravi
+could not navigate ("vertigo"). Walking through a real day showed Margaret does three things —
+snap, tap a tile, answer what the app asks at a fixed time — and never *goes* anywhere. Screens that
+exist because a feature exists, rather than because she needs to go there, are the source of the
+confusion. Full story: `design/DAY_IN_THE_LIFE.md`.
+
+**Would change our mind:** if the one-week test shows she cannot find Recent or Settings when she
+needs them. Then add a single persistent "More" — not a tab bar.
+
+---
+
+## 2026-09-02 — Two capture modes, one gesture; the app never claims more than the photo shows
+
+**Decision:** self-initiated snaps are generic (AI names whatever it sees). App-initiated snaps
+(routines at a fixed time) carry a one-line photo instruction and are verified: the AI states only
+what it can see ("Wednesday morning slot is empty"), asks once for a retake if it can't see, and
+otherwise saves with "Photographed at 8:12" and no claim. The photo is the mark; there is no
+"done" tap and no checkbox anywhere.
+
+**Why:** Ravi's point that "one photo for both find and check" only works if the photo shows the
+open organiser, which can't be guaranteed. Medication is daily, universal, and high-stakes enough
+to earn a guided capture. Honesty over confidence is the stale-answer principle applied to checks.
+
+**Would change our mind:** nothing on the honesty rule. The retake count (one) is tunable.
+
+---
+
+## 2026-09-02 — Tiles are fixed positions, curated by people, never auto-reordered
+
+**Decision:** up to 8 pinned tiles in fixed slots; "Keep at the top" / "Take off the top" on every
+thing, available to the patient (not caregiver-only); overflow under "Other things", ordered by
+recency. Usage data may *suggest* pins to a caregiver; it never rearranges the patient's screen.
+
+**Why:** a screen that reorders itself cannot be learned by hand memory. Memory impairment varies —
+Ravi's point — so the patient must be able to curate if she can; the caregiver curates if she can't.
+
+---
+
+## 2026-09-02 — Research logging is a day-one requirement, with a fixed schema
+
+**Decision:** every capture, lookup, outcome, history pick, correction, prompt and pin is logged
+with exact time, day bucket, entry mode and device, schema-versioned (v2). Nothing is ever shown
+to the patient as a number. Four candidate studies and the schema are in
+`05_Research/RESEARCH_PLAN.md`.
+
+**Why:** Tanya's NYU neuroscience work. Retrofitting instrumentation loses the baseline weeks.
+
+---
+
+## 2026-09-02 — v0.1 keeps one Firestore collection with a `kind` field
+
+**Decision:** snaps, routines and checks live in `recall_items` alongside items, distinguished by
+`kind`, rather than in their own collections.
+
+**Why:** the published rules cover exactly `recall_items` and `recall_events`, and changing rules
+needs the console on Tanya's account. This let v0.1 be testable the same day. **Split into real
+collections when rules are rewritten for the household ID** — that work is already required.
+
 ---
 
 ## 2026-04-16 — Four architectural commitments that must hold through the MVP build

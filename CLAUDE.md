@@ -41,28 +41,23 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-- **v0 walking skeleton is built**: all 8 spec use cases, in `04_Engineering/recall-app/`.
-- **DEPLOYED and booting cleanly** (2026-08-31) at **https://tanyaya27.github.io/recall/**
-  Repo: `github.com/tanyaya27/recall` (Tanya's own account; Ravi is a collaborator).
-  First load verified: HTML/CSS/JS all 200, React renders, Firebase anonymous auth
-  succeeds, onboarding checklist paints correctly.
-- **Firebase fully wired and verified** (2026-08-31): project `recall-d9886` on Tanya's own
-  Google account, Spark plan, Firestore in `us-west1` (default database), Anonymous
-  sign-in enabled, rules published. Live app loads with **zero console errors**; anonymous
-  auth returns a uid and the `watchItems` listener attaches cleanly, so the auth + read
-  path is confirmed end to end.
-- **Write path still unproven.** Nothing has been saved yet — that needs a real camera
-  capture, which is the smoke test below.
-- **API key not yet entered.** Per device, via the app's Settings.
-
-**Next session's job is the UI/UX rework — read `06_Handoffs/NEXT_SESSION_BRIEF.md` first.**
-The v0 interface is a functional skeleton and looks it. The next session produces a
-self-contained prompt for Claude's Design tool covering the 22-item MVP set plus two or
-three showcase features.
-
-Still open in parallel: the first-capture smoke test on a phone (Settings → paste the
-Anthropic key → onboarding → snap keys → confirm → tap the Keys tile). The write path has
-never been exercised.
+- **v0.1 is live** (2026-09-02) at **https://tanyaya27.github.io/recall/** — a rebuild of the
+  patient side around one idea: *Margaret never navigates.* One home screen shaped by the clock
+  (morning routines → things → bedtime routines, evening shape persists until 5am), generic and
+  app-prompted capture with honest AI claims, "not there? see earlier photos", pinning with fixed
+  slots, routines editable in Settings, research-grade event log (schema v2).
+  **Read `06_Handoffs/design/DAY_IN_THE_LIFE.md` first** — it is the story the code implements.
+- **Write path proven** (2026-09-02): routines seed into Firestore on first load; no console errors.
+- **Not yet exercised:** camera capture with a real API key on a phone. Settings → paste key →
+  photograph something → confirm the tile appears; then a bedtime row → photograph → claim shown.
+- **Firebase:** project `recall-d9886`, Firestore rules cover `recall_items` and `recall_events`
+  only. v0.1 stores snaps/routines/checks in `recall_items` with a `kind` field for that reason.
+- **Design-tool mockups** (v1, v2 delta) exist in `06_Handoffs/design/`; they were superseded by
+  the day-in-the-life reset. Do not restart from them.
+- **Tanya has not yet reviewed v0.1**, the day-in-the-life story, or `05_Research/RESEARCH_PLAN.md`.
+  Her review is the next step. Open questions for her are listed at the end of DAY_IN_THE_LIFE.md.
+- **Next build after her review:** Robert's device (log-for-her, household join code) and Priya's
+  status screen; then Firestore rules per collection and a household ID.
 
 ## Repo layout
 
@@ -91,7 +86,7 @@ it is generated from `04_Engineering/recall-app/src/`.
 - **Firebase** project `recall-d9886`, owned by Tanya's own Google account (NOT the shared
   `tanya-command-center` project — ReCall was deliberately separated, see DECISIONS.md):
   anonymous auth + Firestore. Photos are compressed JPEGs stored inline in Firestore docs.
-  Collections: `recall_items`, `recall_events`.
+  Collections: `recall_items` (docs carry `kind`: item | snap | routine | check), `recall_events`.
 - **AI is abstracted.** The app only ever calls `engine.tagPhoto()` and
   `engine.answerQuery()` from `src/ai/engine.js`. Providers implement `visionJSON` and
   `textJSON` and register in one map. Anthropic (default, Haiku) and Gemini both ship.

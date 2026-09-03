@@ -30,6 +30,25 @@ Keep entries short and imperative. The test of a good entry: would it have saved
   in public history get scraped. `git commit --amend --reset-author --no-edit` fixes an
   already-made commit, but only before it is pushed.
 
+- **Commit from the Mac, not from the Cowork sandbox.** The sandbox can write the repo but cannot
+  delete files it didn't create, so git leaves `index.lock` / `HEAD.lock` / `objects/*/tmp_obj_*`
+  behind and later git commands fail with "index.lock exists". It also has no GitHub credentials.
+  If a sandbox commit is unavoidable: `GIT_INDEX_FILE=/tmp/idx git add -A && git write-tree` …
+  `commit-tree` … `update-ref`, then on the Mac `rm -f .git/*.lock .git/objects/maintenance.lock;
+  git reset -q; git push`. Bit us twice on 2026-09-02.
+- **GitHub Pages + browser cache:** after a deploy, the page shows the old `app.js` for a while.
+  `fetch('./app.js',{cache:'reload'})` then reload, or add a `?v=` query to `app.js` in index.html.
+
+## Design
+
+- **Don't design from the feature list.** Two rounds of Design-tool mockups built screen-per-feature
+  produced an app nobody could navigate. Write the day first (`design/DAY_IN_THE_LIFE.md`), then
+  the screens. A feature that needs the patient to *go somewhere* is a design failure.
+- **Find and Do must never share a visual grammar.** Things are photo tiles; routines are rows with
+  a state in words. Mockups v1 drew "Morning pills" as a tile next to "Keys" and it was unreadable.
+- **The Design tool sees only the prompt.** "No tab bar with five icons" became "no navigation at
+  all". Say what *is* there, not only what isn't.
+
 ## Security & privacy
 
 - **Firestore rules are currently wide open** — `if request.auth != null` plus anonymous
