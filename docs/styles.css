@@ -61,11 +61,14 @@ button { font: inherit; border: none; border-radius: var(--radius); cursor: poin
 /* Find: photo tiles of things. No state, no time. */
 .tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 4px; }
 .tile-grid.small { grid-template-columns: 1fr 1fr 1fr; }
+/* The photo IS the recognition cue — a long name must never cover it. The label sits
+   BELOW the picture, not over it, and is clamped to two lines. */
 .tile { position: relative; border-radius: var(--radius); overflow: hidden; background: var(--card);
-  box-shadow: var(--shadow); aspect-ratio: 1 / 1; padding: 0; }
-.tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.tile .tile-label { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px;
-  background: rgba(255,253,249,0.93); font-size: 20px; font-weight: 600; color: var(--ink); text-align: left; }
+  box-shadow: var(--shadow); padding: 0; display: flex; flex-direction: column; }
+.tile img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+.tile .tile-label { padding: 8px 10px; background: var(--card);
+  font-size: 19px; font-weight: 600; color: var(--ink); text-align: left; line-height: 1.2;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tile-grid.small .tile .tile-label { font-size: 16px; padding: 6px 8px; }
 
 /* Today: rows of routines. Thumbnail-or-empty-square, name, state in words. */

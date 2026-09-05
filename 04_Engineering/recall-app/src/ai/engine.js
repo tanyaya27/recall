@@ -110,10 +110,13 @@ ${placesLine}
 
 Answer three separate things. Do not blend them.
 
-1. WHAT IT IS. The main object. If it is clearly one of the things already saved, reuse
-   that exact name. Name it the way its owner would ("your black shorts", "reading
-   glasses"), never as a stranger would ("black fabric", "an item"). If two objects could
-   plausibly be the subject, put the others in "alternatives".
+1. WHAT IT IS. The main object, in AT MOST THREE WORDS — it has to fit under a small
+   photo tile. Prefer the shortest name that identifies it: "scissors", not "blue and
+   white scissors". Only add a colour or other qualifier if something in the already-saved
+   list would otherwise be confused with it. If it is clearly one of the things already
+   saved, reuse that exact name. Name it the way its owner would ("your black shorts",
+   "reading glasses"), never as a stranger would ("black fabric", "an item"). If two
+   objects could plausibly be the subject, put the others in "alternatives".
 
 2. WHAT IT IS RESTING ON. Only what you can actually see — "on a pair of folded black
    shorts", "in an open drawer", "on a speckled stone countertop". This is genuinely
