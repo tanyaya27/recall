@@ -14,14 +14,14 @@ const ONBOARD_KEY = 'recall-onboarded';
 export default function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
-  const [data, setData] = useState({ items: [], routines: [], checks: [] });
+  const [data, setData] = useState({ items: [], routines: [], checks: [], removed: [] });
   const [cfgVersion, setCfgVersion] = useState(0);
   const [eveningHour, setEveningHour] = useState(getEveningHour());
   const [route, setRoute] = useState({ view: 'home' });
   const [, tick] = useState(0);
 
   const engine = useMemo(() => new AIEngine(getAIConfig()), [cfgVersion]);
-  const { items, routines, checks } = data;
+  const { items, routines, checks, removed } = data;
 
   useEffect(() => {
     let unsub = () => {};
@@ -118,6 +118,7 @@ export default function App() {
       return (
         <Settings
           routines={routines}
+          removed={removed}
           onBack={() => go('home')}
           onConfigSaved={() => setCfgVersion((v) => v + 1)}
           onEveningChanged={setEveningHour}

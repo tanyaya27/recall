@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { updateItem, loadSnaps, pinItem, unpinItem, logEvent } from '../lib/db.js';
+import { updateItem, loadSnaps, pinItem, unpinItem, softDeleteItem, logEvent } from '../lib/db.js';
 import { timeAgo, isStale } from '../lib/format.js';
 import EditableText from './EditableText.jsx';
 
@@ -92,6 +92,19 @@ export default function AnswerView({ item, items = [], alternates = [], message 
         <button className="btn-quiet" onClick={togglePin}>{pinned ? 'Take off the top' : 'Keep at the top'}</button>
         {pinNote && <span className="sub" style={{ margin: 0 }}>{pinNote}</span>}
       </div>
+      {/* Quiet, last, and confirmed — but never destructive. This is a soft delete; the
+          photo waits in Settings → Recently removed until someone deliberately empties it. */}
+      <button
+        className="link-btn" style={{ display: 'block', margin: '14px auto 0' }}
+        onClick={async () => {
+          if (!confirm(`Remove ${item.name.toLowerCase()} from ReCall?\n\nIt moves to "Recently removed" in Settings, where you can put it back.`)) return;
+          await softDeleteItem(item);
+          logEvent('item_removed', { itemId: item.id, itemName: item.name });
+          onBack();
+        }}
+      >
+        Remove {item.name.toLowerCase()}
+      </button>
       <button className="btn-back" onClick={onBack}>Back</button>
     </div>
   );

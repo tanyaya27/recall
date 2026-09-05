@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { getAIConfig, saveAIConfig, providerList } from '../ai/engine.js';
-import { addRoutine, updateRoutine, deleteRoutine, exportEvents, EVENT_SCHEMA } from '../lib/db.js';
+import { addRoutine, updateRoutine, deleteRoutine, restoreItem, purgeItem, exportEvents, EVENT_SCHEMA } from '../lib/db.js';
+import { timeAgo } from '../lib/format.js';
 
 export const EVENING_KEY = 'recall-evening-hour';
 export function getEveningHour() {
@@ -10,7 +11,7 @@ export function getEveningHour() {
 
 // Deliberately small. Nothing here is needed for daily use.
 // In the MVP most of this moves to the caregiver's device.
-export default function Settings({ routines, onBack, onConfigSaved, onEveningChanged }) {
+export default function Settings({ routines, removed = [], onBack, onConfigSaved, onEveningChanged }) {
   const [cfg, setCfg] = useState(getAIConfig());
   const [saved, setSaved] = useState(false);
   const [evening, setEvening] = useState(getEveningHour());
@@ -102,6 +103,25 @@ export default function Settings({ routines, onBack, onConfigSaved, onEveningCha
         <h3>Research log</h3>
         <p className="sub">Every photo, question, correction and check is logged silently with exact times. Nothing is shown to the person as a number.</p>
         <button className="btn-secondary" onClick={downloadEvents}>Download usage log (JSON)</button>
+      </div>
+
+      {/* Nothing a person removes is destroyed until someone here says so. */}
+      <div className="card">
+        <h3>Recently removed</h3>
+        {removed.length === 0 ? (
+          <p className="sub">Nothing has been removed.</p>
+        ) : removed.map((it) => (
+          <div className="check-row" key={it.id}>
+            <div className="nm">
+              {it.name}
+              <small>{it.location || 'no place'} · removed {timeAgo(it.deletedAt)}</small>
+            </div>
+            <button onClick={() => restoreItem(it.id)}>Put back</button>
+            <button onClick={() => { if (confirm(`Delete ${it.name.toLowerCase()} and its photos for good?\n\nThis cannot be undone.`)) purgeItem(it); }}>
+              Delete for good
+            </button>
+          </div>
+        ))}
       </div>
 
       <button className="btn-back" onClick={onBack}>Back</button>

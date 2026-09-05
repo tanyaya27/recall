@@ -29,14 +29,16 @@ export const MAX_PINNED = 8;
 export function watchAll(cb) {
   const q = query(col, where('kind', 'in', ['item', 'routine', 'check']));
   return onSnapshot(q, (snap) => {
-    const out = { items: [], routines: [], checks: [] };
+    const out = { items: [], routines: [], checks: [], removed: [] };
     snap.docs.forEach((d) => {
       const data = { id: d.id, ...d.data() };
       if (data.kind === 'routine') out.routines.push(data);
       else if (data.kind === 'check') out.checks.push(data);
+      else if (data.deleted) out.removed.push(data);
       else out.items.push(data);
     });
     out.items.sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
+    out.removed.sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0));
     out.routines.sort((a, b) => (a.order || 0) - (b.order || 0));
     out.checks.sort((a, b) => (b.at || 0) - (a.at || 0));
     cb(out);
@@ -94,6 +96,24 @@ export async function replacePinned(item, victim) {
   await updateItem(item.id, { pinnedOrder: victim.pinnedOrder });
 }
 export async function unpinItem(item) { await updateItem(item.id, { pinnedOrder: null }); }
+
+// Removing a thing.
+//
+// A tap from a confused person must never destroy a photo. So "remove" is a soft delete:
+// the thing leaves the tiles and the search immediately, and sits in Settings → Recently
+// removed until a person deliberately empties it. Only `purgeItem` actually destroys
+// anything, and it takes the item's snaps with it so photos don't orphan in Firestore.
+export async function softDeleteItem(item) {
+  await updateDoc(doc(col, item.id), { deleted: true, deletedAt: Date.now(), pinnedOrder: null });
+}
+export async function restoreItem(id) {
+  await updateDoc(doc(col, id), { deleted: false, deletedAt: null });
+}
+export async function purgeItem(item) {
+  const snaps = await getDocs(query(col, where('kind', '==', 'snap'), where('itemId', '==', item.id)));
+  await Promise.all(snaps.docs.map((d) => deleteDoc(d.ref)));
+  await deleteDoc(doc(col, item.id));
+}
 
 export function knownLocations(items, limit = 5) {
   const counts = new Map();
