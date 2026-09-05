@@ -9,7 +9,7 @@ import { useDictation } from '../lib/speech.js';
 //
 // Once chosen it collapses to a single line with "change", so the common case — tap the
 // right guess, save — is two taps total.
-export default function PlaceChooser({ value, guesses = [], known = [], restingOn = '', certain = false, onPick }) {
+export default function PlaceChooser({ value, guesses = [], known = [], onPick }) {
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState('');
   const dictation = useDictation((text) => { setDraft(text); setTyping(true); });
@@ -43,11 +43,16 @@ export default function PlaceChooser({ value, guesses = [], known = [], restingO
   return (
     <div className="ask-place">
       <div className="ask-q">Where is it?</div>
-      <p className="ask-why">
-        {restingOn
-          ? `I can see it's ${restingOn}, but not which room.`
-          : certain ? 'Pick the spot so you can find it later.' : "The photo doesn't tell me which room."}
-      </p>
+      {/* No explanation of why we're asking. She sees this twenty times a day; the question
+          carries all the meaning, and a sentence about what the model could and couldn't
+          see is the designer talking, not the app helping. The one exception is the very
+          first capture, when there is nothing to tap and a nudge genuinely helps.
+          `restingOn` is not thrown away — it surfaces on the answer screen, where it is
+          the difference between "bathroom counter" and "bathroom counter, on your black
+          shorts". Right words, wrong screen. */}
+      {guesses.length === 0 && known.length === 0 && (
+        <p className="ask-why">Type or say the spot — “the bathroom counter”.</p>
+      )}
 
       <div className="guesses">
         {guesses.map((g) => (

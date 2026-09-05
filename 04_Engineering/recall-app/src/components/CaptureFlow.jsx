@@ -28,6 +28,7 @@ export default function CaptureFlow({
   // What the model could and couldn't see. `guesses` are offered, never applied.
   const [seen, setSeen] = useState({ restingOn: '', placeGuesses: [], placeCertain: false, alternatives: [] });
   const [placeSkipped, setPlaceSkipped] = useState(false);
+  const [subjectPicked, setSubjectPicked] = useState(false);
   const chips = knownLocations(items, 6);
 
   const title = routine ? routine.name
@@ -38,6 +39,7 @@ export default function CaptureFlow({
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     setStage('analyzing');
+    setSubjectPicked(false); setPlaceSkipped(false);
     const { photo: p, thumb: t } = await compressPhoto(file);
     setPhoto(p); setThumb(t);
     e.target.value = '';
@@ -147,6 +149,8 @@ export default function CaptureFlow({
     setFields((f) => ({ ...f, location: v }));
     if (v) setPlaceSkipped(false);
   };
+  // Same reasoning for "which of these did you mean?" — an answer, not a correction.
+  const pickSubject = (n) => { setFields((f) => ({ ...f, name: n })); setSubjectPicked(true); };
 
   return (
     <div>
@@ -189,43 +193,42 @@ export default function CaptureFlow({
         <div className="card">
           <img className="photo-full" src={photo} alt={fields.name} />
 
-          <EditableText label="What it is" value={fields.name} emptyLabel="tap to name it" onSave={setField('name')} />
-          {/* Wrong object? Offer the other candidate in words. Never make her type. */}
-          {seen.alternatives.length > 0 && !edited && (
-            <div className="chips">
-              {seen.alternatives.map((a) => (
-                <button key={a} type="button" className="chip" onClick={() => setField('name')(a)}>
-                  no — {a.toLowerCase()}
-                </button>
-              ))}
+          {/* A wide shot can hold several plausible subjects, and no photo says which one
+              she cared about. When the model reports more than one, ask — in words, never
+              by making her draw a box or hold a finger on a small object. One question on
+              screen at a time: the subject, then the place. */}
+          {seen.alternatives.length > 0 && !subjectPicked ? (
+            <div className="ask-place">
+              <div className="ask-q">What did you want to remember?</div>
+              <div className="guesses">
+                {[fields.name, ...seen.alternatives].filter(Boolean).map((n) => (
+                  <button key={n} type="button" className="guess" onClick={() => pickSubject(n)}>{n}</button>
+                ))}
+              </div>
             </div>
+          ) : (
+            <>
+              <EditableText label="What it is" value={fields.name} emptyLabel="tap to name it" onSave={setField('name')} />
+              <PlaceChooser value={fields.location} guesses={seen.placeGuesses} known={chips} onPick={setPlace} />
+
+              <EditableText label="Note" value={fields.description} emptyLabel="tap to add a note" onSave={setField('description')} />
+
+              <button
+                className="btn-primary progress" style={{ '--p': countdown, marginTop: 16 }}
+                disabled={stage === 'saving' || !fields.name || (!fields.location && !placeSkipped)}
+                onClick={() => save('tap')}
+              >
+                <span>
+                  {stage === 'saving' ? 'Saving…'
+                    : `Save${fields.name ? ` — ${fields.name.toLowerCase()}` : ''}${fields.location ? ` ${fields.location}` : ''}`}
+                </span>
+              </button>
+            </>
           )}
-
-          <PlaceChooser
-            value={fields.location}
-            guesses={seen.placeGuesses}
-            known={chips}
-            restingOn={seen.restingOn}
-            certain={seen.placeCertain}
-            onPick={setPlace}
-          />
-
-          <EditableText label="Note" value={fields.description} emptyLabel="tap to add a note" onSave={setField('description')} />
-
-          <button
-            className="btn-primary progress" style={{ '--p': countdown, marginTop: 16 }}
-            disabled={stage === 'saving' || !fields.name || (!fields.location && !placeSkipped)}
-            onClick={() => save('tap')}
-          >
-            <span>
-              {stage === 'saving' ? 'Saving…'
-                : `Save${fields.name ? ` — ${fields.name.toLowerCase()}` : ''}${fields.location ? ` ${fields.location}` : ''}`}
-            </span>
-          </button>
 
           {/* The deliberate escape: naming a place you haven't decided yet is worse than
               saying so. Only shown while the place is still blank. */}
-          {!fields.location && (
+          {!fields.location && !(seen.alternatives.length > 0 && !subjectPicked) && (
             placeSkipped ? (
               <p className="note-quiet">Saving without a place — you can add one later.</p>
             ) : (

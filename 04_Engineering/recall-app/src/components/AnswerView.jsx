@@ -45,6 +45,10 @@ export default function AnswerView({ item, items = [], alternates = [], message 
         <img className="photo-full" src={item.photo} alt={item.name} />
         <EditableText value={item.name} label="What it is" onSave={(v) => { updateItem(item.id, { name: v }); logEvent('correction', { itemId: item.id, field: 'name' }); }} />
         <EditableText value={item.location} label="Where it is" big onSave={(v) => { updateItem(item.id, { location: v }); logEvent('correction', { itemId: item.id, field: 'location' }); }} />
+        {/* What the photo showed it sitting on. Useless at capture time — she can see the
+            photo she just took — but at find time it is the difference between "bathroom
+            counter" and "bathroom counter, on your black shorts". */}
+        {item.restingOn && <div className="resting">{item.restingOn}</div>}
         <div className="when">Photographed {timeAgo(item.lastSeenAt)}</div>
         {stale && (
           <div className="stale">This photo is from {timeAgo(item.lastSeenAt)} — it may have moved since then.</div>
