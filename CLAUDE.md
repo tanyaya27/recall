@@ -3,12 +3,30 @@
 You are working on **ReCall** with Tanya Angadi (high school student, project owner and builder).
 This file is the entry point for every session, on any machine. Read it before doing anything else.
 
+## How work is decided — read this before proposing anything
+
+**As of 2026-09-05, ReCall is built through two boards. Nothing ships without both.**
+Full method and cast: **`02_Strategy/PRODUCT_BOARD.md` — read it before any UX or feature
+work.** In short:
+
+- **Build board** — Maya (PM), Devin (design lead), Priyanka (engineer), Sam (architect).
+  Claude plays all four and they are expected to disagree *in writing*.
+- **End-user board** — the 20-persona advisory panel. Standing three: Margaret (patient),
+  Robert (caregiver, retention gatekeeper), Priya (remote daughter, adoption driver).
+- **Protocol:** propose → build board objects → end-user board reviews → **Tanya decides**.
+  Then it goes in `DECISIONS.md`, naming who objected to what.
+
+Claude does not make UX calls alone any more. Patch-by-patch interface changes are what
+produced v0.1, and v0.1's interface got so far in the way that the underlying idea could
+not be judged.
+
 ## Read at the start of every session
 
 1. This file (project state + conventions).
-2. `06_Handoffs/DECISIONS.md` — why things are the way they are.
-3. `06_Handoffs/LESSONS.md` — traps already discovered. Do not re-learn these the hard way.
-4. The most recent file in `06_Handoffs/sessions/` — what happened last time.
+2. `02_Strategy/PRODUCT_BOARD.md` — how decisions get made and who makes them.
+3. `06_Handoffs/DECISIONS.md` — why things are the way they are.
+4. `06_Handoffs/LESSONS.md` — traps already discovered. Do not re-learn these the hard way.
+5. The most recent file in `06_Handoffs/sessions/` — what happened last time.
 
 Older session files are an archive. Do not read them all; search them when you need to
 reconstruct history.
@@ -40,6 +58,16 @@ Full background lives in the numbered folders — see `README.md` for the index.
 `03_Design/ReCall_v0_Spec.docx` is the spec the current code implements.
 
 ## Current status (update me)
+
+> **2026-09-05 — THE UX IS BEING REBUILT FROM SCRATCH.** v0.1's interface is judged bad
+> enough that it prevents evaluating whether the underlying features work. The engine stays
+> (Firebase, `db.js`, `ai/engine.js` — proven working end to end today); **every screen,
+> flow and string above it is redesigned by the board and rebuilt.** Do not patch the
+> existing screens. See `06_Handoffs/NEXT_SESSION_BRIEF.md`.
+>
+> The engine is *kept but reviewable*: the architect may flag anything in it that constrains
+> the design, and changing it is a recorded decision rather than a quiet refactor.
+
 
 - **v0.1 is live** (2026-09-02) at **https://tanyaya27.github.io/recall/** — a rebuild of the
   patient side around one idea: *Margaret never navigates.* One home screen shaped by the clock
@@ -111,8 +139,14 @@ npm run build   # bundle → ../../docs/app.js
 - Adding a new AI provider means one file in `src/ai/providers/` plus one map entry.
   Never call a vendor API directly from a component.
 - Keep `v0` honest: it is a walking skeleton, not an MVP. Resist scope creep into the
-  74-feature backlog. If a feature idea is good, add it to the prioritizer, not the code.
+  76-feature backlog. If a feature idea is good, add it to the prioritizer, not the code.
 - Tanya works best when pushed. Do not soften plans or pad estimates.
+- **Never assert a cause you have not verified.** Today the app told Ravi he had no
+  internet while he was online; the real cause was a VPN exiting in another country. A
+  confident wrong diagnosis destroys trust in everything else the app — and Claude — says.
+  Say what is observed, then go and check.
+- **Copy is a design deliverable.** Every string Margaret sees belongs to the design lead
+  and goes through the end-user board. Do not write user-facing text while fixing a bug.
 
 ## Known constraints (deliberate for v0, fixed at MVP)
 

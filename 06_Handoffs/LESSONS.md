@@ -50,6 +50,29 @@ Keep entries short and imperative. The test of a good entry: would it have saved
 - **The Design tool sees only the prompt.** "No tab bar with five icons" became "no navigation at
   all". Say what *is* there, not only what isn't.
 
+## The AI call fails — check these first, in this order
+
+Four hours went into this on 2026-09-05. Two causes, neither in our code.
+
+- **A VPN exiting in another country silently kills every AI call.** Anthropic geo-restricts
+  at the edge, so requests from an unsupported exit get a canned 403 before reaching the
+  API. The browser sees a preflight rejected without CORS headers and reports a bare
+  `Load failed` — which looks exactly like being offline. **The tell:** open
+  `https://api.anthropic.com/v1/messages` in the phone's browser. Anthropic's real reply is
+  `{"type":"error","error":{"type":"invalid_request_error","message":"Method Not Allowed"}}`.
+  Anything with a different JSON shape is an interceptor, not Anthropic. Switch the VPN to a
+  US exit and it works.
+- **The Model field is not where the API key goes.** Pasting the key's *name* there produces
+  `404 not_found_error: model: <whatever>` — after authentication succeeds, so the key was
+  fine all along. The field is now hidden behind "change" and defaults to blank.
+- **Settings → "Check the key works"** runs both checks in order and names which failed:
+  STEP 1 is "can this device reach the service at all" (sends a deliberately invalid key —
+  any HTTP answer, 401 included, proves the network path works); STEP 2 is "is this key
+  good". Use it before debugging anything else.
+- **`Load failed` in Safari means the request never completed** — no status, no response.
+  It is *not* evidence of a connection problem. Do not tell the user they are offline
+  unless `navigator.onLine` says so.
+
 ## Security & privacy
 
 - **Firestore rules are currently wide open** — `if request.auth != null` plus anonymous
@@ -99,3 +122,14 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - Verify things work end to end before declaring them done. "It compiles" is not "it works".
 - When something breaks, add logging to find the actual cause before trying fixes.
   Guessing at fixes in sequence wastes more time than one diagnostic pass.
+- **Never state a cause you have not verified — in the UI or in conversation.** The app told
+  Ravi "No internet just now" while he was online. Everything the app says afterwards is
+  discounted once it has been caught inventing one explanation. Report the observation
+  (`Load failed`), offer the diagnostic, and go and check.
+- **"The photo is safe" — don't write reassurance nobody asked for.** It reads as an answer
+  to a question the person never had, and invites worse guesses about what you meant.
+- **Frequency sets verbosity.** A screen seen twenty times a day gets three words; one seen
+  once a week can afford a sentence; onboarding and hard errors can explain themselves.
+  Explanation earns its place only when it changes what the person does next.
+- **A sticky element that is the last child of its container has nowhere to stick.** It will
+  float over the content instead. Cost one visible layout bug.

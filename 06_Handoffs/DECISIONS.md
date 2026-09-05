@@ -72,6 +72,44 @@ collections when rules are rewritten for the household ID** — that work is alr
 
 ---
 
+## 2026-09-05 — Every decision goes through two boards
+
+**Decision:** adopt the Plantwise/Ardina method. A **build board** of four professionals
+(PM, design lead, engineer, architect — Claude plays all four, and they disagree in writing)
+proposes and critiques; the **end-user board** of 20 advisory personas reviews every UX and
+feature decision; Tanya decides. Full method: `02_Strategy/PRODUCT_BOARD.md`.
+
+**Why:** v0.1's interface was decided one patch at a time by whoever was typing, usually
+mid-debug. The result got so far in the way that it became impossible to judge whether the
+underlying features were any good — which is the only question that matters right now.
+Today's session is the evidence: the Back button moved three times in an hour because
+nobody owned the interaction model, and user-facing copy was written while chasing a bug.
+
+**Would change our mind:** if the process starts producing meeting minutes instead of
+shipped screens. The board exists to catch bad decisions, not to generate documents.
+
+---
+
+## 2026-09-05 — Rebuild the UX from scratch; keep the engine
+
+**Decision:** every screen, flow and string is redesigned by the board and rebuilt.
+Firebase, `lib/db.js` and `ai/engine.js` stay. Do not patch the existing screens.
+
+**Why:** everything that is wrong lives above the engine — the engine files contain no UX
+at all. The AI path was also proven working end to end today after a long debug, and
+rebuilding it would mean re-entering that swamp with users waiting. Ravi wants real users
+on this within a day or two, which rules out re-deciding the architecture first.
+
+**Caveat that makes this safe:** the engine is kept but **reviewable**. Sam may flag
+anything in it that constrains the design — the single `recall_items` collection with a
+`kind` field, photos stored inline against Firestore's 1MB document cap, LLM-over-captions
+search. Changing any of it is a recorded decision, not a quiet refactor.
+
+**Would change our mind:** if the design the board lands on cannot be built on this data
+model. Then the model changes and it gets written down here.
+
+---
+
 ## 2026-04-16 — Four architectural commitments that must hold through the MVP build
 
 From the AI Capability Scan (`02_Strategy/ReCall_AI_Capability_Scan.docx`). These are locked
