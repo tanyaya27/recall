@@ -34,11 +34,19 @@
   <div id="root"><div class="boot">Opening ReCall…</div></div>
   <script type="module" src="./app.js"></script>
   <script>
-    // Registered after load so a worker problem can never delay first paint.
+    // SERVICE WORKER DELIBERATELY DISABLED (2026-09-05).
+    //
+    // Requests to the AI provider fail on iPhone with a bare "Load failed" while the exact
+    // same request from the same origin succeeds in a desktop browser. The service worker
+    // is the newest thing in the request path and iOS is the platform where workers are
+    // flakiest, so it goes first — an offline shell is not worth an app that cannot think.
+    // This actively unregisters any worker already installed on a device.
+    // If the failure survives this, the cause is the device or the network, not our code.
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
-      });
+      navigator.serviceWorker.getRegistrations()
+        .then((rs) => rs.forEach((r) => r.unregister()))
+        .catch(() => {});
+      if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
     }
   </script>
 </body>

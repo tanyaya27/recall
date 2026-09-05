@@ -55,14 +55,19 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
       if (!reach.reached) {
         setTest({
           ok: false,
-          message: 'This device could not reach the AI service at all — the request never left the phone. That is not the key. Likely a content blocker, a VPN or iCloud Private Relay, Lockdown Mode, or the installed app’s offline worker. Try the same page in ordinary Safari to compare.',
+          message: 'STEP 1 FAILED — this device never reached the AI service. The request did not leave the phone, so this is not about the key. Likely a content blocker, a VPN or iCloud Private Relay, Lockdown Mode, or a leftover offline worker. Compare with ordinary Safari.',
           raw: reach.raw,
         });
         setTesting(false);
         return;
       }
       const t = await eng.testKey();
-      setTest({ ...t, message: `Reached the service. ${t.message}` });
+      setTest({
+        ...t,
+        message: t.ok
+          ? `STEP 1 ok — reached the service. STEP 2 ok — ${t.message}`
+          : `STEP 1 ok — the service answered, so the network is fine. STEP 2 FAILED — ${t.message}`,
+      });
     } catch (err) {
       setTest({ ok: false, message: String(err && err.message ? err.message : err) });
     }
