@@ -51,6 +51,28 @@ Event schema → v3.
 
 ---
 
+## 2026-09-05 — "no place yet" in amber on the tile; the screen is called "My things"
+
+**Decision (Ravi, after first phone use):** a thing saved without a place shows *no place
+yet* under its name on the board, in the app's amber. One element, not a caption plus a
+dot. The main grid is *the board* in code and docs and **My things** on screen (already
+the Back label); it has no title of its own — the day line is its header.
+
+**Why:** caregivers need to spot unplaced things to follow up; Margaret may too. Devin's
+constraint: the board never asks her for anything, so the cue is a *fact* in words, not a
+badge. Ravi asked for caption *and* marker; the board's merge is the caption carrying the
+colour — amber has meant "not yet, no alarm" since v0.1. Margaret and Linda accepted a
+sentence; both rejected a dot or badge. Robert scans for the colour.
+
+**Also:** Settings gained a *Version* card; "Get the latest version" now returns to
+Settings and says whether the build time changed — a reload that lands on Home tells the
+person nothing (Ravi's first bug report).
+
+**Would change our mind:** if Margaret's phone should show *nothing* caregiver-facing — then
+the caption moves to helper phones only, once *This phone is used by* exists.
+
+---
+
 ## 2026-09-05 — Header bar + fixed footer; palette and text size are settings
 
 **Decision (Tanya's addendum, §9 of the board file):** every card gets a header — *‹ Back ·

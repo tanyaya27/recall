@@ -43,7 +43,15 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
                 onOpenThing(it);
               }}>
               <img src={it.thumb} alt={it.name || ''} />
-              {it.name && <div className="tile-label">{it.name}</div>}
+              {/* A thing saved without a place says so — a fact in the app's amber, not a
+                  badge. Board decision 2026-09-05 (Ravi): the one cue a caregiver can scan
+                  for that Margaret can also read without feeling tested. */}
+              {(it.name || !it.location) && (
+                <div className="tile-label">
+                  {it.name}
+                  {!it.location && <span className="tile-sub">no place yet</span>}
+                </div>
+              )}
             </button>
           ))}
         </div>
