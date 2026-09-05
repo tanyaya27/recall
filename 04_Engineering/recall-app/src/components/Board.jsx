@@ -1,5 +1,5 @@
 import { boardOrder, logEvent } from '../lib/db.js';
-import { dayLine } from '../lib/format.js';
+import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
 import { CameraIcon, SearchIcon, GearIcon } from './Icons.jsx';
 
@@ -49,7 +49,7 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
                   for that Margaret can also read without feeling tested. */}
               {(it.name || !it.location) && (
                 <div className="tile-label">
-                  {it.name}
+                  {cap(it.name)}
                   {!it.location && <span className="tile-sub">no place yet</span>}
                 </div>
               )}

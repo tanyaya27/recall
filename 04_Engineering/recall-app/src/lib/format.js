@@ -82,3 +82,6 @@ export function dayKey(d = new Date()) {
 export function weekdayName(d = new Date()) {
   return d.toLocaleDateString('en-US', { weekday: 'long' });
 }
+
+// Display names as the owner would write them: "Adjustable dumbbells", not "adjustable dumbbells".
+export function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }

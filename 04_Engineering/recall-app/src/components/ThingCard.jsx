@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { updateItem, loadSnaps, softDeleteItem, moveToTop, logEvent } from '../lib/db.js';
-import { whenSeen } from '../lib/format.js';
+import { whenSeen, cap } from '../lib/format.js';
 import EditableText from './EditableText.jsx';
 import Footer from './Footer.jsx';
 import Header from './Header.jsx';
@@ -37,7 +37,7 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile, onRem
 
   return (
     <div className="screen with-footer">
-      <Header title={item.name || ''} onBack={onBack} />
+      <Header title={cap(item.name) || ''} onBack={onBack} />
       <div className="card thing">
         <img className={'photo-full' + (whole ? ' whole' : '')} src={item.photo} alt={item.name || ''} onClick={() => setWhole((w) => !w)} />
         {item.location
