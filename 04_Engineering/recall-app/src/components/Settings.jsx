@@ -11,7 +11,17 @@ import Header from './Header.jsx';
 // diagnostic that separates "can this phone reach the service" from "is this key good"),
 // Recently removed, the research export for Tanya, the build stamp. The routine editor is
 // gone until the helper's device is built. Actions sit in the flow — a keyboard opens here.
-export default function Settings({ removed = [], onBack, onConfigSaved }) {
+// Set before a deliberate reload so App reopens Settings instead of Home.
+export const RETURN_KEY = 'recall-return-to';
+export function takeReturnRoute() {
+  try {
+    const v = sessionStorage.getItem(RETURN_KEY);
+    if (v) sessionStorage.removeItem(RETURN_KEY);
+    return v || null;
+  } catch { return null; }
+}
+
+export default function Settings({ removed = [], onBack, onConfigSaved, justReloaded = false }) {
   const [cfg, setCfg] = useState(getAIConfig());
   const [stored, setStored] = useState(getAIConfig());
   const [saved, setSaved] = useState(false);
@@ -150,14 +160,20 @@ export default function Settings({ removed = [], onBack, onConfigSaved }) {
         <button className="btn-secondary" onClick={downloadEvents}>Download usage log (JSON)</button>
       </div>
 
-      <p className="note-quiet">
-        Build {buildLabel()}{' · '}
-        <button className="link-btn inline" onClick={async () => {
+      {/* Which build is this phone running? After "get the latest version" the page reloads
+          and comes BACK HERE (App reads RETURN_KEY) and says so — a reload that lands on
+          Home tells the person nothing about whether anything changed. Ravi, 2026-09-05. */}
+      <div className="card">
+        <h3>Version</h3>
+        <p className="sub">This phone has the build from <b>{buildLabel()}</b>.</p>
+        {justReloaded && <p className="sub" style={{ color: 'var(--accent)' }}>Reloaded just now. If the time above did not change, this is already the latest.</p>}
+        <button className="btn-secondary" onClick={async () => {
+          try { sessionStorage.setItem(RETURN_KEY, 'settings'); } catch { /* fine */ }
           if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.unregister())); }
           if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
-          location.reload(true);
-        }}>get the latest version</button>
-      </p>
+          location.reload();
+        }}>Get the latest version</button>
+      </div>
     </div>
   );
 }

@@ -6,7 +6,10 @@ import Board from './components/Board.jsx';
 import PhotoCard from './components/PhotoCard.jsx';
 import ThingCard from './components/ThingCard.jsx';
 import Ask from './components/Ask.jsx';
-import Settings from './components/Settings.jsx';
+import Settings, { takeReturnRoute } from './components/Settings.jsx';
+
+// "Get the latest version" reloads the page; come back to Settings, not Home.
+const RETURN_TO = takeReturnRoute();
 
 // Board decision 2026-09-05: depth one. Home (the board) and one card. Every card returns
 // to Home. Routines and checks are still read from the vault but not shown — they return
@@ -16,7 +19,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [data, setData] = useState({ items: [], routines: [], checks: [], removed: [] });
   const [cfgVersion, setCfgVersion] = useState(0);
-  const [route, setRoute] = useState({ view: 'home' });
+  const [route, setRoute] = useState(RETURN_TO === 'settings' ? { view: 'settings', reloaded: true } : { view: 'home' });
   const [, tick] = useState(0);
 
   const engine = useMemo(() => new AIEngine(getAIConfig()), [cfgVersion]);
@@ -80,7 +83,7 @@ export default function App() {
         />
       );
     case 'settings':
-      return <Settings removed={removed} onBack={home} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
+      return <Settings removed={removed} justReloaded={!!route.reloaded} onBack={home} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
     default:
       return (
         <Board

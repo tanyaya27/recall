@@ -7,7 +7,7 @@ import Settings from '../src/components/Settings.jsx';
 import { boardOrder, findByName } from '../src/lib/db.js';
 import { whenSeen, dayLine } from '../src/lib/format.js';
 
-globalThis.localStorage = { getItem: () => null, setItem() {} }; globalThis.document = { documentElement: { dataset: {}, style: { setProperty() {} } } };
+globalThis.localStorage = { getItem: () => null, setItem() {} }; globalThis.sessionStorage = { getItem: () => null, setItem() {}, removeItem() {} }; globalThis.document = { documentElement: { dataset: {}, style: { setProperty() {} } } };
 globalThis.navigator = { language: 'en-US' };
 globalThis.window = globalThis;
 const now = Date.now();
