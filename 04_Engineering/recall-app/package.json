@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/main.jsx --bundle --format=esm --jsx=automatic --external:react --external:react/jsx-runtime --external:react-dom/client --external:firebase/* --outfile=../../docs/app.js --minify",
-    "dev": "esbuild src/main.jsx --bundle --format=esm --jsx=automatic --external:react --external:react/jsx-runtime --external:react-dom/client --external:firebase/* --outfile=../../docs/app.js --watch --servedir=../../docs"
+    "build": "esbuild src/main.jsx --bundle --format=esm --jsx=automatic --external:react --external:react/jsx-runtime --external:react-dom/client --external:firebase/* --define:__BUILD__=\"'$(date -u +%Y-%m-%d\\ %H:%M)'\" --outfile=../../docs/app.js --minify",
+    "dev": "esbuild src/main.jsx --bundle --format=esm --jsx=automatic --external:react --external:react/jsx-runtime --external:react-dom/client --external:firebase/* --define:__BUILD__=\"'dev'\" --outfile=../../docs/app.js --watch --servedir=../../docs"
   },
   "devDependencies": {
     "esbuild": "0.25.0"

@@ -23,6 +23,21 @@ export default function App() {
   const engine = useMemo(() => new AIEngine(getAIConfig()), [cfgVersion]);
   const { items, routines, checks, removed } = data;
 
+  // Ask the browser not to evict our storage. The AI key lives in localStorage, and iOS
+  // clears it for sites it thinks are idle — which is exactly how the key kept vanishing.
+  // Also force a service-worker update check on every open so an installed app can never
+  // sit on a stale build.
+  useEffect(() => {
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persisted().then((p) => { if (!p) navigator.storage.persist(); }).catch(() => {});
+    }
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistrations()
+        .then((rs) => rs.forEach((r) => r.update()))
+        .catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
     let unsub = () => {};
     let seeded = false;

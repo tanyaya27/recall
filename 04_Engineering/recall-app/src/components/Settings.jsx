@@ -124,6 +124,26 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
         ))}
       </div>
 
+      {/* Which build am I actually looking at? Without this, "the new feature isn't there"
+          and "my phone is serving a cached copy" are indistinguishable. */}
+      <p className="note-quiet" style={{ marginTop: 18 }}>
+        Build {typeof __BUILD__ === 'string' ? __BUILD__ : 'unknown'}
+        {' · '}
+        <button
+          className="link-btn" style={{ display: 'inline', padding: 0 }}
+          onClick={async () => {
+            if (navigator.serviceWorker) {
+              const rs = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(rs.map((r) => r.unregister()));
+            }
+            if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
+            location.reload(true);
+          }}
+        >
+          get the latest version
+        </button>
+      </p>
+
       <button className="btn-back" onClick={onBack}>Back</button>
     </div>
   );

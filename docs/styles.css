@@ -52,8 +52,13 @@ button { font: inherit; border: none; border-radius: var(--radius); cursor: poin
   color: var(--accent); font-size: 19px; font-weight: 600; margin-top: 10px; min-height: 56px; }
 .btn-quiet { background: var(--card); color: var(--accent); font-size: 17px; font-weight: 600; padding: 12px 16px;
   border: 1.5px solid var(--line); min-height: 48px; }
+/* Back stays at the bottom — that is the thumb's home on a phone held one-handed, and
+   iOS puts Back top-LEFT anyway, never top-right. But it is now STICKY, so on a long
+   screen (an answer with earlier photos) it is always within reach without scrolling
+   to the end. Bottom placement was the right call; needing to scroll to it was not. */
 .btn-back { display: block; width: 100%; margin-top: 26px; padding: 16px; background: var(--card);
-  border: 1.5px solid var(--line); color: var(--ink); font-size: 20px; font-weight: 600; min-height: 60px; }
+  border: 1.5px solid var(--line); color: var(--ink); font-size: 20px; font-weight: 600; min-height: 60px;
+  position: sticky; bottom: calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -2px 14px rgba(58,54,48,0.10); }
 
 /* Find: photo tiles of things. No state, no time. */
 .tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 4px; }
