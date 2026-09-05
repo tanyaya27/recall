@@ -55,37 +55,44 @@ Personal motivation: a close family member of Tanya's was diagnosed with early-s
 dementia. Treat the subject matter with care; this is not a toy project to her.
 
 Full background lives in the numbered folders — see `README.md` for the index.
-`03_Design/ReCall_v0_Spec.docx` is the spec the current code implements.
+`03_Design/ReCall_v0_Spec.docx` was the v0 spec; the design of record since 2026-09-05 is
+`06_Handoffs/design/BOARD_2026-09-05_interaction_model.md`.
 
 ## Current status (update me)
 
-> **2026-09-05 — THE UX IS BEING REBUILT FROM SCRATCH.** v0.1's interface is judged bad
-> enough that it prevents evaluating whether the underlying features work. The engine stays
-> (Firebase, `db.js`, `ai/engine.js` — proven working end to end today); **every screen,
-> flow and string above it is redesigned by the board and rebuilt.** Do not patch the
-> existing screens. See `06_Handoffs/NEXT_SESSION_BRIEF.md`.
+> **2026-09-05 (evening) — v0.2 "the board" is BUILT, NOT YET DEPLOYED.** The first-session
+> cut of the board model is in `src/`, builds clean to `docs/app.js`, and passed an SSR
+> smoke test of every screen. **It has not run on a phone.** Next step, from the Mac:
+> `cd 04_Engineering/recall-app && ./deploy.sh`, then the phone checklist in
+> `06_Handoffs/sessions/2026-09-05-board-and-rebuild.md`.
 >
-> The engine is *kept but reviewable*: the architect may flag anything in it that constrains
-> the design, and changing it is a recorded decision rather than a quiet refactor.
+> **The design of record is `06_Handoffs/design/BOARD_2026-09-05_interaction_model.md`.**
+> `DAY_IN_THE_LIFE.md` is now history: its rules 2, 3, 5 and 7 survive; the clock-shaped
+> home does not. One split is still open for Tanya (S1 in §9 — header + footer, built as
+> recommended; she can reverse it).
 
-
-- **v0.1 is live** (2026-09-02) at **https://tanyaya27.github.io/recall/** — a rebuild of the
-  patient side around one idea: *Margaret never navigates.* One home screen shaped by the clock
-  (morning routines → things → bedtime routines, evening shape persists until 5am), generic and
-  app-prompted capture with honest AI claims, "not there? see earlier photos", pinning with fixed
-  slots, routines editable in Settings, research-grade event log (schema v2).
-  **Read `06_Handoffs/design/DAY_IN_THE_LIFE.md` first** — it is the story the code implements.
-- **Write path proven** (2026-09-02): routines seed into Firestore on first load; no console errors.
-- **Not yet exercised:** camera capture with a real API key on a phone. Settings → paste key →
-  photograph something → confirm the tile appears; then a bedtime row → photograph → claim shown.
-- **Firebase:** project `recall-d9886`, Firestore rules cover `recall_items` and `recall_events`
-  only. v0.1 stores snaps/routines/checks in `recall_items` with a `kind` field for that reason.
-- **Design-tool mockups** (v1, v2 delta) exist in `06_Handoffs/design/`; they were superseded by
-  the day-in-the-life reset. Do not restart from them.
-- **Tanya has not yet reviewed v0.1**, the day-in-the-life story, or `05_Research/RESEARCH_PLAN.md`.
-  Her review is the next step. Open questions for her are listed at the end of DAY_IN_THE_LIFE.md.
-- **Next build after her review:** Robert's device (log-for-her, household join code) and Priya's
-  status screen; then Firestore rules per collection and a household ID.
+- **v0.2 — the board model.** Home = her things as photos in first-photographed order, never
+  rearranged, with *Take a photo* · *Where is my…* fixed at the bottom. Every other screen is
+  one card with a header (*‹ Back · title*) that returns home. Tapping the place saves the
+  photo. A new photo of a known thing updates that thing (asked, never silent). Thing card:
+  photo · place · when · *Not there? Earlier photos* · *Found it — new photo* · quiet *Fix*.
+  Settings: AI key + check, **Look** (3 palettes, 3 text sizes — per phone), recently
+  removed, research export. Routines exist in the data but are not shown or seeded.
+- **Components:** `Board` `PhotoCard` `ThingCard` `Ask` `Settings` `Header` `Footer`
+  `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
+  are deleted (git has them). `lib/prefs.js` is new. `docs/styles.css` is in rem.
+- **Engine changes this session (all in DECISIONS.md):** `household`, `order`/`boardKey`,
+  snap cap 10/30, `naming` flag, `absorbInto`, event schema v3. `engine.js` untouched.
+- **v0.1 is still what is live** at https://tanyaya27.github.io/recall/ until the deploy.
+- **Firebase:** project `recall-d9886`, rules cover `recall_items` and `recall_events` only,
+  wide open to anonymous auth. **Tanya's console list:** tighten rules by `household`;
+  composite index (kind, itemId, at) so earlier photos can use `limit()`.
+- **Next build:** Robert's helper phone (*This phone is used by* setting → *Another?* after
+  save, note field, routines editor) and Priya's one-card status. Both designed in §2 of
+  the board file; neither built. Then the household join code.
+- **Preview for Tanya:** a static render of every screen with the palette/size switcher is
+  published as the *ReCall Board Preview* artifact (also `recall-board-preview.html` in
+  the session outputs).
 
 ## Repo layout
 

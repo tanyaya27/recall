@@ -1,156 +1,94 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
-import { watchAll, seedRoutinesIfEmpty, replacePinned, logEvent } from './lib/db.js';
+import { watchAll, logEvent } from './lib/db.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
-import Home from './components/Home.jsx';
-import CaptureFlow from './components/CaptureFlow.jsx';
-import AnswerView, { CheckView, PinReplace } from './components/AnswerView.jsx';
-import RecentReel from './components/RecentReel.jsx';
-import Settings, { getEveningHour } from './components/Settings.jsx';
-import Onboarding, { markStarterDone, STARTER_ITEMS } from './components/Onboarding.jsx';
+import Board from './components/Board.jsx';
+import PhotoCard from './components/PhotoCard.jsx';
+import ThingCard from './components/ThingCard.jsx';
+import Ask from './components/Ask.jsx';
+import Settings from './components/Settings.jsx';
 
-const ONBOARD_KEY = 'recall-onboarded';
-
+// Board decision 2026-09-05: depth one. Home (the board) and one card. Every card returns
+// to Home. Routines and checks are still read from the vault but not shown — they return
+// with the helper's device. Nothing is seeded on first load.
 export default function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState({ items: [], routines: [], checks: [], removed: [] });
   const [cfgVersion, setCfgVersion] = useState(0);
-  const [eveningHour, setEveningHour] = useState(getEveningHour());
   const [route, setRoute] = useState({ view: 'home' });
   const [, tick] = useState(0);
 
   const engine = useMemo(() => new AIEngine(getAIConfig()), [cfgVersion]);
-  const { items, routines, checks, removed } = data;
+  const { items, removed } = data;
 
-  // Ask the browser not to evict our storage. The AI key lives in localStorage, and iOS
-  // clears it for sites it thinks are idle — which is exactly how the key kept vanishing.
-  // Also force a service-worker update check on every open so an installed app can never
-  // sit on a stale build.
+  // Ask the browser not to evict our storage (the key lives in localStorage and iOS clears
+  // idle sites); force any leftover service worker to update.
   useEffect(() => {
     if (navigator.storage && navigator.storage.persist) {
       navigator.storage.persisted().then((p) => { if (!p) navigator.storage.persist(); }).catch(() => {});
     }
     if (navigator.serviceWorker) {
-      navigator.serviceWorker.getRegistrations()
-        .then((rs) => rs.forEach((r) => r.update()))
-        .catch(() => {});
+      navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.update())).catch(() => {});
     }
   }, []);
 
   useEffect(() => {
     let unsub = () => {};
-    let seeded = false;
     ensureSignedIn()
       .then(() => {
-        unsub = watchAll((d) => {
-          setData(d);
-          if (!seeded) { seeded = true; seedRoutinesIfEmpty(d.routines); }
-        });
+        unsub = watchAll(setData);
         setReady(true);
-        logEvent('app_open', { itemCount: 0 });
+        logEvent('app_open', {});
       })
       .catch((e) => setError(String(e)));
-    // Re-render every minute so the date line and the clock-shaped home stay right
-    const iv = setInterval(() => tick((n) => n + 1), 60000);
+    const iv = setInterval(() => tick((n) => n + 1), 60000); // keep the day line right
     return () => { unsub(); clearInterval(iv); };
   }, []);
-
-  useEffect(() => {
-    if (ready && items.length === 0 && !localStorage.getItem(ONBOARD_KEY) && route.view === 'home') {
-      setRoute({ view: 'onboarding' });
-    }
-  }, [ready]); // eslint-disable-line
 
   if (error) return <div className="boot">Couldn't connect: {error}</div>;
   if (!ready) return <div className="boot">Opening ReCall…</div>;
 
-  const liveItem = (it) => items.find((x) => x.id === it?.id) || it;
-  const liveRoutine = (r) => routines.find((x) => x.id === r?.id) || r;
+  const live = (it) => items.find((x) => x.id === it?.id) || it;
   const go = (view, extra = {}) => { window.scrollTo(0, 0); setRoute({ view, ...extra }); };
+  const home = () => go('home');
 
   switch (route.view) {
-    case 'onboarding':
+    case 'photo':
       return (
-        <Onboarding
-          onCaptureStarter={(name) => go('capture', {
-            hintName: name, pinnedOrder: STARTER_ITEMS.indexOf(name), from: 'onboarding', initiatedBy: 'starter',
-          })}
-          onFinish={() => { localStorage.setItem(ONBOARD_KEY, '1'); go('home'); }}
+        <PhotoCard
+          key={route.key}
+          file={route.file} engine={engine} items={items}
+          resnapOf={route.resnapOf ? live(route.resnapOf) : null}
+          onDone={home} onCancel={home}
         />
       );
-    case 'capture':
+    case 'thing':
       return (
-        <CaptureFlow
-          engine={engine}
-          items={items}
-          hintName={route.hintName || ''}
-          pinnedOrder={route.pinnedOrder ?? null}
-          resnapOf={route.resnapOf ? liveItem(route.resnapOf) : null}
-          routine={route.routine ? liveRoutine(route.routine) : null}
-          initiatedBy={route.initiatedBy || 'self'}
-          onCancel={() => go(route.from === 'onboarding' ? 'onboarding' : 'home')}
-          onDone={(result) => {
-            if (route.from === 'onboarding') { markStarterDone(route.hintName); go('onboarding'); return; }
-            if (result.kind === 'check') { go('home'); return; }
-            go('answer', { item: result.item, message: `Your ${result.item.name.toLowerCase()} — saved.` });
-          }}
+        <ThingCard
+          item={live(route.item)} items={items}
+          onBack={home}
+          onFoundFile={(file) => go('photo', { file, resnapOf: route.item, key: Date.now() })}
         />
       );
-    case 'answer':
+    case 'ask':
       return (
-        <AnswerView
-          item={route.item ? liveItem(route.item) : null}
-          items={items}
-          alternates={(route.alternates || []).map(liveItem)}
-          message={route.message || ''}
-          onBack={() => go('home')}
-          onResnap={(item) => go('capture', { resnapOf: item })}
-          onOpenItem={(item) => go('answer', { item })}
-          onAdd={() => go('capture')}
-          onPinFull={(item) => go('pin-replace', { item })}
+        <Ask
+          engine={engine} items={items}
+          onResult={(item, file) => (item ? go('thing', { item }) : go('photo', { file, key: Date.now() }))}
+          onBack={home}
         />
       );
-    case 'pin-replace':
-      return (
-        <PinReplace
-          item={liveItem(route.item)} items={items}
-          onPick={async (victim) => { await replacePinned(liveItem(route.item), victim); logEvent('pin', { itemId: route.item.id, result: 'replaced', replacedId: victim.id }); go('answer', { item: route.item, message: 'Kept at the top.' }); }}
-          onBack={() => go('answer', { item: route.item })}
-        />
-      );
-    case 'check':
-      return (
-        <CheckView
-          routine={liveRoutine(route.routine)} check={route.check}
-          onAgain={(r) => go('capture', { routine: r, initiatedBy: 'prompt' })}
-          onBack={() => go('home')}
-        />
-      );
-    case 'recent':
-      return <RecentReel items={items} onBack={() => go('home')} onOpenItem={(item) => go('answer', { item })} />;
     case 'settings':
-      return (
-        <Settings
-          routines={routines}
-          removed={removed}
-          onBack={() => go('home')}
-          onConfigSaved={() => setCfgVersion((v) => v + 1)}
-          onEveningChanged={setEveningHour}
-        />
-      );
+      return <Settings removed={removed} onBack={home} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
     default:
       return (
-        <Home
-          items={items} routines={routines} checks={checks} engine={engine} eveningHour={eveningHour}
-          onNav={go}
-          onOpenItem={(item) => go('answer', { item })}
-          onOpenRoutine={(r, check) => (check ? go('check', { routine: r, check }) : go('capture', { routine: r, initiatedBy: 'prompt' }))}
-          onCapture={() => go('capture')}
-          onAskResult={({ matches, message }) =>
-            go('answer', matches.length
-              ? { item: matches[0], alternates: matches.slice(1), message }
-              : { item: null, message })}
+        <Board
+          items={items} ready={engine.ready}
+          onOpenThing={(item) => go('thing', { item })}
+          onPhoto={(file) => go('photo', { file, key: Date.now() })}
+          onAsk={() => go('ask')}
+          onSettings={() => go('settings')}
         />
       );
   }

@@ -6,7 +6,77 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-05 — The board model: one constant home, two verbs, depth one
+
+**First decision made through the two boards.** Full exchange, objections and personas:
+`design/BOARD_2026-09-05_interaction_model.md`. Approved by Ravi/Tanya the same day.
+
+**Decision:** Home is *the board* — her things as photos in first-photographed order, never
+rearranged by the app — with two fixed buttons at the bottom every time it opens: *Take a
+photo* · *Where is my…*. Every other screen is one card that returns to Home (depth one).
+The photo card asks one question, *Where is it?*, and **tapping the place is the save** —
+no countdown, no Done (D2). The thing card shows photo · place · when, offers *Not there?
+Earlier photos* and *Found it — new photo*, and never shows a sentence the model wrote
+(D8, unanimous). Routines are not seeded and not on Home; they return as one band with the
+helper's device.
+
+**This supersedes the 2026-09-02 "clock-shaped home" and "8 fixed pin slots" decisions.**
+Devin (design): a home screen that changes shape three times a day *is* navigation, just
+not hers; hand memory needs the same screen every time. Order is now a property of every
+thing; *Move to the top* is the only pin (D6).
+
+**Objections recorded:**
+- Maya (PM) objected to merge-by-name (D4: a new photo of a known thing updates that
+  thing) as scope creep with a new failure mode — a hat overwriting the glasses tile.
+  Robert and Margaret insisted; Ravi chose merge. Guardrails: the card names the match
+  and offers *not your glasses?*; if the name arrives *after* the save it asks *Is this
+  your glasses?* rather than merging silently; leaving unanswered keeps it a new thing.
+- Sam (architect) objected to saving before the AI names the thing (D3). Priyanka: six
+  seconds of nothing after a tap reads as broken. Compromise: write immediately with
+  `naming: true`, clear on answer or failure. Sam predicts unnamed tiles will be common on
+  VPN'd phones — `naming_failed` events are logged; look at the number.
+- Priyanka (engineer) would have shipped without *Fix* (D10). Must-be; stays.
+- Priyanka: "voice" on iOS is the keyboard's mic key, not ours (D9). James loses; recorded
+  as a gap.
+- Maya vs Devin on the day line: kept (must-be), made one quiet line, no clock.
+
+**Engine changes (recorded, not quiet):** `household: 'default'` on every new doc (D7,
+unanimous); `order` field with `boardKey()` folding legacy `pinnedOrder`; earlier photos
+show 10 / keep 30 / prune on load (D5 — a real `limit()` needs a composite index, on
+Tanya's console list with the rules); `naming` flag; `absorbInto()` for confirmed merges.
+Event schema → v3.
+
+**Would change our mind:** if the first-week testers cannot find something on a board of
+30+ things. Then a "More things" fold, not a second grid and not recency sorting.
+
+---
+
+## 2026-09-05 — Header bar + fixed footer; palette and text size are settings
+
+**Decision (Tanya's addendum, §9 of the board file):** every card gets a header — *‹ Back ·
+title* — where every phone app puts it, **and** keeps the fixed footer for the primary
+action. Settings → *Look* offers three palettes (Linen · Slate · High contrast) and three
+text sizes (Normal · Large · Largest). Both per phone, in localStorage; the stylesheet is
+in rem so buttons and tap targets grow with the text.
+
+**Why:** Tanya asked for the structure of the most common apps so seniors find it familiar,
+and for end-user text and control sizes. Devin: familiarity comes from conventions that
+carry meaning (a title, a Back that says Back, photos of real things), not from cloning a
+tab bar; the common iOS structure is top bar + bottom toolbar, which the model already had
+half of. Devin's reservation stands: a top-left Back is the one control a thumb cannot
+reach one-handed, so the primary action must stay in the footer.
+
+**Palette is a product decision Tanya makes once** — the picker exists so she can compare
+on a real phone (and in the static preview). Text size is a user preference forever.
+
+**Would change our mind:** if the header's Back and the footer's action get confused in
+testing, drop one — the footer, never the header (Tanya's familiarity call wins).
+
+---
+
 ## 2026-09-02 — The patient never navigates: one home screen shaped by the clock
+
+> **Superseded 2026-09-05** by the board model above. Kept for the reasoning.
 
 **Decision:** the patient side has no tabs, no menu, no "Back" as a corner link. One home screen
 whose shape follows the time of day (morning routines, then things; bedtime routines from a set
@@ -40,6 +110,9 @@ to earn a guided capture. Honesty over confidence is the stale-answer principle 
 ---
 
 ## 2026-09-02 — Tiles are fixed positions, curated by people, never auto-reordered
+
+> **Partly superseded 2026-09-05:** the 8-slot cap and "Other things" are gone; the
+> principle (never auto-reordered, a person moves things) is kept as board Rule 2.
 
 **Decision:** up to 8 pinned tiles in fixed slots; "Keep at the top" / "Take off the top" on every
 thing, available to the patient (not caregiver-only); overflow under "Other things", ordered by

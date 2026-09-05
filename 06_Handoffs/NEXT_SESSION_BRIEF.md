@@ -1,5 +1,10 @@
 # Next session — convene the board and rebuild the UX
 
+> **DONE 2026-09-05 (evening).** The board met, the model is in
+> `design/BOARD_2026-09-05_interaction_model.md`, the cut is built. What remains is the
+> deploy and the phone checklist in `sessions/2026-09-05-board-and-rebuild.md`. This brief
+> is kept as the record of what was asked.
+
 **Written 2026-09-05.** Supersedes the earlier design-prompt brief, which is obsolete: we
 are no longer producing a prompt for an external design tool. The board designs, the board
 builds.

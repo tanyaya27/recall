@@ -26,6 +26,34 @@ export function friendlyNow(d = new Date()) {
   return `${weekday} ${part}, about ${time}`;
 }
 
+// Board copy, 2026-09-05 (Devin's strings).
+// The day line: weekday + part of day, no clock — the phone's status bar has the time.
+export function dayLine(d = new Date()) {
+  const weekday = d.toLocaleDateString(undefined, { weekday: 'long' });
+  const h = d.getHours();
+  const part = h < 5 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+  return `${weekday} ${part}`;
+}
+
+// When a thing was photographed, the way a person says it:
+// "this morning, 8:12" · "yesterday evening" · "Tuesday" · "March 3"
+export function whenSeen(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const h = d.getHours();
+  const part = h < 5 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+  const sameDay = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M$/i, '');
+  if (sameDay) {
+    if (now - d < 2 * 60000) return 'just now';
+    return `${part === 'night' ? 'tonight' : `this ${part}`}, ${time}`;
+  }
+  if (d.toDateString() === yesterday.toDateString()) return `yesterday ${part}`;
+  if (now - d < 6 * 24 * 3600000) return d.toLocaleDateString(undefined, { weekday: 'long' });
+  return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+}
+
 // "at 8:12" / "at 9:41"
 export function clockTime(ts) {
   return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });

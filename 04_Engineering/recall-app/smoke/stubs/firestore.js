@@ -1,0 +1,13 @@
+export const collection = () => ({});
+export const doc = () => ({});
+export const addDoc = async () => ({ id: 'x' });
+export const updateDoc = async () => {};
+export const deleteDoc = async () => {};
+export const onSnapshot = () => () => {};
+export const query = () => ({});
+export const orderBy = () => ({});
+export const getDocs = async () => ({ docs: [] });
+export const where = () => ({});
+export const initializeFirestore = () => ({});
+export const persistentLocalCache = () => ({});
+export const persistentMultipleTabManager = () => ({});

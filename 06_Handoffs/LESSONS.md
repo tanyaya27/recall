@@ -30,6 +30,13 @@ Keep entries short and imperative. The test of a good entry: would it have saved
   in public history get scraped. `git commit --amend --reset-author --no-edit` fixes an
   already-made commit, but only before it is pushed.
 
+- **`node_modules` installed by the Cowork sandbox is Linux-only.** The esbuild binary
+  inside it will not run on the Mac: `cannot execute binary file`. Fix: `rm -rf
+  node_modules && npm install` on the Mac. If Claude builds in the sandbox, expect to
+  reinstall before the first Mac build. Bit us 2026-09-05.
+- **Give shell steps as absolute paths.** A relative `cd ../..` assumes the previous step
+  ran; when the person skips one, they end up outside the repo with `fatal: not a git
+  repository`. Bit us 2026-09-05.
 - **Commit from the Mac, not from the Cowork sandbox.** The sandbox can write the repo but cannot
   delete files it didn't create, so git leaves `index.lock` / `HEAD.lock` / `objects/*/tmp_obj_*`
   behind and later git commands fail with "index.lock exists". It also has no GitHub credentials.
@@ -42,6 +49,22 @@ Keep entries short and imperative. The test of a good entry: would it have saved
 
 ## Design
 
+- **A screen that changes shape on its own is navigation the person doesn't control.**
+  v0.1's clock-shaped home was built to avoid navigation and became the hardest kind: the
+  screen she learned at breakfast was gone by bedtime. Hand memory needs the same screen
+  every open. Change *one band*, never the shape.
+- **Make the button the camera.** A `<label>` around the `<input type=file>` opens the
+  camera on that tap. Navigating to a screen and then calling `.click()` on a file input
+  is not a user gesture on iOS and silently does nothing — that was v0.1's extra tap.
+- **Fixed footers and keyboards do not mix.** `position: fixed` jumps when Safari's
+  keyboard opens. Fixed action zone only on screens with no text input; everywhere else,
+  actions in the flow.
+- **Never merge silently.** If the app might treat this photo as "the same thing as X",
+  say so on screen before saving, with a way out. If the answer arrives after the save,
+  ask; never assume. A wrong merge overwrites the one photo she trusts.
+- **Write the stylesheet in rem from the start.** One `--scale` on `<html>` then gives a
+  real text-size setting that grows buttons and tap targets with the text. Retrofitting px
+  → rem is an hour of tedium; doing it first is free.
 - **Don't design from the feature list.** Two rounds of Design-tool mockups built screen-per-feature
   produced an app nobody could navigate. Write the day first (`design/DAY_IN_THE_LIFE.md`), then
   the screens. A feature that needs the patient to *go somewhere* is a design failure.
@@ -116,6 +139,16 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - Two claims in the competitive analysis were later corrected this way: Samsung Brain
   Health is a B2B research partnership, not a shipping consumer product, and the Apple ×
   Eli Lilly collaboration is unverified for 2026. Both were overstated on first pass.
+
+## Testing without a phone
+
+- **The Cowork sandbox can smoke-test React screens without a browser.** Stub the three
+  Firebase modules with `--alias`, bundle with esbuild for node, and `renderToString` each
+  screen with fake items. It catches reference errors and missing imports in every render
+  path in seconds. It does *not* test the camera, the AI call, or Firestore — those still
+  need the phone. Recipe in `sessions/2026-09-05-board-and-rebuild.md`.
+- **The sandbox disk was full (11MB free) on 2026-09-05** — no Playwright, no Chromium.
+  Do not spend time on it; use the SSR smoke test and deploy from the Mac.
 
 ## Working style
 

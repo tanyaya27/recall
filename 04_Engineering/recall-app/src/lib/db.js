@@ -20,7 +20,42 @@ import { dayKey, timeOfDay } from './format.js';
 const col = collection(db, 'recall_items');
 const eventsCol = collection(db, 'recall_events');
 
+// Board decision 2026-09-05 (D7): every new document carries a household so the rules can
+// be scoped later without migrating. One household until join codes exist.
+export const HOUSEHOLD = 'default';
+
 export const MAX_PINNED = 8;
+
+// Board decision 2026-09-05 (D5): "earlier photos" shows at most SNAPS_SHOW, keeps at most
+// SNAPS_KEEP per thing, and prunes the rest when they are loaded. Re-snaps are the dominant
+// write in the new model and were unbounded.
+export const SNAPS_SHOW = 10;
+export const SNAPS_KEEP = 30;
+
+// Board decision 2026-09-05 (D6): the board is in first-photographed order and never
+// rearranges itself. `order` is the sort key; "Move to the top" is the only pin. Legacy
+// v0.1 docs carry `pinnedOrder` (0-7) or nothing; both fold into the same key.
+export function boardKey(it) {
+  if (it.order != null) return it.order;
+  if (it.pinnedOrder != null) return it.pinnedOrder;
+  return it.createdAt || 0;
+}
+export function boardOrder(items) {
+  return [...items].sort((a, b) => boardKey(a) - boardKey(b));
+}
+export async function moveToTop(item, items) {
+  const min = Math.min(...items.map(boardKey), Date.now());
+  await updateItem(item.id, { order: min - 1, pinnedOrder: null });
+}
+
+// Rule 6: a new photo of a thing that is already on the board is a new photo of it, not a
+// new thing. Exact name match, case-insensitive, live things only. Never called silently:
+// the photo card shows the match and offers "not your glasses?" before anything merges.
+export function findByName(items, name) {
+  const n = (name || '').trim().toLowerCase();
+  if (!n) return null;
+  return items.find((it) => !it.deleted && (it.name || '').trim().toLowerCase() === n) || null;
+}
 
 // ---------- live data ----------
 
@@ -45,21 +80,36 @@ export function watchAll(cb) {
   }, (err) => console.error('watchAll', err));
 }
 
+// The board only shows items whose `kind` is item and that are not removed. Routines
+// and checks are still read (they exist in test data) but the 09-05 board does not
+// render them; they return with the helper's device.
+
 // ---------- items ----------
 
 // `restingOn` is what the photo actually showed the thing sitting on ("on a pair of black
 // shorts"). `needsPlace` marks an item saved before anyone said which room — it is findable
 // by photo but not by place, and is a queue for a caregiver to finish later.
-export async function addItem({ name, location, description, photo, thumb, pinnedOrder = null, by = 'self', restingOn = '' }) {
+// `naming: true` (D3) means the photo was saved before the AI named it. The name is
+// patched in by nameItem(); if naming fails the flag is cleared and the thing stays
+// unnamed — a legitimate state. Nothing on the board ever asks her to name it.
+export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false }) {
   const now = Date.now();
   const ref = await addDoc(col, {
-    kind: 'item', name, location, description: description || '', photo, thumb, restingOn,
-    needsPlace: !location,
-    pinnedOrder, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
+    kind: 'item', household: HOUSEHOLD, name, location, description, photo, thumb, restingOn,
+    needsPlace: !location, naming,
+    order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }],
   });
-  await addDoc(col, { kind: 'snap', itemId: ref.id, photo, thumb, location, at: now, by });
+  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: ref.id, photo, thumb, location, at: now, by });
   return ref.id;
+}
+
+export async function nameItem(id, { name = '', description = '', restingOn = '' } = {}) {
+  const patch = { naming: false };
+  if (name) patch.name = name;
+  if (description) patch.description = description;
+  if (restingOn) patch.restingOn = restingOn;
+  await updateItem(id, patch);
 }
 
 export async function updateItem(id, patch) {
@@ -74,13 +124,26 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
     photo, thumb, location, restingOn, needsPlace: !location,
     lastSeenAt: now, updatedAt: now, history, capturedBy: by,
   });
-  await addDoc(col, { kind: 'snap', itemId: item.id, photo, thumb, location, at: now, by });
+  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, photo, thumb, location, at: now, by });
 }
 
-// Earlier photos of one item, newest first (the "not there?" scroll)
+// A thing saved before its name arrived turned out to be one already on the board, and
+// the person confirmed it. Its photo becomes a new photo of the existing thing and the
+// provisional doc (and its snap) goes away.
+export async function absorbInto(existing, provisionalId, { photo, thumb, location, restingOn = '', by = 'self' }) {
+  await resnapItem(existing, { photo, thumb, location, restingOn, by });
+  await purgeItem({ id: provisionalId });
+}
+
+// Earlier photos of one item, newest first (the "not there?" scroll).
+// Fetches every snap (a limit() query needs a composite index — on Tanya's console list),
+// prunes beyond SNAPS_KEEP in the background, returns at most SNAPS_SHOW + the current one.
 export async function loadSnaps(itemId) {
   const snap = await getDocs(query(col, where('kind', '==', 'snap'), where('itemId', '==', itemId)));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => b.at - a.at);
+  const all = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => b.at - a.at);
+  const extra = all.slice(SNAPS_KEEP);
+  if (extra.length) Promise.all(extra.map((s) => deleteDoc(doc(col, s.id)))).catch(() => {});
+  return all.slice(0, SNAPS_SHOW + 1);
 }
 
 // Pinning: fixed slots 0..MAX_PINNED-1. Returns 'pinned' | 'full'.
@@ -143,12 +206,13 @@ export const DEFAULT_ROUTINES = [
     instruction: 'Show me the lock.' },
 ];
 
+// Not called since 2026-09-05: routines are set by a helper, never seeded. Kept for that build.
 export async function seedRoutinesIfEmpty(existing) {
   if (existing.length) return;
-  for (const r of DEFAULT_ROUTINES) await addDoc(col, { kind: 'routine', active: true, ...r, createdAt: Date.now() });
+  for (const r of DEFAULT_ROUTINES) await addDoc(col, { kind: 'routine', household: HOUSEHOLD, active: true, ...r, createdAt: Date.now() });
 }
 export async function addRoutine(r) {
-  await addDoc(col, { kind: 'routine', active: true, createdAt: Date.now(), ...r });
+  await addDoc(col, { kind: 'routine', household: HOUSEHOLD, active: true, createdAt: Date.now(), ...r });
 }
 export async function updateRoutine(id, patch) { await updateDoc(doc(col, id), patch); }
 export async function deleteRoutine(id) { await deleteDoc(doc(col, id)); }
@@ -157,7 +221,7 @@ export async function deleteRoutine(id) { await deleteDoc(doc(col, id)); }
 export async function addCheck({ routineId, photo, thumb, claim, retakes = 0, by = 'self' }) {
   const now = Date.now();
   const ref = await addDoc(col, {
-    kind: 'check', routineId, photo, thumb, claim, retakes, by, at: now, dayKey: dayKey(new Date(now)),
+    kind: 'check', household: HOUSEHOLD, routineId, photo, thumb, claim, retakes, by, at: now, dayKey: dayKey(new Date(now)),
   });
   return ref.id;
 }
@@ -170,7 +234,10 @@ export function todaysCheck(checks, routineId) {
 //
 // Every event carries: type, at (ms), dayKey, hour, timeOfDay, deviceId, sessionId,
 // role, schema. Never surfaced to the patient as a number.
-export const EVENT_SCHEMA = 2;
+// Schema 3 (2026-09-05): adds `household`; new event types for the board model —
+// capture.savedBy ∈ chip|typed|not_sure, lookup.entryMode ∈ tile|typed|voice,
+// merge (result: confirmed|declined|unseen), naming_failed, move_to_top.
+export const EVENT_SCHEMA = 3;
 const DEVICE_KEY = 'recall-device-id';
 function deviceId() {
   try {
@@ -185,7 +252,7 @@ const ROLE = (() => { try { return localStorage.getItem('recall-role') || 'patie
 export function logEvent(type, meta = {}) {
   const now = new Date();
   addDoc(eventsCol, {
-    type, ...meta,
+    type, ...meta, household: HOUSEHOLD,
     at: now.getTime(), dayKey: dayKey(now), hour: now.getHours(), timeOfDay: timeOfDay(now),
     deviceId: deviceId(), sessionId: SESSION_ID, role: ROLE, schema: EVENT_SCHEMA,
   }).catch(() => {});
