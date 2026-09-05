@@ -20,6 +20,7 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
   const [stored, setStored] = useState(getAIConfig()); // what is actually persisted, not the draft
   const [test, setTest] = useState(null);
   const [testing, setTesting] = useState(false);
+  const [showModel, setShowModel] = useState(false);
   const providers = providerList();
   const current = providers.find((p) => p.id === cfg.provider);
 
@@ -144,9 +145,25 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
         <label>API key (stays on this device only)</label>
         <input type="password" value={cfg.apiKey} placeholder="paste your key here"
           onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value.trim() })} />
-        <label>Model (blank = default: {current?.defaultModel})</label>
-        <input value={cfg.model} placeholder={current?.defaultModel}
-          onChange={(e) => setCfg({ ...cfg, model: e.target.value.trim() })} />
+        {/* This field invited exactly one mistake — pasting the key's NAME here — which
+            produced a 404 that looked like everything else being broken. It is now hidden
+            by default, labelled as an override, and one tap clears it. */}
+        {!showModel && (
+          <p className="note-quiet" style={{ textAlign: 'left', marginTop: 12 }}>
+            Model: <b>{cfg.model || `default (${current?.defaultModel})`}</b>{' '}
+            <button type="button" className="link-btn" style={{ display: 'inline', padding: 0 }}
+              onClick={() => setShowModel(true)}>change</button>
+          </p>
+        )}
+        {showModel && (
+          <>
+            <label>Model — leave blank unless you know the exact model name. This is NOT where the key goes.</label>
+            <input value={cfg.model} placeholder={current?.defaultModel}
+              onChange={(e) => setCfg({ ...cfg, model: e.target.value.trim() })} />
+            <button type="button" className="btn-quiet" style={{ marginTop: 8 }}
+              onClick={() => setCfg({ ...cfg, model: '' })}>Use the default model</button>
+          </>
+        )}
         <div style={{ marginTop: 14 }}>
           <button className="btn-primary" onClick={save}>{saved ? '✓ Saved' : 'Save AI settings'}</button>
         </div>

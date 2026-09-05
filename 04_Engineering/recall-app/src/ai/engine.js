@@ -69,7 +69,8 @@ export class AIEngine {
     } catch (err) {
       const raw = String(err && err.message ? err.message : err);
       let hint = 'The request failed — see the details below.';
-      if (/401|invalid.*api.*key|authentication/i.test(raw)) hint = 'That key was rejected. Check you copied all of it.';
+      if (/not_found_error|model:/i.test(raw)) hint = 'Your key works, but that Model name is not a real model. Clear the Model box to use the default.';
+      else if (/401|invalid.*api.*key|authentication/i.test(raw)) hint = 'That key was rejected. Check you copied all of it.';
       else if (/429|rate.?limit/i.test(raw)) hint = 'Too many requests just now — wait a moment and try again.';
       else if (/credit|quota|billing|insufficient/i.test(raw)) hint = 'The account is out of credit. Top it up in the Anthropic console.';
       // A thrown fetch is NOT proof the network is down — it usually means the request was
