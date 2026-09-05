@@ -20,7 +20,9 @@ export default function CaptureFlow({
   const [photo, setPhoto] = useState(null);
   const [thumb, setThumb] = useState(null);
   const [fields, setFields] = useState({ name: hintName, location: '', description: '' });
-  const [aiFailed, setAiFailed] = useState(''); // '' = fine, otherwise a plain-words reason
+  const [aiFailed, setAiFailed] = useState(''); // '' = fine, otherwise one plain sentence
+  const [aiRaw, setAiRaw] = useState('');       // the technical reason, hidden behind "why?"
+  const [showWhy, setShowWhy] = useState(false);
   const [claim, setClaim] = useState(null);
   const [retakes, setRetakes] = useState(0);
   const [edited, setEdited] = useState(false);
@@ -77,20 +79,18 @@ export default function CaptureFlow({
         location: tag.placeCertain && tag.placeGuesses[0] ? tag.placeGuesses[0] : '',
         description: tag.description || '',
       });
-      setAiFailed('');
+      setAiFailed(''); setAiRaw('');
     } catch (err) {
       console.error(err);
       // Say WHY. A silent failure here reads as "the app didn't even try", which is
       // exactly how it looked in testing.
-      const raw = String(err && err.message ? err.message : err);
-      setAiFailed(
-        !engine.ready ? 'No AI key on this device yet — Settings → paste your key.'
-          : /401|invalid.*api.*key|authentication/i.test(raw) ? 'The AI key was rejected. Settings → check the key.'
-          : /429|rate.?limit/i.test(raw) ? 'The AI is busy. Name it yourself, or try again shortly.'
-          : /credit|quota|billing|insufficient/i.test(raw) ? 'The AI account is out of credit.'
-          : /failed to fetch|networkerror|load failed/i.test(raw) ? "No internet just now — the photo is safe, name it yourself."
-          : "Couldn't reach the AI. Name it yourself and it will save fine."
-      );
+      // ONE honest sentence, and never a diagnosis we cannot stand behind. A browser
+      // fetch failure is not proof the internet is down — it is usually the request being
+      // blocked or refused — and telling someone they are offline while they are online
+      // destroys trust in everything else the app says. The technical reason goes behind
+      // "why?", for whoever is debugging; Margaret only ever sees the first line.
+      setAiFailed("I couldn't name this one.");
+      setAiRaw(String(err && err.message ? err.message : err));
       setSeen({ restingOn: '', placeGuesses: [], placeCertain: false, alternatives: [] });
       setFields({ name: resnapOf ? resnapOf.name : (hintName || ''), location: '', description: '' });
     }
@@ -215,7 +215,23 @@ export default function CaptureFlow({
       {(stage === 'confirm' || stage === 'saving') && !routine && (
         <div className="card">
           <img className="photo-full" src={photo} alt={fields.name} />
-          {aiFailed && <div className="stale" style={{ marginTop: 12 }}>{aiFailed}</div>}
+          {aiFailed && (
+            <div className="stale" style={{ marginTop: 12 }}>
+              {aiFailed} Tap below to name it yourself.
+              {aiRaw && (
+                <>
+                  {' '}
+                  <button type="button" className="link-btn" style={{ display: 'inline', padding: 0, fontSize: 16 }}
+                    onClick={() => setShowWhy((v) => !v)}>
+                    {showWhy ? 'hide' : 'why?'}
+                  </button>
+                  {showWhy && (
+                    <div style={{ fontSize: 14, marginTop: 8, wordBreak: 'break-word', opacity: 0.85 }}>{aiRaw}</div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {/* A wide shot can hold several plausible subjects, and no photo says which one
               she cared about. When the model reports more than one, ask — in words, never

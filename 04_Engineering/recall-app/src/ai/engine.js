@@ -49,11 +49,14 @@ export class AIEngine {
       return { ok: true, message: `Working — ${this.provider.label}${this.cfg.model ? ` (${this.cfg.model})` : ''}.` };
     } catch (err) {
       const raw = String(err && err.message ? err.message : err);
-      let hint = raw;
+      let hint = 'The request failed — see the details below.';
       if (/401|invalid.*api.*key|authentication/i.test(raw)) hint = 'That key was rejected. Check you copied all of it.';
       else if (/429|rate.?limit/i.test(raw)) hint = 'Too many requests just now — wait a moment and try again.';
       else if (/credit|quota|billing|insufficient/i.test(raw)) hint = 'The account is out of credit. Top it up in the Anthropic console.';
-      else if (/failed to fetch|networkerror|load failed/i.test(raw)) hint = 'Could not reach the internet.';
+      // A thrown fetch is NOT proof the network is down — it usually means the request was
+      // blocked or refused. Only say "offline" when the browser itself says so.
+      else if (navigator.onLine === false) hint = 'This device reports it is offline.';
+      else if (/failed to fetch|networkerror|load failed/i.test(raw)) hint = 'The request never completed. Not necessarily a connection problem.';
       return { ok: false, message: hint, raw };
     }
   }
