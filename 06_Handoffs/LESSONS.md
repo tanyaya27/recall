@@ -34,8 +34,9 @@ Keep entries short and imperative. The test of a good entry: would it have saved
   delete files it didn't create, so git leaves `index.lock` / `HEAD.lock` / `objects/*/tmp_obj_*`
   behind and later git commands fail with "index.lock exists". It also has no GitHub credentials.
   If a sandbox commit is unavoidable: `GIT_INDEX_FILE=/tmp/idx git add -A && git write-tree` …
-  `commit-tree` … `update-ref`, then on the Mac `rm -f .git/*.lock .git/objects/maintenance.lock;
-  git reset -q; git push`. Bit us twice on 2026-09-02.
+  `commit-tree` … `update-ref`, then on the Mac `find .git -name "*.lock" -delete; git reset -q;
+  git push`. Locks appear in several places (`index.lock`, `HEAD.lock`, `refs/heads/main.lock`,
+  `objects/maintenance.lock`) — use `find`, not a glob. Bit us three times on 2026-09-02.
 - **GitHub Pages + browser cache:** after a deploy, the page shows the old `app.js` for a while.
   `fetch('./app.js',{cache:'reload'})` then reload, or add a `?v=` query to `app.js` in index.html.
 

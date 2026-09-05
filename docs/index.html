@@ -3,9 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Photograph where you put things. Ask later, get the photo back." />
+
+  <!-- Home-screen app. iOS reads the apple-* tags; everything else reads the manifest. -->
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="ReCall" />
-  <meta name="theme-color" content="#F7F3EC" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#F6F1E8" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <link rel="icon" href="./icon-192.png" type="image/png" />
+
   <title>ReCall</title>
   <link rel="stylesheet" href="./styles.css" />
   <script type="importmap">
@@ -24,5 +33,13 @@
 <body>
   <div id="root"><div class="boot">Opening ReCall…</div></div>
   <script type="module" src="./app.js"></script>
+  <script>
+    // Registered after load so a worker problem can never delay first paint.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>

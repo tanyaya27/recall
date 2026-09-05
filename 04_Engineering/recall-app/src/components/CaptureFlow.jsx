@@ -3,6 +3,7 @@ import { compressPhoto } from '../lib/img.js';
 import { addItem, resnapItem, addCheck, knownLocations, logEvent } from '../lib/db.js';
 import { weekdayName, timeOfDay } from '../lib/format.js';
 import EditableText from './EditableText.jsx';
+import PlaceChooser from './PlaceChooser.jsx';
 
 const AUTOSAVE_MS = 4000;
 
@@ -24,7 +25,10 @@ export default function CaptureFlow({
   const [retakes, setRetakes] = useState(0);
   const [edited, setEdited] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const chips = knownLocations(items);
+  // What the model could and couldn't see. `guesses` are offered, never applied.
+  const [seen, setSeen] = useState({ restingOn: '', placeGuesses: [], placeCertain: false, alternatives: [] });
+  const [placeSkipped, setPlaceSkipped] = useState(false);
+  const chips = knownLocations(items, 6);
 
   const title = routine ? routine.name
     : resnapOf ? `New photo of your ${resnapOf.name}`
@@ -52,30 +56,49 @@ export default function CaptureFlow({
     }
 
     try {
-      const tag = await engine.tagPhoto(p, { hintName: resnapOf ? resnapOf.name : hintName, sensitivity: 'personal' });
+      const tag = await engine.tagPhoto(p, {
+        hintName: resnapOf ? resnapOf.name : hintName,
+        knownPlaces: chips,
+        catalog: items.map((it) => it.name).filter(Boolean),
+        sensitivity: 'personal',
+      });
+      setSeen({
+        restingOn: tag.restingOn || '',
+        placeGuesses: tag.placeGuesses || [],
+        placeCertain: !!tag.placeCertain,
+        alternatives: resnapOf ? [] : (tag.alternatives || []),
+      });
       setFields({
         name: resnapOf ? resnapOf.name : (tag.name || hintName || ''),
-        location: tag.location || '',
+        // Only pre-fill the place when the model says the room is genuinely visible.
+        // Otherwise it stays empty and gets asked — a wrong room is worse than no room.
+        location: tag.placeCertain && tag.placeGuesses[0] ? tag.placeGuesses[0] : '',
         description: tag.description || '',
       });
       setAiFailed(false);
     } catch (err) {
       console.error(err);
       setAiFailed(true);
+      setSeen({ restingOn: '', placeGuesses: [], placeCertain: false, alternatives: [] });
       setFields({ name: resnapOf ? resnapOf.name : (hintName || ''), location: '', description: '' });
     }
     setStage('confirm');
   }
 
   // Auto-save: if the person does nothing, it saves itself. Any edit cancels it.
+  //
+  // It does NOT fire while the place is still unanswered. An item saved with no place
+  // (or worse, a guessed one) is an item she can't find, which is the whole job. When the
+  // place is unknown the app waits and asks; "save it anyway" is an explicit choice.
   useEffect(() => {
     if (stage !== 'confirm' || edited) { setCountdown(0); return; }
     if (!routine && !fields.name) return; // nothing to save yet
+    if (!routine && !fields.location && !placeSkipped) { setCountdown(0); return; }
     const t0 = Date.now();
     const iv = setInterval(() => setCountdown(Math.min(1, (Date.now() - t0) / AUTOSAVE_MS)), 100);
     const to = setTimeout(() => save('auto'), AUTOSAVE_MS);
     return () => { clearInterval(iv); clearTimeout(to); };
-  }, [stage, edited]); // eslint-disable-line
+  }, [stage, edited, fields.location, placeSkipped]); // eslint-disable-line
 
   async function save(how = 'tap') {
     if (stage === 'saving') return;
@@ -95,20 +118,35 @@ export default function CaptureFlow({
       return;
     }
 
+    // A re-snap does NOT inherit the old place: the photo is new, so the old room may be
+    // stale. If nobody said where it is now, the item is marked as needing a place rather
+    // than quietly keeping yesterday's answer.
     if (resnapOf) {
-      const location = fields.location || resnapOf.location;
-      await resnapItem(resnapOf, { photo, thumb, location, by });
-      logEvent('capture', { initiatedBy: 'resnap', itemId: resnapOf.id, itemName: resnapOf.name, aiFailed, corrected: edited, savedBy: how, locationChanged: location !== resnapOf.location });
+      const location = fields.location;
+      await resnapItem(resnapOf, { photo, thumb, location, by, restingOn: seen.restingOn });
+      logEvent('capture', { initiatedBy: 'resnap', itemId: resnapOf.id, itemName: resnapOf.name, aiFailed, corrected: edited, savedBy: how, locationChanged: location !== resnapOf.location, placeSkipped });
       onDone({ kind: 'item', item: { ...resnapOf, photo, thumb, location, lastSeenAt: Date.now() } });
     } else {
       const name = fields.name || 'Something';
-      const id = await addItem({ ...fields, name, photo, thumb, pinnedOrder, by });
-      logEvent('capture', { initiatedBy, itemId: id, itemName: name, aiFailed, corrected: edited, savedBy: how, usedChip: chips.includes(fields.location) });
+      const id = await addItem({ ...fields, name, photo, thumb, pinnedOrder, by, restingOn: seen.restingOn });
+      logEvent('capture', {
+        initiatedBy, itemId: id, itemName: name, aiFailed, corrected: edited, savedBy: how,
+        usedChip: chips.includes(fields.location), placeSkipped,
+        placeFromGuess: seen.placeGuesses.includes(fields.location), placeCertain: seen.placeCertain,
+      });
       onDone({ kind: 'item', item: { id, ...fields, name, photo, thumb, pinnedOrder, lastSeenAt: Date.now() } });
     }
   }
 
   const setField = (k) => (v) => { setEdited(true); setFields((f) => ({ ...f, [k]: v })); };
+
+  // Answering "where is it?" is not a correction — it is the expected interaction — so it
+  // does NOT cancel auto-save. Tap the right place and it saves itself, which keeps the
+  // "the photo is the mark, no done tap" rule intact for the common case.
+  const setPlace = (v) => {
+    setFields((f) => ({ ...f, location: v }));
+    if (v) setPlaceSkipped(false);
+  };
 
   return (
     <div>
@@ -150,19 +188,53 @@ export default function CaptureFlow({
       {(stage === 'confirm' || stage === 'saving') && !routine && (
         <div className="card">
           <img className="photo-full" src={photo} alt={fields.name} />
+
           <EditableText label="What it is" value={fields.name} emptyLabel="tap to name it" onSave={setField('name')} />
-          <EditableText label="Where it is" value={fields.location} big emptyLabel="tap to say where" onSave={setField('location')} />
-          {chips.length > 0 && (
+          {/* Wrong object? Offer the other candidate in words. Never make her type. */}
+          {seen.alternatives.length > 0 && !edited && (
             <div className="chips">
-              {chips.map((c) => (
-                <button key={c} type="button" className={'chip' + (c === fields.location ? ' on' : '')} onClick={() => setField('location')(c)}>{c}</button>
+              {seen.alternatives.map((a) => (
+                <button key={a} type="button" className="chip" onClick={() => setField('name')(a)}>
+                  no — {a.toLowerCase()}
+                </button>
               ))}
             </div>
           )}
+
+          <PlaceChooser
+            value={fields.location}
+            guesses={seen.placeGuesses}
+            known={chips}
+            restingOn={seen.restingOn}
+            certain={seen.placeCertain}
+            onPick={setPlace}
+          />
+
           <EditableText label="Note" value={fields.description} emptyLabel="tap to add a note" onSave={setField('description')} />
-          <button className="btn-primary progress" style={{ '--p': countdown, marginTop: 16 }} disabled={stage === 'saving' || !fields.name} onClick={() => save('tap')}>
-            <span>{stage === 'saving' ? 'Saving…' : `Save${fields.name ? ` — ${fields.name.toLowerCase()}` : ''}${fields.location ? ` ${fields.location}` : ''}`}</span>
+
+          <button
+            className="btn-primary progress" style={{ '--p': countdown, marginTop: 16 }}
+            disabled={stage === 'saving' || !fields.name || (!fields.location && !placeSkipped)}
+            onClick={() => save('tap')}
+          >
+            <span>
+              {stage === 'saving' ? 'Saving…'
+                : `Save${fields.name ? ` — ${fields.name.toLowerCase()}` : ''}${fields.location ? ` ${fields.location}` : ''}`}
+            </span>
           </button>
+
+          {/* The deliberate escape: naming a place you haven't decided yet is worse than
+              saying so. Only shown while the place is still blank. */}
+          {!fields.location && (
+            placeSkipped ? (
+              <p className="note-quiet">Saving without a place — you can add one later.</p>
+            ) : (
+              <button type="button" className="link-btn" style={{ display: 'block', margin: '10px auto 0' }}
+                onClick={() => { setPlaceSkipped(true); setEdited(false); }}>
+                I don't know where it goes yet — save it anyway
+              </button>
+            )
+          )}
         </div>
       )}
 

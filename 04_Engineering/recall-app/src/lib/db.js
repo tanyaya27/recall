@@ -45,10 +45,14 @@ export function watchAll(cb) {
 
 // ---------- items ----------
 
-export async function addItem({ name, location, description, photo, thumb, pinnedOrder = null, by = 'self' }) {
+// `restingOn` is what the photo actually showed the thing sitting on ("on a pair of black
+// shorts"). `needsPlace` marks an item saved before anyone said which room — it is findable
+// by photo but not by place, and is a queue for a caregiver to finish later.
+export async function addItem({ name, location, description, photo, thumb, pinnedOrder = null, by = 'self', restingOn = '' }) {
   const now = Date.now();
   const ref = await addDoc(col, {
-    kind: 'item', name, location, description: description || '', photo, thumb,
+    kind: 'item', name, location, description: description || '', photo, thumb, restingOn,
+    needsPlace: !location,
     pinnedOrder, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }],
   });
@@ -61,11 +65,12 @@ export async function updateItem(id, patch) {
 }
 
 // Re-snap: fresh photo + location; the old photo is kept as a snap
-export async function resnapItem(item, { photo, thumb, location, by = 'self' }) {
+export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '' }) {
   const now = Date.now();
   const history = [...(item.history || []), { location, at: now }].slice(-100);
   await updateDoc(doc(col, item.id), {
-    photo, thumb, location, lastSeenAt: now, updatedAt: now, history, capturedBy: by,
+    photo, thumb, location, restingOn, needsPlace: !location,
+    lastSeenAt: now, updatedAt: now, history, capturedBy: by,
   });
   await addDoc(col, { kind: 'snap', itemId: item.id, photo, thumb, location, at: now, by });
 }

@@ -41,16 +41,69 @@ export class AIEngine {
 
   // sensitivity flag: reserved for Phase 2 on-device routing (MVP arch requirement #3).
   // v0 always routes to the cloud provider, but every call site already passes it.
-  async tagPhoto(photoDataUrl, { hintName = '', sensitivity = 'personal' } = {}) {
+  //
+  // Two things the model is asked to keep strictly apart, because it can see one and
+  // usually cannot see the other:
+  //   restingOn — the surface or object the thing is sitting on. Visible. Say it.
+  //   place     — which room / named spot in the home. A close crop of a counter cannot
+  //               distinguish a bathroom from a kitchen, so this is offered as ranked
+  //               GUESSES drawn from places this household already uses, never asserted.
+  // The person picks the place. Guessing a room and being wrong sends them to the wrong
+  // room, which is far worse than admitting we don't know (DAY_IN_THE_LIFE rule 2).
+  //
+  // `catalog` turns open-vocabulary naming into matching against things already in the
+  // vault, which is much more reliable — and gets better the more the household uses it.
+  async tagPhoto(photoDataUrl, { hintName = '', knownPlaces = [], catalog = [], sensitivity = 'personal' } = {}) {
+    const placesLine = knownPlaces.length
+      ? `Places this household already uses: ${knownPlaces.map((p) => `"${p}"`).join(', ')}.`
+      : 'This household has no saved places yet.';
+    const catalogLine = catalog.length
+      ? `Things already saved: ${catalog.slice(0, 40).map((n) => `"${n}"`).join(', ')}.`
+      : 'Nothing is saved yet.';
+
     const prompt =
 `You are helping someone with memory loss log where their belongings are.
-Look at this photo${hintName ? ` (the user says it should show their: ${hintName})` : ''}.
+${hintName ? `They say this photo should show their: ${hintName}.\n` : ''}${catalogLine}
+${placesLine}
+
+Answer three separate things. Do not blend them.
+
+1. WHAT IT IS. The main object. If it is clearly one of the things already saved, reuse
+   that exact name. Name it the way its owner would ("your black shorts", "reading
+   glasses"), never as a stranger would ("black fabric", "an item"). If two objects could
+   plausibly be the subject, put the others in "alternatives".
+
+2. WHAT IT IS RESTING ON. Only what you can actually see — "on a pair of folded black
+   shorts", "in an open drawer", "on a speckled stone countertop". This is genuinely
+   useful for finding it. Leave "" if unclear.
+
+3. WHERE IT IS — the room or named spot. BE HONEST HERE. A close-up of a countertop,
+   a table or a floor almost never reveals which room of the house it is in. If you
+   cannot actually tell, set "placeCertain": false and offer your best ranked guesses,
+   preferring the household's existing places above. Never invent a room you cannot see.
+   Getting this wrong sends a confused person to the wrong room, which is much worse
+   than saying you are unsure.
+
 Reply with ONLY a JSON object, no other text:
-{"name": "<short everyday name of the main item, 1-3 words>",
- "location": "<where it is, in plain warm words, e.g. 'on the kitchen counter'>",
+{"name": "<short everyday name, 1-3 words>",
+ "alternatives": ["<other plausible names for the subject, 0-2 items>"],
+ "restingOn": "<what it is sitting on/in, as seen, or \\"\\">",
+ "placeCertain": <true only if the room is genuinely identifiable from the photo>,
+ "placeGuesses": ["<most likely place first, up to 3, prefer the household's existing places>"],
  "description": "<one short sentence a family member would find useful>"}`;
+
     const text = await this.provider.visionJSON(this.cfg, prompt, photoDataUrl, { sensitivity });
-    return parseJSON(text);
+    const out = parseJSON(text);
+    const clean = (s) => (typeof s === 'string' ? s.trim() : '');
+    const list = (v) => (Array.isArray(v) ? v.map(clean).filter(Boolean) : []);
+    return {
+      name: clean(out.name) || hintName || '',
+      alternatives: list(out.alternatives).slice(0, 2),
+      restingOn: clean(out.restingOn),
+      placeCertain: out.placeCertain === true,
+      placeGuesses: list(out.placeGuesses).slice(0, 3),
+      description: clean(out.description),
+    };
   }
 
   // Prompted capture: the app asked for a specific photo, so it may check what it got.

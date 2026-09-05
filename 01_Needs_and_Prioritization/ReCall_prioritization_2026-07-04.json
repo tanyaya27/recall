@@ -898,5 +898,17 @@
     "description": "A third class of memory need alongside Find (where is it?) and Do (did it happen today?): How (how do I work this?). Patients lose procedural knowledge for household devices — the TV input, the alarm clock, the massager, a phone feature — and ask the same how-to question repeatedly. The caregiver records a short video once, tags it (\"massager\"), and the patient retrieves it by tile or voice exactly as they retrieve a photo. Caregiver-originated, so the patient never has to author anything. Proposed by Ravster 2026-09-02 during the day-in-the-life walkthrough.",
     "voicedBy": "Ravster; Margaret and Robert by implication",
     "designNotes": "Same retrieval grammar as Find: a tile or an Ask returns a playback card, not a new screen type. Caregiver-side record UI only; patient side is play and replay. Needs Firebase Storage (video cannot be inline in Firestore) — the reason this is phase-2, not MVP. Keep clips under 30 seconds. Never auto-play. Log each playback as a retrieval event with class=how."
+  },
+  {
+    "id": "milestone-moments",
+    "name": "Milestone moments (capture + celebrate)",
+    "kano": "attractive",
+    "release": "phase-2",
+    "source": "panel",
+    "category": 3,
+    "shortDesc": "Snap a good moment — a finished puzzle, a rehab session done — and let family see it.",
+    "description": "Every other interaction in ReCall is deficit-framed: you open it because something is lost. A milestone capture inverts that — the same camera gesture, but marking a thing done well rather than a thing misplaced, and optionally visible to remote family. The strategic argument is retention: an app that only ever marks decline is one people quietly stop opening, and Priya currently has no reason to open it that is not anxiety. Proposed by Ravster 2026-09-05.",
+    "voicedBy": "Ravster; Priya (needs a non-anxious reason to open the app); Margaret (dignity)",
+    "designNotes": "NOT MVP, and deliberately parked. Three open concerns before building. (1) Clinical: the motivating example was post-surgery rehab, which is a recovery trajectory; dementia is not. Putting both in one timeline implies improvement is expected and sets up a painful comparison later. Any 'one year ago today' resurfacing is reminiscence territory and needs the same scrutiny that vetoed generative imagery of absent loved ones. Take this to the advisory panel's clinical personas before writing code. (2) Positioning: milestone sharing is caregiver-communication and journaling, which is Caring Village's territory — the competitive analysis names them as the biggest threat IF they add memory features. Moving toward their strength is the wrong direction. (3) Test the cheap version first: reframe the existing caregiver status view to report capability rather than deficit ('found her glasses herself three times this week' instead of 'asked about glasses twelve times'). Same data, opposite valence, no new feature, no new storage, no clinical exposure. If that lands, this has earned the right to be built properly. Grammar note: it would be a fourth class alongside Find, Do and How — call it Mark. Keep it caregiver-originated where possible so Margaret never has to author anything."
   }
 ]
