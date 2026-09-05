@@ -9,7 +9,9 @@ const KEY = 'recall-prefs';
 export const THEMES = [
   { id: 'linen', label: 'Linen' },
   { id: 'slate', label: 'Slate' },
+  { id: 'dusk', label: 'Dusk' },
   { id: 'contrast', label: 'High contrast' },
+  { id: 'auto', label: 'Match my phone' }, // Linen by day, Dusk when the phone is dark (audit S4)
 ];
 export const SIZES = [
   { id: 'normal', label: 'Normal', scale: 1 },
@@ -32,9 +34,12 @@ export function savePrefs(p) {
 // Everything in the stylesheet is in rem, so one number on <html> scales text, buttons
 // and tap targets together — a control that does not grow with the text is how targets
 // shrink under big type.
+let watching = false;
 export function applyPrefs(p = getPrefs()) {
   const root = document.documentElement;
-  root.dataset.theme = p.theme;
+  const dark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)');
+  root.dataset.theme = p.theme === 'auto' ? (dark && dark.matches ? 'dusk' : 'linen') : p.theme;
+  if (dark && !watching && dark.addEventListener) { watching = true; dark.addEventListener('change', () => applyPrefs()); }
   const size = SIZES.find((s) => s.id === p.size) || SIZES[0];
   root.style.setProperty('--scale', String(size.scale));
 }

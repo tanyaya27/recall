@@ -18,7 +18,10 @@ import Header from './Header.jsx';
 //
 // `resnapOf` = "Found it — new photo": the thing is known, so no matching; only the place
 // is asked, fresh, because the old room may be stale.
-export default function PhotoCard({ file, engine, items = [], resnapOf = null, onDone, onCancel }) {
+// Places are shown as sentences — "Kitchen counter", not "kitchen counter" (audit I2).
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+export default function PhotoCard({ file, engine, items = [], resnapOf = null, onDone, onBack }) {
   const [photo, setPhoto] = useState(null);
   const [thumb, setThumb] = useState(null);
   const [tag, setTag] = useState(undefined);   // undefined = pending · null = failed · object = named
@@ -30,6 +33,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
   const [savedId, setSavedId] = useState(null); // provisional thing saved before its name
   const [pendingMerge, setPendingMerge] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [whole, setWhole] = useState(false); // photo shown uncropped (L1)
   const tagPromise = useRef(null);
   const chips = knownLocations(items, 6);
 
@@ -65,12 +69,12 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
       if (tag === null) {
         await nameItem(savedId, {});
         logEvent('naming_failed', { itemId: savedId });
-        onDone();
+        onDone({ saved: true, place });
         return;
       }
       await nameItem(savedId, { name: tag.name, description: tag.description, restingOn: tag.restingOn });
       if (match) setPendingMerge(true);
-      else onDone();
+      else onDone({ saved: true, place });
     })();
   }, [savedId, tag]); // eslint-disable-line
 
@@ -79,8 +83,9 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
   const seen = new Set(guesses.map((g) => g.toLowerCase()));
   const options = [...guesses, ...chips.filter((c) => !seen.has(c.toLowerCase()))].slice(0, 7);
 
-  async function save(chosen, how) {
+  async function save(raw, how) {
     if (busy || savedId) return;
+    const chosen = cap(raw.trim());
     setBusy(true);
     setPlace(chosen);
     const by = 'self';
@@ -90,7 +95,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
       await resnapItem(resnapOf, common);
       logEvent('capture', { initiatedBy: 'resnap', itemId: resnapOf.id, itemName: resnapOf.name, savedBy: how,
         locationChanged: chosen !== resnapOf.location, aiFailed: tag === null });
-      onDone();
+      onDone({ saved: true, place: chosen });
       return;
     }
 
@@ -106,7 +111,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
         logEvent('capture', { initiatedBy: 'self', itemId: id, itemName: name || null, savedBy: how,
           usedChip: chips.includes(chosen), placeFromGuess: guesses.includes(chosen), aiFailed: tag === null });
       }
-      onDone();
+      onDone({ saved: true, place: chosen });
       return;
     }
 
@@ -125,24 +130,24 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
     }
     if (pendingMerge && match) logEvent('merge', { itemId: match.id, result: 'unseen' });
     logEvent('capture_leave', { reason, savedId: savedId || null });
-    onDone();
+    onDone(savedId ? { saved: true, place } : null);
   }
 
   async function mergeYes() {
     setBusy(true);
     await absorbInto(match, savedId, { photo, thumb, location: place, restingOn });
     logEvent('merge', { itemId: match.id, result: 'confirmed', savedBy: 'asked' });
-    onDone();
+    onDone({ saved: true, place });
   }
   function mergeNo() {
     logEvent('merge', { itemId: match.id, result: 'declined' });
-    onDone();
+    onDone({ saved: true, place });
   }
 
   // Back in the header: before a save it cancels; after a save it is simply the way home.
   const back = () => {
     if (savedId) leave('done');
-    else { logEvent('capture_leave', { reason: 'cancel' }); onCancel(); }
+    else { logEvent('capture_leave', { reason: 'cancel' }); onBack(); }
   };
 
   if (!photo) {
@@ -153,7 +158,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
     <div className="screen">
       <Header title={resnapOf ? 'New photo' : 'Take a photo'} onBack={back} />
       <div className="card photo-card">
-        <img className="photo-full" src={photo} alt="" />
+        <img className={'photo-full' + (whole ? ' whole' : '')} src={photo} alt="" onClick={() => setWhole((w) => !w)} />
 
         {/* What it is. Arrives from the AI; editable; never demanded. */}
         {resnapOf ? (
@@ -182,6 +187,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
               {!typing && (
                 <button type="button" className="guess other" disabled={busy} onClick={() => { setDraft(''); setTyping(true); }}>Somewhere else</button>
               )}
+              <button type="button" className="guess quiet" disabled={busy} onClick={() => save('', 'not_sure')}>Not sure</button>
             </div>
             {typing && (
               <div className="typing">
@@ -194,7 +200,6 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
                 <button type="button" className="btn-secondary" disabled={!draft.trim() || busy} onClick={() => save(draft.trim(), 'typed')}>Use this</button>
               </div>
             )}
-            <button type="button" className="link-btn center" disabled={busy} onClick={() => save('', 'not_sure')}>Not sure</button>
           </div>
         )}
 

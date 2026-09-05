@@ -53,14 +53,18 @@ export default function Ask({ engine, items, onResult, onBack }) {
       <form className="card ask" onSubmit={ask}>
         <label className="ask-q" htmlFor="ask-input">Where is my…</label>
         <div className="ask-row">
-          <input id="ask-input" ref={inputRef} value={q} placeholder="glasses"
-            enterKeyHint="search" autoCapitalize="none" autoComplete="off"
-            onChange={(e) => { setQ(e.target.value); entryMode.current = 'typed'; }} />
+          <div className="field">
+            <input id="ask-input" ref={inputRef} value={q} placeholder="glasses"
+              enterKeyHint="search" autoCapitalize="none" autoComplete="off"
+              onChange={(e) => { setQ(e.target.value); entryMode.current = 'typed'; }} />
+            {q && <button type="button" className="clear" aria-label="Clear" onClick={() => { setQ(''); inputRef.current && inputRef.current.focus(); }}>×</button>}
+          </div>
           {dictation.supported && (
             <button type="button" className={'mic' + (dictation.listening ? ' on' : '')} onClick={dictation.toggle} aria-label="Say it">🎙</button>
           )}
         </div>
-        <button type="submit" className="btn-primary" disabled={asking || !q.trim()}>{asking ? '…' : 'Find it'}</button>
+        <button type="submit" className="btn-primary" disabled={asking || !q.trim()}>{asking ? 'Looking…' : 'Find it'}</button>
+        {asking && <><div className="skeleton" /><div className="skeleton short" /></>}
 
         {noMatch && (
           <div className="answer-none">

@@ -78,8 +78,12 @@ Full background lives in the numbered folders — see `README.md` for the index.
   photo · place · when · *Not there? Earlier photos* · *Found it — new photo* · quiet *Fix*.
   Settings: AI key + check, **Look** (3 palettes, 3 text sizes — per phone), recently
   removed, research export. Routines exist in the data but are not shown or seeded.
+- **Platform-conventions audit (late 09-05)** — `06_Handoffs/design/BOARD_2026-09-05_platform_conventions.md`:
+  history-backed routing (edge swipe works), pressed states, in-app confirm sheet, toasts with
+  Undo, offline line (strict), icons, grouped Settings, Dusk + *Match my phone*, 4:3 cropped
+  photos above the fold. Built, compiles, SSR-tested; **needs the phone.**
 - **Components:** `Board` `PhotoCard` `ThingCard` `Ask` `Settings` `Header` `Footer`
-  `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
+  `Confirm` `Toast` `Icons` `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
   are deleted (git has them). `lib/prefs.js` is new. `docs/styles.css` is in rem.
 - **Engine changes this session (all in DECISIONS.md):** `household`, `order`/`boardKey`,
   snap cap 10/30, `naming` flag, `absorbInto`, event schema v3. `engine.js` untouched.

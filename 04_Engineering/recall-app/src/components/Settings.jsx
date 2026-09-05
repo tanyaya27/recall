@@ -4,14 +4,12 @@ import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA } from '../lib/db.js
 import { timeAgo } from '../lib/format.js';
 import { getPrefs, savePrefs, THEMES, SIZES } from '../lib/prefs.js';
 import Header from './Header.jsx';
+import Confirm from './Confirm.jsx';
 
-// Settings — reduced to what setup needs. Board decision 2026-09-05, screen 6.
-//
-// This is a helper's screen, opened once. AI key + "Check the key works" (the two-step
-// diagnostic that separates "can this phone reach the service" from "is this key good"),
-// Recently removed, the research export for Tanya, the build stamp. The routine editor is
-// gone until the helper's device is built. Actions sit in the flow — a keyboard opens here.
-// Set before a deliberate reload so App reopens Settings instead of Home.
+// Settings — reduced to what setup needs. Board decision 2026-09-05, screen 6; platform
+// audit V5: this is the one screen where "looks like the phone's Settings" is exactly
+// right, so it is grouped sections with a small title above each, rows, one action per
+// row. A helper's screen, opened once; actions sit in the flow because a keyboard opens.
 export const RETURN_KEY = 'recall-return-to';
 export function takeReturnRoute() {
   try {
@@ -29,9 +27,10 @@ export default function Settings({ removed = [], onBack, onConfigSaved, justRelo
   const [testing, setTesting] = useState(false);
   const [showModel, setShowModel] = useState(false);
   const [prefs, setPrefs] = useState(getPrefs());
+  const [purging, setPurging] = useState(null); // item awaiting "delete for good"
   const providers = providerList();
-  const setPref = (k, v) => { const p = { ...prefs, [k]: v }; setPrefs(p); savePrefs(p); };
   const current = providers.find((p) => p.id === cfg.provider);
+  const setPref = (k, v) => { const p = { ...prefs, [k]: v }; setPrefs(p); savePrefs(p); };
 
   const mask = (k) => (k.length <= 10 ? '••••' : `${k.slice(0, 6)}…${k.slice(-4)}`);
 
@@ -86,94 +85,115 @@ export default function Settings({ removed = [], onBack, onConfigSaved, justRelo
     <div className="screen settings">
       <Header title="Settings" onBack={onBack} />
 
-      {/* Per-phone. The palette picker is here so Tanya can compare on a real phone;
-          text size is a user preference and scales buttons and tap targets with the text. */}
-      <div className="card">
-        <h3>Look</h3>
-        <label>Text size</label>
-        <div className="seg">
-          {SIZES.map((s) => (
-            <button key={s.id} className={prefs.size === s.id ? 'on' : ''} onClick={() => setPref('size', s.id)}>{s.label}</button>
-          ))}
-        </div>
-        <label>Colours</label>
-        <div className="seg">
-          {THEMES.map((t) => (
-            <button key={t.id} className={prefs.theme === t.id ? 'on' : ''} onClick={() => setPref('theme', t.id)}>{t.label}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="card">
-        <h3>AI key</h3>
-        <label>Provider</label>
-        <select value={cfg.provider} onChange={(e) => setCfg({ ...cfg, provider: e.target.value, model: '' })}>
-          {providers.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select>
-        <label>API key (stays on this phone only)</label>
-        <input type="password" value={cfg.apiKey} placeholder="paste the key here"
-          onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value.trim() })} />
-        {!showModel ? (
-          <p className="note-quiet left">
-            Model: <b>{cfg.model || `default (${current?.defaultModel})`}</b>{' '}
-            <button type="button" className="link-btn inline" onClick={() => setShowModel(true)}>change</button>
-          </p>
-        ) : (
-          <>
-            <label>Model — leave blank unless you know the exact model name. This is NOT where the key goes.</label>
-            <input value={cfg.model} placeholder={current?.defaultModel} onChange={(e) => setCfg({ ...cfg, model: e.target.value.trim() })} />
-            <button type="button" className="btn-quiet" onClick={() => setCfg({ ...cfg, model: '' })}>Use the default model</button>
-          </>
-        )}
-        <button className="btn-primary" onClick={save}>{saved ? '✓ Saved' : 'Save'}</button>
-        <div className="key-status">
-          {stored.apiKey ? <>Stored on this phone: <b>{mask(stored.apiKey)}</b> · {stored.provider}</> : <>No key stored on this phone yet.</>}
-        </div>
-        <button className="btn-secondary" disabled={!stored.apiKey || testing} onClick={runTest}>
-          {testing ? 'Checking…' : 'Check the key works'}
-        </button>
-        {test && (
-          <div className={test.ok ? 'key-ok' : 'key-bad'}>
-            {test.ok ? '✓ ' : '✕ '}{test.message}
-            {test.raw && test.raw !== test.message && <div className="raw">{test.raw}</div>}
+      <div className="group-title">Look</div>
+      <div className="group">
+        <div className="grow">
+          <label>Text size</label>
+          <div className="seg">
+            {SIZES.map((s) => (
+              <button key={s.id} className={prefs.size === s.id ? 'on' : ''} onClick={() => setPref('size', s.id)}>{s.label}</button>
+            ))}
           </div>
-        )}
+        </div>
+        <div className="grow">
+          <label>Colours</label>
+          <div className="seg wrap">
+            {THEMES.map((t) => (
+              <button key={t.id} className={prefs.theme === t.id ? 'on' : ''} onClick={() => setPref('theme', t.id)}>{t.label}</button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="card">
-        <h3>Recently removed</h3>
-        {removed.length === 0 ? <p className="sub">Nothing has been removed.</p> : removed.map((it) => (
+      <div className="group-title">AI key</div>
+      <div className="group">
+        <div className="grow">
+          <label>Provider</label>
+          <select value={cfg.provider} onChange={(e) => setCfg({ ...cfg, provider: e.target.value, model: '' })}>
+            {providers.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+        </div>
+        <div className="grow">
+          <label>API key (stays on this phone only)</label>
+          <input type="password" value={cfg.apiKey} placeholder="paste the key here"
+            onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value.trim() })} />
+        </div>
+        <div className="grow">
+          {!showModel ? (
+            <p className="note-quiet left">
+              Model: <b>{cfg.model || `default (${current?.defaultModel})`}</b>{' '}
+              <button type="button" className="link-btn inline" onClick={() => setShowModel(true)}>change</button>
+            </p>
+          ) : (
+            <>
+              <label>Model — leave blank unless you know the exact model name. This is NOT where the key goes.</label>
+              <input value={cfg.model} placeholder={current?.defaultModel} onChange={(e) => setCfg({ ...cfg, model: e.target.value.trim() })} />
+              <button type="button" className="btn-quiet" onClick={() => setCfg({ ...cfg, model: '' })}>Use the default model</button>
+            </>
+          )}
+          <button className="btn-primary" onClick={save}>{saved ? '✓ Saved' : 'Save'}</button>
+          <div className="key-status">
+            {stored.apiKey ? <>Stored on this phone: <b>{mask(stored.apiKey)}</b> · {stored.provider}</> : <>No key stored on this phone yet.</>}
+          </div>
+          <button className="btn-secondary" disabled={!stored.apiKey || testing} onClick={runTest}>
+            {testing ? 'Checking…' : 'Check the key works'}
+          </button>
+          {test && (
+            <div className={test.ok ? 'key-ok' : 'key-bad'}>
+              {test.ok ? '✓ ' : '✕ '}{test.message}
+              {test.raw && test.raw !== test.message && <div className="raw">{test.raw}</div>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="group-title">Recently removed</div>
+      <div className="group">
+        {removed.length === 0 ? <div className="grow"><p className="sub">Nothing has been removed.</p></div> : removed.map((it) => (
           <div className="row" key={it.id}>
             <div className="nm">
               {it.name || 'Unnamed'}
               <small>{it.location || 'no place'} · removed {timeAgo(it.deletedAt)}</small>
             </div>
             <button onClick={() => restoreItem(it.id)}>Put back</button>
-            <button onClick={() => { if (confirm(`Delete ${(it.name || 'this').toLowerCase()} and its photos for good?\n\nThis cannot be undone.`)) purgeItem(it); }}>Delete for good</button>
+            <button onClick={() => setPurging(it)}>Delete for good</button>
           </div>
         ))}
       </div>
 
-      <div className="card">
-        <h3>Research log</h3>
-        <p className="sub">Every photo, question and correction is logged silently with exact times. Nothing is ever shown to the person as a number.</p>
-        <button className="btn-secondary" onClick={downloadEvents}>Download usage log (JSON)</button>
+      <div className="group-title">Research log</div>
+      <div className="group">
+        <div className="grow">
+          <p className="sub">Every photo, question and correction is logged silently with exact times. Nothing is ever shown to the person as a number.</p>
+          <button className="btn-secondary" onClick={downloadEvents}>Download usage log (JSON)</button>
+        </div>
       </div>
 
-      {/* Which build is this phone running? After "get the latest version" the page reloads
-          and comes BACK HERE (App reads RETURN_KEY) and says so — a reload that lands on
-          Home tells the person nothing about whether anything changed. Ravi, 2026-09-05. */}
-      <div className="card">
-        <h3>Version</h3>
-        <p className="sub">This phone has the build from <b>{buildLabel()}</b>.</p>
-        {justReloaded && <p className="sub" style={{ color: 'var(--accent)' }}>Reloaded just now. If the time above did not change, this is already the latest.</p>}
-        <button className="btn-secondary" onClick={async () => {
-          try { sessionStorage.setItem(RETURN_KEY, 'settings'); } catch { /* fine */ }
-          if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.unregister())); }
-          if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
-          location.reload();
-        }}>Get the latest version</button>
+      {/* After "Get the latest version" the page reloads and comes BACK HERE and says so —
+          a reload that lands on Home tells the person nothing about whether anything changed. */}
+      <div className="group-title">Version</div>
+      <div className="group">
+        <div className="grow">
+          <p className="sub">This phone has the build from <b>{buildLabel()}</b>.</p>
+          {justReloaded && <p className="sub accent">Reloaded just now. If the time above did not change, this is already the latest.</p>}
+          <button className="btn-secondary" onClick={async () => {
+            try { sessionStorage.setItem(RETURN_KEY, 'settings'); } catch { /* fine */ }
+            if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.unregister())); }
+            if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
+            location.reload();
+          }}>Get the latest version</button>
+        </div>
       </div>
+
+      {purging && (
+        <Confirm
+          title={`Delete ${(purging.name || 'this').toLowerCase()} and its photos for good?`}
+          body="This cannot be undone."
+          keepLabel="Keep it" actionLabel="Delete for good"
+          onKeep={() => setPurging(null)}
+          onAction={async () => { const it = purging; setPurging(null); await purgeItem(it); }}
+        />
+      )}
     </div>
   );
 }

@@ -87,3 +87,22 @@ node out.cjs   # renderToString each screen with fake items; stub localStorage/n
 Not committed — the sandbox has no GitHub credentials and leaves lock files (LESSONS).
 From the Mac: `git add -A && git commit -m "v0.2: the board model — first board session, UX rebuilt above the engine" && git push`
 (or just `./deploy.sh`, which does build + commit + push).
+
+## Later the same evening — three rounds of phone feedback
+
+Ravi deployed and tested. Fixed in order, each recorded in DECISIONS.md: Version card and
+reload-returns-to-Settings · *no place yet* in amber on tiles, screen named *My things* ·
+sticky title bar, *Fix or remove*, hamburger/accounts rejected · **then the platform-
+conventions audit** (`design/BOARD_2026-09-05_platform_conventions.md`) after Ravi pointed
+out that "like the common apps" had been answered with one header bar. Eleven items
+adopted, three splits decided, density pass added. All built and SSR-tested; **not yet
+deployed** at the time of writing — Ravi runs the two deploy lines.
+
+**Phone checklist additions:** edge-swipe back from any card; Back from a *Found it* photo
+card returns to the thing card, finishing it returns to My things; remove → sheet → toast
+with Undo → Undo restores; Settings → Look → Dusk and *Match my phone*; photos crop 4:3,
+tap shows whole; toast after save reads "Saved · <place>"; airplane mode shows the offline
+line and nothing else claims a cause.
+
+**Two more sandbox traps** (in LESSONS.md): `node_modules` from the sandbox is Linux-only;
+relative `cd ../..` in instructions.

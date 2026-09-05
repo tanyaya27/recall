@@ -49,6 +49,11 @@ Keep entries short and imperative. The test of a good entry: would it have saved
 
 ## Design
 
+- **A requirement phrased as a principle gets an audit, not a feature.** "Look and feel of
+  the most common apps" was answered with one header bar and Ravi caught it. The right
+  response is a table: every convention in a named reference set (Phone, Messages, Photos,
+  Mail, Camera, Settings) against what we built, with a verdict each. See
+  `design/BOARD_2026-09-05_platform_conventions.md`.
 - **A screen that changes shape on its own is navigation the person doesn't control.**
   v0.1's clock-shaped home was built to avoid navigation and became the hardest kind: the
   screen she learned at breakfast was gone by bedtime. Hand memory needs the same screen

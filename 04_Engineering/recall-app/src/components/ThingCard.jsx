@@ -4,6 +4,8 @@ import { whenSeen } from '../lib/format.js';
 import EditableText from './EditableText.jsx';
 import Footer from './Footer.jsx';
 import Header from './Header.jsx';
+import Confirm from './Confirm.jsx';
+import { CameraIcon } from './Icons.jsx';
 
 // The thing card — the answer. Board decision 2026-09-05, Rules 1, 3, 4, 7.
 //
@@ -15,11 +17,13 @@ import Header from './Header.jsx';
 // evening" is the whole answer; she decides whether that is old.
 //
 // Fix (name, place, move to the top, remove) is behind one quiet control. It is Robert's.
-export default function ThingCard({ item, items = [], onBack, onFoundFile }) {
+export default function ThingCard({ item, items = [], onBack, onFoundFile, onRemoved }) {
   const [snaps, setSnaps] = useState(null); // null = not opened
   const [fixing, setFixing] = useState(false);
+  const [whole, setWhole] = useState(false);      // photo uncropped (audit L1)
+  const [confirming, setConfirming] = useState(false);
 
-  useEffect(() => { setSnaps(null); setFixing(false); }, [item?.id]);
+  useEffect(() => { setSnaps(null); setFixing(false); setWhole(false); }, [item?.id]);
 
   if (!item) return null;
 
@@ -35,7 +39,7 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile }) {
     <div className="screen with-footer">
       <Header title={item.name || ''} onBack={onBack} />
       <div className="card thing">
-        <img className="photo-full" src={item.photo} alt={item.name || ''} />
+        <img className={'photo-full' + (whole ? ' whole' : '')} src={item.photo} alt={item.name || ''} onClick={() => setWhole((w) => !w)} />
         {item.location
           ? <div className="loc-big">{item.location}</div>
           : <div className="loc-big soft">No place saved</div>}
@@ -54,15 +58,10 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile }) {
             <EditableText label="What it is" value={item.name} emptyLabel="Name it"
               onSave={(v) => { updateItem(item.id, { name: v }); logEvent('correction', { itemId: item.id, field: 'name' }); }} />
             <EditableText label="Where it is" value={item.location} emptyLabel="Add the place"
-              onSave={(v) => { updateItem(item.id, { location: v, needsPlace: false }); logEvent('correction', { itemId: item.id, field: 'location' }); }} />
+              onSave={(v) => { updateItem(item.id, { location: v.charAt(0).toUpperCase() + v.slice(1), needsPlace: false }); logEvent('correction', { itemId: item.id, field: 'location' }); }} />
             <div className="fix-row">
               <button className="btn-quiet" onClick={async () => { await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id }); setFixing(false); }}>Move to the top</button>
-              <button className="btn-quiet" onClick={async () => {
-                if (!confirm(`Remove ${label} from the board?\n\nIt moves to Settings → Recently removed, where it can be put back.`)) return;
-                await softDeleteItem(item);
-                logEvent('item_removed', { itemId: item.id, itemName: item.name || null });
-                onBack();
-              }}>Remove</button>
+              <button className="btn-quiet" onClick={() => setConfirming(true)}>Remove</button>
             </div>
           </div>
         )}
@@ -82,9 +81,24 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile }) {
         </section>
       )}
 
+      {confirming && (
+        <Confirm
+          title={`Remove ${label} from My things?`}
+          body="It goes to Settings → Recently removed, where it can be put back."
+          keepLabel="Keep it" actionLabel="Remove"
+          onKeep={() => setConfirming(false)}
+          onAction={async () => {
+            setConfirming(false);
+            await softDeleteItem(item);
+            logEvent('item_removed', { itemId: item.id, itemName: item.name || null });
+            onRemoved(item);
+          }}
+        />
+      )}
+
       <Footer>
         <label className="btn-primary file">
-          Found it — new photo
+          <CameraIcon /> Found it — new photo
           <input type="file" accept="image/*" capture="environment"
             onChange={(e) => {
               const f = e.target.files && e.target.files[0];

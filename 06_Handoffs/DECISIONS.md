@@ -51,6 +51,37 @@ Event schema → v3.
 
 ---
 
+## 2026-09-05 — Platform conventions audit: eleven adopted, three splits decided, six rejected
+
+**Decision (Ravi, after "what else have you not covered that every app should have?"):**
+Devin audited 35 conventions from the apps a senior already uses against the build. Full
+table with verdicts and who objected: `design/BOARD_2026-09-05_platform_conventions.md`.
+
+**Adopted and built:** the phone's own back gesture works (every card is a history entry;
+finishing a card goes all the way home); pressed states; in-app confirmation sheet with
+verbs (never the browser's OK/Cancel, never red); *Looking…* indicator on Find; a "No
+connection" line **only** when the browser reports offline; clear (×) on the ask field;
+places shown in sentence case; the system font on purpose (the stylesheet had named a font
+that never loaded); SVG glyphs with words on the two buttons and Settings; Settings as
+grouped sections; labels and focus states.
+
+**Splits Ravi decided:** S2 search field on top — *not yet* (Devin's side; Maya and James
+wanted it). S3 toasts — *yes*, fact-only ("Saved · Kitchen counter", "Removed · Undo").
+S4 dark — *yes*: a Dusk palette and *Match my phone*; Linen stays the default (Linda).
+
+**Rejected, with reasons in the file:** login/accounts, onboarding carousel, hamburger,
+badges/counts, push (for now), share sheet (→ prioritizer candidate).
+
+**Density pass (Ravi: "horizontal space is premium, so is vertical"):** photos shown 4:3
+cropped and capped at 42% of the screen so the place — or the chips — is above the fold;
+tap to see the whole photo. Tile names two lines max at 16px then ellipsis (one line
+truncated "Reading gla…" in the preview). Card padding and gaps tightened.
+
+**Would change our mind:** S2 — if testers look at the top of My things for a search
+field, add it. S3 — if the toast ever covers a tile someone is about to tap, move or drop it.
+
+---
+
 ## 2026-09-05 — Sticky title bar; "Fix or remove"; no hamburger, no accounts
 
 **Decision (Ravi's second round of phone feedback):** the header (Back · title) and the

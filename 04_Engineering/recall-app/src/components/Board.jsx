@@ -1,6 +1,7 @@
 import { boardOrder, logEvent } from '../lib/db.js';
 import { dayLine } from '../lib/format.js';
 import Footer from './Footer.jsx';
+import { CameraIcon, SearchIcon, GearIcon } from './Icons.jsx';
 
 // Home — THE BOARD. Board decision 2026-09-05, Rules 1–3.
 //
@@ -17,7 +18,7 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
     <div className="screen with-footer">
       <div className="dayrow">
         <div className="dayline">{dayLine()}</div>
-        <button className="tiny" onClick={onSettings} aria-label="Settings">Settings</button>
+        <button className="tiny" onClick={onSettings}><GearIcon /> Settings</button>
       </div>
 
       {!ready && (
@@ -62,11 +63,11 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
             on this tap — a programmatic click after navigating does not count as a
             gesture on iOS. The photo card opens with the photo already taken. */}
         <label className={'btn-primary file' + (ready ? '' : ' disabled')}>
-          Take a photo
+          <CameraIcon /> Take a photo
           <input type="file" accept="image/*" capture="environment" disabled={!ready}
             onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPhoto(f); }} />
         </label>
-        <button className="btn-primary alt" disabled={!ready} onClick={onAsk}>Where is my…</button>
+        <button className="btn-primary alt" disabled={!ready} onClick={onAsk}><SearchIcon /> Where is my…</button>
       </Footer>
     </div>
   );
