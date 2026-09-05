@@ -51,6 +51,27 @@ Event schema → v3.
 
 ---
 
+## 2026-09-05 — Sticky title bar; "Fix or remove"; no hamburger, no accounts
+
+**Decision (Ravi's second round of phone feedback):** the header (Back · title) and the
+day line stay pinned while scrolling, like every iOS nav bar. The thing card's quiet
+control reads **Fix or remove** — Ravi could not find delete, and Robert's test is five
+seconds. Remove stays behind it (a confused tap must never destroy a photo).
+
+**Rejected: a hamburger menu holding Settings, account/username/password, caregivers.**
+Devin: a menu behind an icon is exactly what Margaret's persona will not learn; the
+common-app pattern for this is one Settings control top-right, which we have. Sam: there
+are no accounts — anonymous auth, the household is the unit, caregivers join by a short
+code (`multi-device-arch`). A username/password screen for a dementia patient is an
+architecture decision with real downside and is not on the roadmap; if wanted, it is a
+recorded decision, not a menu item. Maya: *Set up a helper* goes inside Settings with the
+next build, where a helper goes once.
+
+**Would change our mind:** testers repeatedly hunting for a menu top-left. Then a labelled
+*Menu* button — never an unlabelled icon.
+
+---
+
 ## 2026-09-05 — "no place yet" in amber on the tile; the screen is called "My things"
 
 **Decision (Ravi, after first phone use):** a thing saved without a place shows *no place

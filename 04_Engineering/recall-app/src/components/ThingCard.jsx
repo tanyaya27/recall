@@ -47,7 +47,7 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile }) {
         )}
 
         {!fixing && (
-          <button type="button" className="link-btn center" onClick={() => setFixing(true)}>Fix</button>
+          <button type="button" className="link-btn center" onClick={() => setFixing(true)}>Fix or remove</button>
         )}
         {fixing && (
           <div className="fix">
