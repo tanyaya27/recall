@@ -25,6 +25,14 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
 
   const mask = (k) => (k.length <= 10 ? '••••' : `${k.slice(0, 6)}…${k.slice(-4)}`);
 
+  // The build is stamped in UTC at compile time; show it in the reader's own clock, or
+  // "is this the build I just pushed?" is a timezone puzzle instead of an answer.
+  function buildLabel() {
+    if (typeof __BUILD__ !== 'string') return 'unknown';
+    const d = new Date(__BUILD__);
+    return Number.isNaN(d.getTime()) ? __BUILD__ : d.toLocaleString();
+  }
+
   function save() {
     saveAIConfig(cfg);
     setStored(getAIConfig()); // re-read, so the line below reflects storage, not hope
@@ -138,6 +146,13 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
         {test && (
           <div className={test.ok ? 'key-ok' : 'key-bad'}>
             {test.ok ? '✓ ' : '✕ '}{test.message}
+            {/* The friendly line is for a person; the raw response is what actually gets
+                a bug fixed. This is an admin screen, so show both. */}
+            {test.raw && test.raw !== test.message && (
+              <div style={{ fontWeight: 400, fontSize: 14, marginTop: 8, wordBreak: 'break-word', opacity: 0.85 }}>
+                {test.raw}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -170,7 +185,7 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
       {/* Which build am I actually looking at? Without this, "the new feature isn't there"
           and "my phone is serving a cached copy" are indistinguishable. */}
       <p className="note-quiet" style={{ marginTop: 18 }}>
-        Build {typeof __BUILD__ === 'string' ? __BUILD__ : 'unknown'}
+        Build {buildLabel()}
         {' · '}
         <button
           className="link-btn" style={{ display: 'inline', padding: 0 }}
