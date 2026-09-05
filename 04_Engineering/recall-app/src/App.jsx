@@ -18,6 +18,20 @@ import Toast from './components/Toast.jsx';
 const RETURN_TO = takeReturnRoute();
 const HOME = { view: 'home' };
 
+// Boot record: which stage the app reached and how long it took, kept in localStorage so
+// Settings can show what happened LAST time — the only way to see a hang after the fact.
+const BOOT_KEY = 'recall-last-boot';
+const T0 = Date.now();
+function noteBoot(stage) {
+  try {
+    const prev = JSON.parse(localStorage.getItem(BOOT_KEY) || '{}');
+    const cur = prev.startedAt === T0 ? prev : { startedAt: T0, stages: [] };
+    cur.stages.push({ stage, ms: Date.now() - T0 });
+    localStorage.setItem(BOOT_KEY, JSON.stringify(cur));
+  } catch { /* fine */ }
+}
+noteBoot('script');
+
 export default function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
@@ -27,6 +41,8 @@ export default function App() {
   const [offline, setOffline] = useState(typeof navigator !== 'undefined' && navigator.onLine === false);
   const [toast, setToast] = useState(null);
   const [, tick] = useState(0);
+  const [stage, setStage] = useState('script');
+  const [slow, setSlow] = useState(false);
   const routes = useRef(new Map()); // history state id → route object (may hold a File)
   const seq = useRef(0);
   const depth = useRef(0);          // how many cards deep we are; Home is 0
@@ -61,19 +77,37 @@ export default function App() {
 
   useEffect(() => {
     let unsub = () => {};
-    ensureSignedIn()
+    const slowTimer = setTimeout(() => setSlow(true), 4000);
+    const onStage = (st) => { noteBoot(st); setStage(st); };
+    ensureSignedIn(onStage)
       .then(() => {
         unsub = watchAll(setData);
+        onStage('ready');
+        clearTimeout(slowTimer);
         setReady(true);
-        logEvent('app_open', {});
+        logEvent('app_open', { bootMs: Date.now() - T0 });
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => { onStage('error'); setError(String(e)); });
     const iv = setInterval(() => tick((n) => n + 1), 60000);
     return () => { unsub(); clearInterval(iv); };
   }, []);
 
   if (error) return <div className="boot">Couldn't connect: {error}</div>;
-  if (!ready) return <div className="boot">Opening ReCall…</div>;
+  if (!ready) {
+    // Say which step it is on, so a hang names itself. After 4s, offer a fresh start.
+    const label = { script: 'starting', auth: 'signing in', 'auth:signing-in': 'signing in', 'auth:fallback': 'signing in another way' }[stage] || stage;
+    return (
+      <div className="boot">
+        Opening ReCall…
+        {slow && (
+          <div className="boot-slow">
+            <div>Still {label}.</div>
+            <button className="btn-secondary" onClick={() => location.replace(location.pathname + '?v=' + Date.now())}>Try again</button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const live = (it) => items.find((x) => x.id === it?.id) || it;
 

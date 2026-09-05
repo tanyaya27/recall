@@ -29,6 +29,15 @@ export default function Settings({ removed = [], onBack, onConfigSaved, justRelo
   const [prefs, setPrefs] = useState(getPrefs());
   const [purging, setPurging] = useState(null); // item awaiting "delete for good"
   const providers = providerList();
+  // What happened the last time the app opened — stages and timings. This is how a hang on
+  // "Opening ReCall…" gets diagnosed instead of guessed at.
+  const lastBoot = (() => {
+    try {
+      const b = JSON.parse(localStorage.getItem('recall-last-boot') || 'null');
+      if (!b || !b.stages) return '';
+      return b.stages.map((s) => `${s.stage} ${(s.ms / 1000).toFixed(1)}s`).join(' → ');
+    } catch { return ''; }
+  })();
   const current = providers.find((p) => p.id === cfg.provider);
   const setPref = (k, v) => { const p = { ...prefs, [k]: v }; setPrefs(p); savePrefs(p); };
 
@@ -180,8 +189,13 @@ export default function Settings({ removed = [], onBack, onConfigSaved, justRelo
             try { sessionStorage.setItem(RETURN_KEY, 'settings'); } catch { /* fine */ }
             if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.unregister())); }
             if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
-            location.reload();
+            // A fresh navigation with a new query, not reload(): it fetches index.html past
+            // any cache and is a different load path from the one that hung on 09-05.
+            location.replace(location.pathname + '?v=' + Date.now());
           }}>Get the latest version</button>
+          {lastBoot && (
+            <p className="note-quiet left">Last open: {lastBoot}</p>
+          )}
         </div>
       </div>
 

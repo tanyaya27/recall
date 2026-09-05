@@ -16,7 +16,7 @@
   <link rel="icon" href="./icon-192.png" type="image/png" />
 
   <title>ReCall</title>
-  <link rel="stylesheet" href="./styles.css?v=20260905f" />
+  <link rel="stylesheet" href="./styles.css?v=20260905g" />
   <script type="importmap">
   {
     "imports": {
@@ -31,8 +31,22 @@
   </script>
 </head>
 <body>
-  <div id="root"><div class="boot">Opening ReCall…</div></div>
-  <script type="module" src="./app.js?v=20260905f"></script>
+  <div id="root"><div class="boot boot-static">Opening ReCall…</div></div>
+  <script>
+    // If the app's code has not replaced this placeholder in 6s, the script itself never
+    // ran (CDN import blocked, a cached broken build, or an exception before render). Say
+    // exactly that — it is a different problem from a slow sign-in, which the app reports
+    // itself — and offer a fresh load with a new query so nothing cached is reused.
+    setTimeout(function () {
+      var el = document.querySelector('#root .boot-static');
+      if (!el) return;
+      el.innerHTML = 'Opening ReCall…<div style="margin:20px auto 0;max-width:20rem;font-size:17px">The app\u2019s code did not start on this open.' +
+        '<br><button style="margin-top:12px;font:inherit;font-size:19px;padding:14px 20px;border:0;border-radius:18px;background:#E4EEEA;color:#2F6B5E;font-weight:600" ' +
+        'onclick="location.replace(location.pathname+\'?v=\'+Date.now())">Try again</button></div>';
+      try { localStorage.setItem('recall-last-boot', JSON.stringify({ startedAt: Date.now(), stages: [{ stage: 'script-never-ran', ms: 6000 }] })); } catch (e) {}
+    }, 6000);
+  </script>
+  <script type="module" src="./app.js?v=20260905g"></script>
   <script>
     // SERVICE WORKER DELIBERATELY DISABLED (2026-09-05).
     //

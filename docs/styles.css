@@ -215,3 +215,7 @@ button:active, label.file:active, .tile:active, .guess:active { opacity: 0.72; t
 .seg.wrap { flex-wrap: wrap; }
 .seg.wrap button { flex: 1 1 30%; }
 .sub.accent { color: var(--accent); }
+
+/* ---- slow boot: name the step, offer a fresh start ------------------------------------ */
+.boot-slow { margin: 1.25rem auto 0; max-width: 20rem; font-size: 1.0625rem; }
+.boot-slow .btn-secondary { margin-top: 0.75rem; }

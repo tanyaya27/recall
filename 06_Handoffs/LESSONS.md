@@ -78,6 +78,19 @@ Keep entries short and imperative. The test of a good entry: would it have saved
 - **The Design tool sees only the prompt.** "No tab bar with five icons" became "no navigation at
   all". Say what *is* there, not only what isn't.
 
+## "Opening ReCall…" hangs
+
+- **Seen 2026-09-05** after Settings → *Get the latest version* (a `location.reload()`),
+  several times; killing the page and reopening always worked. **Cause not verified.**
+  Instrumentation added rather than a guess: the boot now names its stage on screen after
+  4s (*Still signing in*), `index.html` says if the script never ran at all after 6s, and
+  Settings → Version shows *Last open: script 0.0s → auth 0.1s → signed-in 1.2s → ready*.
+  **Read that line on the phone after the next hang before changing anything.** Two
+  mitigations shipped alongside, each aimed at one candidate cause: sign-in falls back to
+  in-memory persistence after 6s (if IndexedDB is what hangs), and "latest version" is now
+  a fresh navigation with a new query rather than `reload()`. If the hang survives both,
+  the stage line says where.
+
 ## The AI call fails — check these first, in this order
 
 Four hours went into this on 2026-09-05. Two causes, neither in our code.
