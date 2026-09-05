@@ -39,6 +39,25 @@ export class AIEngine {
 
   get ready() { return !!this.cfg.apiKey; }
 
+  // Does this key actually work? One cheap round-trip, and the REAL error back if not.
+  // Without this, a bad key, a dead network and an empty quota all look identical from
+  // the phone — the app simply appears not to try.
+  async testKey() {
+    if (!this.cfg.apiKey) return { ok: false, message: 'No key entered yet.' };
+    try {
+      await this.provider.textJSON(this.cfg, 'Reply with ONLY this JSON: {"ok":true}', { sensitivity: 'none' });
+      return { ok: true, message: `Working — ${this.provider.label}${this.cfg.model ? ` (${this.cfg.model})` : ''}.` };
+    } catch (err) {
+      const raw = String(err && err.message ? err.message : err);
+      let hint = raw;
+      if (/401|invalid.*api.*key|authentication/i.test(raw)) hint = 'That key was rejected. Check you copied all of it.';
+      else if (/429|rate.?limit/i.test(raw)) hint = 'Too many requests just now — wait a moment and try again.';
+      else if (/credit|quota|billing|insufficient/i.test(raw)) hint = 'The account is out of credit. Top it up in the Anthropic console.';
+      else if (/failed to fetch|networkerror|load failed/i.test(raw)) hint = 'Could not reach the internet.';
+      return { ok: false, message: hint, raw };
+    }
+  }
+
   // sensitivity flag: reserved for Phase 2 on-device routing (MVP arch requirement #3).
   // v0 always routes to the cloud provider, but every call site already passes it.
   //

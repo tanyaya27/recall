@@ -20,7 +20,7 @@ export default function CaptureFlow({
   const [photo, setPhoto] = useState(null);
   const [thumb, setThumb] = useState(null);
   const [fields, setFields] = useState({ name: hintName, location: '', description: '' });
-  const [aiFailed, setAiFailed] = useState(false);
+  const [aiFailed, setAiFailed] = useState(''); // '' = fine, otherwise a plain-words reason
   const [claim, setClaim] = useState(null);
   const [retakes, setRetakes] = useState(0);
   const [edited, setEdited] = useState(false);
@@ -77,10 +77,20 @@ export default function CaptureFlow({
         location: tag.placeCertain && tag.placeGuesses[0] ? tag.placeGuesses[0] : '',
         description: tag.description || '',
       });
-      setAiFailed(false);
+      setAiFailed('');
     } catch (err) {
       console.error(err);
-      setAiFailed(true);
+      // Say WHY. A silent failure here reads as "the app didn't even try", which is
+      // exactly how it looked in testing.
+      const raw = String(err && err.message ? err.message : err);
+      setAiFailed(
+        !engine.ready ? 'No AI key on this device yet — Settings → paste your key.'
+          : /401|invalid.*api.*key|authentication/i.test(raw) ? 'The AI key was rejected. Settings → check the key.'
+          : /429|rate.?limit/i.test(raw) ? 'The AI is busy. Name it yourself, or try again shortly.'
+          : /credit|quota|billing|insufficient/i.test(raw) ? 'The AI account is out of credit.'
+          : /failed to fetch|networkerror|load failed/i.test(raw) ? "No internet just now — the photo is safe, name it yourself."
+          : "Couldn't reach the AI. Name it yourself and it will save fine."
+      );
       setSeen({ restingOn: '', placeGuesses: [], placeCertain: false, alternatives: [] });
       setFields({ name: resnapOf ? resnapOf.name : (hintName || ''), location: '', description: '' });
     }
@@ -192,6 +202,7 @@ export default function CaptureFlow({
       {(stage === 'confirm' || stage === 'saving') && !routine && (
         <div className="card">
           <img className="photo-full" src={photo} alt={fields.name} />
+          {aiFailed && <div className="stale" style={{ marginTop: 12 }}>{aiFailed}</div>}
 
           {/* A wide shot can hold several plausible subjects, and no photo says which one
               she cared about. When the model reports more than one, ask — in words, never

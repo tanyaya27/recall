@@ -17,14 +17,33 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
   const [evening, setEvening] = useState(getEveningHour());
   const [newName, setNewName] = useState('');
   const [newWindow, setNewWindow] = useState('evening');
+  const [stored, setStored] = useState(getAIConfig()); // what is actually persisted, not the draft
+  const [test, setTest] = useState(null);
+  const [testing, setTesting] = useState(false);
   const providers = providerList();
   const current = providers.find((p) => p.id === cfg.provider);
 
+  const mask = (k) => (k.length <= 10 ? '••••' : `${k.slice(0, 6)}…${k.slice(-4)}`);
+
   function save() {
     saveAIConfig(cfg);
+    setStored(getAIConfig()); // re-read, so the line below reflects storage, not hope
     setSaved(true);
+    setTest(null);
     setTimeout(() => setSaved(false), 1500);
     onConfigSaved();
+  }
+
+  async function runTest() {
+    setTesting(true);
+    setTest(null);
+    try {
+      const { AIEngine } = await import('../ai/engine.js');
+      setTest(await new AIEngine(getAIConfig()).testKey());
+    } catch (err) {
+      setTest({ ok: false, message: String(err && err.message ? err.message : err) });
+    }
+    setTesting(false);
   }
 
   function saveEvening(v) {
@@ -48,7 +67,13 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
 
   return (
     <div className="settings">
-      <h2>Settings</h2>
+      {/* Settings is an admin screen, not Margaret's daily path, so it follows ordinary
+          app convention: Back at the top, always visible, no scrolling to leave. Her own
+          screens keep the big bottom Back, which is where a thumb rests. */}
+      <div className="topbar">
+        <button className="topback" onClick={onBack}>‹ Back</button>
+        <h2 style={{ margin: 0 }}>Settings</h2>
+      </div>
 
       <div className="card">
         <h3>What the app asks for</h3>
@@ -97,6 +122,24 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
         <div style={{ marginTop: 14 }}>
           <button className="btn-primary" onClick={save}>{saved ? '✓ Saved' : 'Save AI settings'}</button>
         </div>
+
+        {/* A saved key and a WORKING key are different things, and the difference used to
+            be invisible: a rejected key, a dead network and an empty account all looked
+            identical — the app just seemed not to try. So: say what is stored, and offer
+            one real round-trip that reports the actual reason when it fails. */}
+        <div className="key-status">
+          {stored.apiKey
+            ? <>Stored on this device: <b>{mask(stored.apiKey)}</b> · {stored.provider}</>
+            : <>No key stored on this device yet.</>}
+        </div>
+        <button className="btn-secondary" disabled={!stored.apiKey || testing} onClick={runTest}>
+          {testing ? 'Checking…' : 'Check the key works'}
+        </button>
+        {test && (
+          <div className={test.ok ? 'key-ok' : 'key-bad'}>
+            {test.ok ? '✓ ' : '✕ '}{test.message}
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -143,8 +186,6 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
           get the latest version
         </button>
       </p>
-
-      <button className="btn-back" onClick={onBack}>Back</button>
     </div>
   );
 }
