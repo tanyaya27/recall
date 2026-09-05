@@ -164,7 +164,20 @@ export default function CaptureFlow({
 
   return (
     <div>
-      <h2>{title}</h2>
+      <div className="topbar">
+        <button className="topback" onClick={onCancel}>‹ Back</button>
+        <h2 style={{ margin: 0 }}>{title}</h2>
+      </div>
+
+      {/* Say it before the photo is taken, not after. Nothing will be recognised without
+          a key, and finding that out only once you've framed the shot is infuriating. */}
+      {stage === 'pick' && !engine.ready && (
+        <div className="stale">
+          No AI key on this device yet, so nothing will be recognised — you can still
+          photograph and name it yourself. Settings → paste your key → “Check the key works”.
+        </div>
+      )}
+
       {routine && stage === 'pick' && <p className="sub instruction">{routine.instruction}</p>}
       {!routine && stage === 'pick' && <p className="sub">Point the camera so the thing and its spot are both easy to see.</p>}
 
@@ -252,7 +265,6 @@ export default function CaptureFlow({
         </div>
       )}
 
-      <button className="btn-back" onClick={onCancel}>Back</button>
     </div>
   );
 }

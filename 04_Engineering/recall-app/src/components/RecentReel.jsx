@@ -5,6 +5,7 @@ import { logEvent } from '../lib/db.js';
 export default function RecentReel({ items, onOpenItem, onBack }) {
   return (
     <div>
+      <div className="topbar"><button className="topback" onClick={onBack}>‹ Back</button></div>
       <h2>Recent photos</h2>
       {items.length === 0 && <p className="sub">Nothing saved yet.</p>}
       <div className="reel">
@@ -15,7 +16,6 @@ export default function RecentReel({ items, onOpenItem, onBack }) {
           </button>
         ))}
       </div>
-      <button className="btn-back" onClick={onBack}>Back</button>
     </div>
   );
 }

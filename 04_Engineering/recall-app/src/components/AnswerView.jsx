@@ -14,11 +14,11 @@ export default function AnswerView({ item, items = [], alternates = [], message 
   if (!item) {
     return (
       <div>
+        <div className="topbar"><button className="topback" onClick={onBack}>‹ Back</button></div>
         <div className="card">
           <p style={{ fontSize: 22, margin: '4px 0 14px' }}>{message || "I don't have a photo of that yet."}</p>
           {onAdd && <button className="btn-primary" onClick={onAdd}>📷 Take a photo of it now</button>}
         </div>
-        <button className="btn-back" onClick={onBack}>Back</button>
       </div>
     );
   }
@@ -40,6 +40,9 @@ export default function AnswerView({ item, items = [], alternates = [], message 
 
   return (
     <div>
+      <div className="topbar">
+        <button className="topback" onClick={onBack}>‹ Back</button>
+      </div>
       {message && <p className="sub" style={{ fontSize: 20 }}>{message}</p>}
       <div className="card">
         <img className="photo-full" src={item.photo} alt={item.name} />
@@ -105,7 +108,6 @@ export default function AnswerView({ item, items = [], alternates = [], message 
       >
         Remove {item.name.toLowerCase()}
       </button>
-      <button className="btn-back" onClick={onBack}>Back</button>
     </div>
   );
 }
