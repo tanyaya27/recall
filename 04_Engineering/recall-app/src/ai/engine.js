@@ -39,6 +39,25 @@ export class AIEngine {
 
   get ready() { return !!this.cfg.apiKey; }
 
+  // Can this device reach the AI service AT ALL?
+  //
+  // Sends a knowingly-invalid key. If the service answers — any HTTP status, 401 included
+  // — the network path works and any failure after this is about the key or the account.
+  // If nothing comes back, the request never left the device, and the cause is local:
+  // a content blocker, a VPN or Private Relay, Lockdown Mode, or a service worker.
+  // Distinguishing those two cases is the whole ballgame, and it can only be done here,
+  // on the device that is actually failing.
+  async probeReach() {
+    try {
+      await this.provider.textJSON({ ...this.cfg, apiKey: 'sk-ant-probe-not-a-real-key' }, 'hi', { sensitivity: 'none' });
+      return { reached: true, raw: 'unexpected success' };
+    } catch (err) {
+      const raw = String(err && err.message ? err.message : err);
+      // An HTTP status in the error means a server answered us.
+      return { reached: /\b(400|401|403|404|413|429|5\d\d)\b/.test(raw), raw };
+    }
+  }
+
   // Does this key actually work? One cheap round-trip, and the REAL error back if not.
   // Without this, a bad key, a dead network and an empty quota all look identical from
   // the phone — the app simply appears not to try.

@@ -42,12 +42,27 @@ export default function Settings({ routines, removed = [], onBack, onConfigSaved
     onConfigSaved();
   }
 
+  // Two questions, in order, because the answers need different fixes:
+  //   1. can this device reach the service at all?   (network / device / blocker)
+  //   2. does this key work?                          (key / account / credit)
   async function runTest() {
     setTesting(true);
     setTest(null);
     try {
       const { AIEngine } = await import('../ai/engine.js');
-      setTest(await new AIEngine(getAIConfig()).testKey());
+      const eng = new AIEngine(getAIConfig());
+      const reach = await eng.probeReach();
+      if (!reach.reached) {
+        setTest({
+          ok: false,
+          message: 'This device could not reach the AI service at all — the request never left the phone. That is not the key. Likely a content blocker, a VPN or iCloud Private Relay, Lockdown Mode, or the installed app’s offline worker. Try the same page in ordinary Safari to compare.',
+          raw: reach.raw,
+        });
+        setTesting(false);
+        return;
+      }
+      const t = await eng.testKey();
+      setTest({ ...t, message: `Reached the service. ${t.message}` });
     } catch (err) {
       setTest({ ok: false, message: String(err && err.message ? err.message : err) });
     }
