@@ -97,8 +97,8 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile, onRem
       )}
 
       <Footer>
-        <label className="btn-primary file">
-          <CameraIcon /> Found it — new photo
+        <label className="btn-primary file" aria-label="Found it — new photo">
+          <CameraIcon /><span className="lbl">Found it — new photo</span>
           <input type="file" accept="image/*" capture="environment"
             onChange={(e) => {
               const f = e.target.files && e.target.files[0];

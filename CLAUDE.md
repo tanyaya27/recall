@@ -87,6 +87,10 @@ Full background lives in the numbered folders — see `README.md` for the index.
   are deleted (git has them). `lib/prefs.js` is new. `docs/styles.css` is in rem.
 - **Engine changes this session (all in DECISIONS.md):** `household`, `order`/`boardKey`,
   snap cap 10/30, `naming` flag, `absorbInto`, event schema v3. `engine.js` untouched.
+- **Footer (late 09-05, Ravi):** side-by-side buttons that become floating translucent
+  icons when a label cannot fit — measured on the device by `Footer.jsx`, never stacked.
+  Built, rig-verified at 375/390/430 px × 3 sizes, cache stamp `20260905j`; **not yet
+  deployed** — see the end of `sessions/2026-09-05-board-and-rebuild.md`.
 - **v0.1 is still what is live** at https://tanyaya27.github.io/recall/ until the deploy.
 - **Firebase:** project `recall-d9886`, rules cover `recall_items` and `recall_events` only,
   wide open to anonymous auth. **Tanya's console list:** tighten rules by `household`;

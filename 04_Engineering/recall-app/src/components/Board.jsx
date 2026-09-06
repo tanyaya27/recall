@@ -62,12 +62,12 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
         {/* The button IS the camera: a <label> around the file input, so the camera opens
             on this tap — a programmatic click after navigating does not count as a
             gesture on iOS. The photo card opens with the photo already taken. */}
-        <label className={'btn-primary file' + (ready ? '' : ' disabled')}>
-          <CameraIcon /> Take a photo
+        <label className={'btn-primary file' + (ready ? '' : ' disabled')} aria-label="Take a photo">
+          <CameraIcon /><span className="lbl">Take a photo</span>
           <input type="file" accept="image/*" capture="environment" disabled={!ready}
             onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPhoto(f); }} />
         </label>
-        <button className="btn-primary alt" disabled={!ready} onClick={onAsk}><SearchIcon /> Where is my…</button>
+        <button className="btn-primary alt" disabled={!ready} onClick={onAsk} aria-label="Where is my…"><SearchIcon /><span className="lbl">Where is my…</span></button>
       </Footer>
     </div>
   );

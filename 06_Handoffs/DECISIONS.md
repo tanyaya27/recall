@@ -6,6 +6,31 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-05 (late) — Footer: side by side, or floating icons; never stacked
+
+**Decision (Ravi):** the action zone on Home and the thing card is two buttons side by side,
+one line each. When a label cannot fit on one line at the current text size and screen
+width, the whole footer becomes two floating translucent icon buttons in the bottom-right
+corner (camera, search) with the words in the accessible name. Stacked full-width buttons —
+the fix the build board shipped an hour earlier under "controls never wrap" — are out.
+
+**Why:** the stack solved wrapping by taking ~20% of the screen height on a phone. Height is
+the scarce resource; floating icons are the ordinary phone paradigm for exactly this case.
+
+**How it decides:** `Footer.jsx` measures the label text in an offscreen probe at the bar's
+font and compares it with the room a bar button would have. Measured on the device, never
+guessed; the result is left on the element (`data-measure`) so a wrong shape can be read on
+a phone. Verified in a browser rig at 375 / 390 / 430 px × Normal / Large / Largest: 375
+goes to icons at every size; 390 is a bar at Normal, icons above; 430 is a bar at Normal and
+Large.
+
+**Objection recorded (Devin):** icon-only controls lose the word, and Margaret's
+population reads words better than glyphs. Answer: the words are the default; icons are the
+fallback only where the alternative was a wrapped or stacked bar. Tanya can reverse.
+
+**Would change our mind:** if the phone test shows Margaret hesitating at the icons. Then
+shorten the labels through the end-user board rather than bring the stack back.
+
 ## 2026-09-05 — The board model: one constant home, two verbs, depth one
 
 **First decision made through the two boards.** Full exchange, objections and personas:

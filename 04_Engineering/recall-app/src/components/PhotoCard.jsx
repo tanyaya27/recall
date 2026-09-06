@@ -162,16 +162,17 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
 
         {/* What it is. Arrives from the AI; editable; never demanded. */}
         {resnapOf ? (
-          <div className="head">Your {resnapOf.name.toLowerCase()} — new photo</div>
+          <><div className="eyebrow">New photo of</div><div className="head">{cap(resnapOf.name)}</div></>
         ) : tag === undefined ? (
           <div className="skeleton" />
         ) : match ? (
-          <div className="head">
-            Your {match.name.toLowerCase()} — new photo
-            <button type="button" className="link-btn inline" onClick={() => setForceNew(true)}>
-              not your {match.name.toLowerCase()}?
+          <>
+            <div className="eyebrow">New photo of</div>
+            <div className="head">{cap(match.name)}</div>
+            <button type="button" className="link-btn" onClick={() => setForceNew(true)}>
+              Not your {match.name.toLowerCase()}?
             </button>
-          </div>
+          </>
         ) : (
           <EditableText value={name} emptyLabel="Name it" big onSave={(v) => { setNameOverride(v); if (savedId) nameItem(savedId, { name: v }); }} />
         )}

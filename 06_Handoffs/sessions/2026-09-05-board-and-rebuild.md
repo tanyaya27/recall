@@ -106,3 +106,29 @@ line and nothing else claims a cause.
 
 **Two more sandbox traps** (in LESSONS.md): `node_modules` from the sandbox is Linux-only;
 relative `cd ../..` in instructions.
+
+## Later still — the footer, from the older session
+
+Ravi's request arrived in the wrong Cowork session (the 09-02 one); it consulted this
+session's transcript and continued there. Two things:
+
+1. **Recently removed rows wrapped one word per line** with the buttons painted over the
+   text (live CSS had `.row` unwrapped, `.nm` shrinking to nothing). The fix was already in
+   the uncommitted "controls never wrap" batch on disk; it is now in this build.
+2. **The stacked footer was rejected** — "20% of the vertical space". Replaced by
+   side-by-side buttons that turn into floating translucent icons when a label cannot fit
+   (`Footer.jsx` measures; DECISIONS.md has the entry and Devin's objection). Verified in a
+   browser rig at 375/390/430 px × three text sizes; two measurement traps found and fixed
+   on the way (LESSONS.md → Design).
+
+`docs/index.html` cache stamp is now `20260905j`. **Not deployed.** From the Mac:
+
+```
+cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
+find .git -name "*.lock" -delete
+git add -A && git commit -m "Footer: side by side or floating icons, never stacked; removed-row layout; measurement fixes" && git push origin main
+```
+
+Then on the phone, Settings → *Get the latest version*. Check: Home footer is one row on a
+430-px phone at Normal, two round icons bottom-right at Largest; Settings → Recently removed
+shows the name, the place line, and two buttons on one line beneath.

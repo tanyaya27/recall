@@ -136,6 +136,10 @@ Devin, measuring tonight's build on a 390pt phone:
 | L5 | Footer reserves 96pt on Home and the thing card | Correct — that is the thumb zone; but the gradient fade is 18pt shorter so one more tile row shows |
 | L6 | Photo card: name row, then *Where is it?*, then chips, then *Somewhere else*, then *Not sure* | *Not sure* moves into the chip column as the last, quiet row — one column, no orphan link |
 
+| L7 | **Control labels wrapped** — the footer's two side-by-side buttons broke "Where is my…" onto two lines at every text size; the day line wrapped at Largest; *Not there? Earlier photos* wrapped at Large. Ravi caught it on the phone: "exactly what I asked you not to do" | **Rule: a control's label never wraps.** `white-space: nowrap` on every button, plus a font cap tied to screen width — `min(rem, vw)` — so at Largest on a small phone a label shrinks a little rather than breaking. Footer buttons stacked full-width. Labels that still could not fit were shortened (*Yes, the same thing*). Content — a place name, a sentence — may wrap; a control may not. Verified at Normal and Largest on a 375-px frame for all six screens |
+| L8 | Names from the AI arrive lowercase ("adjustable dumbbells") | Displayed capitalised everywhere |
+| L9 | **Open:** a two-word *name* on a tile still takes two lines at Largest | Names are content, so two lines are allowed for now. If Ravi wants none, the fix is one column of bigger tiles at Largest — not a smaller font |
+
 Horizontal: two columns stays (V6). Page gutter 16pt stays — at 12 the tiles touch the
 edge and she can't tell where the screen ends.
 

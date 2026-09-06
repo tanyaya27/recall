@@ -49,6 +49,21 @@ Keep entries short and imperative. The test of a good entry: would it have saved
 
 ## Design
 
+- **Control labels never wrap — and measure it, don't eyeball it.** Two buttons side by side
+  on a 375-px phone give each ~165px; "Where is my…" plus an icon needs ~180 at Normal.
+  It wrapped at every size and shipped. Test every screen at the *Largest* text size on a
+  375-px frame before deploying (the static preview does this). Rule in `styles.css`:
+  `white-space: nowrap` + `font-size: min(Xrem, Yvw)` on every control. When that is not
+  enough, the footer switches to floating icons (measured, `Footer.jsx`); elsewhere,
+  shorten the label. **Never stack** — the stacked footer cost 20% of the screen and was
+  pulled the same evening. Content may wrap; controls may not.
+- **Measure layout with a ResizeObserver, but never mutate what you observe inside the
+  callback.** `Footer.jsx` rewrote its probe span on every measurement; the observer
+  re-fired, the browser's loop guard dropped the notifications, and the footer stuck in the
+  shape of its *first* measurement — which ran at zero width. Two rules: only touch a node
+  when its content actually changed, and treat a zero-width layout as "no evidence yet",
+  retrying next frame. Also prefer `window.innerWidth` to `documentElement.clientWidth`
+  for viewport width; the latter read 0 in an embedded render after layout.
 - **A requirement phrased as a principle gets an audit, not a feature.** "Look and feel of
   the most common apps" was answered with one header bar and Ravi caught it. The right
   response is a table: every convention in a named reference set (Phone, Messages, Photos,
@@ -167,6 +182,13 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   need the phone. Recipe in `sessions/2026-09-05-board-and-rebuild.md`.
 - **The sandbox disk was full (11MB free) on 2026-09-05** — no Playwright, no Chromium.
   Do not spend time on it; use the SSR smoke test and deploy from the Mac.
+- **Layout can be verified without a phone: a private artifact rig.** Bundle the real
+  component with esbuild (React external, import map to jsdelivr `+esm`), inline
+  `styles.css`, and put one `srcdoc` iframe per width × text size on a page, each printing
+  its own measurements. Publish as an artifact and screenshot it. Caveat: with the browser
+  pane hidden, timers in the frames are throttled and readouts freeze — a `window.scrollTo`
+  via `javascript_tool` wakes them. `node_modules` in the repo is Mac-only; install a
+  scratch esbuild under `/tmp` with `npm_config_cache=/tmp/…`.
 
 ## Working style
 
