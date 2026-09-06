@@ -76,6 +76,31 @@ Event schema → v3.
 
 ---
 
+## 2026-09-05 — Where is my… matches as she types or speaks; iOS uses the keyboard's mic
+
+**Decision (Ravi's proposal, adopted as is):** from the second letter, things whose name,
+place or notes start with what she has typed or said appear as tiles under the field —
+local, instant, no AI. Spoken filler ("where are my…") is ignored. Nothing opens by itself;
+she taps. The AI *Find it* remains for what the tiles cannot answer, offered when the list
+is empty or as *Not one of these? Find it*.
+
+**Why:** "search when she stops talking" cannot be timed for a slow speaker without either
+cutting her off or making her wait; live narrowing makes the question moot (Linda, James).
+It is also what every search field on the phone does before any server is asked (Maya,
+platform audit N5 — and it settles most of that split without a second field on Home).
+
+**Mic:** the Web Speech mic on iPhone home-screen apps is known to start and never call
+back ("sometimes it hangs") and iOS re-prompts for permission on every launch — nothing
+in our code requests it on load, and nothing can persist it. On iOS our mic button no
+longer renders; the field says *Tap the microphone key on the keyboard to say it* (system
+dictation: no prompt, no hang). On Android the button stays, with a watchdog: no start
+within 3 s or no words for 8 s stops it. Devin and Priyanka for; nobody against; James
+loses nothing because the keyboard mic is what he'd have used anyway (D9).
+
+**Would change our mind:** if a native wrapper ever ships, the app's own mic returns on iOS.
+
+---
+
 ## 2026-09-05 — Platform conventions audit: eleven adopted, three splits decided, six rejected
 
 **Decision (Ravi, after "what else have you not covered that every app should have?"):**

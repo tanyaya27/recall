@@ -261,3 +261,8 @@ button:active, label.file:active, .tile:active, .guess:active { opacity: 0.72; t
 /* ---- slow boot: name the step, offer a fresh start ------------------------------------ */
 .boot-slow { margin: 1.25rem auto 0; max-width: 20rem; font-size: 1.0625rem; }
 .boot-slow .btn-secondary { margin-top: 0.75rem; }
+
+/* ---- where is my… live matches (2026-09-05, Ravi) ------------------------------------- */
+.ask .hint { color: var(--ink-soft); font-size: min(1rem, 4.4vw); margin-top: 0.5rem; }
+.ask .board.live { margin-top: 0.75rem; }
+.tile .tile-sub.place { color: var(--ink-soft); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
