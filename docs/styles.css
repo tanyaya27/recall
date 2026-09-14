@@ -331,6 +331,29 @@ input.edit-inline { font: inherit; width: 100%; border: 1.5px solid var(--accent
 :root[data-density="compact"] .card { padding: 0.75rem; }
 :root[data-density="compact"] .group-title { margin-top: 0.75rem; }
 
+/* ---- in-app camera ---------------------------------------------------------------------- */
+.camera { position: fixed; inset: 0; z-index: 30; background: #000; color: #fff; display: flex; flex-direction: column; }
+.camera-top { display: flex; align-items: center; justify-content: space-between; padding: calc(0.5rem + env(safe-area-inset-top)) 1rem 0.5rem; min-height: 3.5rem; }
+.camera-cancel { background: none; color: #fff; font-size: 1.125rem; font-weight: 600; padding: 0.5rem 0.25rem; min-height: 2.75rem; }
+.camera-title { font-size: 1.125rem; font-weight: 600; }
+.camera-count { font-size: 1rem; color: #ccc; min-width: 3.5rem; text-align: right; }
+.camera-view { flex: 1; position: relative; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.camera-view video { width: 100%; height: 100%; object-fit: cover; }
+.camera-view video.hidden { display: none; }
+.camera-flash { position: absolute; inset: 0; background: #fff; opacity: 0.7; }
+.camera-msg { padding: 1.5rem; text-align: center; font-size: 1.125rem; color: #ddd; }
+.camera-msg .btn-primary { margin-top: 1rem; }
+.camera-roll { display: flex; gap: 0.875rem; padding: 0.875rem 1rem 0.375rem; min-height: 6.5rem; overflow-x: auto; scrollbar-width: none; }
+.camera-roll::-webkit-scrollbar { display: none; }
+.camera-roll .roll-shot img { border-color: #444; }
+.camera-roll .roll-x { background: #fff; color: #000; }
+.camera-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0.5rem 1.25rem calc(1rem + env(safe-area-inset-bottom)); }
+.shutter { width: 4.75rem; height: 4.75rem; border-radius: 50%; background: #fff; padding: 0.3rem; min-height: 0; justify-self: center; box-shadow: 0 0 0 3px #000 inset; }
+.shutter span { display: block; width: 100%; height: 100%; border-radius: 50%; background: #fff; border: 3px solid #000; box-sizing: border-box; }
+.shutter:disabled { opacity: 0.35; }
+.camera-done { justify-self: end; background: var(--accent); color: #fff; font-size: 1.125rem; font-weight: 700; padding: 0.75rem 1.125rem; min-height: 3rem; border-radius: 1.5rem; white-space: nowrap; }
+.camera-done:disabled { opacity: 0.35; }
+
 /* ---- toast (audit S3) ------------------------------------------------------------------ */
 .toast { position: fixed; left: 1rem; right: 1rem; bottom: calc(var(--footer-h) + 0.5rem + env(safe-area-inset-bottom)); z-index: 15;
   max-width: 33rem; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;

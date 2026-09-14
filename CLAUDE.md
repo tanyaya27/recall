@@ -62,8 +62,8 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914h` is BUILT, NOT YET
-> DEPLOYED** (d is live; e/f add the Version-card update banners, a tighter footer, and the
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914i` is BUILT, NOT YET
+> DEPLOYED** (i: in-app camera — `Camera.jsx` — replaces iOS's capture sheet everywhere)** (d is live; e/f add the Version-card update banners, a tighter footer, and the
 > hamburger menu — Ravi overruled the board: Look and feel, Locations, Deleted items,
 > Research log live there; Settings is the developer's Version + AI key, slated for removal).** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
 > phone feedback (`06_Handoffs/design/BOARD_2026-09-14_*.md`): footer verbs *Log item* ·
@@ -95,7 +95,7 @@ Full background lives in the numbered folders — see `README.md` for the index.
   history-backed routing (edge swipe works), pressed states, in-app confirm sheet, toasts with
   Undo, offline line (strict), icons, grouped Settings, Dusk + *Match my phone*, 4:3 cropped
   photos above the fold. Built, compiles, SSR-tested; **needs the phone.**
-- **Components:** `Board` (press-and-hold) `PhotoCard` (the roll, identity tiers) `ThingCard` (strip + Earlier mode)
+- **Components:** `Camera` (in-app, multi-shot) `Board` (press-and-hold) `PhotoCard` (the roll, identity tiers) `ThingCard` (strip + Earlier mode)
   `ItemSheet` `Ask` `MenuScreens` (drawer, Look, Locations, Deleted, Research) `SwipeRow` `Settings` (Version + AI key)
   `Header` `Footer` `Confirm` `Toast` `Icons` `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
   are deleted (git has them). `lib/prefs.js` is new. `docs/styles.css` is in rem.

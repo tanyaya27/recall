@@ -22,7 +22,7 @@ import { CameraIcon, TrashIcon, PencilIcon } from './Icons.jsx';
 // with Undo. If it is the last photo, the sheet offers removing the item instead.
 //
 // Fix (name, place, move to the top) is behind one quiet control. It is Robert's.
-export default function ThingCard({ item, items = [], onBack, onFoundFile, onAddFile, onRemoved, onToast, openFix = false }) {
+export default function ThingCard({ item, items = [], onBack, onFound, onAdd, onRemoved, onToast, openFix = false }) {
   const [snaps, setSnaps] = useState(null);      // every live snap, newest first; null = not loaded
   const [mode, setMode] = useState('now');
   const [index, setIndex] = useState(0);         // centred page in the strip
@@ -164,11 +164,7 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile, onAdd
             the tile's press-and-hold sheet, and in the last-photo path of Remove this photo. */}
         <div className="quiet-row">
           {mode === 'now' && (item.photoCount || 1) < 4 && (
-            <label className="link-btn file" aria-label="Add a photo to this log">
-              <CameraIcon /> Add photo
-              <input type="file" accept="image/*" capture="environment"
-                onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) { onAddFile(f); setSnaps(null); } }} />
-            </label>
+            <button type="button" className="link-btn" onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /> Add photo</button>
           )}
           <button type="button" className="link-btn" onClick={() => askRemove(page)}><TrashIcon /> Remove photo</button>
           {!fixing && <button type="button" className="link-btn" onClick={() => setFixing(true)}><PencilIcon /> Fix</button>}
@@ -227,17 +223,9 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile, onAdd
       )}
 
       <Footer>
-        <label className="btn-primary file" aria-label="Found it — new photo">
+        <button className="btn-primary" aria-label="Found it — new photo" onClick={() => { logEvent('lookup_outcome', { itemId: item.id, outcome: 'found' }); onFound(); }}>
           <CameraIcon /><span className="lbl">Found it — new photo</span>
-          <input type="file" accept="image/*" capture="environment"
-            onChange={(e) => {
-              const f = e.target.files && e.target.files[0];
-              e.target.value = '';
-              if (!f) return;
-              logEvent('lookup_outcome', { itemId: item.id, outcome: 'found' });
-              onFoundFile(f);
-            }} />
-        </label>
+        </button>
       </Footer>
     </div>
   );

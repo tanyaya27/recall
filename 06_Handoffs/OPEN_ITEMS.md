@@ -5,13 +5,17 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914h`** from the Mac (h: day line hugs the hamburger; Back from a menu
-  screen returns to the drawer) (g: Version card shows facts only — build time,
+- [ ] **Deploy `20260914i`** from the Mac (i: the in-app camera — Cancel, several shots with
+  ✕ thumbnails, Done; h: day line hugs the hamburger; Back from a menu screen returns to the
+  drawer) (g: Version card shows facts only — build time,
   installed-on-this-phone time, when the server was last asked; no "latest" claim) (adds: hamburger menu — Look and feel with Compact,
   Locations, Deleted items with swipe + Empty the list, Research log; Settings = Version first
   + AI key; the Version-card update banners; tighter footer bottom) — everything from today (labels, thumbnails, and
   the second-round build). Commands at the end of this file.
-- [ ] Phone-check `20260914h`: hamburger left of the day line → drawer → each row opens its
+- [ ] Phone-check `20260914i`: *Log item* opens the app's own camera (allow the permission
+  once) → shutter twice → two thumbnails → ✕ one → *Done* → photo card. *Cancel* returns to
+  Home with nothing saved. Thing card → *Add photo* → shoot → *Done* → toast *Added*. If the
+  camera fails to start, *Use the phone's camera* appears. Then: hamburger left of the day line → drawer → each row opens its
   card and Back returns. Look and feel → Compact → Deleted items: swipe a row left → Delete,
   right → Put back; *Empty the list* asks first. Settings → Version is at the TOP; *Get the
   latest version* returns to it without scrolling. Version shows *A newer version is available* before
@@ -47,7 +51,17 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 ## Later
 
 - [ ] Remove the Settings gear once the AI key has a home (helper phone / join code).
-- [ ] In-app camera spike (`getUserMedia`) — only if the phone's camera flow keeps hurting.
+
+## Audit of the last two feedback rounds (2026-09-14, at Ravi's request)
+
+Round 2 (ten items): history visible ✓ · several photos per log ✓ · remove a photo ✓ ·
+duplicate after rename ✓ · button size/contrast ✓ (after two regressions) · search ranking ✓
+· editable-field affordance ✓ · day line ✓ (+ date) · locations manager ✓ · appointments —
+decided with Tanya, scheduled after the helper phone (not built, by agreement).
+Round 3 (six + camera): peek ✓ · footer sizes ✓ · **multi-shot in the camera with ✕
+thumbnails — MISSED until build i** (built on the card, not in the camera) · Fix/remove
+split ✓ · press-and-hold sheet ✓ · duplicate recognition ✓ (AI looks) · **camera Cancel —
+MISSED until build i** (deferred without agreement).
 
 ## Needs Tanya
 
@@ -89,5 +103,5 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "Drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
+git add -A && git commit -m "In-app camera (cancel, multi-shot roll); drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
 ```

@@ -5,6 +5,7 @@ import { matchThings } from '../lib/speech.js';
 import EditableText from './EditableText.jsx';
 import Header from './Header.jsx';
 import { CameraIcon, CloseIcon } from './Icons.jsx';
+import { MAX_SHOTS } from './Camera.jsx';
 
 // The photo card — after the camera. Board decision 2026-09-05, screen 2 (D2, D3, D4);
 // revised 2026-09-14 rounds 2 and 3 (Ravi):
@@ -26,9 +27,8 @@ import { CameraIcon, CloseIcon } from './Icons.jsx';
 // The AI names the photo in the background (3–8s). The chips do not wait for it. If she
 // taps a place first, the thing is saved at once with `naming: true` and finished later.
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-export const MAX_SHOTS = 4;
 
-export default function PhotoCard({ file, engine, items = [], places = [], resnapOf = null, onDone, onBack }) {
+export default function PhotoCard({ files = [], engine, items = [], places = [], resnapOf = null, onDone, onBack, onMore, pendingFiles = null, onPendingTaken }) {
   const [shots, setShots] = useState([]);       // [{ photo, thumb }] — first is the cover
   const [current, setCurrent] = useState(0);    // which shot is big
   const [tag, setTag] = useState(undefined);    // undefined = pending · null = failed · object = named
@@ -52,9 +52,10 @@ export default function PhotoCard({ file, engine, items = [], places = [], resna
   useEffect(() => {
     let alive = true;
     (async () => {
-      const first = await compressPhoto(file);
+      const all = await Promise.all(files.slice(0, MAX_SHOTS).map((f) => compressPhoto(f)));
       if (!alive) return;
-      setShots([first]);
+      const first = all[0];
+      setShots(all);
       tagPromise.current = engine.tagPhoto(first.photo, {
         hintName: resnapOf ? resnapOf.name : '',
         knownPlaces: chips,
@@ -128,6 +129,17 @@ export default function PhotoCard({ file, engine, items = [], places = [], resna
   const guesses = (tag && tag.placeGuesses) || [];
   const seen = new Set(guesses.map((g) => g.toLowerCase()));
   const options = [...guesses, ...chips.filter((c) => !seen.has(c.toLowerCase()))].slice(0, 7);
+
+  // More shots came back from the camera after this card opened.
+  useEffect(() => {
+    if (!pendingFiles || !pendingFiles.length) return;
+    (async () => {
+      const more = await Promise.all(pendingFiles.map((f) => compressPhoto(f)));
+      setShots((prev) => { const next = [...prev, ...more].slice(0, MAX_SHOTS); setCurrent(next.length - 1); return next; });
+      logEvent('capture_shot', { added: more.length });
+      onPendingTaken && onPendingTaken();
+    })();
+  }, [pendingFiles]); // eslint-disable-line
 
   // The roll
   async function addShot(f) {
@@ -238,11 +250,9 @@ export default function PhotoCard({ file, engine, items = [], places = [], resna
               </div>
             ))}
             {shots.length < MAX_SHOTS && (
-              <label className="roll-add file" aria-label="Take another photo">
+              <button type="button" className="roll-add" aria-label="Take another photo" onClick={() => onMore(MAX_SHOTS - shots.length)}>
                 <CameraIcon /><span>Another</span>
-                <input type="file" accept="image/*" capture="environment"
-                  onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) addShot(f); }} />
-              </label>
+              </button>
             )}
           </div>
         )}

@@ -6,6 +6,26 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 (round 5) — In-app camera; the 09-14 "keep iOS's camera" call is reversed
+
+**Decision (Ravi, asked twice and deferred once without his agreement — that deferral was
+wrong):** photos are taken in the app's own camera: full-screen rear view, a shutter,
+every shot as a thumbnail along the bottom with a large ✕, *Done (n)* and *Cancel*, up to
+four. iOS's camera sheet had no Cancel and took one photo at a time. Every camera entry
+point uses it: *Log item*, *Another* on the photo card, *Found it — new photo*, *Add
+photo* on the thing card and in the tile sheet. If the camera cannot start (permission
+refused, unsupported), the same screen offers *Use the phone's camera* — the old file
+input — so there is no dead end.
+
+**Costs (Priyanka, still true):** a camera-permission prompt the first time (a home-screen
+web app may ask again after a while); no HDR; orientation and focus are the phone's
+defaults; it is the most iOS-version-sensitive API we use. Watch the first phone test.
+
+**Would change our mind:** photos visibly worse than the phone's own, or the permission
+prompt confusing Margaret — then the fallback becomes the default for her phone only.
+
+---
+
 ## 2026-09-14 (round 4, later) — Hamburger menu; Settings becomes the developer's screen
 
 **Decision (Ravi, overruling the 09-05 board's rejection of a hamburger):** a hamburger at

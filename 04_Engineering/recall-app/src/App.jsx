@@ -10,6 +10,7 @@ import Ask from './components/Ask.jsx';
 import Settings, { takeReturnRoute, noteInstalled } from './components/Settings.jsx';
 import Toast from './components/Toast.jsx';
 import ItemSheet from './components/ItemSheet.jsx';
+import Camera from './components/Camera.jsx';
 import { MenuDrawer, LookScreen, LocationsScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
 import Confirm from './components/Confirm.jsx';
 
@@ -20,6 +21,7 @@ import Confirm from './components/Confirm.jsx';
 // so the edge swipe and the Android back button do what they do in every other app. A
 // reload on a deep URL lands on Home (Rule 1) — the route objects live in memory only.
 const RETURN_TO = takeReturnRoute();
+const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const HOME = { view: 'home' };
 
 // Boot record: which stage the app reached and how long it took, kept in localStorage so
@@ -45,6 +47,13 @@ export default function App() {
   const [offline, setOffline] = useState(typeof navigator !== 'undefined' && navigator.onLine === false);
   const [toast, setToast] = useState(null);
   const [sheet, setSheet] = useState(null);      // item under press-and-hold
+  // The in-app camera and what its shots are for:
+  //   { for: 'log' }                       → a new photo card
+  //   { for: 'resnap', item }              → a photo card for a known thing (Found it)
+  //   { for: 'add', itemId }               → straight into that thing's current log
+  //   { for: 'more', max }                 → more shots for the photo card that is open
+  const [camera, setCamera] = useState(null);
+  const [moreFiles, setMoreFiles] = useState(null); // shots handed to the open photo card
   const [removing, setRemoving] = useState(null); // item awaiting the remove confirm (from the sheet)
   const [, tick] = useState(0);
   const [stage, setStage] = useState('script');
@@ -157,13 +166,27 @@ export default function App() {
 
   // Add one more photo to a thing's CURRENT log (thing card / press-and-hold sheet, round 3).
   // No card, no question: same place, same time, no AI.
-  const addPhotoTo = async (itemId, file) => {
-    const it = itemsRef.current.find((x) => x.id === itemId);
-    if (!it) return;
-    const { photo, thumb } = await compressPhoto(file);
-    const ok = await addSnapToLog(it, { photo, thumb });
-    logEvent('capture', { initiatedBy: 'add_photo', itemId, itemName: it.name || null, extra: true, ok });
-    say(ok ? `Added · photo ${(it.photoCount || 1) + 1}` : 'That log already has four photos');
+  const addPhotosTo = async (itemId, files) => {
+    let added = 0;
+    for (const file of files) {
+      const it = itemsRef.current.find((x) => x.id === itemId);
+      if (!it) break;
+      const { photo, thumb } = await compressPhoto(file);
+      const ok = await addSnapToLog(it, { photo, thumb });
+      if (!ok) break;
+      added += 1;
+      await new Promise((r) => setTimeout(r, 50)); // let the listener deliver the new photoCount
+    }
+    logEvent('capture', { initiatedBy: 'add_photo', itemId, extra: true, added, asked: files.length });
+    say(added ? `Added · ${added} photo${added === 1 ? '' : 's'}` : 'That log already has four photos');
+  };
+  const cameraDone = (files) => {
+    const c = camera; setCamera(null);
+    if (!c || !files.length) return;
+    if (c.for === 'log') go('photo', { files, key: Date.now() });
+    else if (c.for === 'resnap') go('photo', { files, resnapOf: c.item, key: Date.now() });
+    else if (c.for === 'add') addPhotosTo(c.itemId, files);
+    else if (c.for === 'more') setMoreFiles(files);
   };
   const removeItem = async (item) => {
     await softDeleteItem(item);
@@ -177,8 +200,10 @@ export default function App() {
       screen = (
         <PhotoCard
           key={route.key}
-          file={route.file} engine={engine} items={items} places={places}
+          files={route.files} engine={engine} items={items} places={places}
           resnapOf={route.resnapOf ? live(route.resnapOf) : null}
+          onMore={(max) => setCamera({ for: 'more', max })}
+          pendingFiles={moreFiles} onPendingTaken={() => setMoreFiles(null)}
           onDone={(result) => {
             if (result && result.saved) say(result.place ? `Saved · ${result.place}` : 'Saved');
             home();
@@ -192,8 +217,8 @@ export default function App() {
         <ThingCard
           item={live(route.item)} items={items} openFix={!!route.fix}
           onBack={back}
-          onFoundFile={(file) => go('photo', { file, resnapOf: route.item, key: Date.now() })}
-          onAddFile={(file) => addPhotoTo(route.item.id, file)}
+          onFound={() => setCamera({ for: 'resnap', item: route.item, title: `${live(route.item).name ? cap(live(route.item).name) : 'This thing'} — new photo` })}
+          onAdd={() => setCamera({ for: 'add', itemId: route.item.id, max: 4 - (live(route.item).photoCount || 1), title: 'Add photos' })}
           onRemoved={(item) => {
             say(`Removed · ${item.name || 'this'}`, () => { restoreItem(item.id); logEvent('item_restored', { itemId: item.id, via: 'undo' }); });
             home();
@@ -225,7 +250,7 @@ export default function App() {
         <Board
           items={items} ready={engine.ready}
           onOpenThing={(item) => go('thing', { item })}
-          onPhoto={(file) => go('photo', { file, key: Date.now() })}
+          onPhoto={() => setCamera({ for: 'log' })}
           onAsk={() => go('ask')}
           onSettings={() => go('settings')}
           onMenu={() => go('menu')}
@@ -241,9 +266,10 @@ export default function App() {
       {/* The drawer is a history entry of its own (round 4, Ravi): Back from any of its screens
           returns to the drawer, not to Home. Close is one step back. */}
       <MenuDrawer open={route.view === 'menu'} onClose={back} onPick={(id) => go(id)} />
+      {camera && <Camera title={camera.title || 'Log item'} max={camera.max || 4} onDone={cameraDone} onCancel={() => setCamera(null)} />}
       {sheet && (
         <ItemSheet item={live(sheet)}
-          onAddFile={(file) => { setSheet(null); addPhotoTo(sheet.id, file); }}
+          onAdd={() => { const it = live(sheet); setSheet(null); setCamera({ for: 'add', itemId: it.id, max: 4 - (it.photoCount || 1), title: 'Add photos' }); }}
           onChangePlace={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onRename={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onMoveToTop={async () => { setSheet(null); await moveToTop(sheet, items); logEvent('move_to_top', { itemId: sheet.id, via: 'sheet' }); say('Moved to the top'); }}
