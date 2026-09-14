@@ -8,6 +8,17 @@ import Header from './Header.jsx';
 // row. A helper's screen, opened once; actions sit in the flow because a keyboard opens.
 export const RETURN_KEY = 'recall-return-to';
 const PREV_BUILD_KEY = 'recall-prev-build';
+const INSTALLED_KEY = 'recall-installed';
+// When did THIS build first run on this phone? Recorded once per build, at app start.
+export function noteInstalled() {
+  try {
+    const cur = JSON.parse(localStorage.getItem(INSTALLED_KEY) || 'null');
+    if (!cur || cur.build !== String(__BUILD__)) localStorage.setItem(INSTALLED_KEY, JSON.stringify({ build: String(__BUILD__), at: Date.now() }));
+  } catch { /* fine */ }
+}
+export function installedAt() {
+  try { const cur = JSON.parse(localStorage.getItem(INSTALLED_KEY) || 'null'); return cur && cur.build === String(__BUILD__) ? cur.at : null; } catch { return null; }
+}
 // The stamp this page loaded with (docs/index.html's ?v=). Comparing it with the stamp the
 // server has NOW says whether a newer version exists — without reloading anything.
 export function loadedStamp() {
@@ -22,7 +33,7 @@ export async function checkForUpdate() {
   const html = await res.text();
   const server = (html.match(/app\.js\?v=([^"&]+)/) || [])[1] || '';
   const mine = loadedStamp();
-  return { server, mine, newer: !!server && !!mine && server !== mine };
+  return { server, mine, newer: !!server && !!mine && server !== mine, at: Date.now() };
 }
 export function takeReturnRoute() {
   try {
@@ -121,12 +132,15 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
           {/* Round 4 (Ravi): say OUTRIGHT what the reload did, and whether a newer version exists. */}
           {reloadResult === 'updated' && <div className="banner ok">New version installed — built {buildLabel()}.</div>}
           {reloadResult === 'same' && <div className="banner">No newer version was found. This phone already has the latest, built {buildLabel()}.</div>}
-          {reloadResult === null && <p className="sub">This phone has the build from <b>{buildLabel()}</b>.</p>}
-          {update === null && <p className="note-quiet left">Checking for a newer version…</p>}
-          {update === 'failed' && <p className="note-quiet left">Couldn't check for a newer version (no connection?).</p>}
+          {/* Facts only (Ravi, round 4): what build this is, when it landed on this phone, and
+              when the server was last asked. Never "this is the latest" — one check is not
+              proof, and a cached or failed check would make it a lie. */}
+          <p className="sub">Build: <b>{buildLabel()}</b>{installedAt() && <><br />Installed on this phone: <b>{new Date(installedAt()).toLocaleString()}</b></>}</p>
+          {update === null && <p className="note-quiet left">Asking the server for a newer version…</p>}
+          {update === 'failed' && <p className="note-quiet left">Could not reach the server to check for a newer version.</p>}
           {update && update !== 'failed' && (update.newer
             ? <div className="banner amber">A newer version is available. Tap below to get it.</div>
-            : reloadResult === null && <p className="note-quiet left">This is the latest version.</p>)}
+            : <p className="note-quiet left">Server checked {new Date(update.at).toLocaleTimeString()} — no newer version seen then.</p>)}
           <button className="btn-secondary" onClick={async () => {
             try { sessionStorage.setItem(RETURN_KEY, 'settings'); sessionStorage.setItem(PREV_BUILD_KEY, String(__BUILD__)); } catch { /* fine */ }
             if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.unregister())); }

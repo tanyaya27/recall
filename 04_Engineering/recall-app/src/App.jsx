@@ -7,7 +7,7 @@ import Board from './components/Board.jsx';
 import PhotoCard from './components/PhotoCard.jsx';
 import ThingCard from './components/ThingCard.jsx';
 import Ask from './components/Ask.jsx';
-import Settings, { takeReturnRoute } from './components/Settings.jsx';
+import Settings, { takeReturnRoute, noteInstalled } from './components/Settings.jsx';
 import Toast from './components/Toast.jsx';
 import ItemSheet from './components/ItemSheet.jsx';
 import { MenuDrawer, LookScreen, LocationsScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
@@ -112,6 +112,7 @@ export default function App() {
         onStage('ready');
         clearTimeout(slowTimer);
         setReady(true);
+        noteInstalled();
         logEvent('app_open', { bootMs: Date.now() - T0 });
       })
       .catch((e) => { onStage('error'); setError(String(e)); });

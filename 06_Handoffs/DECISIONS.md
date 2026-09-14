@@ -40,6 +40,12 @@ an amber *A newer version is available* with the button relabelled *Get the newe
 version*. **Why:** "Reloaded just now — if the time didn't change…" made the person do the
 comparison; twice today Ravi could not tell whether a deploy had reached the phone.
 
+**Amended the same day (Ravi):** no *This is the latest version* — one check is not proof
+and a cached or failed check would make it a lie. The card states facts: *Build: <time>*,
+*Installed on this phone: <time>* (recorded the first time a build runs on the phone), and
+*Server checked <time> — no newer version seen then*. The amber *A newer version is
+available* banner stays: that one is positive evidence from the server.
+
 **Footer:** bottom padding is the phone's own safe-area inset plus 0.25 rem (was 0.75 rem).
 The rest of the space under the buttons on an iPhone is the home indicator's 34 pt, which
 stays.
