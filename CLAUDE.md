@@ -62,8 +62,10 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914e` is BUILT, NOT YET
-> DEPLOYED** (d is live; e adds the Version-card update banners and a tighter footer).** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914f` is BUILT, NOT YET
+> DEPLOYED** (d is live; e/f add the Version-card update banners, a tighter footer, and the
+> hamburger menu — Ravi overruled the board: Look and feel, Locations, Deleted items,
+> Research log live there; Settings is the developer's Version + AI key, slated for removal).** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
 > phone feedback (`06_Handoffs/design/BOARD_2026-09-14_*.md`): footer verbs *Log item* ·
 > *Find item*, screen *My items*; 600-px thumbnails (old ones rebuilt on load); the thing
 > card's photo strip with an *Earlier* mode and *Where it has been* rows; several photos
@@ -94,7 +96,8 @@ Full background lives in the numbered folders — see `README.md` for the index.
   Undo, offline line (strict), icons, grouped Settings, Dusk + *Match my phone*, 4:3 cropped
   photos above the fold. Built, compiles, SSR-tested; **needs the phone.**
 - **Components:** `Board` (press-and-hold) `PhotoCard` (the roll, identity tiers) `ThingCard` (strip + Earlier mode)
-  `ItemSheet` `Ask` `Settings` (incl. Places) `Header` `Footer` `Confirm` `Toast` `Icons` `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
+  `ItemSheet` `Ask` `MenuScreens` (drawer, Look, Locations, Deleted, Research) `SwipeRow` `Settings` (Version + AI key)
+  `Header` `Footer` `Confirm` `Toast` `Icons` `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
   are deleted (git has them). `lib/prefs.js` is new. `docs/styles.css` is in rem.
 - **Engine changes (all in DECISIONS.md):** `household`, `order`/`boardKey`, snap cap 10/30,
   `naming` flag, `absorbInto`, event schema v3; 09-14: `aliases[]`, `logId`/`photoCount`,

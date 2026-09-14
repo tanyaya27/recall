@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.js';
-import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, knownLocations } from '../lib/db.js';
-import { timeAgo } from '../lib/format.js';
-import { getPrefs, savePrefs, THEMES, SIZES } from '../lib/prefs.js';
 import Header from './Header.jsx';
-import Confirm from './Confirm.jsx';
 
 // Settings — reduced to what setup needs. Board decision 2026-09-05, screen 6; platform
 // audit V5: this is the one screen where "looks like the phone's Settings" is exactly
@@ -36,15 +32,15 @@ export function takeReturnRoute() {
   } catch { return null; }
 }
 
-export default function Settings({ removed = [], places = [], items = [], onBack, onConfigSaved, justReloaded = false }) {
+// Since round 4 (2026-09-14) this screen is the developer's: Version + AI key. Everything
+// for the household moved to the hamburger menu (MenuScreens.jsx). Slated for removal.
+export default function Settings({ onBack, onConfigSaved, justReloaded = false }) {
   const [cfg, setCfg] = useState(getAIConfig());
   const [stored, setStored] = useState(getAIConfig());
   const [saved, setSaved] = useState(false);
   const [test, setTest] = useState(null);
   const [testing, setTesting] = useState(false);
   const [showModel, setShowModel] = useState(false);
-  const [prefs, setPrefs] = useState(getPrefs());
-  const [purging, setPurging] = useState(null); // item awaiting "delete for good"
   // Update state: what happened on the reload we came back from, and whether the server has a newer stamp.
   const [reloadResult] = useState(() => {
     if (!justReloaded) return null;
@@ -60,8 +56,6 @@ export default function Settings({ removed = [], places = [], items = [], onBack
     checkForUpdate().then((r) => { if (alive) setUpdate(r); }, () => { if (alive) setUpdate('failed'); });
     return () => { alive = false; };
   }, [justReloaded]);
-  const [newPlace, setNewPlace] = useState('');
-  const [editingPlace, setEditingPlace] = useState(null); // { id, draft }
   const providers = providerList();
   // What happened the last time the app opened — stages and timings. This is how a hang on
   // "Opening ReCall…" gets diagnosed instead of guessed at.
@@ -73,7 +67,6 @@ export default function Settings({ removed = [], places = [], items = [], onBack
     } catch { return ''; }
   })();
   const current = providers.find((p) => p.id === cfg.provider);
-  const setPref = (k, v) => { const p = { ...prefs, [k]: v }; setPrefs(p); savePrefs(p); };
 
   const mask = (k) => (k.length <= 10 ? '••••' : `${k.slice(0, 6)}…${k.slice(-4)}`);
 
@@ -115,38 +108,39 @@ export default function Settings({ removed = [], places = [], items = [], onBack
     setTesting(false);
   }
 
-  async function downloadEvents() {
-    const events = await exportEvents();
-    const blob = new Blob([JSON.stringify({ schema: EVENT_SCHEMA, exportedAt: new Date().toISOString(), events }, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `recall-events-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-  }
-
   return (
     <div className="screen settings">
       <Header title="Settings" onBack={onBack} />
-
-      <div className="group-title">Look</div>
+      {/* Version FIRST (Ravi, round 4): it is the card the developer comes here for, and the
+          reload must not land on a page that has to be scrolled. */}
+      {/* After "Get the latest version" the page reloads and comes BACK HERE and says so —
+          a reload that lands on Home tells the person nothing about whether anything changed. */}
+      <div className="group-title">Version</div>
       <div className="group">
         <div className="grow">
-          <label>Text size</label>
-          <div className="seg">
-            {SIZES.map((s) => (
-              <button key={s.id} className={prefs.size === s.id ? 'on' : ''} onClick={() => setPref('size', s.id)}>{s.label}</button>
-            ))}
-          </div>
-        </div>
-        <div className="grow">
-          <label>Colours</label>
-          <div className="seg wrap">
-            {THEMES.map((t) => (
-              <button key={t.id} className={prefs.theme === t.id ? 'on' : ''} onClick={() => setPref('theme', t.id)}>{t.label}</button>
-            ))}
-          </div>
+          {/* Round 4 (Ravi): say OUTRIGHT what the reload did, and whether a newer version exists. */}
+          {reloadResult === 'updated' && <div className="banner ok">New version installed — built {buildLabel()}.</div>}
+          {reloadResult === 'same' && <div className="banner">No newer version was found. This phone already has the latest, built {buildLabel()}.</div>}
+          {reloadResult === null && <p className="sub">This phone has the build from <b>{buildLabel()}</b>.</p>}
+          {update === null && <p className="note-quiet left">Checking for a newer version…</p>}
+          {update === 'failed' && <p className="note-quiet left">Couldn't check for a newer version (no connection?).</p>}
+          {update && update !== 'failed' && (update.newer
+            ? <div className="banner amber">A newer version is available. Tap below to get it.</div>
+            : reloadResult === null && <p className="note-quiet left">This is the latest version.</p>)}
+          <button className="btn-secondary" onClick={async () => {
+            try { sessionStorage.setItem(RETURN_KEY, 'settings'); sessionStorage.setItem(PREV_BUILD_KEY, String(__BUILD__)); } catch { /* fine */ }
+            if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.unregister())); }
+            if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
+            // A fresh navigation with a new query, not reload(): it fetches index.html past
+            // any cache and is a different load path from the one that hung on 09-05.
+            location.replace(location.pathname + '?v=' + Date.now());
+          }}>{update && update !== 'failed' && update.newer ? 'Get the newer version' : 'Get the latest version'}</button>
+          {lastBoot && (
+            <p className="note-quiet left">Last open: {lastBoot}</p>
+          )}
         </div>
       </div>
+
 
       <div className="group-title">AI key</div>
       <div className="group">
@@ -190,100 +184,6 @@ export default function Settings({ removed = [], places = [], items = [], onBack
         </div>
       </div>
 
-      {/* Places — the helper's list (board 2026-09-14, item 9). The chips on the photo card
-          show these first. Rename fixes every item that uses the old spelling. */}
-      <div className="group-title">Places</div>
-      <div className="group">
-        {places.length === 0 && <div className="grow"><p className="sub">Places you add here are offered first when a photo is logged. Places already used on items: {knownLocations(items, 6).join(', ') || 'none yet'}.</p></div>}
-        {places.map((p) => (
-          <div className="row" key={p.id}>
-            {editingPlace && editingPlace.id === p.id ? (
-              <>
-                <input className="place-input" autoFocus value={editingPlace.draft} enterKeyHint="done"
-                  onChange={(e) => setEditingPlace({ id: p.id, draft: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { renamePlace(p, editingPlace.draft, items); setEditingPlace(null); } }} />
-                <button onClick={() => { renamePlace(p, editingPlace.draft, items); setEditingPlace(null); }}>Save</button>
-                <button onClick={() => setEditingPlace(null)}>Cancel</button>
-              </>
-            ) : (
-              <>
-                <div className="nm">
-                  {p.name}
-                  <small>{(() => { const n = items.filter((it) => (it.location || '').toLowerCase() === p.name.toLowerCase()).length; return n ? `${n} item${n === 1 ? '' : 's'} here` : 'not used yet'; })()}</small>
-                </div>
-                <button onClick={() => setEditingPlace({ id: p.id, draft: p.name })}>Rename</button>
-                <button onClick={() => removePlace(p)}>Remove</button>
-              </>
-            )}
-          </div>
-        ))}
-        <div className="row">
-          <input className="place-input" value={newPlace} placeholder="Add a place — Kitchen counter" enterKeyHint="done"
-            onChange={(e) => setNewPlace(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && newPlace.trim()) { addPlace(newPlace, places); setNewPlace(''); } }} />
-          <button disabled={!newPlace.trim()} onClick={() => { addPlace(newPlace, places); setNewPlace(''); }}>Add</button>
-        </div>
-      </div>
-
-      <div className="group-title">Recently removed</div>
-      <div className="group">
-        {removed.length === 0 ? <div className="grow"><p className="sub">Nothing has been removed.</p></div> : removed.map((it) => (
-          <div className="row" key={it.id}>
-            <div className="nm">
-              {it.name || 'Unnamed'}
-              <small>{it.location || 'no place'} · removed {timeAgo(it.deletedAt)}</small>
-            </div>
-            <button onClick={() => restoreItem(it.id)}>Put back</button>
-            <button onClick={() => setPurging(it)}>Delete for good</button>
-          </div>
-        ))}
-      </div>
-
-      <div className="group-title">Research log</div>
-      <div className="group">
-        <div className="grow">
-          <p className="sub">Every photo, question and correction is logged silently with exact times. Nothing is ever shown to the person as a number.</p>
-          <button className="btn-secondary" onClick={downloadEvents}>Download usage log (JSON)</button>
-        </div>
-      </div>
-
-      {/* After "Get the latest version" the page reloads and comes BACK HERE and says so —
-          a reload that lands on Home tells the person nothing about whether anything changed. */}
-      <div className="group-title">Version</div>
-      <div className="group">
-        <div className="grow">
-          {/* Round 4 (Ravi): say OUTRIGHT what the reload did, and whether a newer version exists. */}
-          {reloadResult === 'updated' && <div className="banner ok">New version installed — built {buildLabel()}.</div>}
-          {reloadResult === 'same' && <div className="banner">No newer version was found. This phone already has the latest, built {buildLabel()}.</div>}
-          {reloadResult === null && <p className="sub">This phone has the build from <b>{buildLabel()}</b>.</p>}
-          {update === null && <p className="note-quiet left">Checking for a newer version…</p>}
-          {update === 'failed' && <p className="note-quiet left">Couldn't check for a newer version (no connection?).</p>}
-          {update && update !== 'failed' && (update.newer
-            ? <div className="banner amber">A newer version is available. Tap below to get it.</div>
-            : reloadResult === null && <p className="note-quiet left">This is the latest version.</p>)}
-          <button className="btn-secondary" onClick={async () => {
-            try { sessionStorage.setItem(RETURN_KEY, 'settings'); sessionStorage.setItem(PREV_BUILD_KEY, String(__BUILD__)); } catch { /* fine */ }
-            if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.unregister())); }
-            if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
-            // A fresh navigation with a new query, not reload(): it fetches index.html past
-            // any cache and is a different load path from the one that hung on 09-05.
-            location.replace(location.pathname + '?v=' + Date.now());
-          }}>{update && update !== 'failed' && update.newer ? 'Get the newer version' : 'Get the latest version'}</button>
-          {lastBoot && (
-            <p className="note-quiet left">Last open: {lastBoot}</p>
-          )}
-        </div>
-      </div>
-
-      {purging && (
-        <Confirm
-          title={`Delete ${(purging.name || 'this').toLowerCase()} and its photos for good?`}
-          body="This cannot be undone."
-          keepLabel="Keep it" actionLabel="Delete for good"
-          onKeep={() => setPurging(null)}
-          onAction={async () => { const it = purging; setPurging(null); await purgeItem(it); }}
-        />
-      )}
     </div>
   );
 }

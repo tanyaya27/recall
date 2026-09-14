@@ -70,6 +70,8 @@ p { margin: 0; }
 .dayline { min-width: 0; color: var(--ink-soft); line-height: 1.2; }
 .dayline .day { display: block; font-size: min(1.25rem, 5vw); font-weight: 600; white-space: nowrap; }
 .dayline .date { display: block; font-size: min(1rem, 4.2vw); font-weight: 500; white-space: nowrap; margin-top: 0.125rem; }
+.menu-btn { flex: none; background: none; color: var(--ink); width: 2.75rem; height: 2.75rem; min-height: 0; padding: 0; margin-right: 0.5rem;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; }
 .tiny { display: inline-flex; align-items: center; flex: none; background: none; color: var(--ink-soft); font-size: min(0.9375rem, 4vw); padding: 0.5rem 0 0.5rem 0.75rem; min-height: 2.75rem; white-space: nowrap; }
 
 /* ---- buttons ----------------------------------------------------------------- */
@@ -301,6 +303,31 @@ input.edit-inline { font: inherit; width: 100%; border: 1.5px solid var(--accent
 .banner { background: var(--accent-soft); color: var(--accent); font-size: 1.125rem; font-weight: 600; padding: 0.875rem 1rem; border-radius: 0.875rem; margin: 0 0 0.75rem; line-height: 1.35; }
 .banner.ok { background: var(--accent); color: var(--accent-ink); }
 .banner.amber { background: var(--amber-bg); color: var(--amber); }
+
+/* ---- hamburger drawer (round 4) ------------------------------------------------------ */
+.drawer-back { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.35); display: flex; align-items: stretch; }
+.drawer { width: min(80vw, 20rem); background: var(--card); padding: calc(1rem + env(safe-area-inset-top)) 1rem calc(1rem + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 0.5rem; box-shadow: 4px 0 24px rgba(0,0,0,0.2); }
+.drawer-title { font-size: 1.375rem; font-weight: 700; padding: 0.5rem 0.5rem 0.75rem; }
+.drawer-row { width: 100%; text-align: left; padding: 0.875rem 1rem; min-height: 3.5rem; background: var(--accent-soft); color: var(--accent); font-size: min(1.1875rem, 5vw); font-weight: 600; border-radius: var(--radius); }
+.drawer-row.quiet { background: var(--card); color: var(--ink-soft); border: 1.5px solid var(--line); margin-top: auto; }
+
+/* ---- swipe rows (compact mode) -------------------------------------------------------- */
+.swipe { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+.swipe:last-child { border-bottom: none; }
+.swipe-act { position: absolute; top: 0; bottom: 0; min-height: 0; border-radius: 0; font-weight: 700; font-size: 1rem; padding: 0; }
+.swipe-act.left { left: 0; background: var(--accent); color: var(--accent-ink); }
+.swipe-act.right { right: 0; background: var(--amber); color: #fff; }
+.swipe-body { position: relative; background: var(--card); touch-action: pan-y; }
+.swipe .row.compact { border-bottom: none; padding: 0.625rem 0.875rem; }
+
+/* ---- compact density -------------------------------------------------------------------- */
+:root[data-density="compact"] .row { padding: 0.5rem 0.875rem; gap: 0.375rem; }
+:root[data-density="compact"] .row .nm { font-size: 1.0625rem; }
+:root[data-density="compact"] .group .grow { padding: 0.5rem 0.875rem; }
+:root[data-density="compact"] .board { gap: 0.5rem; }
+:root[data-density="compact"] .tile .tile-label { padding: 0.375rem 0.5rem; font-size: min(0.9375rem, 4vw); }
+:root[data-density="compact"] .card { padding: 0.75rem; }
+:root[data-density="compact"] .group-title { margin-top: 0.75rem; }
 
 /* ---- toast (audit S3) ------------------------------------------------------------------ */
 .toast { position: fixed; left: 1rem; right: 1rem; bottom: calc(var(--footer-h) + 0.5rem + env(safe-area-inset-bottom)); z-index: 15;

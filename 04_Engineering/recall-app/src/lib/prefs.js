@@ -22,8 +22,9 @@ export const SIZES = [
 export function getPrefs() {
   try {
     const p = JSON.parse(localStorage.getItem(KEY)) || {};
-    return { theme: THEMES.some((t) => t.id === p.theme) ? p.theme : 'linen', size: SIZES.some((s) => s.id === p.size) ? p.size : 'normal' };
-  } catch { return { theme: 'linen', size: 'normal' }; }
+    return { theme: THEMES.some((t) => t.id === p.theme) ? p.theme : 'linen', size: SIZES.some((s) => s.id === p.size) ? p.size : 'normal',
+      density: p.density === 'compact' ? 'compact' : 'normal' };
+  } catch { return { theme: 'linen', size: 'normal', density: 'normal' }; }
 }
 
 export function savePrefs(p) {
@@ -42,4 +43,7 @@ export function applyPrefs(p = getPrefs()) {
   if (dark && !watching && dark.addEventListener) { watching = true; dark.addEventListener('change', () => applyPrefs()); }
   const size = SIZES.find((s) => s.id === p.size) || SIZES[0];
   root.style.setProperty('--scale', String(size.scale));
+  // Compact (Ravi, 2026-09-14 round 4): denser rows and cards; list rows use swipe actions
+  // instead of buttons beneath. Off by default — Margaret's screen stays roomy.
+  root.dataset.density = p.density || 'normal';
 }

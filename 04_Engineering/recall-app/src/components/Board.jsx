@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { boardOrder, logEvent } from '../lib/db.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
-import { CameraIcon, SearchIcon, GearIcon } from './Icons.jsx';
+import { CameraIcon, SearchIcon, GearIcon, MenuIcon } from './Icons.jsx';
 
 // Home — THE BOARD. Board decision 2026-09-05, Rules 1–3.
 //
@@ -13,7 +13,7 @@ import { CameraIcon, SearchIcon, GearIcon } from './Icons.jsx';
 // the top, deliberately out of the thumb zone — it is opened once a month by a helper.
 //
 // The board never asks her anything. A thing with no name is a photo with no label.
-export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSettings, onHold }) {
+export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSettings, onMenu, onHold }) {
   const things = boardOrder(items);
   // Press-and-hold on a tile (Ravi, round 3): 500 ms opens the item's action sheet. A
   // short tap still opens the thing. Movement cancels — a scroll is not a hold. This is
@@ -30,6 +30,8 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
   return (
     <div className="screen with-footer">
       <div className="dayrow">
+        {/* Hamburger (Ravi, round 4, overruling the 09-05 board): the household's menu. */}
+        <button className="menu-btn" aria-label="Menu" onClick={onMenu}><MenuIcon /></button>
         <div className="dayline">{(() => { const d = dayLine(); return <><span className="day">{d.day}</span><span className="date">{d.date}</span></>; })()}</div>
         <button className="tiny" onClick={onSettings}><GearIcon /> Settings</button>
       </div>

@@ -6,6 +6,29 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 (round 4, later) — Hamburger menu; Settings becomes the developer's screen
+
+**Decision (Ravi, overruling the 09-05 board's rejection of a hamburger):** a hamburger at
+the left of the day line opens a drawer with *Look and feel* (text size, colours, and a
+new *Density: Roomy / Compact*), *Locations* (was Places — "Places sounds like cities"),
+*Deleted items* (put back / delete for good / *Empty the list*; in Compact, swipe a row
+right to put back, left to delete), and *Research log*. The gear stays at the right with
+only *Version* (now first, so the reload lands on it without scrolling — the regression
+Ravi hit) and *AI key*, for the developer, and is slated for removal.
+
+**Objection on record (Devin, Margaret, from 09-05):** a hamburger is a hidden door for
+Margaret; nothing in it is hers, which is the argument for it — everything behind it is
+Robert's or the developer's. Home itself is unchanged for her: the board, two verbs.
+
+**Why compact is a setting, not the default:** Ravi's own framing — swipe actions are
+denser but invisible; the two-button rows stay for Margaret's screen.
+
+**Would change our mind:** Margaret opening the drawer by accident and not finding
+*Close*; a swipe row triggering Delete on a scroll (the row only arms on a horizontal
+drag past a third of the action width, and Delete still asks).
+
+---
+
 ## 2026-09-14 (round 4) — The Version card says what happened; footer hugs the home indicator
 
 **Decision (Ravi):** after *Get the latest version* the app must say outright whether a

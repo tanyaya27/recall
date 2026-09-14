@@ -10,6 +10,7 @@ import Ask from './components/Ask.jsx';
 import Settings, { takeReturnRoute } from './components/Settings.jsx';
 import Toast from './components/Toast.jsx';
 import ItemSheet from './components/ItemSheet.jsx';
+import { MenuDrawer, LookScreen, LocationsScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
 import Confirm from './components/Confirm.jsx';
 
 // Board decision 2026-09-05: depth one. Home (the board, "My items") and one card. Every
@@ -44,6 +45,7 @@ export default function App() {
   const [offline, setOffline] = useState(typeof navigator !== 'undefined' && navigator.onLine === false);
   const [toast, setToast] = useState(null);
   const [sheet, setSheet] = useState(null);      // item under press-and-hold
+  const [menu, setMenu] = useState(false);       // the hamburger drawer
   const [removing, setRemoving] = useState(null); // item awaiting the remove confirm (from the sheet)
   const [, tick] = useState(0);
   const [stage, setStage] = useState('script');
@@ -210,7 +212,12 @@ export default function App() {
       );
       break;
     case 'settings':
-      screen = <Settings removed={removed} places={places} items={items} justReloaded={!!route.reloaded} onBack={back} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
+      screen = <Settings justReloaded={!!route.reloaded} onBack={back} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
+      break;
+    case 'look': screen = <LookScreen onBack={back} />; break;
+    case 'locations': screen = <LocationsScreen places={places} items={items} onBack={back} />; break;
+    case 'deleted': screen = <DeletedScreen removed={removed} onBack={back} />; break;
+    case 'research': screen = <ResearchScreen onBack={back} />;
       break;
     default:
       screen = (
@@ -220,6 +227,7 @@ export default function App() {
           onPhoto={(file) => go('photo', { file, key: Date.now() })}
           onAsk={() => go('ask')}
           onSettings={() => go('settings')}
+          onMenu={() => setMenu(true)}
           onHold={(item) => setSheet(item)}
         />
       );
@@ -229,6 +237,7 @@ export default function App() {
     <>
       {offline && <div className="offline" role="status">No connection right now — photos will save when it's back.</div>}
       {screen}
+      <MenuDrawer open={menu} onClose={() => setMenu(false)} onPick={(id) => { setMenu(false); go(id); }} />
       {sheet && (
         <ItemSheet item={live(sheet)}
           onAddFile={(file) => { setSheet(null); addPhotoTo(sheet.id, file); }}
