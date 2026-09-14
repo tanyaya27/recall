@@ -238,3 +238,8 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   it as a split, then built the recommendation without waiting for his answer. He asked
   again, angrier. Either get the ruling or build what was asked. Keep a per-round checklist
   in OPEN_ITEMS.md and tick it before hand-off.
+- **2026-09-14 — no layout change without rendered options shown to Ravi first.** The rig
+  can render a candidate layout from the real stylesheet in a minute (`rig/mock/`), so
+  there is no excuse: two or three options, one composite PNG, his pick, then code. Round 5
+  moved the thing card's actions into the footer on my own judgement and he opened a card
+  with no visible actions. Bug fixes don't need this; anything that moves a control does.

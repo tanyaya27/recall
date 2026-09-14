@@ -6,6 +6,34 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 (round 6) — Thing card layout A: trash on the photo, labelled action row under the details
+
+**What went wrong first:** in round 5 I moved the card's actions into the footer and
+dropped the quiet row on my own — no rendered review, no ruling. Ravi opened the card
+to a photo, a place, one underlined link far below, and two footer buttons: nothing
+said what could be done, and *Remove this photo* sat nowhere near the photo. That is the
+third time today a layout went to the phone unreviewed. Rule, now in LESSONS: **no
+layout change without rendered options shown to Ravi first.**
+
+**Decision (Ravi, from three rendered options — `design/mockups/2026-09-14_thing-card-options.png`):**
+layout A. A translucent trash sits ON the photo it removes (top right; confirm sheet
+stays). The place stays directly under the photo (Maya: that is the answer she came
+for). Under the details, one row of four labelled icon buttons: **Add photo** (filled) ·
+**Edit** · **Share/Private** · **Remove** (amber). No fixed footer on this card.
+Press-and-hold on the photo remains a shortcut to the same sheet, never the only path
+(Devin: the 10% know it; the 90% need it visible).
+
+**Ravi's addendum:** the row must never wrap — past the size where a word fits, the row
+is icons only. Built like the footer: the words are measured in an offscreen probe at
+the row's font; if any cannot fit its column, all four drop to icons (words stay in the
+accessible name). Verified in the rig: words at Normal on 390 and 430 px, icons at Large
+on 390, icons at Largest — `design/mockups/2026-09-14_thing-card-A-sizes.png`.
+
+**Rejected:** B (Photos-app toolbar at the bottom — Harold: too small and light); C
+(action row directly under the photo — the place drops below the fold; Maya).
+
+---
+
 ## 2026-09-14 (round 5) — The thing card's verbs are Add photo · Edit; *Found it* is gone; a wrong photo gets a question
 
 **Decision (Ravi):** *Found it — new photo* read as "I found it and am putting it somewhere

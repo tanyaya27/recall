@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, logEvent } from './lib/db.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent } from './lib/db.js';
 import { THUMB_V, thumbFromPhoto, compressPhoto } from './lib/img.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
 import Board from './components/Board.jsx';
@@ -66,7 +66,8 @@ export default function App() {
   const depth = useRef(0);          // how many cards deep we are; Home is 0
 
   const engine = useMemo(() => new AIEngine(getAIConfig()), [cfgVersion]);
-  const { items, removed, places = [] } = data;
+  const { removed, places = [] } = data;
+  const items = visibleHere(data.items); // private things of another phone never reach the screens
   const itemsRef = useRef(items); itemsRef.current = items;
 
   // Thumbnails made before 2026-09-14 are 220 px and blur on a tile (lib/img.js). Rebuild
@@ -289,6 +290,7 @@ export default function App() {
           onChangePlace={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onRename={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onMoveToTop={async () => { setSheet(null); await moveToTop(sheet, items); logEvent('move_to_top', { itemId: sheet.id, via: 'sheet' }); say('Moved to the top'); }}
+          onPrivate={async () => { const it = live(sheet); setSheet(null); const to = it.visibility === 'private' ? 'household' : 'private'; await setVisibility(it, to); logEvent('visibility', { itemId: it.id, to, via: 'tile_sheet' }); say(to === 'private' ? 'Private — only this phone shows it' : 'Shared with the household'); }}
           onRemove={() => { setSheet(null); setRemoving(sheet); }}
           onCancel={() => setSheet(null)} />
       )}

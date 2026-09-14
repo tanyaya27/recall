@@ -29,7 +29,8 @@ not be judged.
 5. The most recent file in `06_Handoffs/sessions/` — what happened last time.
 6. `06_Handoffs/OPEN_ITEMS.md` — the running to-do list. `06_Handoffs/RIG.md` — how to look at
    a build before handing it over. **No build goes to the phone unreviewed:** run
-   `04_Engineering/recall-app/rig/audit.js` (67 checks, every path) and look at the shots.
+   `04_Engineering/recall-app/rig/audit.js` (74 checks, every path) and look at the shots.
+   **No layout change without rendered options shown to Ravi first** (`rig/mock/`).
 
 Older session files are an archive. Do not read them all; search them when you need to
 reconstruct history.
@@ -63,8 +64,8 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914l` is BUILT, NOT YET
-> DEPLOYED** (l: thing card = Add photo · Edit, no *Found it*; wrong-photo guard; hold on the
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914n` is BUILT, NOT YET
+> DEPLOYED** (n: thing card layout A, chosen by Ravi from rendered options)** (m: private items — exclusion model, one switch; rules enforce it in multi-user stage 1)** (l: thing card = Add photo · Edit, no *Found it*; wrong-photo guard; hold on the
 > photo; shorter footer. **Multi-user:** three boards met in parallel — customer, UX, tech —
 > reconciled in `06_Handoffs/design/PLAN_2026-09-14_multi-user.md`; six splits await Ravi/Tanya)** (k: the full-path audit — `06_Handoffs/design/AUDIT_2026-09-14_full-path.md` —
 > found four real bugs incl. Add photo failing on every pre-09-14 item; all fixed, 67/67)** (i: in-app camera — `Camera.jsx` — replaces iOS's capture sheet everywhere)** (d is live; e/f add the Version-card update banners, a tighter footer, and the

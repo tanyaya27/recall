@@ -47,3 +47,4 @@ export function applyPrefs(p = getPrefs()) {
   // instead of buttons beneath. Off by default — Margaret's screen stays roomy.
   root.dataset.density = p.density || 'normal';
 }
+

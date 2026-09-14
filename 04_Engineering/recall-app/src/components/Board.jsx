@@ -2,7 +2,7 @@ import { boardOrder, logEvent } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
-import { CameraIcon, SearchIcon, GearIcon, MenuIcon } from './Icons.jsx';
+import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon } from './Icons.jsx';
 
 // Home — THE BOARD. Board decision 2026-09-05, Rules 1–3.
 //
@@ -52,6 +52,7 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
                 onOpenThing(it);
               })}>
               <img src={it.thumb} alt={it.name || ''} />
+              {it.visibility === 'private' && <span className="tile-lock" aria-label="Private — only on this phone"><LockIcon /></span>}
               {/* A thing saved without a place says so — a fact in the app's amber, not a
                   badge. Board decision 2026-09-05 (Ravi): the one cue a caregiver can scan
                   for that Margaret can also read without feeling tested. */}

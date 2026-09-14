@@ -95,3 +95,43 @@ not on the plan.
    board: remote setup is impossible while the key is per device, and the proxy also
    removes the VPN failure. **Recommendation: stage 1.**
 6. **Photos to Storage now (Sam) or at 150 items (Priyanka).** **Recommendation: 150.**
+
+## Addendum — private items (Ravi, 2026-09-14, must-have for stage 1)
+
+**The question:** Margaret must be able to keep a thing from everyone, or from Priya only.
+Inclusion list (say who may see each thing) or exclusion list (everything is shared unless
+she says otherwise)?
+
+**Customer board.** Margaret: "Some things are mine — my pills, my diary. I don't want to
+be asked about every single thing." Harold: if she can hide a thing, one day she will hide
+her keys and then not find them — so *private* must still show on her own phone; it only
+hides from others. Robert: he needs the keys and the glasses shared without ceremony;
+one switch on the rare thing is fine. Priya: she would rather see less — "I don't want her
+bedside" — and she should not have to be excluded item by item; a role-level default (what
+family sees) beats a per-item list. Elena (professional): dignity is the default; a
+withheld item should leave no trace on anyone else's phone, not a greyed tile.
+
+**UX board.** Devin: exclusion, without argument — an inclusion list is a permissions
+form, and Margaret's card asks one question, not four. One switch on the thing, the
+strongest kind: *Private — only this phone shows it*, in Edit and in the press-and-hold
+sheet, with a lock on the tile on her phone only. Per-person exclusion ("not Priya") is
+not hers: it is a role default (Priya's *family* role sees the board or does not) plus a
+helper-side exception on Robert's phone in stage 3. Maya: agrees on exclusion; wants a
+quiet *Just for me* link at log time too, one tap, no question — Devin: after the first
+user test, if the export shows private being set at all.
+
+**Tech board.** A field now, a rule later: `visibility: 'household' | 'private'` and
+`owner` (this phone's id until real users; the uid from stage 3). Stage 1 rules: an item is
+readable by a member if `visibility == 'household'` or `owner == request.auth.uid` —
+private things never leave the server for another phone. Snaps inherit the item's
+visibility through the rule (`get()` on the parent). Priya's card counts exclude them.
+Migration: every existing item is `household`.
+
+**Built now (build m, audit 74/74):** the field on new items; *Private — only this phone
+shows it* toggle in Edit and *Make private / Share with the household* in both sheets; a
+lock badge on the tile and a *Private* line on the card; another phone's private things
+are filtered out on this phone. Enforcement by rules is stage 1, item 1.
+
+**Ruling asked of Ravi/Tanya:** exclusion model (all three boards) — confirm. Per-person
+("not Priya"): role default in stage 2, helper-side exception in stage 3 — or per-item
+person picker now (no board member wants it).

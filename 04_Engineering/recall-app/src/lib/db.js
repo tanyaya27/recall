@@ -139,6 +139,7 @@ export async function addItem({ name = '', location = '', description = '', phot
   const logId = `log_${now}`;
   const ref = await addDoc(col, {
     kind: 'item', household: HOUSEHOLD, name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
+    owner: deviceId(), visibility: 'household', // Ravi, 2026-09-14 (stage 1 must-have): private = only the phone that logged it
     needsPlace: !location, naming,
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }], logId, photoCount: 1 + extras.length,
@@ -188,6 +189,19 @@ export async function changeLocation(item, location) {
   const now = Date.now();
   const history = [...(item.history || []), { location, at: now }].slice(-100);
   await updateDoc(doc(col, item.id), { location, needsPlace: !location, history, lastSeenAt: now, updatedAt: now });
+}
+
+// Private: only this phone shows it; the household's other phones never receive it (the
+// Firestore rules enforce that from multi-user stage 1; until then it is a field).
+// Exclusion model: everything is shared unless she says otherwise (board, 2026-09-14).
+export async function setVisibility(item, visibility) {
+  await updateDoc(doc(col, item.id), { visibility, owner: item.owner || deviceId(), updatedAt: Date.now() });
+}
+export function isPrivate(it) { return it.visibility === 'private'; }
+// What THIS phone may show: everything shared, plus what it logged itself.
+export function visibleHere(items) {
+  const me = deviceId();
+  return items.filter((it) => !isPrivate(it) || it.owner === me || !it.owner);
 }
 
 export async function updateItem(id, patch) {
@@ -383,7 +397,8 @@ export function todaysCheck(checks, routineId) {
 // merge (result: confirmed|declined|unseen), naming_failed, move_to_top.
 export const EVENT_SCHEMA = 3;
 const DEVICE_KEY = 'recall-device-id';
-function deviceId() {
+// This phone's stable id — the event log's, and (until real sign-in) what a private item is private TO.
+export function deviceId() {
   try {
     let id = localStorage.getItem(DEVICE_KEY);
     if (!id) { id = Math.random().toString(36).slice(2, 10); localStorage.setItem(DEVICE_KEY, id); }

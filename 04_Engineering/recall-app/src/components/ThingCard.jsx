@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, logEvent } from '../lib/db.js';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, setVisibility, isPrivate, logEvent } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { whenSeen, cap } from '../lib/format.js';
 import EditableText from './EditableText.jsx';
 import { own } from './PhotoCard.jsx';
-import Footer from './Footer.jsx';
 import Header from './Header.jsx';
 import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon } from './Icons.jsx';
 
 // The thing card — the answer. Board decision 2026-09-05, Rules 1, 3, 4, 7; revised
 // 2026-09-14 (Ravi's second phone round, BOARD_2026-09-14_phone-feedback-round-2.md).
@@ -34,6 +33,30 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
   const [whole, setWhole] = useState(false);     // photo uncropped (audit L1)
   const [confirming, setConfirming] = useState(null); // 'item' | { snap }
   const stripRef = useRef(null);
+  // The action row never wraps (Ravi): when a label cannot fit on one line at the current
+  // text size, the whole row becomes icons only — the words stay in the accessible name.
+  const actRef = useRef(null);
+  const probeRef = useRef(null);
+  const [iconsOnly, setIconsOnly] = useState(false);
+  useLayoutEffect(() => {
+    const el = actRef.current, pr = probeRef.current; if (!el || !pr) return undefined;
+    const measure = () => {
+      // Measure the words in an offscreen probe (same font), never the visible buttons —
+      // toggling their class to measure them re-fires the observer (Footer.jsx's lesson).
+      const labels = Array.from(el.querySelectorAll('.act span')).map((sp) => sp.textContent);
+      while (pr.children.length > labels.length) pr.removeChild(pr.lastChild);
+      labels.forEach((t, i) => { let c = pr.children[i]; if (!c) { c = document.createElement('span'); pr.appendChild(c); } if (c.textContent !== t) c.textContent = t; });
+      const acts = Array.from(el.querySelectorAll('.act'));
+      if (!acts.length) return;
+      const room = acts[0].clientWidth - 8; // horizontal padding of .act (0.25rem each side)
+      if (room < 20) return;
+      const fits = Array.from(pr.children).every((c) => c.getBoundingClientRect().width <= room);
+      setIconsOnly(!fits);
+    };
+    measure();
+    const ro = new ResizeObserver(measure); ro.observe(el); ro.observe(pr); ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [item?.id, mode, fixing, item?.visibility]);
   const hold = useHold(() => { logEvent('photo_hold', { itemId: item && item.id }); setSheet(true); });
 
   useEffect(() => { setSnaps(null); setMode('now'); setIndex(0); setFixing(openFix); setWhole(false); }, [item?.id]); // eslint-disable-line
@@ -113,7 +136,7 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
   const label = item.name ? `your ${own(item.name)}` : 'this';
 
   return (
-    <div className="screen with-footer">
+    <div className="screen">
       <Header title={cap(item.name) || ''} onBack={onBack} />
       <div className="card thing">
         {mode === 'earlier' && (
@@ -122,6 +145,10 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
             <button type="button" className="link-btn" onClick={now}>Back to now</button>
           </div>
         )}
+        {/* Layout A (Ravi, 2026-09-14, chosen from three rendered options): the trash sits ON the
+            photo it removes; the place stays right under the photo; the actions are a labelled
+            row under the details. Press-and-hold remains a shortcut, never the only way. */}
+        <div className="photo-wrap">
         {pages.length > 1 ? (
           <div className="strip" ref={stripRef} onScroll={onScroll}>
             {pages.map((p, i) => (
@@ -133,6 +160,8 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
         ) : (
           <img className={'photo-full' + (whole ? ' whole' : '')} src={page.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => setWhole((w) => !w))} />
         )}
+        <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(page)}><TrashIcon /></button>
+        </div>
         {pages.length > 1 && (
           <div className="dots" aria-label={`Photo ${index + 1} of ${pages.length}`}>
             {pages.map((p, i) => <button type="button" key={p.id} className={'dot' + (i === index ? ' on' : '')} onClick={() => slideTo(i)} aria-label={`Photo ${i + 1}`} />)}
@@ -143,7 +172,7 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
           ? <div className="loc-big">{page.location}</div>
           : <div className="loc-big soft">No place saved</div>}
         {mode === 'now' && item.restingOn && <div className="resting">{item.restingOn}</div>}
-        <div className="when">{whenSeen(page.at)}</div>
+        <div className="when">{whenSeen(page.at)}{isPrivate(item) && <span className="private-line"><LockIcon /> Private</span>}</div>
 
         {mode === 'earlier' && pages.length === 0 && (
           <p className="end">{snaps === null ? '…' : `That's every photo of ${label}.`}</p>
@@ -171,9 +200,17 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
         {/* Three quiet actions (round 3): add to this log · remove this photo · fix words.
             Removing the ITEM is not here — it conflated with removing a photo. It lives in
             the tile's press-and-hold sheet, and in the last-photo path of Remove this photo. */}
-        <div className="quiet-row">
-          <button type="button" className="link-btn" onClick={() => askRemove(page)}><TrashIcon /> Remove this photo</button>
-        </div>
+        {mode === 'now' && (
+          <div className={'actbar' + (iconsOnly ? ' icons' : '')} ref={actRef}>
+            <button type="button" className="act primary" aria-label="Add photo" disabled={(item.photoCount || 1) >= 4} onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /><span>Add photo</span></button>
+            <button type="button" className={'act' + (fixing ? ' on' : '')} aria-label={fixing ? 'Done' : 'Edit'} aria-pressed={fixing} onClick={() => setFixing((f) => !f)}><PencilIcon /><span>{fixing ? 'Done' : 'Edit'}</span></button>
+            <button type="button" className={'act' + (isPrivate(item) ? ' on' : '')} aria-pressed={isPrivate(item)} aria-label={isPrivate(item) ? 'Private' : 'Share'}
+              onClick={async () => { const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'actbar' }); onToast && onToast(to === 'private' ? 'Private — only this phone shows it' : 'Shared with the household'); }}>
+              <LockIcon /><span>{isPrivate(item) ? 'Private' : 'Share'}</span></button>
+            <button type="button" className="act amber" aria-label="Remove item" onClick={() => setConfirming('item')}><TrashIcon /><span>Remove</span></button>
+            <div className="act-probe" ref={probeRef} aria-hidden="true" />
+          </div>
+        )}
         {fixing && (
           <div className="fix">
             <EditableText label="What it is" value={item.name} emptyLabel="Name it"
@@ -195,6 +232,7 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
           onRename={() => { setSheet(false); setFixing(true); }}
           onMoveToTop={async () => { setSheet(false); await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id, via: 'photo_sheet' }); onToast && onToast('Moved to the top'); }}
           onRemovePhoto={() => { setSheet(false); askRemove(page); }}
+          onPrivate={async () => { setSheet(false); const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'sheet' }); onToast && onToast(to === 'private' ? 'Private — only this phone shows it' : 'Shared with the household'); }}
           onRemove={() => { setSheet(false); setConfirming('item'); }}
           onCancel={() => setSheet(false)} />
       )}
@@ -237,18 +275,6 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
         />
       )}
 
-      {/* Round 5 (Ravi): *Found it — new photo* is gone — it read as "log this again
-          somewhere else" and looked like logging a new item. The card's two verbs are the
-          ordinary ones: Add photo (into the current log) and Edit. Moving a thing is done
-          from Home — Log item recognises it (D4) and asks the place afresh. */}
-      <Footer>
-        <button className="btn-primary" aria-label="Add photo" disabled={(item.photoCount || 1) >= 4} onClick={() => { setSnaps(null); onAdd(); }}>
-          <CameraIcon /><span className="lbl">Add photo</span>
-        </button>
-        <button className="btn-primary alt" aria-label="Edit" onClick={() => { setFixing((f) => !f); if (!fixing) setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50); }}>
-          <PencilIcon /><span className="lbl">{fixing ? 'Done' : 'Edit'}</span>
-        </button>
-      </Footer>
     </div>
   );
 }
