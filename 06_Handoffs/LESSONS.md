@@ -228,3 +228,8 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   visual duplicate check had `visual` in its deps and called `setVisual('pending')` inside;
   the re-run's cleanup set `alive = false` on the first run and the verdict was dropped.
   Guard "started" with a ref, not with state in the dep list.
+- **2026-09-14 — the rig's fixture masked a layout bug.** `space-between` with three
+  children centred the day line; the rig's "Monday morning · September 14" was wide enough
+  to hide the gap that "Sunday night" showed on Ravi's 430-px phone. Screenshot at BOTH
+  390 and 430 (`run.js wide`), and with the shortest realistic content, not just the
+  fixture's. A screenshot only proves the case it shows.

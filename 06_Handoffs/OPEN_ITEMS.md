@@ -5,12 +5,13 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914g`** from the Mac (g: Version card shows facts only — build time,
+- [ ] **Deploy `20260914h`** from the Mac (h: day line hugs the hamburger; Back from a menu
+  screen returns to the drawer) (g: Version card shows facts only — build time,
   installed-on-this-phone time, when the server was last asked; no "latest" claim) (adds: hamburger menu — Look and feel with Compact,
   Locations, Deleted items with swipe + Empty the list, Research log; Settings = Version first
   + AI key; the Version-card update banners; tighter footer bottom) — everything from today (labels, thumbnails, and
   the second-round build). Commands at the end of this file.
-- [ ] Phone-check `20260914g`: hamburger left of the day line → drawer → each row opens its
+- [ ] Phone-check `20260914h`: hamburger left of the day line → drawer → each row opens its
   card and Back returns. Look and feel → Compact → Deleted items: swipe a row left → Delete,
   right → Put back; *Empty the list* asks first. Settings → Version is at the TOP; *Get the
   latest version* returns to it without scrolling. Version shows *A newer version is available* before
@@ -88,5 +89,5 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
+git add -A && git commit -m "Drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
 ```

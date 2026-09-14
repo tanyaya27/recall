@@ -62,7 +62,7 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914g` is BUILT, NOT YET
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914h` is BUILT, NOT YET
 > DEPLOYED** (d is live; e/f add the Version-card update banners, a tighter footer, and the
 > hamburger menu — Ravi overruled the board: Look and feel, Locations, Deleted items,
 > Research log live there; Settings is the developer's Version + AI key, slated for removal).** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's

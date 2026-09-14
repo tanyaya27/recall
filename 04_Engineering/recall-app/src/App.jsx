@@ -45,7 +45,6 @@ export default function App() {
   const [offline, setOffline] = useState(typeof navigator !== 'undefined' && navigator.onLine === false);
   const [toast, setToast] = useState(null);
   const [sheet, setSheet] = useState(null);      // item under press-and-hold
-  const [menu, setMenu] = useState(false);       // the hamburger drawer
   const [removing, setRemoving] = useState(null); // item awaiting the remove confirm (from the sheet)
   const [, tick] = useState(0);
   const [stage, setStage] = useState('script');
@@ -220,6 +219,7 @@ export default function App() {
     case 'deleted': screen = <DeletedScreen removed={removed} onBack={back} />; break;
     case 'research': screen = <ResearchScreen onBack={back} />;
       break;
+    case 'menu':
     default:
       screen = (
         <Board
@@ -228,7 +228,7 @@ export default function App() {
           onPhoto={(file) => go('photo', { file, key: Date.now() })}
           onAsk={() => go('ask')}
           onSettings={() => go('settings')}
-          onMenu={() => setMenu(true)}
+          onMenu={() => go('menu')}
           onHold={(item) => setSheet(item)}
         />
       );
@@ -238,7 +238,9 @@ export default function App() {
     <>
       {offline && <div className="offline" role="status">No connection right now — photos will save when it's back.</div>}
       {screen}
-      <MenuDrawer open={menu} onClose={() => setMenu(false)} onPick={(id) => { setMenu(false); go(id); }} />
+      {/* The drawer is a history entry of its own (round 4, Ravi): Back from any of its screens
+          returns to the drawer, not to Home. Close is one step back. */}
+      <MenuDrawer open={route.view === 'menu'} onClose={back} onPick={(id) => go(id)} />
       {sheet && (
         <ItemSheet item={live(sheet)}
           onAddFile={(file) => { setSheet(null); addPhotoTo(sheet.id, file); }}

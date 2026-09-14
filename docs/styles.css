@@ -67,7 +67,9 @@ p { margin: 0; }
 .dayrow { display: flex; align-items: center; justify-content: space-between; margin: 0 0 0.625rem; min-height: 3rem;
   position: sticky; top: 0; z-index: 4; background: var(--bg);
   padding: calc(0.5rem + env(safe-area-inset-top)) 0 0.5rem; margin-top: calc(-0.75rem - env(safe-area-inset-top)); }
-.dayline { min-width: 0; color: var(--ink-soft); line-height: 1.2; }
+/* flex: 1 so the day line sits against the hamburger and Settings stays at the right edge —
+   with space-between and three children it floated to the centre (Ravi, round 4). */
+.dayline { flex: 1 1 auto; min-width: 0; color: var(--ink-soft); line-height: 1.2; }
 .dayline .day { display: block; font-size: min(1.25rem, 5vw); font-weight: 600; white-space: nowrap; }
 .dayline .date { display: block; font-size: min(1rem, 4.2vw); font-weight: 500; white-space: nowrap; margin-top: 0.125rem; }
 .menu-btn { flex: none; background: none; color: var(--ink); width: 2.75rem; height: 2.75rem; min-height: 0; padding: 0; margin-right: 0.5rem;
