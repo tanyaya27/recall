@@ -6,6 +6,43 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 (late) — The AI decides "same thing"; name matching is the fallback
+
+**Decision:** `tagPhoto` now answers a fourth question, `sameAs` — the exact saved name if
+the photo shows a thing already on the board, with the instruction that a different
+angle, place, lighting or wording is *still* the same thing. The photo card's match is
+`findMatch`: the AI's `sameAs` › exact name/alias › shared head noun › any shared
+meaningful word (colours, sizes and containers excluded — "black folder" ≠ "black hat";
+"sparkling soda" = "soda can") › the AI's alternatives. Each fallback only fires when it
+points at exactly one item.
+
+**Why:** Ravi: two tiles for one can of sparkling soda. String rules will always miss a
+naming the model invents ("La Croix" vs "sparkling soda"); the model has seen both the
+photo and the list, so it should say so outright — the catalogue was already in the
+prompt, only the verdict was missing. Ravi's test (Tanya agreed the timing on
+appointments in the same message).
+
+**Guardrails unchanged (D4):** the card names the match and offers *Not your …?*; a
+name arriving after the save asks *Is this your …?*; nothing merges silently. A wrong
+match costs one tap; a missed one costs a duplicate tile and a confused board.
+
+**Would change our mind:** wrong soft matches on the phone — then drop the shared-word
+tier and keep `sameAs` + head noun. The `merge` event records `soft: true` for these.
+
+---
+
+## 2026-09-14 — Appointments: after the helper phone, before the join code (Tanya)
+
+**Decision (Tanya):** build appointments as the board recommended — a today-only line on
+Margaret's board, a list on the helper phone, a visible list with no reminders (iOS web
+has no reliable push without a service worker, which v0 has ruled out). Sequenced after
+*This phone is used by* and before the household join code. Added to the prioritizer.
+
+**Objection recorded (Maya):** Phase 2 — let the first user test judge the one idea v0
+exists for. Overruled on the strength of Margaret's and Robert's reactions.
+
+---
+
 ## 2026-09-14 — Second phone round: photo strip with a history mode, multi-photo logs, remove a photo, ranked search, aliases, places
 
 Full exchange and Ravi's rulings: `design/BOARD_2026-09-14_phone-feedback-round-2.md`.

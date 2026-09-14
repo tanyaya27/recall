@@ -115,7 +115,10 @@ Answer three separate things. Do not blend them.
    photo tile. Prefer the shortest name that identifies it: "scissors", not "blue and
    white scissors". Only add a colour or other qualifier if something in the already-saved
    list would otherwise be confused with it. If it is clearly one of the things already
-   saved, reuse that exact name. Name it the way its owner would ("your black shorts",
+   saved, reuse that exact name AND put it in "sameAs" — the app must not create a second
+   tile for a thing that is already saved. Same object, different angle, different place,
+   different lighting, a different name for it: still "sameAs". Only leave "sameAs" empty
+   when it is a different object. Name it the way its owner would ("your black shorts",
    "reading glasses"), never as a stranger would ("black fabric", "an item"). If two
    objects could plausibly be the subject, put the others in "alternatives".
 
@@ -132,6 +135,7 @@ Answer three separate things. Do not blend them.
 
 Reply with ONLY a JSON object, no other text:
 {"name": "<short everyday name, 1-3 words>",
+ "sameAs": "<the EXACT saved name this photo shows, from the list above, or \"\" if it is not one of them>",
  "alternatives": ["<other plausible names for the subject, 0-2 items>"],
  "restingOn": "<what it is sitting on/in, as seen, or \\"\\">",
  "placeCertain": <true only if the room is genuinely identifiable from the photo>,
@@ -144,6 +148,7 @@ Reply with ONLY a JSON object, no other text:
     const list = (v) => (Array.isArray(v) ? v.map(clean).filter(Boolean) : []);
     return {
       name: clean(out.name) || hintName || '',
+      sameAs: clean(out.sameAs),
       alternatives: list(out.alternatives).slice(0, 2),
       restingOn: clean(out.restingOn),
       placeCertain: out.placeCertain === true,

@@ -72,9 +72,29 @@ export function findByName(items, name) {
   const exact = live.find((it) => namesOf(it).includes(n));
   if (exact) return exact;
   const head = n.split(' ').pop();
-  if (head.length < 3) return null;
-  const soft = live.filter((it) => namesOf(it).some((x) => x.split(' ').pop() === head));
-  return soft.length === 1 ? soft[0] : null;
+  if (head.length >= 3) {
+    const soft = live.filter((it) => namesOf(it).some((x) => x.split(' ').pop() === head));
+    if (soft.length === 1) return soft[0];
+  }
+  //   3. any shared meaningful word ("sparkling soda" ↔ "soda can") with exactly one item.
+  //      Colours and qualifiers don't count — a "black folder" is not a "black hat".
+  const words = n.split(' ').filter((w) => w.length >= 3 && !QUALIFIER.has(w));
+  if (words.length) {
+    const loose = live.filter((it) => namesOf(it).some((x) => x.split(' ').some((t) => words.includes(t))));
+    if (loose.length === 1) return loose[0];
+  }
+  return null;
+}
+const QUALIFIER = new Set(['black', 'white', 'red', 'blue', 'green', 'grey', 'gray', 'brown', 'pink', 'yellow', 'orange', 'purple', 'silver', 'gold',
+  'small', 'big', 'large', 'little', 'old', 'new', 'reading', 'pair', 'set', 'bottle', 'can', 'box', 'bag', 'cup', 'tin', 'pack', 'piece']);
+
+// What the photo card asks. The AI's own verdict ("sameAs", 2026-09-14 — Ravi: two logs of
+// one can of soda) comes first: it saw the photo and the list; name matching is the fallback
+// for when it names the thing but forgets to say so. Alternatives get a turn too.
+export function findMatch(items, tag) {
+  if (!tag) return null;
+  return findByName(items, tag.sameAs) || findByName(items, tag.name)
+    || (tag.alternatives || []).map((a) => findByName(items, a)).find(Boolean) || null;
 }
 
 // ---------- live data ----------

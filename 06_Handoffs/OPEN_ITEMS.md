@@ -5,9 +5,10 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914b`** from the Mac — everything from today (labels, thumbnails, and
+- [ ] **Deploy `20260914c`** from the Mac — everything from today (labels, thumbnails, and
   the second-round build). Commands at the end of this file.
-- [ ] Phone-check `20260914b` (second round): footer — both buttons the same size and
+- [ ] Phone-check `20260914c`: photograph the can of sparkling soda from a new angle →
+  header *Your sparkling soda — new photo*, one tile. Then the second round: footer — both buttons the same size and
   weight, white on green / green on white, bigger than before; still one row at Largest
   on a 390-px phone. Home: *Sunday evening · September 14*. Log an item, then tap *Add
   another photo* in the toast → second photo saved silently, tile unchanged; open the
@@ -40,12 +41,11 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Next build (board first, then code)
 
-- [ ] **Appointments** (Ravi, 2026-09-14) — board recommends: after the helper-phone
-  switch, before the join code. Today-only line on her board + list on the helper phone;
-  visible list, no reminders (no push on iOS web). **Ravi/Tanya to decide now vs Phase 2.**
-  Add to the prioritizer either way.
 - [ ] Robert's helper phone — *This phone is used by* setting, *Another?* after save, note
-  field, routines editor. Designed in BOARD_2026-09-05 §2, not built.
+  field, routines editor. Designed in BOARD_2026-09-05 §2; Places (built 09-14) is its first piece.
+- [ ] **Appointments** (Tanya, 2026-09-14: agreed) — right after the helper phone. Today-only
+  line on her board + list in Settings on the helper phone; visible list, no reminders.
+  Add to `01_Needs_and_Prioritization/ReCall_Feature_Prioritizer.html` (MVP, Performance).
 - [ ] Priya's one-card status — *did anything happen today?* Designed in §2, not built.
 - [ ] Household join code (after the two above).
 
@@ -69,5 +69,5 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "Second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
+git add -A && git commit -m "AI decides same-thing (sameAs) + loose name match; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
 ```

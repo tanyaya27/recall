@@ -60,7 +60,7 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914b` is BUILT, NOT YET
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914c` is BUILT, NOT YET
 > DEPLOYED.** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
 > phone feedback (`06_Handoffs/design/BOARD_2026-09-14_*.md`): footer verbs *Log item* ·
 > *Find item*, screen *My items*; 600-px thumbnails (old ones rebuilt on load); the thing
@@ -68,8 +68,9 @@ Full background lives in the numbered folders — see `README.md` for the index.
 > per log via the *Saved* toast; *Remove this photo*; ranked search; `aliases[]` so a
 > renamed thing still merges; pencil on every editable field; day + date on the day line;
 > Settings → Places. Deploy commands and the phone check: `06_Handoffs/OPEN_ITEMS.md` —
-> **the running to-do list; read and update it every session.** Open question for
-> Ravi/Tanya: appointments (board addendum in the round-2 file).
+> **the running to-do list; read and update it every session.** Late: the AI now says
+> `sameAs` for a thing already saved (two tiles for one soda can). Tanya agreed appointments
+> go right after the helper phone.
 >
 > **The design of record is `06_Handoffs/design/BOARD_2026-09-05_interaction_model.md`.**
 > `DAY_IN_THE_LIFE.md` is now history: its rules 2, 3, 5 and 7 survive; the clock-shaped
@@ -93,7 +94,7 @@ Full background lives in the numbered folders — see `README.md` for the index.
   are deleted (git has them). `lib/prefs.js` is new. `docs/styles.css` is in rem.
 - **Engine changes (all in DECISIONS.md):** `household`, `order`/`boardKey`, snap cap 10/30,
   `naming` flag, `absorbInto`, event schema v3; 09-14: `aliases[]`, `logId`/`photoCount`,
-  `thumbV`, soft-deleted snaps, `kind: 'place'` docs, `findByName` head-noun tier.
+  `thumbV`, soft-deleted snaps, `kind: 'place'` docs, `findMatch` (AI `sameAs` › name › head noun › shared word).
 - **Footer (late 09-05, Ravi):** side-by-side buttons that become floating translucent
   icons when a label cannot fit — measured on the device by `Footer.jsx`, never stacked.
   Built, rig-verified at 375/390/430 px × 3 sizes; deployed 2026-09-05 (`20260905l`).

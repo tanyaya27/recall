@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressPhoto } from '../lib/img.js';
-import { addItem, nameItem, resnapItem, absorbInto, findByName, knownLocations, noteAlias, logEvent } from '../lib/db.js';
+import { addItem, nameItem, resnapItem, absorbInto, findMatch, knownLocations, noteAlias, logEvent } from '../lib/db.js';
 import EditableText from './EditableText.jsx';
 import Header from './Header.jsx';
 
@@ -60,7 +60,7 @@ export default function PhotoCard({ file, engine, items = [], places = [], resna
   const name = resnapOf ? resnapOf.name : (nameOverride || (tag && tag.name) || '');
   const restingOn = (tag && tag.restingOn) || '';
   // Never match the provisional thing against itself once it has been named.
-  const match = !resnapOf && !forceNew && tag ? findByName(items.filter((it) => it.id !== savedId), tag.name) : null;
+  const match = !resnapOf && !forceNew && tag ? findMatch(items.filter((it) => it.id !== savedId), tag) : null;
 
   // The name arrived after she already saved. Finish the job — or ask, if it matched.
   useEffect(() => {
