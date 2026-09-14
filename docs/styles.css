@@ -116,7 +116,9 @@ button { color: var(--ink); }
              the bottom-right corner and the content gets the height back.
    Stacked full-width buttons were rejected (Ravi, 2026-09-05): height is the scarce resource. */
 .footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
-  padding: 0.625rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  /* Bottom padding is only the phone's own home-indicator inset plus a hair (Ravi, round 4:
+     too much space under the buttons). */
+  padding: 0.625rem 1rem calc(0.25rem + env(safe-area-inset-bottom));
   background: linear-gradient(to bottom, transparent 0, var(--bg) 0.75rem); }
 .footer-inner { max-width: 35rem; margin: 0 auto; display: flex; flex-direction: row; gap: 0.625rem; }
 .footer-inner > * { flex: 1 1 0; min-width: 0; margin-top: 0; min-height: 3.75rem; padding-left: 0.5rem; padding-right: 0.5rem;
@@ -294,6 +296,11 @@ input.edit-inline { font: inherit; width: 100%; border: 1.5px solid var(--accent
 .item-sheet .sheet-row svg { width: 1.2em; height: 1.2em; flex: none; }
 .item-sheet .btn-primary.alt { margin-top: 1rem; min-height: 4rem; }
 .tile { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+
+/* ---- update banners (Settings → Version, round 4) ------------------------------------- */
+.banner { background: var(--accent-soft); color: var(--accent); font-size: 1.125rem; font-weight: 600; padding: 0.875rem 1rem; border-radius: 0.875rem; margin: 0 0 0.75rem; line-height: 1.35; }
+.banner.ok { background: var(--accent); color: var(--accent-ink); }
+.banner.amber { background: var(--amber-bg); color: var(--amber); }
 
 /* ---- toast (audit S3) ------------------------------------------------------------------ */
 .toast { position: fixed; left: 1rem; right: 1rem; bottom: calc(var(--footer-h) + 0.5rem + env(safe-area-inset-bottom)); z-index: 15;

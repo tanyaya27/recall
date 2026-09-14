@@ -5,9 +5,13 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914d`** from the Mac — everything from today (labels, thumbnails, and
+- [ ] **Deploy `20260914e`** from the Mac (adds: Version card says installed / no newer /
+  newer available; tighter footer bottom) — everything from today (labels, thumbnails, and
   the second-round build). Commands at the end of this file.
-- [ ] Phone-check `20260914d` (round 3): footer buttons identical (rig-verified); day line
+- [ ] Phone-check `20260914e`: Settings → Version shows *A newer version is available* before
+  you tap, then *New version installed — built 9/13 10:5x PM* after; tap again → *No newer
+  version was found*. Space under the footer buttons is only the home-indicator strip.
+  Then round 3: footer buttons identical (rig-verified); day line
   two lines, never cut; Log item → take one, tap *Another*, take a second → two thumbnails
   with ✕ → tap a place → one tile; open it → swipe, next photo peeks. Photograph the soda
   can from a new angle with any name → *New photo of sparkling soda* (name tier) — or, if
@@ -78,5 +82,5 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "Round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
+git add -A && git commit -m "Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
 ```

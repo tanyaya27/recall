@@ -62,8 +62,8 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914d` is BUILT, NOT YET
-> DEPLOYED.** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914e` is BUILT, NOT YET
+> DEPLOYED** (d is live; e adds the Version-card update banners and a tighter footer).** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
 > phone feedback (`06_Handoffs/design/BOARD_2026-09-14_*.md`): footer verbs *Log item* ·
 > *Find item*, screen *My items*; 600-px thumbnails (old ones rebuilt on load); the thing
 > card's photo strip with an *Earlier* mode and *Where it has been* rows; several photos

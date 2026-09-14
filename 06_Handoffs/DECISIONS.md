@@ -6,6 +6,23 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 (round 4) — The Version card says what happened; footer hugs the home indicator
+
+**Decision (Ravi):** after *Get the latest version* the app must say outright whether a
+new version was installed or not. Built: the card remembers the build it had, and on
+return shows a filled banner *New version installed — built <time>* or *No newer version
+was found. This phone already has the latest, built <time>*. On every visit it also
+fetches `index.html` (cache-bypassed) and compares stamps: *This is the latest version* or
+an amber *A newer version is available* with the button relabelled *Get the newer
+version*. **Why:** "Reloaded just now — if the time didn't change…" made the person do the
+comparison; twice today Ravi could not tell whether a deploy had reached the phone.
+
+**Footer:** bottom padding is the phone's own safe-area inset plus 0.25 rem (was 0.75 rem).
+The rest of the space under the buttons on an iPhone is the home indicator's 34 pt, which
+stays.
+
+---
+
 ## 2026-09-14 (round 3) — The roll; the AI looks; Fix without remove; press-and-hold; peek
 
 Full exchange: `design/BOARD_2026-09-14_phone-feedback-round-3.md`. All Ravi's rulings.

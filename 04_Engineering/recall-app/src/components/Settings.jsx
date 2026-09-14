@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.js';
 import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, knownLocations } from '../lib/db.js';
 import { timeAgo } from '../lib/format.js';
@@ -11,6 +11,23 @@ import Confirm from './Confirm.jsx';
 // right, so it is grouped sections with a small title above each, rows, one action per
 // row. A helper's screen, opened once; actions sit in the flow because a keyboard opens.
 export const RETURN_KEY = 'recall-return-to';
+const PREV_BUILD_KEY = 'recall-prev-build';
+// The stamp this page loaded with (docs/index.html's ?v=). Comparing it with the stamp the
+// server has NOW says whether a newer version exists — without reloading anything.
+export function loadedStamp() {
+  try {
+    const src = [...document.scripts].map((sc) => sc.getAttribute('src') || '').find((x) => /app\.js\?v=/.test(x)) || '';
+    return (src.match(/v=([^&]+)/) || [])[1] || '';
+  } catch { return ''; }
+}
+export async function checkForUpdate() {
+  const res = await fetch(`./index.html?check=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await res.text();
+  const server = (html.match(/app\.js\?v=([^"&]+)/) || [])[1] || '';
+  const mine = loadedStamp();
+  return { server, mine, newer: !!server && !!mine && server !== mine };
+}
 export function takeReturnRoute() {
   try {
     const v = sessionStorage.getItem(RETURN_KEY);
@@ -28,6 +45,21 @@ export default function Settings({ removed = [], places = [], items = [], onBack
   const [showModel, setShowModel] = useState(false);
   const [prefs, setPrefs] = useState(getPrefs());
   const [purging, setPurging] = useState(null); // item awaiting "delete for good"
+  // Update state: what happened on the reload we came back from, and whether the server has a newer stamp.
+  const [reloadResult] = useState(() => {
+    if (!justReloaded) return null;
+    try {
+      const prev = sessionStorage.getItem(PREV_BUILD_KEY); sessionStorage.removeItem(PREV_BUILD_KEY);
+      if (!prev) return null;
+      return prev !== String(__BUILD__) ? 'updated' : 'same';
+    } catch { return null; }
+  });
+  const [update, setUpdate] = useState(null); // null = checking · { newer, server, mine } · 'failed'
+  useEffect(() => {
+    let alive = true;
+    checkForUpdate().then((r) => { if (alive) setUpdate(r); }, () => { if (alive) setUpdate('failed'); });
+    return () => { alive = false; };
+  }, [justReloaded]);
   const [newPlace, setNewPlace] = useState('');
   const [editingPlace, setEditingPlace] = useState(null); // { id, draft }
   const providers = providerList();
@@ -220,16 +252,23 @@ export default function Settings({ removed = [], places = [], items = [], onBack
       <div className="group-title">Version</div>
       <div className="group">
         <div className="grow">
-          <p className="sub">This phone has the build from <b>{buildLabel()}</b>.</p>
-          {justReloaded && <p className="sub accent">Reloaded just now. If the time above did not change, this is already the latest.</p>}
+          {/* Round 4 (Ravi): say OUTRIGHT what the reload did, and whether a newer version exists. */}
+          {reloadResult === 'updated' && <div className="banner ok">New version installed — built {buildLabel()}.</div>}
+          {reloadResult === 'same' && <div className="banner">No newer version was found. This phone already has the latest, built {buildLabel()}.</div>}
+          {reloadResult === null && <p className="sub">This phone has the build from <b>{buildLabel()}</b>.</p>}
+          {update === null && <p className="note-quiet left">Checking for a newer version…</p>}
+          {update === 'failed' && <p className="note-quiet left">Couldn't check for a newer version (no connection?).</p>}
+          {update && update !== 'failed' && (update.newer
+            ? <div className="banner amber">A newer version is available. Tap below to get it.</div>
+            : reloadResult === null && <p className="note-quiet left">This is the latest version.</p>)}
           <button className="btn-secondary" onClick={async () => {
-            try { sessionStorage.setItem(RETURN_KEY, 'settings'); } catch { /* fine */ }
+            try { sessionStorage.setItem(RETURN_KEY, 'settings'); sessionStorage.setItem(PREV_BUILD_KEY, String(__BUILD__)); } catch { /* fine */ }
             if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.unregister())); }
             if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
             // A fresh navigation with a new query, not reload(): it fetches index.html past
             // any cache and is a different load path from the one that hung on 09-05.
             location.replace(location.pathname + '?v=' + Date.now());
-          }}>Get the latest version</button>
+          }}>{update && update !== 'failed' && update.newer ? 'Get the newer version' : 'Get the latest version'}</button>
           {lastBoot && (
             <p className="note-quiet left">Last open: {lastBoot}</p>
           )}
