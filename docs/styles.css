@@ -72,8 +72,9 @@ p { margin: 0; }
 .dayline { flex: 1 1 auto; min-width: 0; color: var(--ink-soft); line-height: 1.2; }
 .dayline .day { display: block; font-size: min(1.25rem, 5vw); font-weight: 600; white-space: nowrap; }
 .dayline .date { display: block; font-size: min(1rem, 4.2vw); font-weight: 500; white-space: nowrap; margin-top: 0.125rem; }
-.menu-btn { flex: none; background: none; color: var(--ink); width: 2.75rem; height: 2.75rem; min-height: 0; padding: 0; margin-right: 0.5rem;
-  display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+/* The glyph's left edge sits flush with the tiles' left edge (Ravi); the tap target extends to the right. */
+.menu-btn { flex: none; background: none; color: var(--ink); width: 2.75rem; height: 2.75rem; min-height: 0; padding: 0; margin-right: 0.25rem;
+  display: inline-flex; align-items: center; justify-content: flex-start; font-size: 1.5rem; }
 .tiny { display: inline-flex; align-items: center; flex: none; background: none; color: var(--ink-soft); font-size: min(0.9375rem, 4vw); padding: 0.5rem 0 0.5rem 0.75rem; min-height: 2.75rem; white-space: nowrap; }
 
 /* ---- buttons ----------------------------------------------------------------- */
@@ -356,8 +357,9 @@ input.edit-inline { font: inherit; width: 100%; border: 1.5px solid var(--accent
 
 /* ---- private (lock) ---------------------------------------------------------------------- */
 .tile { position: relative; }
-.tile-lock { position: absolute; top: 0.5rem; right: 0.5rem; width: 2rem; height: 2rem; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff;
-  display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+.tile-lock { position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; pointer-events: none;
+  color: rgba(255,255,255,0.82); font-size: 4rem; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45)); }
+.tile-lock svg { width: 1em; height: 1em; }
 .private-line { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.75rem; color: var(--accent); font-weight: 600; }
 .private-line svg { width: 1em; height: 1em; }
 .toggle-row { display: flex; align-items: center; gap: 0.625rem; width: 100%; text-align: left; margin-top: 0.875rem; padding: 0.75rem 0.875rem;
@@ -372,7 +374,8 @@ input.edit-inline { font: inherit; width: 100%; border: 1.5px solid var(--accent
 
 /* ---- thing card layout A (round 6): trash on the photo, action row under the details ---- */
 .photo-wrap { position: relative; }
-.photo-trash { position: absolute; top: 0.625rem; right: 0.625rem; width: 2.75rem; height: 2.75rem; min-height: 0; padding: 0; border-radius: 50%; z-index: 2;
+.strip-page { position: relative; }
+.photo-trash { position: absolute; bottom: 0.625rem; left: 0.625rem; width: 2.75rem; height: 2.75rem; min-height: 0; padding: 0; border-radius: 50%; z-index: 2;
   background: rgba(0,0,0,0.5); color: #fff; display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .photo-trash svg { width: 1.35rem; height: 1.35rem; }
 .actbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem; margin-top: 0.875rem; }
@@ -390,6 +393,8 @@ input.edit-inline { font: inherit; width: 100%; border: 1.5px solid var(--accent
 .actbar.icons .act { min-height: 3.5rem; }
 .actbar.icons .act span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .actbar.icons .act svg { width: 1.75rem; height: 1.75rem; }
+
+.sheet-image { display: block; width: 100%; max-height: 32vh; object-fit: cover; border-radius: 0.875rem; margin-top: 0.75rem; }
 
 /* ---- toast (audit S3) ------------------------------------------------------------------ */
 .toast { position: fixed; left: 1rem; right: 1rem; bottom: calc(var(--footer-h) + 0.5rem + env(safe-area-inset-bottom)); z-index: 15;

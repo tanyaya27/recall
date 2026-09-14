@@ -5,7 +5,8 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914n`** from the Mac (n: thing card layout A — trash on the photo, labelled
+- [ ] **Deploy `20260914o`** from the Mac (o: Shared/Private open/closed lock, trash per photo
+  bottom-left + photo in the remove sheet, lock watermark, hold → private, hamburger flush; n: thing card layout A — trash on the photo, labelled
   action row, icons-only when words don't fit; m: private items — field, toggle, lock, filtering; l: Add photo · Edit replace Found it/Fix; wrong-photo
   guard; hold on the photo → sheet; shorter footer; k: full-path audit fixes — Add photo on older items,
   added photo shows at once, rename keeps the alias, Find item → Take a photo opens the camera;
@@ -17,7 +18,7 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   Locations, Deleted items with swipe + Empty the list, Research log; Settings = Version first
   + AI key; the Version-card update banners; tighter footer bottom) — everything from today (labels, thumbnails, and
   the second-round build). Commands at the end of this file.
-- [ ] Phone-check `20260914n`: thing card shows the trash on the photo and the row *Add photo ·
+- [ ] Phone-check `20260914o`: thing card shows the trash on the photo and the row *Add photo ·
   Edit · Share · Remove* with words at Normal; switch to Largest → icons only, one row. *Share*
   → *Private* → lock on the tile. Then: thing card footer is *Add photo · Edit*; Edit the place → it
   appears under *Where it has been*; add a photo of something else → the question sheet;

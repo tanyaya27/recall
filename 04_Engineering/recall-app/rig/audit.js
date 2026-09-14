@@ -127,7 +127,7 @@ async function main() {
   check('D18b Don\'t add → nothing added', await count('.dots .dot') === 3 && await count('.item-sheet') === 0);
   like = null;
   // Private: Edit → toggle → lock on the tile; a private thing of ANOTHER phone never shows
-  await page.click('.act:has-text("Share")'); await page.waitForTimeout(300);
+  await page.click('.act:has-text("Shared")'); await page.waitForTimeout(300);
   check('D20 Share → Private (actbar)', /Private/.test(await text('.actbar')) && (await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1').visibility)) === 'private');
   await back(); await page.waitForSelector('.board');
   check('D21 private tile shows a lock on this phone', await count('.tile-lock') === 1);
@@ -135,7 +135,7 @@ async function main() {
   await page.waitForTimeout(300);
   check('D22 another phone\'s private thing is not on this board', await count('.tile') === 3 && !/other phone secret/.test(await text('.board')));
   await page.click('.tile >> nth=0'); await page.waitForSelector('.card.thing'); await page.click('.act:has-text("Private")'); await page.waitForTimeout(300);
-  check('D19 actbar: Add photo · Edit · Share · Remove item', /Add photo/.test(await text('.actbar')) && /Remove/.test(await text('.actbar')) && /Share/.test(await text('.actbar')));
+  check('D19 actbar: Add photo · Edit · Share · Remove item', /Add photo/.test(await text('.actbar')) && /Remove/.test(await text('.actbar')) && /Shared/.test(await text('.actbar')));
   await back(); await page.waitForSelector('.board');
 
   // ---------- C. Log item paths ----------
@@ -203,6 +203,13 @@ async function main() {
   check('E5 removed → one tile fewer, Undo toast', await count('.tile') === tilesBefore - 1 && await count('.toast-undo') === 1);
   await page.click('.toast-undo'); await page.waitForTimeout(500);
   check('E6 Undo → tile back', await count('.tile') === tilesBefore);
+  // Hold → Make private / Share from the grid
+  await page.mouse.move(t0.x + 40, t0.y + 40); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
+  await page.click('.item-sheet button:has-text("Make private")'); await page.waitForTimeout(300);
+  check('E7 hold → Make private → lock watermark on the tile', await count('.tile-lock') === 1);
+  await page.mouse.move(t0.x + 40, t0.y + 40); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
+  await page.click('.item-sheet button:has-text("Share with the household")'); await page.waitForTimeout(300);
+  check('E8 hold → Share → watermark gone', await count('.tile-lock') === 0);
 
   // ---------- F. Find item ----------
   await page.click('.footer .btn-primary.alt'); await page.waitForSelector('.ask');

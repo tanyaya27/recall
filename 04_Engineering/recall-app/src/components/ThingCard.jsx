@@ -7,7 +7,7 @@ import { own } from './PhotoCard.jsx';
 import Header from './Header.jsx';
 import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, UnlockIcon } from './Icons.jsx';
 
 // The thing card — the answer. Board decision 2026-09-05, Rules 1, 3, 4, 7; revised
 // 2026-09-14 (Ravi's second phone round, BOARD_2026-09-14_phone-feedback-round-2.md).
@@ -154,13 +154,14 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
             {pages.map((p, i) => (
               <div className="strip-page" key={p.id}>
                 <img className={'photo-full' + (whole && i === index ? ' whole' : '')} src={p.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => setWhole((w) => !w))} />
+                <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(p)}><TrashIcon /></button>
               </div>
             ))}
           </div>
         ) : (
           <img className={'photo-full' + (whole ? ' whole' : '')} src={page.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => setWhole((w) => !w))} />
         )}
-        <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(page)}><TrashIcon /></button>
+        {pages.length <= 1 && <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(page)}><TrashIcon /></button>}
         </div>
         {pages.length > 1 && (
           <div className="dots" aria-label={`Photo ${index + 1} of ${pages.length}`}>
@@ -204,9 +205,9 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
           <div className={'actbar' + (iconsOnly ? ' icons' : '')} ref={actRef}>
             <button type="button" className="act primary" aria-label="Add photo" disabled={(item.photoCount || 1) >= 4} onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /><span>Add photo</span></button>
             <button type="button" className={'act' + (fixing ? ' on' : '')} aria-label={fixing ? 'Done' : 'Edit'} aria-pressed={fixing} onClick={() => setFixing((f) => !f)}><PencilIcon /><span>{fixing ? 'Done' : 'Edit'}</span></button>
-            <button type="button" className={'act' + (isPrivate(item) ? ' on' : '')} aria-pressed={isPrivate(item)} aria-label={isPrivate(item) ? 'Private' : 'Share'}
+            <button type="button" className={'act' + (isPrivate(item) ? ' on' : '')} aria-pressed={isPrivate(item)} aria-label={isPrivate(item) ? 'Private — tap to share with the household' : 'Shared — tap to make private'}
               onClick={async () => { const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'actbar' }); onToast && onToast(to === 'private' ? 'Private — only this phone shows it' : 'Shared with the household'); }}>
-              <LockIcon /><span>{isPrivate(item) ? 'Private' : 'Share'}</span></button>
+              {isPrivate(item) ? <LockIcon /> : <UnlockIcon />}<span>{isPrivate(item) ? 'Private' : 'Shared'}</span></button>
             <button type="button" className="act amber" aria-label="Remove item" onClick={() => setConfirming('item')}><TrashIcon /><span>Remove</span></button>
             <div className="act-probe" ref={probeRef} aria-hidden="true" />
           </div>
@@ -240,6 +241,7 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
         confirming.last ? (
           <Confirm
             title={`This is the only photo of ${label}. Remove the item?`}
+            image={confirming.snap.photo}
             body="It goes to Settings → Recently removed, where it can be put back."
             keepLabel="Keep it" actionLabel="Remove item"
             onKeep={() => setConfirming(null)}
@@ -253,6 +255,7 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
         ) : (
           <Confirm
             title="Remove this photo?"
+            image={confirming.snap.photo}
             body={confirming.snap.cover ? 'The next photo becomes the one on the tile.' : 'The other photos stay.'}
             keepLabel="Keep it" actionLabel="Remove"
             onKeep={() => setConfirming(null)}

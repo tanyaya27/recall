@@ -3,13 +3,15 @@
 // (calm-ui). The safe choice is first and is the default focus.
 import { useEffect, useRef } from 'react';
 
-export default function Confirm({ title, body, keepLabel = 'Keep', actionLabel, onKeep, onAction }) {
+export default function Confirm({ title, body, image, keepLabel = 'Keep', actionLabel, onKeep, onAction }) {
   const keepRef = useRef(null);
   useEffect(() => { keepRef.current && keepRef.current.focus(); }, []);
   return (
     <div className="sheet-back" onClick={onKeep} role="presentation">
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-title" id="sheet-title">{title}</div>
+        {/* The photo in question (Ravi, round 6): a remove sheet shows what it removes. */}
+        {image && <img className="sheet-image" src={image} alt="" />}
         {body && <p className="sheet-body">{body}</p>}
         <button ref={keepRef} className="btn-primary alt" onClick={onKeep}>{keepLabel}</button>
         <button className="btn-secondary amber" onClick={onAction}>{actionLabel}</button>

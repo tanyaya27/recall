@@ -32,6 +32,13 @@ on 390, icons at Largest — `design/mockups/2026-09-14_thing-card-A-sizes.png`.
 **Rejected:** B (Photos-app toolbar at the bottom — Harold: too small and light); C
 (action row directly under the photo — the place drops below the fold; Maya).
 
+**Same evening, Ravi's corrections (built as `20260914o`):** the third button reads
+*Shared* with an open lock, *Private* with a closed one — not one glyph for both states;
+the trash sits on EACH photo page (bottom left) so it swipes with the photo it removes,
+and the remove sheet shows that photo; private tiles carry a large translucent lock
+watermark over the photo; press-and-hold on a tile offers *Make private* / *Share with
+the household*; the hamburger glyph's left edge is flush with the tiles' left edge.
+
 ---
 
 ## 2026-09-14 (round 5) — The thing card's verbs are Add photo · Edit; *Found it* is gone; a wrong photo gets a question
