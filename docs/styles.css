@@ -123,7 +123,7 @@ button { color: var(--ink); }
 .footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
   /* Bottom padding is only the phone's own home-indicator inset plus a hair (Ravi, round 4:
      too much space under the buttons). */
-  padding: 0.5rem 1rem env(safe-area-inset-bottom);
+  padding: 0.875rem 1rem env(safe-area-inset-bottom);
   background: linear-gradient(to bottom, transparent 0, var(--bg) 0.75rem); }
 .footer-inner { max-width: 35rem; margin: 0 auto; display: flex; flex-direction: row; gap: 0.625rem; }
 .footer-inner > * { flex: 1 1 0; min-width: 0; margin-top: 0; min-height: 3.125rem; padding: 0.5rem 0.5rem; /* 17% shorter, round 5 */
