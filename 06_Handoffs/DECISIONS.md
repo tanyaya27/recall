@@ -6,6 +6,31 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 (round 5b) — The subject, not the background: every shot names the thing; visual matches must be sure
+
+**What happened (Ravi):** two shots of a keyboard — a close-up and a wide one. The wide
+shot alone went to the AI; it said *keyboard*; then the visual duplicate check, shown only
+that wide shot, matched the sparkling-water can in the background and the card flipped to
+*New photo of My favorite sparkling water*.
+
+**Decision:** (1) naming and the identity check are given EVERY shot of the log, told they
+show the same thing, that a close-up shows what it is and a wide shot where it is, and to
+name the subject in front, never a background object; when a shot is added on the card
+the naming runs again with all of them. (2) The identity check is told what the subject
+is (the name just given) and to answer *none* if the only match is a background object.
+(3) Only a *sure* visual match may take over the card; an unsure one is dropped (Maya's
+guardrail from round 3, now enforced). Historical photos are already the candidates'
+side of the comparison; more per candidate if the export shows misses.
+
+**Copy:** *Not your my favorite sparkling water?* — a name starting with my/the/our drops
+that word inside a sentence.
+
+**Would change our mind:** the close-up still losing to the background in the export
+(`identity_check` events carry the verdict) — then send the close-up alone to the
+identity check.
+
+---
+
 ## 2026-09-14 (round 5) — In-app camera; the 09-14 "keep iOS's camera" call is reversed
 
 **Decision (Ravi, asked twice and deferred once without his agreement — that deferral was

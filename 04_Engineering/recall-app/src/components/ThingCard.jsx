@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { updateItem, renameItem, loadSnaps, removeSnap, softDeleteItem, moveToTop, logEvent } from '../lib/db.js';
 import { whenSeen, cap } from '../lib/format.js';
 import EditableText from './EditableText.jsx';
+import { own } from './PhotoCard.jsx';
 import Footer from './Footer.jsx';
 import Header from './Header.jsx';
 import Confirm from './Confirm.jsx';
@@ -101,7 +102,7 @@ export default function ThingCard({ item, items = [], onBack, onFound, onAdd, on
     onToast && onToast('Photo removed', async () => { await undo(); setSnaps(null); logEvent('photo_restored', { itemId: item.id, snapId: target.id }); });
   }
 
-  const label = item.name ? `your ${item.name.toLowerCase()}` : 'this';
+  const label = item.name ? `your ${own(item.name)}` : 'this';
 
   return (
     <div className="screen with-footer">

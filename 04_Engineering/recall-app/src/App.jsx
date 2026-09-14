@@ -4,7 +4,7 @@ import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveTo
 import { THUMB_V, thumbFromPhoto, compressPhoto } from './lib/img.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
 import Board from './components/Board.jsx';
-import PhotoCard from './components/PhotoCard.jsx';
+import PhotoCard, { own } from './components/PhotoCard.jsx';
 import ThingCard from './components/ThingCard.jsx';
 import Ask from './components/Ask.jsx';
 import Settings, { takeReturnRoute, noteInstalled } from './components/Settings.jsx';
@@ -277,7 +277,7 @@ export default function App() {
           onCancel={() => setSheet(null)} />
       )}
       {removing && (
-        <Confirm title={`Remove ${removing.name ? `your ${removing.name.toLowerCase()}` : 'this'} from My items?`}
+        <Confirm title={`Remove ${removing.name ? `your ${own(removing.name)}` : 'this'} from My items?`}
           body="It goes to Settings → Recently removed, where it can be put back."
           keepLabel="Keep it" actionLabel="Remove"
           onKeep={() => setRemoving(null)}

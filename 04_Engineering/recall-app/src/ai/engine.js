@@ -95,7 +95,11 @@ export class AIEngine {
   //
   // `catalog` turns open-vocabulary naming into matching against things already in the
   // vault, which is much more reliable — and gets better the more the household uses it.
+  // photoDataUrl: one data URL, or an array — every photo of the same thing from this log
+  // (a close-up and a wide shot). Ravi, 2026-09-14: the wide shot alone named the can in the
+  // background instead of the keyboard in front; the close-up is the stronger evidence.
   async tagPhoto(photoDataUrl, { hintName = '', knownPlaces = [], catalog = [], sensitivity = 'personal' } = {}) {
+    const photos = Array.isArray(photoDataUrl) ? photoDataUrl : [photoDataUrl];
     // catalog entries are strings, or { name, aliases } — the names a thing has been called before.
     const placesLine = knownPlaces.length
       ? `Places this household already uses: ${knownPlaces.map((p) => `"${p}"`).join(', ')}.`
@@ -106,7 +110,7 @@ export class AIEngine {
 
     const prompt =
 `You are helping someone with memory loss log where their belongings are.
-${hintName ? `They say this photo should show their: ${hintName}.\n` : ''}${catalogLine}
+${photos.length > 1 ? `They took ${photos.length} photos of the SAME thing moments apart. A close-up shows WHAT it is; a wider shot shows WHERE it is. Name the one thing they are photographing — the subject in front — never something that merely appears in the background of a wider shot.\n` : ''}${hintName ? `They say this photo should show their: ${hintName}.\n` : ''}${catalogLine}
 ${placesLine}
 
 Answer three separate things. Do not blend them.
@@ -142,7 +146,9 @@ Reply with ONLY a JSON object, no other text:
  "placeGuesses": ["<most likely place first, up to 3, prefer the household's existing places>"],
  "description": "<one short sentence a family member would find useful>"}`;
 
-    const text = await this.provider.visionJSON(this.cfg, prompt, photoDataUrl, { sensitivity });
+    const text = photos.length > 1 && this.provider.visionJSONMulti
+      ? await this.provider.visionJSONMulti(this.cfg, [...photos.flatMap((ph, i) => [{ text: `PHOTO ${i + 1} of ${photos.length}:` }, { image: ph }]), { text: prompt }], { sensitivity })
+      : await this.provider.visionJSON(this.cfg, prompt, photos[0], { sensitivity });
     const out = parseJSON(text);
     const clean = (s) => (typeof s === 'string' ? s.trim() : '');
     const list = (v) => (Array.isArray(v) ? v.map(clean).filter(Boolean) : []);
@@ -162,19 +168,24 @@ Reply with ONLY a JSON object, no other text:
   // "the person has forgotten they already logged it"). candidates: [{ name, thumb }].
   // Returns { index: n | -1, sure: bool }. Told to answer -1 unless it is the same
   // individual object — two similar mugs are two mugs.
-  async sameThing(photoDataUrl, candidates, { sensitivity = 'personal' } = {}) {
+  async sameThing(photoDataUrl, candidates, { subject = '', sensitivity = 'personal' } = {}) {
     if (!candidates.length || !this.provider.visionJSONMulti) return { index: -1, sure: false };
-    const segments = [{ text: 'NEW PHOTO:' }, { image: photoDataUrl }];
+    const photos = Array.isArray(photoDataUrl) ? photoDataUrl : [photoDataUrl];
+    const segments = photos.flatMap((ph, i) => [{ text: photos.length > 1 ? `NEW PHOTO ${i + 1} of ${photos.length}:` : 'NEW PHOTO:' }, { image: ph }]);
     candidates.forEach((c, i) => { segments.push({ text: `SAVED THING ${i + 1} — "${c.name || 'unnamed'}":` }); segments.push({ image: c.thumb }); });
     segments.push({ text:
-`Someone with memory loss just took the NEW PHOTO of one of their belongings. They may have
+`Someone with memory loss just took the NEW PHOTO${photos.length > 1 ? 'S' : ''} of one of their belongings${subject ? ` — their "${subject}"` : ''}. They may have
 photographed this same thing before and forgotten. Above are ${candidates.length} things already
 saved, each with its saved photo and name.
 
-Is the object in the NEW PHOTO the very same object as one of the saved things? Same
-individual object — not merely the same kind of object. A different angle, distance,
-lighting, background or room does not make it different. Two similar-looking mugs, books
-or bottles ARE different unless the details match.
+THE SUBJECT is ${subject ? `the ${subject}` : 'the object in front, the one being photographed'}. Other objects that happen to be in the
+background of a wider shot are NOT the subject — a can on the desk behind a keyboard is not
+what they photographed. ${photos.length > 1 ? 'The close-up shows the subject best.' : ''}
+
+Is THE SUBJECT the very same object as one of the saved things? Same individual object —
+not merely the same kind of object. A different angle, distance, lighting, background or
+room does not make it different. Two similar-looking mugs, books or bottles ARE different
+unless the details match. If the match is only a background object, answer 0.
 
 Reply with ONLY a JSON object, no other text:
 {"index": <1-${candidates.length} for the matching saved thing, or 0 if none of them>,

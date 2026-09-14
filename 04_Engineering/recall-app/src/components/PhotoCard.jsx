@@ -27,6 +27,8 @@ import { MAX_SHOTS } from './Camera.jsx';
 // The AI names the photo in the background (3–8s). The chips do not wait for it. If she
 // taps a place first, the thing is saved at once with `naming: true` and finished later.
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+// "your my favorite mug" → "your favorite mug": drop a leading my/the from a name in a sentence.
+export const own = (s) => (s || '').toLowerCase().replace(/^(my|the|our)\s+/, '');
 
 export default function PhotoCard({ files = [], engine, items = [], places = [], resnapOf = null, onDone, onBack, onMore, pendingFiles = null, onPendingTaken }) {
   const [shots, setShots] = useState([]);       // [{ photo, thumb }] — first is the cover
@@ -54,9 +56,8 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     (async () => {
       const all = await Promise.all(files.slice(0, MAX_SHOTS).map((f) => compressPhoto(f)));
       if (!alive) return;
-      const first = all[0];
       setShots(all);
-      tagPromise.current = engine.tagPhoto(first.photo, {
+      tagPromise.current = engine.tagPhoto(all.map((s) => s.photo), {
         hintName: resnapOf ? resnapOf.name : '',
         knownPlaces: chips,
         catalog: items.filter((it) => it.name).map((it) => ({ name: it.name, aliases: it.aliases || [] })),
@@ -91,9 +92,11 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
       const t0 = Date.now();
       try {
         const small = await Promise.all(cands.map((c) => shrink(c.thumb, 320)));
-        const r = await engine.sameThing(photo, cands.map((c, i) => ({ name: c.name, thumb: small[i] })), { sensitivity: 'personal' });
+        const r = await engine.sameThing(shots.map((s) => s.photo), cands.map((c, i) => ({ name: c.name, thumb: small[i] })), { subject: tag.name, sensitivity: 'personal' });
         if (!alive) return;
-        const hit = r.index >= 0 ? cands[r.index] : null;
+        // Only a CONFIDENT visual match may stand in for a name (Maya's guardrail): an unsure
+        // one is how the can behind the keyboard took over the card.
+        const hit = r.index >= 0 && r.sure ? cands[r.index] : null;
         logEvent('identity_check', { candidates: cands.length, hit: hit ? hit.id : null, sure: r.sure, latencyMs: Date.now() - t0 });
         setVisual(hit);
       } catch (err) {
@@ -130,14 +133,22 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   const seen = new Set(guesses.map((g) => g.toLowerCase()));
   const options = [...guesses, ...chips.filter((c) => !seen.has(c.toLowerCase()))].slice(0, 7);
 
-  // More shots came back from the camera after this card opened.
+  // More shots came back from the camera after this card opened. Name again with ALL of
+  // them (the close-up may change the answer), and look again for a duplicate.
   useEffect(() => {
     if (!pendingFiles || !pendingFiles.length) return;
     (async () => {
       const more = await Promise.all(pendingFiles.map((f) => compressPhoto(f)));
-      setShots((prev) => { const next = [...prev, ...more].slice(0, MAX_SHOTS); setCurrent(next.length - 1); return next; });
+      let next;
+      setShots((prev) => { next = [...prev, ...more].slice(0, MAX_SHOTS); setCurrent(next.length - 1); return next; });
       logEvent('capture_shot', { added: more.length });
       onPendingTaken && onPendingTaken();
+      if (savedId || nameOverride || resnapOf) return;
+      setTag(undefined); setVisual('idle'); visualStarted.current = false;
+      const r = await engine.tagPhoto((next || shots).map((s) => s.photo), {
+        knownPlaces: chips, catalog: items.filter((it) => it.name).map((it) => ({ name: it.name, aliases: it.aliases || [] })), sensitivity: 'personal',
+      }).then((x) => x, (err) => { console.error(err); return null; });
+      setTag(r);
     })();
   }, [pendingFiles]); // eslint-disable-line
 
@@ -267,7 +278,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
             <div className="eyebrow">New photo of</div>
             <div className="head">{cap(match.name)}</div>
             <button type="button" className="link-btn" onClick={() => { setForceNew(true); logEvent('merge', { itemId: match.id, result: 'declined_early', via: nameMatch ? 'name' : 'visual' }); }}>
-              Not your {match.name.toLowerCase()}?
+              Not your {own(match.name)}?
             </button>
           </>
         ) : (
@@ -315,7 +326,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
         {/* The name arrived and it is something already on the board. Ask; never assume. */}
         {pendingMerge && match && (
           <div className="ask-place">
-            <div className="ask-q">Is this your {match.name.toLowerCase()}?</div>
+            <div className="ask-q">Is this your {own(match.name)}?</div>
             <div className="guesses">
               <button type="button" className="guess fixed" disabled={busy} onClick={mergeYes}>Yes, the same thing</button>
               <button type="button" className="guess other" disabled={busy} onClick={mergeNo}>No, a different thing</button>

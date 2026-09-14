@@ -5,14 +5,16 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914i`** from the Mac (i: the in-app camera — Cancel, several shots with
+- [ ] **Deploy `20260914j`** from the Mac (j: naming + identity use every shot and the
+  subject, sure-only visual matches; i: the in-app camera — Cancel, several shots with
   ✕ thumbnails, Done; h: day line hugs the hamburger; Back from a menu screen returns to the
   drawer) (g: Version card shows facts only — build time,
   installed-on-this-phone time, when the server was last asked; no "latest" claim) (adds: hamburger menu — Look and feel with Compact,
   Locations, Deleted items with swipe + Empty the list, Research log; Settings = Version first
   + AI key; the Version-card update banners; tighter footer bottom) — everything from today (labels, thumbnails, and
   the second-round build). Commands at the end of this file.
-- [ ] Phone-check `20260914i`: *Log item* opens the app's own camera (allow the permission
+- [ ] Phone-check `20260914j`: keyboard close-up + wide shot with the can behind → card says
+  *Keyboard*, stays *Keyboard*. Then: *Log item* opens the app's own camera (allow the permission
   once) → shutter twice → two thumbnails → ✕ one → *Done* → photo card. *Cancel* returns to
   Home with nothing saved. Thing card → *Add photo* → shoot → *Done* → toast *Added*. If the
   camera fails to start, *Use the phone's camera* appears. Then: hamburger left of the day line → drawer → each row opens its
@@ -103,5 +105,5 @@ MISSED until build i** (deferred without agreement).
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "In-app camera (cancel, multi-shot roll); drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
+git add -A && git commit -m "Name and identity-check with every shot, subject-aware; in-app camera (cancel, multi-shot roll); drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
 ```
