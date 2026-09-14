@@ -63,8 +63,10 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914k` is BUILT, NOT YET
-> DEPLOYED** (k: the full-path audit — `06_Handoffs/design/AUDIT_2026-09-14_full-path.md` —
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914l` is BUILT, NOT YET
+> DEPLOYED** (l: thing card = Add photo · Edit, no *Found it*; wrong-photo guard; hold on the
+> photo; shorter footer. **Multi-user:** three boards met in parallel — customer, UX, tech —
+> reconciled in `06_Handoffs/design/PLAN_2026-09-14_multi-user.md`; six splits await Ravi/Tanya)** (k: the full-path audit — `06_Handoffs/design/AUDIT_2026-09-14_full-path.md` —
 > found four real bugs incl. Add photo failing on every pre-09-14 item; all fixed, 67/67)** (i: in-app camera — `Camera.jsx` — replaces iOS's capture sheet everywhere)** (d is live; e/f add the Version-card update banners, a tighter footer, and the
 > hamburger menu — Ravi overruled the board: Look and feel, Locations, Deleted items,
 > Research log live there; Settings is the developer's Version + AI key, slated for removal).** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
@@ -112,9 +114,9 @@ Full background lives in the numbered folders — see `README.md` for the index.
 - **Firebase:** project `recall-d9886`, rules cover `recall_items` and `recall_events` only,
   wide open to anonymous auth. **Tanya's console list:** tighten rules by `household`;
   composite index (kind, itemId, at) so earlier photos can use `limit()`.
-- **Next build:** Robert's helper phone (*This phone is used by* setting → *Another?* after
-  save, note field, routines editor) and Priya's one-card status. Both designed in §2 of
-  the board file; neither built. Then the household join code.
+- **Next build:** multi-user stage 0 (*This phone is used by*), then appointments, then the
+  staged household work — see `PLAN_2026-09-14_multi-user.md`; each stage is two agents in
+  parallel with the boards reconvening on screenshots.
 - **Preview for Tanya:** a static render of every screen with the palette/size switcher is
   published as the *ReCall Board Preview* artifact (also `recall-board-preview.html` in
   the session outputs).

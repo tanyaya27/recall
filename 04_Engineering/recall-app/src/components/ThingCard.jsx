@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { updateItem, renameItem, loadSnaps, removeSnap, softDeleteItem, moveToTop, logEvent } from '../lib/db.js';
+import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, logEvent } from '../lib/db.js';
+import { useHold } from '../lib/hold.js';
 import { whenSeen, cap } from '../lib/format.js';
 import EditableText from './EditableText.jsx';
 import { own } from './PhotoCard.jsx';
 import Footer from './Footer.jsx';
 import Header from './Header.jsx';
 import Confirm from './Confirm.jsx';
+import ItemSheet from './ItemSheet.jsx';
 import { CameraIcon, TrashIcon, PencilIcon } from './Icons.jsx';
 
 // The thing card — the answer. Board decision 2026-09-05, Rules 1, 3, 4, 7; revised
@@ -22,8 +24,9 @@ import { CameraIcon, TrashIcon, PencilIcon } from './Icons.jsx';
 // Under the centred photo, one quiet control: *Remove this photo* → confirm sheet → toast
 // with Undo. If it is the last photo, the sheet offers removing the item instead.
 //
-// Fix (name, place, move to the top) is behind one quiet control. It is Robert's.
-export default function ThingCard({ item, items = [], onBack, onFound, onAdd, onRemoved, onToast, openFix = false }) {
+// Edit (name, place, move to the top) is the footer's second verb; it was *Fix* until round 5.
+export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, onToast, openFix = false }) {
+  const [sheet, setSheet] = useState(false);       // press-and-hold on the photo
   const [snaps, setSnaps] = useState(null);      // every live snap, newest first; null = not loaded
   const [mode, setMode] = useState('now');
   const [index, setIndex] = useState(0);         // centred page in the strip
@@ -31,6 +34,7 @@ export default function ThingCard({ item, items = [], onBack, onFound, onAdd, on
   const [whole, setWhole] = useState(false);     // photo uncropped (audit L1)
   const [confirming, setConfirming] = useState(null); // 'item' | { snap }
   const stripRef = useRef(null);
+  const hold = useHold(() => { logEvent('photo_hold', { itemId: item && item.id }); setSheet(true); });
 
   useEffect(() => { setSnaps(null); setMode('now'); setIndex(0); setFixing(openFix); setWhole(false); }, [item?.id]); // eslint-disable-line
 
@@ -122,12 +126,12 @@ export default function ThingCard({ item, items = [], onBack, onFound, onAdd, on
           <div className="strip" ref={stripRef} onScroll={onScroll}>
             {pages.map((p, i) => (
               <div className="strip-page" key={p.id}>
-                <img className={'photo-full' + (whole && i === index ? ' whole' : '')} src={p.photo} alt={item.name || ''} onClick={() => setWhole((w) => !w)} />
+                <img className={'photo-full' + (whole && i === index ? ' whole' : '')} src={p.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => setWhole((w) => !w))} />
               </div>
             ))}
           </div>
         ) : (
-          <img className={'photo-full' + (whole ? ' whole' : '')} src={page.photo} alt={item.name || ''} onClick={() => setWhole((w) => !w)} />
+          <img className={'photo-full' + (whole ? ' whole' : '')} src={page.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => setWhole((w) => !w))} />
         )}
         {pages.length > 1 && (
           <div className="dots" aria-label={`Photo ${index + 1} of ${pages.length}`}>
@@ -168,18 +172,14 @@ export default function ThingCard({ item, items = [], onBack, onFound, onAdd, on
             Removing the ITEM is not here — it conflated with removing a photo. It lives in
             the tile's press-and-hold sheet, and in the last-photo path of Remove this photo. */}
         <div className="quiet-row">
-          {mode === 'now' && (item.photoCount || 1) < 4 && (
-            <button type="button" className="link-btn" onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /> Add photo</button>
-          )}
-          <button type="button" className="link-btn" onClick={() => askRemove(page)}><TrashIcon /> Remove photo</button>
-          {!fixing && <button type="button" className="link-btn" onClick={() => setFixing(true)}><PencilIcon /> Fix</button>}
+          <button type="button" className="link-btn" onClick={() => askRemove(page)}><TrashIcon /> Remove this photo</button>
         </div>
         {fixing && (
           <div className="fix">
             <EditableText label="What it is" value={item.name} emptyLabel="Name it"
               onSave={(v) => { renameItem(item, v); logEvent('correction', { itemId: item.id, field: 'name' }); }} />
             <EditableText label="Where it is" value={item.location} emptyLabel="Add the place"
-              onSave={(v) => { updateItem(item.id, { location: v.charAt(0).toUpperCase() + v.slice(1), needsPlace: false }); logEvent('correction', { itemId: item.id, field: 'location' }); }} />
+              onSave={(v) => { changeLocation(item, v.charAt(0).toUpperCase() + v.slice(1)); logEvent('correction', { itemId: item.id, field: 'location' }); }} />
             <div className="fix-row">
               <button className="btn-quiet" onClick={async () => { await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id }); setFixing(false); }}>Move to the top</button>
               <button className="btn-quiet" onClick={() => setFixing(false)}>Done</button>
@@ -188,6 +188,16 @@ export default function ThingCard({ item, items = [], onBack, onFound, onAdd, on
         )}
       </div>
 
+      {sheet && (
+        <ItemSheet item={item}
+          onAdd={() => { setSheet(false); setSnaps(null); onAdd(); }}
+          onChangePlace={() => { setSheet(false); setFixing(true); }}
+          onRename={() => { setSheet(false); setFixing(true); }}
+          onMoveToTop={async () => { setSheet(false); await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id, via: 'photo_sheet' }); onToast && onToast('Moved to the top'); }}
+          onRemovePhoto={() => { setSheet(false); askRemove(page); }}
+          onRemove={() => { setSheet(false); setConfirming('item'); }}
+          onCancel={() => setSheet(false)} />
+      )}
       {confirming && confirming !== 'item' && (
         confirming.last ? (
           <Confirm
@@ -227,9 +237,16 @@ export default function ThingCard({ item, items = [], onBack, onFound, onAdd, on
         />
       )}
 
+      {/* Round 5 (Ravi): *Found it — new photo* is gone — it read as "log this again
+          somewhere else" and looked like logging a new item. The card's two verbs are the
+          ordinary ones: Add photo (into the current log) and Edit. Moving a thing is done
+          from Home — Log item recognises it (D4) and asks the place afresh. */}
       <Footer>
-        <button className="btn-primary" aria-label="Found it — new photo" onClick={() => { logEvent('lookup_outcome', { itemId: item.id, outcome: 'found' }); onFound(); }}>
-          <CameraIcon /><span className="lbl">Found it — new photo</span>
+        <button className="btn-primary" aria-label="Add photo" disabled={(item.photoCount || 1) >= 4} onClick={() => { setSnaps(null); onAdd(); }}>
+          <CameraIcon /><span className="lbl">Add photo</span>
+        </button>
+        <button className="btn-primary alt" aria-label="Edit" onClick={() => { setFixing((f) => !f); if (!fixing) setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50); }}>
+          <PencilIcon /><span className="lbl">{fixing ? 'Done' : 'Edit'}</span>
         </button>
       </Footer>
     </div>

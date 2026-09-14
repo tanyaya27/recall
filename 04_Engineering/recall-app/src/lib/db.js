@@ -182,6 +182,14 @@ export async function nameItem(id, { name = '', description = '', restingOn = ''
   await updateItem(id, patch);
 }
 
+// Editing the place by hand IS a move: it goes into the history with a time, and the thing
+// counts as seen there now (round 5 — Edit replaces *Found it*).
+export async function changeLocation(item, location) {
+  const now = Date.now();
+  const history = [...(item.history || []), { location, at: now }].slice(-100);
+  await updateDoc(doc(col, item.id), { location, needsPlace: !location, history, lastSeenAt: now, updatedAt: now });
+}
+
 export async function updateItem(id, patch) {
   await updateDoc(doc(col, id), { ...patch, updatedAt: Date.now() });
 }

@@ -5,7 +5,7 @@ import { CameraIcon, PencilIcon, TrashIcon } from './Icons.jsx';
 // in-app sheet as confirms: big rows, the thing's name on top, Cancel last and largest so an
 // accidental hold costs one obvious tap. Every action here is also reachable on the thing
 // card — this is a shortcut, not the only path (Devin's condition).
-export default function ItemSheet({ item, onAdd, onChangePlace, onRename, onMoveToTop, onRemove, onCancel }) {
+export default function ItemSheet({ item, onAdd, onChangePlace, onRename, onMoveToTop, onRemove, onRemovePhoto, onCancel }) {
   const cancelRef = useRef(null);
   useEffect(() => { cancelRef.current && cancelRef.current.focus(); }, []);
   const label = item.name ? item.name : 'This thing';
@@ -19,6 +19,7 @@ export default function ItemSheet({ item, onAdd, onChangePlace, onRename, onMove
         <button className="sheet-row" onClick={onChangePlace}><PencilIcon /> Change the place</button>
         <button className="sheet-row" onClick={onRename}><PencilIcon /> Rename</button>
         <button className="sheet-row" onClick={onMoveToTop}>Move to the top</button>
+        {onRemovePhoto && <button className="sheet-row amber" onClick={onRemovePhoto}><TrashIcon /> Remove this photo</button>}
         <button className="sheet-row amber" onClick={onRemove}><TrashIcon /> Remove from my items</button>
         <button ref={cancelRef} className="btn-primary alt" onClick={onCancel}>Cancel</button>
       </div>

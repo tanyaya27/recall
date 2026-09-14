@@ -1,5 +1,5 @@
-import { useRef } from 'react';
 import { boardOrder, logEvent } from '../lib/db.js';
+import { useHold } from '../lib/hold.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
 import { CameraIcon, SearchIcon, GearIcon, MenuIcon } from './Icons.jsx';
@@ -15,17 +15,9 @@ import { CameraIcon, SearchIcon, GearIcon, MenuIcon } from './Icons.jsx';
 // The board never asks her anything. A thing with no name is a photo with no label.
 export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSettings, onMenu, onHold }) {
   const things = boardOrder(items);
-  // Press-and-hold on a tile (Ravi, round 3): 500 ms opens the item's action sheet. A
-  // short tap still opens the thing. Movement cancels — a scroll is not a hold. This is
-  // Robert's shortcut; every action in the sheet is also reachable on the thing card.
-  const hold = useRef({ timer: 0, fired: false, x: 0, y: 0 });
-  const holdStart = (it) => (e) => {
-    const h = hold.current; h.fired = false; h.x = e.clientX; h.y = e.clientY;
-    clearTimeout(h.timer);
-    h.timer = setTimeout(() => { h.fired = true; if (navigator.vibrate) navigator.vibrate(10); logEvent('tile_hold', { itemId: it.id }); onHold && onHold(it); }, 500);
-  };
-  const holdMove = (e) => { const h = hold.current; if (Math.abs(e.clientX - h.x) > 8 || Math.abs(e.clientY - h.y) > 8) clearTimeout(h.timer); };
-  const holdEnd = () => clearTimeout(hold.current.timer);
+  // Press-and-hold on a tile (Ravi, round 3): opens the item's action sheet; a short tap
+  // still opens the thing. Robert's shortcut; every action is also on the thing card.
+  const hold = useHold((it) => { logEvent('tile_hold', { itemId: it.id }); onHold && onHold(it); });
 
   return (
     <div className="screen with-footer">
@@ -53,14 +45,12 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
         <div className="board">
           {things.map((it) => (
             <button key={it.id} className="tile"
-              onPointerDown={holdStart(it)} onPointerMove={holdMove} onPointerUp={holdEnd} onPointerCancel={holdEnd} onPointerLeave={holdEnd}
-              onContextMenu={(e) => e.preventDefault()}
-              onClick={() => {
-                if (hold.current.fired) { hold.current.fired = false; return; }
+              {...hold.props(it)}
+              onClick={hold.tap(() => {
                 logEvent('lookup', { entryMode: 'tile', itemId: it.id, itemName: it.name || null,
                   answerAgeMin: Math.round((Date.now() - it.lastSeenAt) / 60000), matched: 1 });
                 onOpenThing(it);
-              }}>
+              })}>
               <img src={it.thumb} alt={it.name || ''} />
               {/* A thing saved without a place says so — a fact in the app's amber, not a
                   badge. Board decision 2026-09-05 (Ravi): the one cue a caregiver can scan

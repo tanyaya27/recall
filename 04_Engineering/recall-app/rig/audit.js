@@ -17,11 +17,13 @@ async function main() {
   await new Promise((r) => server.listen(PORT, r));
   const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
   const ctx = await browser.newContext({ permissions: ['camera'], viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  let aiNext = null, same = null;
+  let aiNext = null, same = null, like = null;
   await ctx.route('https://api.anthropic.com/**', async (route) => {
     const body = JSON.parse(route.request().postData() || '{}'); const content = body.messages?.[0]?.content || [];
-    const images = content.filter((b) => b.type === 'image').length; const isSame = content.some((b) => b.type === 'text' && /NEW PHOTO/.test(b.text));
-    const text = JSON.stringify(isSame ? (same || { index: 0, sure: false }) : images ? (aiNext || AI) : (/zzzz/.test(JSON.stringify(content)) ? { matches: [], message: 'none' } : { matches: [0], message: 'ok' }));
+    const images = content.filter((b) => b.type === 'image').length;
+    const isLike = content.some((b) => b.type === 'text' && /"same":/.test(b.text));
+    const isSame = !isLike && content.some((b) => b.type === 'text' && /NEW PHOTO/.test(b.text));
+    const text = JSON.stringify(isLike ? (like || { same: true, seen: '' }) : isSame ? (same || { index: 0, sure: false }) : images ? (aiNext || AI) : (/zzzz/.test(JSON.stringify(content)) ? { matches: [], message: 'none' } : { matches: [0], message: 'ok' }));
     await new Promise((r) => setTimeout(r, 300));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
   });
@@ -75,7 +77,7 @@ async function main() {
   // ---------- D. Thing card: OLD item — Add photo ----------
   await page.click('.tile >> nth=1'); await page.waitForSelector('.card.thing');
   check('D1 old item opens; one photo, no dots', await count('.dots') === 0);
-  await page.click('text=Add photo'); await shoot(1); await page.waitForTimeout(900); await shot('d-old-add');
+  await page.click('.footer .btn-primary >> nth=0'); await shoot(1); await page.waitForTimeout(900); await shot('d-old-add');
   const i2 = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i2'));
   check('D2 old item: Add photo actually saved a snap', await page.evaluate(() => window.__rig.dump().filter((d) => d.kind === 'snap' && d.itemId === 'i2').length) === 2, `photoCount=${i2.photoCount} logId=${i2.logId}`);
   check('D3 old item: thing card now shows the strip with 2 pages', await count('.dots .dot') === 2);
@@ -90,28 +92,42 @@ async function main() {
   check('D7 row → Earlier mode', await count('.mode-row') === 1 && /Bedside/.test(await text('.loc-big')));
   await page.click('text=Back to now'); await page.waitForTimeout(300);
   check('D8 Back to now', await count('.mode-row') === 0 && /Kitchen/.test(await text('.loc-big')));
-  await page.click('text=Add photo'); await shoot(1); await page.waitForTimeout(900);
+  await page.click('.footer .btn-primary >> nth=0'); await shoot(1); await page.waitForTimeout(900);
   check('D9 new item: Add photo → 3 dots', await count('.dots .dot') === 3);
   // remove the extra (page 3)
-  await page.click('.dot >> nth=2'); await page.waitForTimeout(400); await page.click('text=Remove photo'); await page.waitForSelector('.sheet');
+  await page.click('.dot >> nth=2'); await page.waitForTimeout(400); await page.click('text=Remove this photo'); await page.waitForSelector('.sheet');
   check('D10 remove-photo sheet (not the item sheet)', /Remove this photo/.test(await text('.sheet-title')));
   await page.click('.sheet .btn-secondary'); await page.waitForTimeout(500);
   check('D11 after remove → 2 dots, Undo offered', await count('.dots .dot') === 2 && await count('.toast-undo') === 1);
   await page.click('.toast-undo'); await page.waitForTimeout(600);
   check('D12 Undo restores → 3 dots', await count('.dots .dot') === 3);
   // Fix: rename → alias kept
-  await page.click('text=Fix'); await page.waitForTimeout(200); await page.click('.fix .field-value >> nth=0'); await page.fill('.fix input.edit-inline', 'spectacles'); await page.press('.fix input.edit-inline', 'Enter'); await page.waitForTimeout(400);
+  await page.click('.footer .btn-primary.alt'); await page.waitForTimeout(300); await page.click('.fix .field-value >> nth=0'); await page.fill('.fix input.edit-inline', 'spectacles'); await page.press('.fix input.edit-inline', 'Enter'); await page.waitForTimeout(400);
   const i1 = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D13 rename keeps old name as alias', i1.name === 'spectacles' && (i1.aliases || []).includes('reading glasses'), JSON.stringify(i1.aliases));
   check('D14 header shows new name', /Spectacles/.test(await text('.header .title')));
-  await page.click('text=Done'); await page.waitForTimeout(200);
-  check('D15 Fix panel has no Remove button', await page.locator('.fix').count() === 0);
-  // Found it → camera → resnap card → save → home, one tile updated
-  await page.click('.footer .btn-primary'); await shoot(1); await page.waitForSelector('.photo-card');
-  check('D16 Found it → photo card titled New photo of', /New photo of/i.test(await text('.photo-card')));
-  await page.click('.guess >> nth=0'); await page.waitForSelector('.board', { timeout: 5000 });
-  check('D17 resnap save → Home, still 3 tiles', await count('.tile') === 3);
-  check('D18 toast Saved · place', /Saved/.test(await text('.toast')));
+  // Edit the place → history grows, seen now
+  await page.click('.fix .field-value >> nth=1'); await page.fill('.fix input.edit-inline', 'sofa'); await page.press('.fix input.edit-inline', 'Enter'); await page.waitForTimeout(400);
+  const i1b = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
+  check('D15a edit place → history entry + lastSeenAt now', i1b.location === 'Sofa' && i1b.history.length === 3 && Date.now() - i1b.lastSeenAt < 5000);
+  check('D15b Where it has been now lists Kitchen counter', /Kitchen counter/.test(await text('.places')));
+  await page.click('.fix-row button:has-text("Done")'); await page.waitForTimeout(200);
+  check('D15 Edit panel closes; no Remove button in it', await page.locator('.fix').count() === 0 && (await text('.footer')).includes('Edit'));
+  // Press-and-hold on the photo → the item sheet with Remove this photo
+  const pb = await page.locator('.card.thing img').first().boundingBox();
+  await page.mouse.move(pb.x + 60, pb.y + 60); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
+  check('D16 hold on the photo → item sheet, with Remove this photo', await count('.item-sheet') === 1 && /Remove this photo/.test(await text('.item-sheet')));
+  await page.click('.item-sheet .btn-primary.alt'); await page.waitForTimeout(200);
+  check('D17 no whole-photo toggle fired by the hold', await count('.photo-full.whole') === 0);
+  // Add a photo that is a different thing → guard
+  like = { same: false, seen: 'coffee cup' };
+  await page.click('.footer .btn-primary >> nth=0'); await shoot(1); await page.waitForTimeout(900);
+  check('D18 mismatched photo → question, not saved', await count('.item-sheet') === 1 && /coffee cup/.test(await text('.sheet-title')) && await count('.dots .dot') === 3);
+  await page.click('text=Don\'t add it'); await page.waitForTimeout(200);
+  check('D18b Don\'t add → nothing added', await count('.dots .dot') === 3 && await count('.item-sheet') === 0);
+  like = null;
+  check('D19 footer reads Add photo · Edit', /Add photo/.test(await text('.footer')) && /Edit/.test(await text('.footer')));
+  await back(); await page.waitForSelector('.board');
 
   // ---------- C. Log item paths ----------
   await page.click('.footer .btn-primary >> nth=0'); await page.waitForSelector('.camera'); await page.click('.camera-cancel'); await page.waitForTimeout(200);

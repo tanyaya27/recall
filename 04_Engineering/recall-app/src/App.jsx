@@ -13,6 +13,8 @@ import ItemSheet from './components/ItemSheet.jsx';
 import Camera from './components/Camera.jsx';
 import { MenuDrawer, LookScreen, LocationsScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
 import Confirm from './components/Confirm.jsx';
+import Choice from './components/Choice.jsx';
+import { shrink } from './lib/img.js';
 
 // Board decision 2026-09-05: depth one. Home (the board, "My items") and one card. Every
 // card returns to Home. Routines and checks are still read from the vault but not shown.
@@ -55,6 +57,7 @@ export default function App() {
   const [camera, setCamera] = useState(null);
   const [moreFiles, setMoreFiles] = useState(null); // shots handed to the open photo card
   const [removing, setRemoving] = useState(null); // item awaiting the remove confirm (from the sheet)
+  const [mismatch, setMismatch] = useState(null); // { item, files, seen } — added photo looks like a different thing
   const [, tick] = useState(0);
   const [stage, setStage] = useState('script');
   const [slow, setSlow] = useState(false);
@@ -166,7 +169,20 @@ export default function App() {
 
   // Add one more photo to a thing's CURRENT log (thing card / press-and-hold sheet, round 3).
   // No card, no question: same place, same time, no AI.
-  const addPhotosTo = async (itemId, files) => {
+  // Round 5 (Ravi): a photo added to a thing is checked against that thing first. A coffee
+  // cup added to the folder gets a question, not a silent save.
+  const addPhotosTo = async (itemId, files, { checked = false } = {}) => {
+    const it0 = itemsRef.current.find((x) => x.id === itemId);
+    if (!it0) return;
+    if (!checked && engine.ready && it0.thumb) {
+      say('Checking the photo…');
+      try {
+        const { photo } = await compressPhoto(files[0]);
+        const r = await engine.looksLike(photo, { name: it0.name, thumb: await shrink(it0.thumb, 320) }, { sensitivity: 'personal' });
+        logEvent('add_check', { itemId, same: r.same, seen: r.seen || null });
+        if (!r.same) { setToast(null); setMismatch({ item: it0, files, seen: r.seen }); return; }
+      } catch (err) { console.error(err); }
+    }
     let added = 0;
     for (const file of files) {
       const it = itemsRef.current.find((x) => x.id === itemId);
@@ -217,7 +233,6 @@ export default function App() {
         <ThingCard
           item={live(route.item)} items={items} openFix={!!route.fix}
           onBack={back}
-          onFound={() => setCamera({ for: 'resnap', item: route.item, title: `${live(route.item).name ? cap(live(route.item).name) : 'This thing'} — new photo` })}
           onAdd={() => setCamera({ for: 'add', itemId: route.item.id, max: 4 - (live(route.item).photoCount || 1), title: 'Add photos' })}
           onRemoved={(item) => {
             say(`Removed · ${item.name || 'this'}`, () => { restoreItem(item.id); logEvent('item_restored', { itemId: item.id, via: 'undo' }); });
@@ -276,6 +291,17 @@ export default function App() {
           onMoveToTop={async () => { setSheet(null); await moveToTop(sheet, items); logEvent('move_to_top', { itemId: sheet.id, via: 'sheet' }); say('Moved to the top'); }}
           onRemove={() => { setSheet(null); setRemoving(sheet); }}
           onCancel={() => setSheet(null)} />
+      )}
+      {mismatch && (
+        <Choice
+          title={`This looks like ${mismatch.seen ? `a ${mismatch.seen}` : 'something else'}, not ${mismatch.item.name ? `your ${own(mismatch.item.name)}` : 'this thing'}.`}
+          body="A photo of a different thing belongs on its own tile."
+          options={[
+            { label: `Log it as a new item`, onClick: () => { const m = mismatch; setMismatch(null); go('photo', { files: m.files, key: Date.now() }); } },
+            { label: `Add it to ${mismatch.item.name ? own(mismatch.item.name) : 'this thing'} anyway`, amber: true, onClick: () => { const m = mismatch; setMismatch(null); addPhotosTo(m.item.id, m.files, { checked: true }); } },
+            { label: "Don't add it", onClick: () => setMismatch(null) },
+          ]}
+          onCancel={() => setMismatch(null)} />
       )}
       {removing && (
         <Confirm title={`Remove ${removing.name ? `your ${own(removing.name)}` : 'this'} from My items?`}

@@ -196,6 +196,26 @@ Reply with ONLY a JSON object, no other text:
     return { index: n >= 1 && n <= candidates.length ? n - 1 : -1, sure: out.sure === true };
   }
 
+  // Does the new photo show THIS saved thing? Used when a photo is added to an existing
+  // item (round 5, Ravi): a person who is not in the right frame of mind may add a coffee
+  // cup to the folder. Returns { same, seen } — `seen` is what the new photo mainly shows.
+  async looksLike(photoDataUrl, item, { sensitivity = 'personal' } = {}) {
+    if (!this.provider.visionJSONMulti || !item.thumb) return { same: true, seen: '' };
+    const photos = Array.isArray(photoDataUrl) ? photoDataUrl : [photoDataUrl];
+    const segments = [{ text: `SAVED THING — "${item.name || 'unnamed'}":` }, { image: item.thumb },
+      ...photos.flatMap((ph, i) => [{ text: `NEW PHOTO ${i + 1} of ${photos.length}:` }, { image: ph }])];
+    segments.push({ text:
+`Someone with memory loss is adding the NEW PHOTO${photos.length > 1 ? 'S' : ''} to the saved thing above. Does the new
+photo show that same thing — the same object, any angle, distance, lighting or place? Or is it
+a different thing altogether (a coffee cup added to a folder)?
+
+Reply with ONLY a JSON object, no other text:
+{"same": <true if the new photo shows the saved thing, false if it is a different object>,
+ "seen": "<what the new photo mainly shows, 1-3 everyday words>"}` });
+    const out = parseJSON(await this.provider.visionJSONMulti(this.cfg, segments, { sensitivity }));
+    return { same: out.same !== false, seen: typeof out.seen === 'string' ? out.seen.trim() : '' };
+  }
+
   // Prompted capture: the app asked for a specific photo, so it may check what it got.
   // Returns { visible, state, text }. state is one of the routine's allowed states or
   // 'unknown'. The app NEVER claims more than the photo shows.

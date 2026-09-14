@@ -5,7 +5,8 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914k`** from the Mac (k: full-path audit fixes — Add photo on older items,
+- [ ] **Deploy `20260914l`** from the Mac (l: Add photo · Edit replace Found it/Fix; wrong-photo
+  guard; hold on the photo → sheet; shorter footer; k: full-path audit fixes — Add photo on older items,
   added photo shows at once, rename keeps the alias, Find item → Take a photo opens the camera;
   j: naming + identity use every shot and the
   subject, sure-only visual matches; i: the in-app camera — Cancel, several shots with
@@ -15,7 +16,9 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   Locations, Deleted items with swipe + Empty the list, Research log; Settings = Version first
   + AI key; the Version-card update banners; tighter footer bottom) — everything from today (labels, thumbnails, and
   the second-round build). Commands at the end of this file.
-- [ ] Phone-check `20260914k`: open any of your existing items → *Add photo* → shoot → Done →
+- [ ] Phone-check `20260914l`: thing card footer is *Add photo · Edit*; Edit the place → it
+  appears under *Where it has been*; add a photo of something else → the question sheet;
+  hold the big photo → the app's sheet, not iOS's. Then: open any of your existing items → *Add photo* → shoot → Done →
   the strip shows the new photo at once with dots. Find item → nonsense → Find it → *Take a
   photo of it* → camera. Keyboard close-up + wide shot with the can behind → card says
   *Keyboard*, stays *Keyboard*. Then: *Log item* opens the app's own camera (allow the permission
@@ -79,6 +82,17 @@ MISSED until build i** (deferred without agreement).
 - [ ] Firebase console: tighten rules by `household`; composite index (kind, itemId, at)
   so earlier photos can use `limit()`.
 
+## Multi-user — decided by three boards, staged (PLAN_2026-09-14_multi-user.md)
+
+- [ ] **Ravi/Tanya: rule on the six splits** at the end of the plan (tell Margaret once or
+  never · Priya's day-one logging · sign-in in stage 2 or 3 · hamburger under Margaret's role ·
+  AI proxy in stage 1 · Storage now or at 150 items).
+- [ ] Stage 0 (1 day): *This phone is used by* switch; then appointments (Tanya's sequence).
+- [ ] Stage 1 (4 days, two agents): households + rules + migration ‖ AI-key proxy function.
+- [ ] Stage 2 (4 days, two agents): join code + Household screens + Priya's card ‖ coverSnapId.
+- [ ] Stage 3 (5 days, two agents): roles from members + helper screens ‖ Google sign-in for helpers.
+- [ ] Firebase: Blaze billing with a $10 alert (proxy needs it); Tanya's console.
+
 ## Next build (board first, then code)
 
 - [ ] Robert's helper phone — *This phone is used by* setting, *Another?* after save, note
@@ -116,5 +130,5 @@ MISSED until build i** (deferred without agreement).
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "Full-path audit fixes (add photo on older items, live reload, rename alias, Find→camera) + rig audit script; name and identity-check with every shot, subject-aware; in-app camera (cancel, multi-shot roll); drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
+git add -A && git commit -m "Thing card: Add photo · Edit, wrong-photo guard, photo hold sheet, shorter footer; multi-user plan (3 boards); full-path audit fixes (add photo on older items, live reload, rename alias, Find→camera) + rig audit script; name and identity-check with every shot, subject-aware; in-app camera (cancel, multi-shot roll); drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
 ```

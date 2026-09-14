@@ -6,6 +6,38 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 (round 5) — The thing card's verbs are Add photo · Edit; *Found it* is gone; a wrong photo gets a question
+
+**Decision (Ravi):** *Found it — new photo* read as "I found it and am putting it somewhere
+else, take a new photo" and then behaved like logging a new item from inside another
+item's page. Removed. The card's footer is **Add photo** (into the current log) and
+**Edit** (was *Fix* — "edit" is the word every other app uses). Editing the place by hand
+now counts as a move: it goes into *Where it has been* with a time and the thing is seen
+there now. Moving a thing with a photo is done from Home: *Log item* recognises it (D4)
+and asks the place afresh — that was the only real job *Found it* had.
+
+**Guard (Ravi):** a photo added to a thing is checked against that thing first
+(`engine.looksLike`). A coffee cup added to the folder gets *This looks like a coffee
+cup, not your folder* with *Log it as a new item* / *Add it to folder anyway* / *Don't add
+it*. ~3 s per add; logged as `add_check`. **Maya:** the first guard of its kind; more
+belong on the list below, not in this build.
+
+**Press-and-hold on the photo** in the thing card opens the same item sheet as a tile
+hold, plus *Remove this photo*; the phone's own image menu is suppressed.
+
+**Footer:** buttons 17% shorter (3.125 rem), bottom padding is the phone's safe-area
+inset only.
+
+**Other guards the boards want considered (Ravi's question "what else like this?"):**
+a photo with no discernible object (dark, blurred, a floor) → *I can't see a thing in this
+photo — take it again?*; a face or a person → don't log it, say so; a chosen place the
+photo plainly contradicts (kitchen tiles under "Bedroom") → one gentle question; the same
+photo twice in one log → drop the duplicate silently; renaming a thing to another thing's
+name → offer to merge; a *Remove* on a thing logged minutes ago → the Undo toast already
+covers it. Each is one AI question or one string compare; none is built yet.
+
+---
+
 ## 2026-09-14 (round 5b) — The subject, not the background: every shot names the thing; visual matches must be sure
 
 **What happened (Ravi):** two shots of a keyboard — a close-up and a wide one. The wide
