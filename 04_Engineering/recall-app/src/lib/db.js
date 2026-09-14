@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { dayKey, timeOfDay } from './format.js';
+import { THUMB_V } from './img.js';
 
 const col = collection(db, 'recall_items');
 const eventsCol = collection(db, 'recall_events');
@@ -95,7 +96,7 @@ export function watchAll(cb) {
 export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false }) {
   const now = Date.now();
   const ref = await addDoc(col, {
-    kind: 'item', household: HOUSEHOLD, name, location, description, photo, thumb, restingOn,
+    kind: 'item', household: HOUSEHOLD, name, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
     needsPlace: !location, naming,
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }],
@@ -121,7 +122,7 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
   const now = Date.now();
   const history = [...(item.history || []), { location, at: now }].slice(-100);
   await updateDoc(doc(col, item.id), {
-    photo, thumb, location, restingOn, needsPlace: !location,
+    photo, thumb, thumbV: THUMB_V, location, restingOn, needsPlace: !location,
     lastSeenAt: now, updatedAt: now, history, capturedBy: by,
   });
   await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, photo, thumb, location, at: now, by });

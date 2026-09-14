@@ -7,7 +7,8 @@ import { CameraIcon, SearchIcon, GearIcon } from './Icons.jsx';
 //
 // One quiet day line. Her things as photos, in the order they were first photographed,
 // never rearranged by the app. Two fixed buttons at the bottom, the same every time she
-// opens it: Take a photo · Where is my…  Nothing else. Settings is a small control at
+// opens it: Log item · Find item (Ravi, 2026-09-14; were Take a photo · Where is my…).
+// Nothing else. Settings is a small control at
 // the top, deliberately out of the thumb zone — it is opened once a month by a helper.
 //
 // The board never asks her anything. A thing with no name is a photo with no label.
@@ -62,12 +63,12 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
         {/* The button IS the camera: a <label> around the file input, so the camera opens
             on this tap — a programmatic click after navigating does not count as a
             gesture on iOS. The photo card opens with the photo already taken. */}
-        <label className={'btn-primary file' + (ready ? '' : ' disabled')} aria-label="Take a photo">
-          <CameraIcon /><span className="lbl">Take a photo</span>
+        <label className={'btn-primary file' + (ready ? '' : ' disabled')} aria-label="Log item">
+          <CameraIcon /><span className="lbl">Log item</span>
           <input type="file" accept="image/*" capture="environment" disabled={!ready}
             onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPhoto(f); }} />
         </label>
-        <button className="btn-primary alt" disabled={!ready} onClick={onAsk} aria-label="Where is my…"><SearchIcon /><span className="lbl">Where is my…</span></button>
+        <button className="btn-primary alt" disabled={!ready} onClick={onAsk} aria-label="Find item"><SearchIcon /><span className="lbl">Find item</span></button>
       </Footer>
     </div>
   );

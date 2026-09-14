@@ -60,19 +60,23 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-05 (evening) — v0.2 "the board" is BUILT, NOT YET DEPLOYED.** The first-session
-> cut of the board model is in `src/`, builds clean to `docs/app.js`, and passed an SSR
-> smoke test of every screen. **It has not run on a phone.** Next step, from the Mac:
-> `cd 04_Engineering/recall-app && ./deploy.sh`, then the phone checklist in
-> `06_Handoffs/sessions/2026-09-05-board-and-rebuild.md`.
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); a label + thumbnail build (`20260914a`) is
+> BUILT, NOT YET DEPLOYED.** Everything from 2026-09-05 — the board model, the platform
+> audit, the footer rework, live matching in the ask screen — is committed, pushed and on
+> the phone. Today's build renames the footer verbs to *Log item* · *Find item* and the
+> screen to *My items* (`06_Handoffs/design/BOARD_2026-09-14_where-is-my-label.md`), and
+> replaces the 220-px thumbnails that blurred on tiles with 600-px squares, rebuilt once
+> for existing items. Deploy commands and the phone check: `06_Handoffs/OPEN_ITEMS.md` —
+> **the running to-do list; read and update it every session.**
 >
 > **The design of record is `06_Handoffs/design/BOARD_2026-09-05_interaction_model.md`.**
 > `DAY_IN_THE_LIFE.md` is now history: its rules 2, 3, 5 and 7 survive; the clock-shaped
-> home does not. One split is still open for Tanya (S1 in §9 — header + footer, built as
-> recommended; she can reverse it).
+> home does not. Open for Tanya: S1 (header + footer, built as recommended), the palette,
+> and whether to keep Ravi's 09-14 labels (Devin/Margaret objected).
 
 - **v0.2 — the board model.** Home = her things as photos in first-photographed order, never
-  rearranged, with *Take a photo* · *Where is my…* fixed at the bottom. Every other screen is
+  rearranged, with *Log item* · *Find item* (since 09-14; were *Take a photo* · *Where is my…*) fixed at
+  the bottom. Every other screen is
   one card with a header (*‹ Back · title*) that returns home. Tapping the place saves the
   photo. A new photo of a known thing updates that thing (asked, never silent). Thing card:
   photo · place · when · *Not there? Earlier photos* · *Found it — new photo* · quiet *Fix*.
@@ -89,9 +93,9 @@ Full background lives in the numbered folders — see `README.md` for the index.
   snap cap 10/30, `naming` flag, `absorbInto`, event schema v3. `engine.js` untouched.
 - **Footer (late 09-05, Ravi):** side-by-side buttons that become floating translucent
   icons when a label cannot fit — measured on the device by `Footer.jsx`, never stacked.
-  Built, rig-verified at 375/390/430 px × 3 sizes, cache stamp `20260905j`; **not yet
-  deployed** — see the end of `sessions/2026-09-05-board-and-rebuild.md`.
-- **v0.1 is still what is live** at https://tanyaya27.github.io/recall/ until the deploy.
+  Built, rig-verified at 375/390/430 px × 3 sizes; deployed 2026-09-05 (`20260905l`).
+- **Live site:** https://tanyaya27.github.io/recall/ — check the Version card in Settings
+  against the `?v=` stamp in `docs/index.html` before assuming anything is deployed.
 - **Firebase:** project `recall-d9886`, rules cover `recall_items` and `recall_events` only,
   wide open to anonymous auth. **Tanya's console list:** tighten rules by `household`;
   composite index (kind, itemId, at) so earlier photos can use `limit()`.

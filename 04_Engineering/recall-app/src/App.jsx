@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
-import { watchAll, restoreItem, logEvent } from './lib/db.js';
+import { watchAll, restoreItem, updateItem, logEvent } from './lib/db.js';
+import { THUMB_V, thumbFromPhoto } from './lib/img.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
 import Board from './components/Board.jsx';
 import PhotoCard from './components/PhotoCard.jsx';
@@ -9,7 +10,7 @@ import Ask from './components/Ask.jsx';
 import Settings, { takeReturnRoute } from './components/Settings.jsx';
 import Toast from './components/Toast.jsx';
 
-// Board decision 2026-09-05: depth one. Home (the board, "My things") and one card. Every
+// Board decision 2026-09-05: depth one. Home (the board, "My items") and one card. Every
 // card returns to Home. Routines and checks are still read from the vault but not shown.
 //
 // Routing rides on the phone's own history (platform audit N2): every card is a pushState,
@@ -49,6 +50,25 @@ export default function App() {
 
   const engine = useMemo(() => new AIEngine(getAIConfig()), [cfgVersion]);
   const { items, removed } = data;
+
+  // Thumbnails made before 2026-09-14 are 220 px and blur on a tile (lib/img.js). Rebuild
+  // each old one from its stored photo, one at a time, once per item per session. The
+  // write comes back through watchAll with thumbV set, so nothing repeats.
+  const rethumbed = useRef(new Set());
+  useEffect(() => {
+    const todo = items.filter((it) => it.thumbV !== THUMB_V && it.photo && !rethumbed.current.has(it.id));
+    if (!todo.length) return undefined;
+    let alive = true;
+    (async () => {
+      for (const it of todo) {
+        if (!alive) return;
+        rethumbed.current.add(it.id);
+        try { await updateItem(it.id, { thumb: await thumbFromPhoto(it.photo), thumbV: THUMB_V }); }
+        catch (err) { console.error('rethumb', it.id, err); }
+      }
+    })();
+    return () => { alive = false; };
+  }, [items]);
 
   useEffect(() => {
     if (navigator.storage && navigator.storage.persist) {

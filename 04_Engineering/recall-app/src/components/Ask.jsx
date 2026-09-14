@@ -4,7 +4,9 @@ import { cap } from '../lib/format.js';
 import { useDictation, matchThings, IS_IOS } from '../lib/speech.js';
 import Header from './Header.jsx';
 
-// Where is my…  Board decision 2026-09-05, screen 4; revised 2026-09-05 (late) on Ravi's
+// Find item (was Where is my…; board addendum 2026-09-14 — the ellipsis read as a cut-off
+// label). The field prompt below keeps *Where is my…* because the box completes it.
+// Board decision 2026-09-05, screen 4; revised 2026-09-05 (late) on Ravi's
 // proposal: match AS SHE TYPES OR SPEAKS.
 //
 // The field takes focus on arrival so the keyboard — and on iOS its mic key — is up in one
@@ -65,7 +67,7 @@ export default function Ask({ engine, items, onResult, onBack }) {
 
   return (
     <div className="screen">
-      <Header title="Where is my…" onBack={onBack} />
+      <Header title="Find item" onBack={onBack} />
       <form className="card ask" onSubmit={ask}>
         <label className="ask-q" htmlFor="ask-input">Where is my…</label>
         <div className="ask-row">
@@ -81,7 +83,7 @@ export default function Ask({ engine, items, onResult, onBack }) {
         </div>
         {IS_IOS && !q && <p className="hint">Tap the microphone key on the keyboard to say it.</p>}
 
-        {/* Live matches: the same tiles as My things, narrowing as she types or speaks. */}
+        {/* Live matches: the same tiles as My items, narrowing as she types or speaks. */}
         {typed && live.length > 0 && (
           <div className="board live">
             {live.slice(0, 8).map((it) => (

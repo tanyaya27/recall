@@ -83,7 +83,7 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile, onRem
 
       {confirming && (
         <Confirm
-          title={`Remove ${label} from My things?`}
+          title={`Remove ${label} from My items?`}
           body="It goes to Settings → Recently removed, where it can be put back."
           keepLabel="Keep it" actionLabel="Remove"
           onKeep={() => setConfirming(false)}

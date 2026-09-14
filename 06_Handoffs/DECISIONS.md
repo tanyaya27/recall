@@ -6,6 +6,43 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 — Footer verbs are *Log item* · *Find item*; the screen is *My items*
+
+**Decision (Ravi):** the two Home buttons read *Log item* and *Find item*. Home, and every
+string that named it, says *My items*. The Ask screen's title is *Find item*; its field
+prompt keeps *Where is my…* because there the input box completes the sentence.
+
+**Why:** *Where is my…* looked cut off on the phone. The ellipsis is the truncation glyph on
+the header title and the day line two inches above, so on a button it reads as a clipped
+label, not an invitation (Devin). *Add item* was wrong for a re-photograph of a known item
+(D4); *Log item* covers both. One noun app-wide once both buttons said *item*.
+
+**Objection recorded:** Devin and Margaret — *log* and *item* are not Margaret's words;
+hers were *things* and *Where is my…* ("the sentence I already say"). Kept on record for
+the phone test with a real user. Full exchange: `design/BOARD_2026-09-14_where-is-my-label.md`.
+
+**Would change our mind:** Margaret (or Tanya) hesitating at *Log*. Then *Save item*, the
+board's runner-up, before anything with dots.
+
+---
+
+## 2026-09-14 — Tile thumbnails: 600-px centre square, rebuilt for old items on load
+
+**Decision:** `lib/img.js` stores the thumb as a centre-square crop, 600 px a side, JPEG
+0.8 (~40–60 KB); item docs carry `thumbV: 2`. `App.jsx` rebuilds any item's thumb whose
+`thumbV` is missing, from its stored 900-px photo, one at a time, once per item.
+
+**Why:** Ravi saw blurry tiles. The old thumb was 220 px on its *longest* side, so a portrait
+photo's short side was ~165 px, stretched across a ~170-CSS-px square tile at 3× device
+pixels — three times upscaled. Verified from the source, not the phone: the thing card
+(900-px photo) should look sharp while the tile does not. Downscaling now steps by halves
+(one 4000→220 drawImage aliases). Docs stay far under Firestore's 1 MB.
+
+**Would change our mind:** item counts in the hundreds (then the photo moves to Storage and
+the thumb becomes the only inline image), or a phone wider than ~200 CSS px per tile.
+
+---
+
 ## 2026-09-05 (late) — Footer: side by side, or floating icons; never stacked
 
 **Decision (Ravi):** the action zone on Home and the thing card is two buttons side by side,

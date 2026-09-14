@@ -156,7 +156,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
 
   return (
     <div className="screen">
-      <Header title={resnapOf ? 'New photo' : 'Take a photo'} onBack={back} />
+      <Header title={resnapOf ? 'New photo' : 'Log item'} onBack={back} />
       <div className="card photo-card">
         <img className={'photo-full' + (whole ? ' whole' : '')} src={photo} alt="" onClick={() => setWhole((w) => !w)} />
 
@@ -224,7 +224,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
         )}
       </div>
 
-      {savedId && <button className="btn-back" onClick={() => leave('done')}>Back to my things</button>}
+      {savedId && <button className="btn-back" onClick={() => leave('done')}>Back to my items</button>}
     </div>
   );
 }

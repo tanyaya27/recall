@@ -206,3 +206,8 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   Explanation earns its place only when it changes what the person does next.
 - **A sticky element that is the last child of its container has nowhere to stick.** It will
   float over the content instead. Cost one visible layout bug.
+
+- **2026-09-14 — the Mac's `node_modules` is macOS-only, the mirror of the sandbox trap.**
+  `npm run build` from the Cowork Linux VM fails with `esbuild: Exec format error`. Install
+  esbuild into `/tmp` on the VM (`$HOME` on the VM was out of disk) and call that binary
+  with the same flags as `package.json`; never `npm install` inside the repo from the VM.
