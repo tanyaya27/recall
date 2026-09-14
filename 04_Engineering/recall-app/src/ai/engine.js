@@ -157,6 +157,34 @@ Reply with ONLY a JSON object, no other text:
     };
   }
 
+  // Is the new photo one of these things? The model LOOKS at the candidates' photos, so a
+  // different name for the same object no longer makes a second tile (Ravi, 2026-09-14:
+  // "the person has forgotten they already logged it"). candidates: [{ name, thumb }].
+  // Returns { index: n | -1, sure: bool }. Told to answer -1 unless it is the same
+  // individual object — two similar mugs are two mugs.
+  async sameThing(photoDataUrl, candidates, { sensitivity = 'personal' } = {}) {
+    if (!candidates.length || !this.provider.visionJSONMulti) return { index: -1, sure: false };
+    const segments = [{ text: 'NEW PHOTO:' }, { image: photoDataUrl }];
+    candidates.forEach((c, i) => { segments.push({ text: `SAVED THING ${i + 1} — "${c.name || 'unnamed'}":` }); segments.push({ image: c.thumb }); });
+    segments.push({ text:
+`Someone with memory loss just took the NEW PHOTO of one of their belongings. They may have
+photographed this same thing before and forgotten. Above are ${candidates.length} things already
+saved, each with its saved photo and name.
+
+Is the object in the NEW PHOTO the very same object as one of the saved things? Same
+individual object — not merely the same kind of object. A different angle, distance,
+lighting, background or room does not make it different. Two similar-looking mugs, books
+or bottles ARE different unless the details match.
+
+Reply with ONLY a JSON object, no other text:
+{"index": <1-${candidates.length} for the matching saved thing, or 0 if none of them>,
+ "sure": <true only if you are confident it is that same object>}` });
+    const text = await this.provider.visionJSONMulti(this.cfg, segments, { sensitivity });
+    const out = parseJSON(text);
+    const n = Number(out.index) || 0;
+    return { index: n >= 1 && n <= candidates.length ? n - 1 : -1, sure: out.sure === true };
+  }
+
   // Prompted capture: the app asked for a specific photo, so it may check what it got.
   // Returns { visible, state, text }. state is one of the routine's allowed states or
   // 'unknown'. The app NEVER claims more than the photo shows.

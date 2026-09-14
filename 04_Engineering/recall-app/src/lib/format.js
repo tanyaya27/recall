@@ -31,12 +31,14 @@ export function friendlyNow(d = new Date()) {
 // The board's one quiet line: orientation for someone who often does not know what day it
 // is (DAY_IN_THE_LIFE rule 2). Always now. 2026-09-14 (Ravi): the date joins the day;
 // "night" starts at 10 pm, not 9.
+// Two lines — "Sunday evening" over "September 14" — because one line with the Settings
+// control beside it truncated on a phone (Ravi, 2026-09-14: "Sunday night · Septembe…").
 export function dayLine(d = new Date()) {
   const weekday = d.toLocaleDateString(undefined, { weekday: 'long' });
   const date = d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
   const h = d.getHours();
   const part = h < 5 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 22 ? 'evening' : 'night';
-  return `${weekday} ${part} · ${date}`;
+  return { day: `${weekday} ${part}`, date };
 }
 
 // When a thing was photographed, the way a person says it:

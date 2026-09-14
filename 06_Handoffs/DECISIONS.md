@@ -6,6 +6,44 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 (round 3) — The roll; the AI looks; Fix without remove; press-and-hold; peek
+
+Full exchange: `design/BOARD_2026-09-14_phone-feedback-round-3.md`. All Ravi's rulings.
+
+**The roll.** On the photo card she takes as many photos as she wants before the place:
+thumbnails under the big photo, a large ✕ on each, a camera tile for another, up to four;
+tapping the place saves them all as one log. Replaces the *Add another photo* toast action
+(too late, too small). The thing card and the tile sheet get *Add photo* into the current
+log — no card, no question.
+
+**The AI looks.** Identity is three tiers: the naming call's `sameAs` › name/alias/head
+noun/shared word › a second call with the new photo beside the photos of up to six
+candidates ("is this the very same object?"). Save-before-verdict (D3) covers the wait;
+*Is this your …?* covers a late match. `merge` events carry `via`. **Objection (Maya):**
+a wrong visual match on look-alikes; guardrail is the *Not your …?* line and the prompt's
+"same individual object, not the same kind".
+
+**Fix, not Fix or remove.** Removing a photo and removing the item were one control; now
+*Fix* is words only (name, place, move to the top); the item is removed from the tile's
+press-and-hold sheet or via the last photo. **Objection (Maya):** a person who never
+long-presses reaches item removal only through *Remove photo*; accepted — that path asks
+the right question.
+
+**Press-and-hold on a tile** opens the item sheet (Add a photo · Change the place · Rename
+· Move to the top · Remove · Cancel). Devin's condition: every action also has a visible
+route. 500 ms, movement cancels, iOS callout suppressed.
+
+**The strip peeks.** Pages 86% wide so the next photo shows; Margaret was right.
+
+**Camera:** the phone's own camera stays (Retake/Use Photo is iOS's sheet; Cancel is one
+Retake away, and a bad *Use Photo* is one ✕ on the roll). In-app camera = later spike.
+
+**Would change our mind:** visual matches wrong on look-alikes in the export (`via:
+'visual'`, `result: 'declined'`) — then require `sure: true`; Margaret opening the sheet
+by accident and not finding Cancel.
+
+---
+
 ## 2026-09-14 (late) — The AI decides "same thing"; name matching is the fallback
 
 **Decision:** `tagPhoto` now answers a fourth question, `sameAs` — the exact saved name if

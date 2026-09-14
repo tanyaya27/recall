@@ -39,4 +39,10 @@ export const anthropic = {
   textJSON(cfg, prompt) {
     return call(cfg, [{ type: 'text', text: prompt }]);
   },
+  // Several images in one question — [{ image: dataUrl } | { text }] in order.
+  visionJSONMulti(cfg, segments) {
+    return call(cfg, segments.map((s) => s.image
+      ? { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: s.image.split(',')[1] } }
+      : { type: 'text', text: s.text }));
+  },
 };

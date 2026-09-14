@@ -67,25 +67,29 @@ p { margin: 0; }
 .dayrow { display: flex; align-items: center; justify-content: space-between; margin: 0 0 0.625rem; min-height: 3rem;
   position: sticky; top: 0; z-index: 4; background: var(--bg);
   padding: calc(0.5rem + env(safe-area-inset-top)) 0 0.5rem; margin-top: calc(-0.75rem - env(safe-area-inset-top)); }
-.dayline { font-size: min(1.25rem, 5vw); font-weight: 600; color: var(--ink-soft); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dayline { min-width: 0; color: var(--ink-soft); line-height: 1.2; }
+.dayline .day { display: block; font-size: min(1.25rem, 5vw); font-weight: 600; white-space: nowrap; }
+.dayline .date { display: block; font-size: min(1rem, 4.2vw); font-weight: 500; white-space: nowrap; margin-top: 0.125rem; }
 .tiny { display: inline-flex; align-items: center; flex: none; background: none; color: var(--ink-soft); font-size: min(0.9375rem, 4vw); padding: 0.5rem 0 0.5rem 0.75rem; min-height: 2.75rem; white-space: nowrap; }
 
 /* ---- buttons ----------------------------------------------------------------- */
-button, label.file { font: inherit; border: none; border-radius: var(--radius); cursor: pointer; color: var(--ink); }
+button, .file { font: inherit; border: none; border-radius: var(--radius); cursor: pointer; }
+button { color: var(--ink); }
+/* The camera button is a <label class="file"> around a file input, its twin a <button>.
+   NEVER write `label.file` (0,1,1) or `label.btn-primary`: it outranks every class rule
+   below — `.btn-primary`, `.footer-inner > *` — for the label only, and the pair ends up
+   different sizes/colours. It happened three times on 2026-09-14. Keep `.file` (0,1,0),
+   keep it above the class rules, and check the rig's footer probe after touching it. */
 /* CONTROL LABELS NEVER WRAP (Ravi, 2026-09-05). Every button caps its font to what the
    screen width can carry — min(rem, vw) — so at "Largest" on a small phone a label shrinks
    a little instead of breaking onto two lines. Content (a place name, a sentence) may wrap;
    a control may not. If a footer label still cannot fit, the footer switches to floating
    icons (see the action zone below) — it never stacks. Elsewhere, shorten the label. */
-.btn-primary, label.btn-primary { display: flex; align-items: center; justify-content: center; text-align: center; width: 100%; padding: 0.875rem 0.75rem;
+.btn-primary { display: flex; align-items: center; justify-content: center; text-align: center; width: 100%; padding: 0.875rem 0.75rem;
   background: var(--accent); color: var(--accent-ink); font-size: min(1.25rem, 5.4vw); font-weight: 600; box-shadow: var(--shadow); min-height: 3.75rem; margin-top: 0.75rem;
   white-space: nowrap; }
-/* 2026-09-14 (Ravi: the camera button had black text on green). `label.file` above set
-   `color: var(--ink)` at a higher specificity than `.btn-primary`, so the <label> that IS
-   the camera button never got the accent-ink colour the <button> next to it had. The
-   `label.btn-primary` selector on this rule outranks it. Never remove it. */
 .btn-primary svg, .btn-secondary svg, .tiny svg { margin-right: 0.5rem; flex: none; vertical-align: -0.2em; }
-.btn-primary.alt, label.btn-primary.alt { background: var(--card); color: var(--accent); border: 2px solid var(--accent); box-shadow: none; }
+.btn-primary.alt { background: var(--card); color: var(--accent); border: 2px solid var(--accent); box-shadow: none; }
 .btn-primary:disabled, .btn-primary.disabled { opacity: 0.45; pointer-events: none; }
 .btn-secondary { display: block; width: 100%; padding: 0.875rem 0.75rem; background: var(--accent-soft);
   color: var(--accent); font-size: min(1.1875rem, 5.2vw); font-weight: 600; margin-top: 0.75rem; min-height: 3.5rem; text-align: center;
@@ -95,8 +99,8 @@ button, label.file { font: inherit; border: none; border-radius: var(--radius); 
   border: 1.5px solid var(--line); min-height: 3rem; white-space: nowrap; }
 .btn-back { display: block; width: 100%; margin-top: 1.125rem; padding: 1rem; background: var(--card);
   border: 1.5px solid var(--line); color: var(--ink); font-size: min(1.25rem, 5.4vw); font-weight: 600; min-height: 3.75rem; white-space: nowrap; }
-label.file { position: relative; overflow: hidden; }
-label.file input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.file { position: relative; overflow: hidden; }
+.file input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
 .link-btn { background: none; padding: 0.375rem 0; color: var(--accent); font-size: min(1.0625rem, 4.4vw); font-weight: 600; text-decoration: underline; min-height: 2.75rem; white-space: nowrap; }
 .link-btn.inline { display: inline; padding: 0 0 0 0.625rem; min-height: 0; font-size: 1rem; }
 .head .link-btn.inline { display: block; padding: 0.25rem 0 0; min-height: 2.25rem; text-align: left; }
@@ -235,9 +239,9 @@ input.edit-inline { font: inherit; width: 100%; border: 1.5px solid var(--accent
 .row button { flex: 1; background: var(--accent-soft); color: var(--accent); padding: 0.625rem 0.75rem; font-weight: 600; min-height: 2.75rem; font-size: min(1rem, 4.2vw); white-space: nowrap; }
 
 /* ---- pressed and focused (audit F1, V9) -------------------------------------------- */
-button:active, label.file:active, .tile:active, .guess:active { opacity: 0.72; transform: scale(0.985); transition: opacity 80ms, transform 80ms; }
+.btn-primary:active, button:active, .file:active, .tile:active, .guess:active { opacity: 0.72; transform: scale(0.985); transition: opacity 80ms, transform 80ms; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { button:active, label.file:active, .tile:active, .guess:active { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .btn-primary:active, button:active, .file:active, .tile:active, .guess:active { transform: none; } }
 
 /* ---- confirmation sheet (audit F3) --------------------------------------------------- */
 .sheet-back { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.35); display: flex; align-items: flex-end; justify-content: center; }
@@ -250,7 +254,8 @@ button:active, label.file:active, .tile:active, .guess:active { opacity: 0.72; t
 .strip { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0.5rem; margin: 0 -0.25rem;
   -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .strip::-webkit-scrollbar { display: none; }
-.strip-page { flex: 0 0 100%; scroll-snap-align: center; padding: 0 0.25rem; box-sizing: border-box; }
+.strip-page { flex: 0 0 86%; scroll-snap-align: start; padding: 0 0.25rem; box-sizing: border-box; }
+.strip::after { content: ''; flex: 0 0 14%; } /* so the last page can still snap to the start */
 .strip-page .photo-full { margin: 0; }
 .dots { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }
 .dot { width: 0.625rem; height: 0.625rem; border-radius: 50%; background: var(--line); padding: 0; min-height: 0; }
@@ -263,8 +268,32 @@ button:active, label.file:active, .tile:active, .guess:active { opacity: 0.72; t
 .place-row:last-child { border-bottom: none; }
 .place-row-loc { font-size: 1.1875rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .place-row-when { flex: none; color: var(--ink-soft); font-size: 1rem; }
-.quiet-row { display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 0.375rem; flex-wrap: wrap; }
+.quiet-row { display: flex; justify-content: space-between; gap: 0.5rem; margin-top: 0.375rem; }
+.quiet-row .link-btn { font-size: min(1rem, 4.2vw); padding: 0.375rem 0; }
 .quiet-row .link-btn svg { width: 1em; height: 1em; margin-right: 0.25rem; vertical-align: -0.15em; }
+
+/* ---- the roll on the photo card (round 3) ------------------------------------------- */
+.roll { display: flex; gap: 0.875rem; margin-top: 0.75rem; overflow-x: auto; scrollbar-width: none; padding: 0.75rem 0.75rem 0.375rem 0.25rem; }
+.roll::-webkit-scrollbar { display: none; }
+.roll-shot { position: relative; flex: none; width: 5rem; height: 5rem; border-radius: 0.75rem; overflow: visible; }
+.roll-shot img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.75rem; display: block; border: 3px solid transparent; }
+.roll-shot.on img { border-color: var(--accent); }
+.roll-x { position: absolute; top: -0.5rem; right: -0.5rem; width: 2.5rem; height: 2.5rem; min-height: 0; padding: 0; border-radius: 50%;
+  background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); font-size: 1.25rem; }
+.roll-add { flex: none; width: 5rem; height: 5rem; border-radius: 0.75rem; border: 2px dashed var(--accent); color: var(--accent);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.125rem; font-size: 0.9375rem; font-weight: 600; background: var(--card); }
+.roll-add svg { width: 1.6em; height: 1.6em; }
+.note-quiet { color: var(--ink-soft); font-size: 1rem; margin-top: 0.25rem; }
+.quiet-row label.link-btn, .quiet-row .link-btn { display: inline-flex; align-items: center; }
+.quiet-row .link-btn svg { width: 1.1em; height: 1.1em; margin-right: 0.3rem; }
+
+/* ---- item sheet (press-and-hold, round 3) -------------------------------------------- */
+.item-sheet .sheet-row { display: flex; align-items: center; gap: 0.625rem; width: 100%; text-align: left; margin-top: 0.5rem;
+  padding: 0.875rem 1rem; min-height: 3.5rem; background: var(--accent-soft); color: var(--accent); font-size: min(1.1875rem, 5vw); font-weight: 600; border-radius: var(--radius); }
+.item-sheet .sheet-row.amber { background: var(--amber-bg); color: var(--amber); }
+.item-sheet .sheet-row svg { width: 1.2em; height: 1.2em; flex: none; }
+.item-sheet .btn-primary.alt { margin-top: 1rem; min-height: 4rem; }
+.tile { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 
 /* ---- toast (audit S3) ------------------------------------------------------------------ */
 .toast { position: fixed; left: 1rem; right: 1rem; bottom: calc(var(--footer-h) + 0.5rem + env(safe-area-inset-bottom)); z-index: 15;

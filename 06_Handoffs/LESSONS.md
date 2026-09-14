@@ -211,3 +211,20 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   `npm run build` from the Cowork Linux VM fails with `esbuild: Exec format error`. Install
   esbuild into `/tmp` on the VM (`$HOME` on the VM was out of disk) and call that binary
   with the same flags as `package.json`; never `npm install` inside the repo from the VM.
+
+- **2026-09-14 — never `label.file`, never `label.btn-primary`.** The camera button is a
+  `<label>` around a file input; its twin is a `<button>`. Any selector at (0,1,1) on the
+  label outranks every class rule that sizes both (`.footer-inner > *` at (0,1,0)) — for the
+  label only — and the pair ends up different sizes or colours. It happened three times in
+  one day. Use `.file` (0,1,0), keep it above the class rules, and run the rig's footer probe.
+- **2026-09-14 — review the outcome in the rig before handing Ravi a build.** SSR "renders
+  without throwing" is not a review. The rig (`~/rig` in the Cowork cloud container:
+  `build.sh` bundles the app with an in-memory Firestore and React inlined; `run.js` drives
+  Chromium at 390×844 through every screen and a fake AI, screenshots to `shots/`;
+  `probe.js` prints computed styles of the footer pair). Look at the screenshots. Three
+  layout bugs and one logic bug were caught this way that SSR had passed. Recipe lives in
+  `06_Handoffs/RIG.md`.
+- **2026-09-14 — a React effect that sets the state it depends on cancels itself.** The
+  visual duplicate check had `visual` in its deps and called `setVisual('pending')` inside;
+  the re-run's cleanup set `alive = false` on the first run and the verdict was dropped.
+  Guard "started" with a ref, not with state in the dep list.

@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { boardOrder, logEvent } from '../lib/db.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
@@ -12,13 +13,24 @@ import { CameraIcon, SearchIcon, GearIcon } from './Icons.jsx';
 // the top, deliberately out of the thumb zone — it is opened once a month by a helper.
 //
 // The board never asks her anything. A thing with no name is a photo with no label.
-export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSettings }) {
+export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSettings, onHold }) {
   const things = boardOrder(items);
+  // Press-and-hold on a tile (Ravi, round 3): 500 ms opens the item's action sheet. A
+  // short tap still opens the thing. Movement cancels — a scroll is not a hold. This is
+  // Robert's shortcut; every action in the sheet is also reachable on the thing card.
+  const hold = useRef({ timer: 0, fired: false, x: 0, y: 0 });
+  const holdStart = (it) => (e) => {
+    const h = hold.current; h.fired = false; h.x = e.clientX; h.y = e.clientY;
+    clearTimeout(h.timer);
+    h.timer = setTimeout(() => { h.fired = true; if (navigator.vibrate) navigator.vibrate(10); logEvent('tile_hold', { itemId: it.id }); onHold && onHold(it); }, 500);
+  };
+  const holdMove = (e) => { const h = hold.current; if (Math.abs(e.clientX - h.x) > 8 || Math.abs(e.clientY - h.y) > 8) clearTimeout(h.timer); };
+  const holdEnd = () => clearTimeout(hold.current.timer);
 
   return (
     <div className="screen with-footer">
       <div className="dayrow">
-        <div className="dayline">{dayLine()}</div>
+        <div className="dayline">{(() => { const d = dayLine(); return <><span className="day">{d.day}</span><span className="date">{d.date}</span></>; })()}</div>
         <button className="tiny" onClick={onSettings}><GearIcon /> Settings</button>
       </div>
 
@@ -39,7 +51,10 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
         <div className="board">
           {things.map((it) => (
             <button key={it.id} className="tile"
+              onPointerDown={holdStart(it)} onPointerMove={holdMove} onPointerUp={holdEnd} onPointerCancel={holdEnd} onPointerLeave={holdEnd}
+              onContextMenu={(e) => e.preventDefault()}
               onClick={() => {
+                if (hold.current.fired) { hold.current.fired = false; return; }
                 logEvent('lookup', { entryMode: 'tile', itemId: it.id, itemName: it.name || null,
                   answerAgeMin: Math.round((Date.now() - it.lastSeenAt) / 60000), matched: 1 });
                 onOpenThing(it);

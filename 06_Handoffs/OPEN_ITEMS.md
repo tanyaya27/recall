@@ -5,10 +5,15 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914c`** from the Mac — everything from today (labels, thumbnails, and
+- [ ] **Deploy `20260914d`** from the Mac — everything from today (labels, thumbnails, and
   the second-round build). Commands at the end of this file.
-- [ ] Phone-check `20260914c`: photograph the can of sparkling soda from a new angle →
-  header *Your sparkling soda — new photo*, one tile. Then the second round: footer — both buttons the same size and
+- [ ] Phone-check `20260914d` (round 3): footer buttons identical (rig-verified); day line
+  two lines, never cut; Log item → take one, tap *Another*, take a second → two thumbnails
+  with ✕ → tap a place → one tile; open it → swipe, next photo peeks. Photograph the soda
+  can from a new angle with any name → *New photo of sparkling soda* (name tier) — or, if
+  the AI names it something new, "Checking it isn't already saved…" then the same header
+  (visual tier; ~3 s more). Thing card: *Add photo · Remove photo · Fix*. Hold a tile 0.5 s
+  → sheet → Cancel. Then the earlier checks: footer — both buttons the same size and
   weight, white on green / green on white, bigger than before; still one row at Largest
   on a 390-px phone. Home: *Sunday evening · September 14*. Log an item, then tap *Add
   another photo* in the toast → second photo saved silently, tile unchanged; open the
@@ -28,6 +33,10 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   *Where is my…* matches locally as she types or speaks, AI only when nothing matches.
 - [ ] Before the next git command on the Mac: `find .git -name "*.lock" -delete` — the
   sandbox left `.git/index.lock` behind again on 2026-09-14.
+
+## Later
+
+- [ ] In-app camera spike (`getUserMedia`) — only if the phone's camera flow keeps hurting.
 
 ## Needs Tanya
 
@@ -69,5 +78,5 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "AI decides same-thing (sameAs) + loose name match; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
+git add -A && git commit -m "Round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
 ```

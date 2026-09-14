@@ -68,3 +68,12 @@ export async function thumbFromPhoto(photoDataUrl) {
   const img = await loadImage(photoDataUrl);
   return squareThumb(img);
 }
+
+// A smaller copy of a stored image for sending to the model (the same-thing check sends
+// several at once). 320 px square is plenty for "is this the same object".
+export async function shrink(dataUrl, px = 320) {
+  const img = await loadImage(dataUrl);
+  const side = Math.min(img.width, img.height);
+  const out = Math.min(px, side);
+  return draw(img, Math.round((img.width - side) / 2), Math.round((img.height - side) / 2), side, side, out, out).toDataURL('image/jpeg', 0.7);
+}

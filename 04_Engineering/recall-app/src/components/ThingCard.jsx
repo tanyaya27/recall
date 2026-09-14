@@ -5,7 +5,7 @@ import EditableText from './EditableText.jsx';
 import Footer from './Footer.jsx';
 import Header from './Header.jsx';
 import Confirm from './Confirm.jsx';
-import { CameraIcon, TrashIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon } from './Icons.jsx';
 
 // The thing card — the answer. Board decision 2026-09-05, Rules 1, 3, 4, 7; revised
 // 2026-09-14 (Ravi's second phone round, BOARD_2026-09-14_phone-feedback-round-2.md).
@@ -21,17 +21,17 @@ import { CameraIcon, TrashIcon } from './Icons.jsx';
 // Under the centred photo, one quiet control: *Remove this photo* → confirm sheet → toast
 // with Undo. If it is the last photo, the sheet offers removing the item instead.
 //
-// Fix (name, place, move to the top, remove) is behind one quiet control. It is Robert's.
-export default function ThingCard({ item, items = [], onBack, onFoundFile, onRemoved, onToast }) {
+// Fix (name, place, move to the top) is behind one quiet control. It is Robert's.
+export default function ThingCard({ item, items = [], onBack, onFoundFile, onAddFile, onRemoved, onToast, openFix = false }) {
   const [snaps, setSnaps] = useState(null);      // every live snap, newest first; null = not loaded
   const [mode, setMode] = useState('now');
   const [index, setIndex] = useState(0);         // centred page in the strip
-  const [fixing, setFixing] = useState(false);
+  const [fixing, setFixing] = useState(openFix);
   const [whole, setWhole] = useState(false);     // photo uncropped (audit L1)
   const [confirming, setConfirming] = useState(null); // 'item' | { snap }
   const stripRef = useRef(null);
 
-  useEffect(() => { setSnaps(null); setMode('now'); setIndex(0); setFixing(false); setWhole(false); }, [item?.id]);
+  useEffect(() => { setSnaps(null); setMode('now'); setIndex(0); setFixing(openFix); setWhole(false); }, [item?.id]); // eslint-disable-line
 
   // The current log's extra photos are the only reason to read snaps up front.
   const wantsSnaps = !!item && ((item.photoCount || 1) > 1);
@@ -159,9 +159,19 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile, onRem
           <button className="btn-secondary" onClick={() => earlier()}>Not there? Earlier photos</button>
         )}
 
+        {/* Three quiet actions (round 3): add to this log · remove this photo · fix words.
+            Removing the ITEM is not here — it conflated with removing a photo. It lives in
+            the tile's press-and-hold sheet, and in the last-photo path of Remove this photo. */}
         <div className="quiet-row">
-          <button type="button" className="link-btn" onClick={() => askRemove(page)}><TrashIcon /> Remove this photo</button>
-          {!fixing && <button type="button" className="link-btn" onClick={() => setFixing(true)}>Fix or remove</button>}
+          {mode === 'now' && (item.photoCount || 1) < 4 && (
+            <label className="link-btn file" aria-label="Add a photo to this log">
+              <CameraIcon /> Add photo
+              <input type="file" accept="image/*" capture="environment"
+                onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) { onAddFile(f); setSnaps(null); } }} />
+            </label>
+          )}
+          <button type="button" className="link-btn" onClick={() => askRemove(page)}><TrashIcon /> Remove photo</button>
+          {!fixing && <button type="button" className="link-btn" onClick={() => setFixing(true)}><PencilIcon /> Fix</button>}
         </div>
         {fixing && (
           <div className="fix">
@@ -171,7 +181,7 @@ export default function ThingCard({ item, items = [], onBack, onFoundFile, onRem
               onSave={(v) => { updateItem(item.id, { location: v.charAt(0).toUpperCase() + v.slice(1), needsPlace: false }); logEvent('correction', { itemId: item.id, field: 'location' }); }} />
             <div className="fix-row">
               <button className="btn-quiet" onClick={async () => { await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id }); setFixing(false); }}>Move to the top</button>
-              <button className="btn-quiet" onClick={() => setConfirming('item')}>Remove</button>
+              <button className="btn-quiet" onClick={() => setFixing(false)}>Done</button>
             </div>
           </div>
         )}

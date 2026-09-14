@@ -1,0 +1,31 @@
+import { useEffect, useRef } from 'react';
+import { CameraIcon, PencilIcon, TrashIcon } from './Icons.jsx';
+
+// The item's actions, from press-and-hold on its tile (Ravi, 2026-09-14 round 3). Same
+// in-app sheet as confirms: big rows, the thing's name on top, Cancel last and largest so an
+// accidental hold costs one obvious tap. Every action here is also reachable on the thing
+// card — this is a shortcut, not the only path (Devin's condition).
+export default function ItemSheet({ item, onAddFile, onChangePlace, onRename, onMoveToTop, onRemove, onCancel }) {
+  const cancelRef = useRef(null);
+  useEffect(() => { cancelRef.current && cancelRef.current.focus(); }, []);
+  const label = item.name ? item.name : 'This thing';
+  return (
+    <div className="sheet-back" onClick={onCancel} role="presentation">
+      <div className="sheet item-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-title" id="sheet-title">{label.charAt(0).toUpperCase() + label.slice(1)}</div>
+        {(item.photoCount || 1) < 4 && (
+          <label className="sheet-row file">
+            <CameraIcon /> Add a photo
+            <input type="file" accept="image/*" capture="environment"
+              onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onAddFile(f); }} />
+          </label>
+        )}
+        <button className="sheet-row" onClick={onChangePlace}><PencilIcon /> Change the place</button>
+        <button className="sheet-row" onClick={onRename}><PencilIcon /> Rename</button>
+        <button className="sheet-row" onClick={onMoveToTop}>Move to the top</button>
+        <button className="sheet-row amber" onClick={onRemove}><TrashIcon /> Remove from my items</button>
+        <button ref={cancelRef} className="btn-primary alt" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}

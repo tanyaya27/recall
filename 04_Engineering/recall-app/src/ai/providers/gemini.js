@@ -32,4 +32,9 @@ export const gemini = {
   textJSON(cfg, prompt) {
     return call(cfg, [{ text: prompt }]);
   },
+  visionJSONMulti(cfg, segments) {
+    return call(cfg, segments.map((s) => s.image
+      ? { inline_data: { mime_type: 'image/jpeg', data: s.image.split(',')[1] } }
+      : { text: s.text }));
+  },
 };

@@ -27,6 +27,8 @@ not be judged.
 3. `06_Handoffs/DECISIONS.md` — why things are the way they are.
 4. `06_Handoffs/LESSONS.md` — traps already discovered. Do not re-learn these the hard way.
 5. The most recent file in `06_Handoffs/sessions/` — what happened last time.
+6. `06_Handoffs/OPEN_ITEMS.md` — the running to-do list. `06_Handoffs/RIG.md` — how to look at
+   a build before handing it over. **No build goes to the phone unreviewed.**
 
 Older session files are an archive. Do not read them all; search them when you need to
 reconstruct history.
@@ -60,7 +62,7 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914c` is BUILT, NOT YET
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914d` is BUILT, NOT YET
 > DEPLOYED.** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
 > phone feedback (`06_Handoffs/design/BOARD_2026-09-14_*.md`): footer verbs *Log item* ·
 > *Find item*, screen *My items*; 600-px thumbnails (old ones rebuilt on load); the thing
@@ -68,9 +70,11 @@ Full background lives in the numbered folders — see `README.md` for the index.
 > per log via the *Saved* toast; *Remove this photo*; ranked search; `aliases[]` so a
 > renamed thing still merges; pencil on every editable field; day + date on the day line;
 > Settings → Places. Deploy commands and the phone check: `06_Handoffs/OPEN_ITEMS.md` —
-> **the running to-do list; read and update it every session.** Late: the AI now says
-> `sameAs` for a thing already saved (two tiles for one soda can). Tanya agreed appointments
-> go right after the helper phone.
+> **the running to-do list; read and update it every session.** Round 3 (`BOARD_2026-09-14_phone-feedback-round-3.md`): the roll (several photos before
+> the place), the AI *looks* at candidates' photos to catch a re-logged thing, *Fix* split
+> from remove, press-and-hold item sheet, the strip peeks. **Every build is now reviewed in
+> the rig first — `06_Handoffs/RIG.md`.** Tanya agreed appointments go right after the
+> helper phone.
 >
 > **The design of record is `06_Handoffs/design/BOARD_2026-09-05_interaction_model.md`.**
 > `DAY_IN_THE_LIFE.md` is now history: its rules 2, 3, 5 and 7 survive; the clock-shaped
@@ -89,8 +93,8 @@ Full background lives in the numbered folders — see `README.md` for the index.
   history-backed routing (edge swipe works), pressed states, in-app confirm sheet, toasts with
   Undo, offline line (strict), icons, grouped Settings, Dusk + *Match my phone*, 4:3 cropped
   photos above the fold. Built, compiles, SSR-tested; **needs the phone.**
-- **Components:** `Board` `PhotoCard` `ThingCard` (strip + Earlier mode) `Ask` `Settings` (incl. Places) `Header` `Footer`
-  `Confirm` `Toast` (can carry a camera action) `Icons` `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
+- **Components:** `Board` (press-and-hold) `PhotoCard` (the roll, identity tiers) `ThingCard` (strip + Earlier mode)
+  `ItemSheet` `Ask` `Settings` (incl. Places) `Header` `Footer` `Confirm` `Toast` `Icons` `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
   are deleted (git has them). `lib/prefs.js` is new. `docs/styles.css` is in rem.
 - **Engine changes (all in DECISIONS.md):** `household`, `order`/`boardKey`, snap cap 10/30,
   `naming` flag, `absorbInto`, event schema v3; 09-14: `aliases[]`, `logId`/`photoCount`,

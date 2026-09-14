@@ -134,17 +134,25 @@ export function watchAll(cb) {
 // `naming: true` (D3) means the photo was saved before the AI named it. The name is
 // patched in by nameItem(); if naming fails the flag is cleared and the thing stays
 // unnamed — a legitimate state. Nothing on the board ever asks her to name it.
-export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false, aliases = [] }) {
+export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false, aliases = [], extras = [] }) {
   const now = Date.now();
   const logId = `log_${now}`;
   const ref = await addDoc(col, {
     kind: 'item', household: HOUSEHOLD, name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
     needsPlace: !location, naming,
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
-    history: [{ location, at: now }], logId, photoCount: 1,
+    history: [{ location, at: now }], logId, photoCount: 1 + extras.length,
   });
   await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: ref.id, logId, photo, thumb, location, at: now, by });
+  await writeExtras(ref.id, logId, extras, location, now, by);
   return ref.id;
+}
+
+// The other photos of one log (a wide shot after the close-up), in the order taken.
+async function writeExtras(itemId, logId, extras, location, at, by) {
+  for (let i = 0; i < extras.length; i++) {
+    await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId, logId, photo: extras[i].photo, thumb: extras[i].thumb, location, at: at + i + 1, by, extra: true });
+  }
 }
 
 // Every name a thing has been called stays with it, so the next photo still matches.
@@ -178,15 +186,16 @@ export async function updateItem(id, patch) {
 }
 
 // Re-snap: fresh photo + location; the old photo is kept as a snap
-export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '' }) {
+export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [] }) {
   const now = Date.now();
   const logId = `log_${now}`;
   const history = [...(item.history || []), { location, at: now }].slice(-100);
   await updateDoc(doc(col, item.id), {
     photo, thumb, thumbV: THUMB_V, location, restingOn, needsPlace: !location,
-    lastSeenAt: now, updatedAt: now, history, capturedBy: by, logId, photoCount: 1,
+    lastSeenAt: now, updatedAt: now, history, capturedBy: by, logId, photoCount: 1 + extras.length,
   });
   await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId, photo, thumb, location, at: now, by });
+  await writeExtras(item.id, logId, extras, location, now, by);
 }
 
 // 2026-09-14 (Ravi): one log can hold several photos — a close-up and a wide shot. A later
@@ -226,8 +235,8 @@ export async function removeSnap(item, snap, snaps) {
 // A thing saved before its name arrived turned out to be one already on the board, and
 // the person confirmed it. Its photo becomes a new photo of the existing thing and the
 // provisional doc (and its snap) goes away.
-export async function absorbInto(existing, provisionalId, { photo, thumb, location, restingOn = '', by = 'self' }) {
-  await resnapItem(existing, { photo, thumb, location, restingOn, by });
+export async function absorbInto(existing, provisionalId, { photo, thumb, location, restingOn = '', by = 'self', extras = [] }) {
+  await resnapItem(existing, { photo, thumb, location, restingOn, by, extras });
   await purgeItem({ id: provisionalId });
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, LOG_MAX, logEvent } from './lib/db.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, logEvent } from './lib/db.js';
 import { THUMB_V, thumbFromPhoto, compressPhoto } from './lib/img.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
 import Board from './components/Board.jsx';
@@ -9,6 +9,8 @@ import ThingCard from './components/ThingCard.jsx';
 import Ask from './components/Ask.jsx';
 import Settings, { takeReturnRoute } from './components/Settings.jsx';
 import Toast from './components/Toast.jsx';
+import ItemSheet from './components/ItemSheet.jsx';
+import Confirm from './components/Confirm.jsx';
 
 // Board decision 2026-09-05: depth one. Home (the board, "My items") and one card. Every
 // card returns to Home. Routines and checks are still read from the vault but not shown.
@@ -41,6 +43,8 @@ export default function App() {
   const [route, setRoute] = useState(RETURN_TO === 'settings' ? { view: 'settings', reloaded: true } : HOME);
   const [offline, setOffline] = useState(typeof navigator !== 'undefined' && navigator.onLine === false);
   const [toast, setToast] = useState(null);
+  const [sheet, setSheet] = useState(null);      // item under press-and-hold
+  const [removing, setRemoving] = useState(null); // item awaiting the remove confirm (from the sheet)
   const [, tick] = useState(0);
   const [stage, setStage] = useState('script');
   const [slow, setSlow] = useState(false);
@@ -149,27 +153,20 @@ export default function App() {
 
   const say = (text, undo) => setToast({ text, undo, key: Date.now() });
 
-  // 2026-09-14 (Ravi): one log, several photos. After a save the toast offers *Add another
-  // photo*; the next photo joins the same log — same place, same time, no question, no AI —
-  // and the toast offers it again, up to LOG_MAX. Tapping the place is still the save (D2):
-  // nothing extra is asked of her; the offer just sits in the toast for a few seconds.
-  const savedToast = (result) => {
-    const it = itemsRef.current.find((x) => x.id === result.itemId);
-    const text = result.place ? `Saved · ${result.place}` : 'Saved';
-    const count = it ? (it.photoCount || 1) : 1;
-    if (!result.itemId || count >= LOG_MAX) { say(text); return; }
-    setToast({ text, key: Date.now(), action: { label: 'Add another photo', camera: true, onFile: (file) => addAnother(result.itemId, file) } });
-  };
-  const addAnother = async (itemId, file) => {
+  // Add one more photo to a thing's CURRENT log (thing card / press-and-hold sheet, round 3).
+  // No card, no question: same place, same time, no AI.
+  const addPhotoTo = async (itemId, file) => {
     const it = itemsRef.current.find((x) => x.id === itemId);
     if (!it) return;
-    setToast(null);
     const { photo, thumb } = await compressPhoto(file);
     const ok = await addSnapToLog(it, { photo, thumb });
-    logEvent('capture', { initiatedBy: 'add_another', itemId, itemName: it.name || null, extra: true, ok });
-    const n = (it.photoCount || 1) + 1;
-    if (ok && n < LOG_MAX) setToast({ text: `Added · photo ${n}`, key: Date.now(), action: { label: 'Add another photo', camera: true, onFile: (f) => addAnother(itemId, f) } });
-    else say(ok ? `Added · photo ${n}` : 'Not added');
+    logEvent('capture', { initiatedBy: 'add_photo', itemId, itemName: it.name || null, extra: true, ok });
+    say(ok ? `Added · photo ${(it.photoCount || 1) + 1}` : 'That log already has four photos');
+  };
+  const removeItem = async (item) => {
+    await softDeleteItem(item);
+    logEvent('item_removed', { itemId: item.id, itemName: item.name || null, via: 'sheet' });
+    say(`Removed · ${item.name || 'this'}`, () => { restoreItem(item.id); logEvent('item_restored', { itemId: item.id, via: 'undo' }); });
   };
 
   let screen;
@@ -181,8 +178,8 @@ export default function App() {
           file={route.file} engine={engine} items={items} places={places}
           resnapOf={route.resnapOf ? live(route.resnapOf) : null}
           onDone={(result) => {
+            if (result && result.saved) say(result.place ? `Saved · ${result.place}` : 'Saved');
             home();
-            if (result && result.saved) setTimeout(() => savedToast(result), 0);
           }}
           onBack={back}
         />
@@ -191,9 +188,10 @@ export default function App() {
     case 'thing':
       screen = (
         <ThingCard
-          item={live(route.item)} items={items}
+          item={live(route.item)} items={items} openFix={!!route.fix}
           onBack={back}
           onFoundFile={(file) => go('photo', { file, resnapOf: route.item, key: Date.now() })}
+          onAddFile={(file) => addPhotoTo(route.item.id, file)}
           onRemoved={(item) => {
             say(`Removed · ${item.name || 'this'}`, () => { restoreItem(item.id); logEvent('item_restored', { itemId: item.id, via: 'undo' }); });
             home();
@@ -222,6 +220,7 @@ export default function App() {
           onPhoto={(file) => go('photo', { file, key: Date.now() })}
           onAsk={() => go('ask')}
           onSettings={() => go('settings')}
+          onHold={(item) => setSheet(item)}
         />
       );
   }
@@ -230,6 +229,22 @@ export default function App() {
     <>
       {offline && <div className="offline" role="status">No connection right now — photos will save when it's back.</div>}
       {screen}
+      {sheet && (
+        <ItemSheet item={live(sheet)}
+          onAddFile={(file) => { setSheet(null); addPhotoTo(sheet.id, file); }}
+          onChangePlace={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
+          onRename={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
+          onMoveToTop={async () => { setSheet(null); await moveToTop(sheet, items); logEvent('move_to_top', { itemId: sheet.id, via: 'sheet' }); say('Moved to the top'); }}
+          onRemove={() => { setSheet(null); setRemoving(sheet); }}
+          onCancel={() => setSheet(null)} />
+      )}
+      {removing && (
+        <Confirm title={`Remove ${removing.name ? `your ${removing.name.toLowerCase()}` : 'this'} from My items?`}
+          body="It goes to Settings → Recently removed, where it can be put back."
+          keepLabel="Keep it" actionLabel="Remove"
+          onKeep={() => setRemoving(null)}
+          onAction={() => { const it = removing; setRemoving(null); removeItem(it); }} />
+      )}
       <Toast toast={toast} onDone={() => setToast(null)} />
     </>
   );
