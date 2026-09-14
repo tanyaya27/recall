@@ -5,7 +5,9 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914j`** from the Mac (j: naming + identity use every shot and the
+- [ ] **Deploy `20260914k`** from the Mac (k: full-path audit fixes — Add photo on older items,
+  added photo shows at once, rename keeps the alias, Find item → Take a photo opens the camera;
+  j: naming + identity use every shot and the
   subject, sure-only visual matches; i: the in-app camera — Cancel, several shots with
   ✕ thumbnails, Done; h: day line hugs the hamburger; Back from a menu screen returns to the
   drawer) (g: Version card shows facts only — build time,
@@ -13,7 +15,9 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   Locations, Deleted items with swipe + Empty the list, Research log; Settings = Version first
   + AI key; the Version-card update banners; tighter footer bottom) — everything from today (labels, thumbnails, and
   the second-round build). Commands at the end of this file.
-- [ ] Phone-check `20260914j`: keyboard close-up + wide shot with the can behind → card says
+- [ ] Phone-check `20260914k`: open any of your existing items → *Add photo* → shoot → Done →
+  the strip shows the new photo at once with dots. Find item → nonsense → Find it → *Take a
+  photo of it* → camera. Keyboard close-up + wide shot with the can behind → card says
   *Keyboard*, stays *Keyboard*. Then: *Log item* opens the app's own camera (allow the permission
   once) → shutter twice → two thumbnails → ✕ one → *Done* → photo card. *Cancel* returns to
   Home with nothing saved. Thing card → *Add photo* → shoot → *Done* → toast *Added*. If the
@@ -85,6 +89,13 @@ MISSED until build i** (deferred without agreement).
 - [ ] Priya's one-card status — *did anything happen today?* Designed in §2, not built.
 - [ ] Household join code (after the two above).
 
+## Board notes from the audit (not bugs; Tanya's call)
+
+- [ ] Tile sheet: *Change the place* / *Rename* should focus the tapped field in Fix (Devin).
+- [ ] Merge toast should say it merged: *Saved · Kitchen counter · your glasses* (Maya).
+- [ ] After *Add photo*, slide the strip to the new photo (Priya).
+- [ ] *EARLIER* eyebrow is the hardest text on the thing card (Margaret).
+
 ## Docs
 
 - [ ] `RESEARCH_PLAN.md`: new events today — `photo_removed`, `photo_restored`, `capture`
@@ -105,5 +116,5 @@ MISSED until build i** (deferred without agreement).
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "Name and identity-check with every shot, subject-aware; in-app camera (cancel, multi-shot roll); drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
+git add -A && git commit -m "Full-path audit fixes (add photo on older items, live reload, rename alias, Find→camera) + rig audit script; name and identity-check with every shot, subject-aware; in-app camera (cancel, multi-shot roll); drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
 ```

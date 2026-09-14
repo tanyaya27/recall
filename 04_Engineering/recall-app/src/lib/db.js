@@ -164,7 +164,8 @@ function withAlias(item, name) {
 }
 // A person renamed it: keep the old name as an alias.
 export async function renameItem(item, name) {
-  await updateItem(item.id, { name, aliases: withAlias(item, item.name) });
+  // Compare the OLD name against the NEW one (audit D13: it was compared with itself and never kept).
+  await updateItem(item.id, { name, aliases: withAlias({ ...item, name }, item.name) });
 }
 // The AI called it something on a later photo: remember that too.
 export async function noteAlias(item, aiName) {
@@ -202,10 +203,14 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
 // photo joins the CURRENT log: same place, same time, no question, no AI. Cap LOG_MAX.
 export const LOG_MAX = 4;
 export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
-  if (!item.logId || (item.photoCount || 1) >= LOG_MAX) return false;
-  const at = (item.lastSeenAt || Date.now()) + (item.photoCount || 1); // keeps the order, stays "the same time"
-  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId: item.logId, photo, thumb, location: item.location || '', at, by, extra: true });
-  await updateDoc(doc(col, item.id), { photoCount: (item.photoCount || 1) + 1, updatedAt: Date.now() });
+  const count = item.photoCount || 1;
+  if (count >= LOG_MAX) return false;
+  // Things logged before 2026-09-14 have no logId (audit D2: Add photo silently did nothing
+  // on every one of Ravi's items). Give the current log one now; the cover stays the cover.
+  const logId = item.logId || `log_${item.lastSeenAt || Date.now()}`;
+  const at = (item.lastSeenAt || Date.now()) + count; // keeps the order, stays "the same time"
+  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId, photo, thumb, location: item.location || '', at, by, extra: true });
+  await updateDoc(doc(col, item.id), { photoCount: count + 1, logId, updatedAt: Date.now() });
   return true;
 }
 

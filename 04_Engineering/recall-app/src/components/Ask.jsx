@@ -18,7 +18,7 @@ import Header from './Header.jsx';
 //
 // *Find it* — the AI — is for the question the tiles cannot answer ("the thing I read
 // with"). It is offered once the local list is empty, or always on submit.
-export default function Ask({ engine, items, onResult, onBack }) {
+export default function Ask({ engine, items, onResult, onPhoto, onBack }) {
   const [q, setQ] = useState('');
   const [asking, setAsking] = useState(false);
   const [noMatch, setNoMatch] = useState(false);
@@ -112,11 +112,7 @@ export default function Ask({ engine, items, onResult, onBack }) {
         {noMatch && (
           <div className="answer-none">
             <p>No photo of that yet.</p>
-            <label className="btn-secondary file">
-              Take a photo of it
-              <input type="file" accept="image/*" capture="environment"
-                onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onResult(null, f); }} />
-            </label>
+            <button type="button" className="btn-secondary" onClick={onPhoto}>Take a photo of it</button>
           </div>
         )}
         {failed && <p className="answer-none">Couldn't check just now.</p>}

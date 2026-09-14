@@ -26,6 +26,15 @@ Files:
 Run: `./build.sh && NODE_PATH=/home/claude/.npm-global/lib/node_modules node run.js`.
 Then LOOK at every screenshot. That is the review.
 
+**`audit.js` (2026-09-14)** — the full-path audit: 67 assertions across boot, Home, Log item
+(camera, roll, naming, all three identity tiers, save-before-name, merges), the thing card
+(old- and new-format items, add/remove photo, Earlier mode, Fix, Found it), press-and-hold,
+Find item, the menu screens, Deleted items. Prints PASS/FAIL, writes `shots/audit.json`,
+and collects page errors. It seeds an OLD-format item (no logId/photoCount/aliases) on
+purpose — that is what is on Ravi's phone. Run it before every hand-off; add a check the
+day a path is built. The scripts are committed under `04_Engineering/recall-app/rig/`
+(esbuild/React/Playwright come from the container, not the repo).
+
 Sync back: the changed files go to the Mac with `device_commit_files` (staged under
 `/mnt/user-data/outputs/recall-sync/`), including `docs/app.js` built with the production
 command from `package.json` (externals, minified) and the `?v=` stamp bumped in

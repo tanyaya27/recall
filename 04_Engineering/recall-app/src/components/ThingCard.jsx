@@ -36,12 +36,16 @@ export default function ThingCard({ item, items = [], onBack, onFound, onAdd, on
 
   // The current log's extra photos are the only reason to read snaps up front.
   const wantsSnaps = !!item && ((item.photoCount || 1) > 1);
+  // Re-read when the photo count changes (a photo was just added — audit D9: the new photo
+  // never appeared until the card was reopened) or after snaps were reset to null.
   useEffect(() => {
     if (!item || snaps !== null || (!wantsSnaps && mode === 'now')) return;
     let alive = true;
     loadSnaps(item.id).then((all) => { if (alive) setSnaps(all); });
     return () => { alive = false; };
-  }, [item?.id, mode, wantsSnaps]); // eslint-disable-line
+  }, [item?.id, mode, wantsSnaps, snaps]); // eslint-disable-line
+  const photoCount = item ? (item.photoCount || 1) : 0;
+  useEffect(() => { setSnaps(null); }, [photoCount]);
 
   if (!item) return null;
 

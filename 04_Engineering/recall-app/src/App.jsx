@@ -231,7 +231,8 @@ export default function App() {
       screen = (
         <Ask
           engine={engine} items={items}
-          onResult={(item, file) => (item ? go('thing', { item }) : go('photo', { file, key: Date.now() }))}
+          onResult={(item) => go('thing', { item })}
+          onPhoto={() => setCamera({ for: 'log' })}
           onBack={back}
         />
       );

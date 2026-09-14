@@ -28,7 +28,8 @@ not be judged.
 4. `06_Handoffs/LESSONS.md` — traps already discovered. Do not re-learn these the hard way.
 5. The most recent file in `06_Handoffs/sessions/` — what happened last time.
 6. `06_Handoffs/OPEN_ITEMS.md` — the running to-do list. `06_Handoffs/RIG.md` — how to look at
-   a build before handing it over. **No build goes to the phone unreviewed.**
+   a build before handing it over. **No build goes to the phone unreviewed:** run
+   `04_Engineering/recall-app/rig/audit.js` (67 checks, every path) and look at the shots.
 
 Older session files are an archive. Do not read them all; search them when you need to
 reconstruct history.
@@ -62,8 +63,9 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914j` is BUILT, NOT YET
-> DEPLOYED** (i: in-app camera — `Camera.jsx` — replaces iOS's capture sheet everywhere)** (d is live; e/f add the Version-card update banners, a tighter footer, and the
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914k` is BUILT, NOT YET
+> DEPLOYED** (k: the full-path audit — `06_Handoffs/design/AUDIT_2026-09-14_full-path.md` —
+> found four real bugs incl. Add photo failing on every pre-09-14 item; all fixed, 67/67)** (i: in-app camera — `Camera.jsx` — replaces iOS's capture sheet everywhere)** (d is live; e/f add the Version-card update banners, a tighter footer, and the
 > hamburger menu — Ravi overruled the board: Look and feel, Locations, Deleted items,
 > Research log live there; Settings is the developer's Version + AI key, slated for removal).** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
 > phone feedback (`06_Handoffs/design/BOARD_2026-09-14_*.md`): footer verbs *Log item* ·
