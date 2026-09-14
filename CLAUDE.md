@@ -60,14 +60,16 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); a label + thumbnail build (`20260914a`) is
-> BUILT, NOT YET DEPLOYED.** Everything from 2026-09-05 — the board model, the platform
-> audit, the footer rework, live matching in the ask screen — is committed, pushed and on
-> the phone. Today's build renames the footer verbs to *Log item* · *Find item* and the
-> screen to *My items* (`06_Handoffs/design/BOARD_2026-09-14_where-is-my-label.md`), and
-> replaces the 220-px thumbnails that blurred on tiles with 600-px squares, rebuilt once
-> for existing items. Deploy commands and the phone check: `06_Handoffs/OPEN_ITEMS.md` —
-> **the running to-do list; read and update it every session.**
+> **2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914b` is BUILT, NOT YET
+> DEPLOYED.** Everything from 2026-09-05 is on the phone. Today, from two rounds of Ravi's
+> phone feedback (`06_Handoffs/design/BOARD_2026-09-14_*.md`): footer verbs *Log item* ·
+> *Find item*, screen *My items*; 600-px thumbnails (old ones rebuilt on load); the thing
+> card's photo strip with an *Earlier* mode and *Where it has been* rows; several photos
+> per log via the *Saved* toast; *Remove this photo*; ranked search; `aliases[]` so a
+> renamed thing still merges; pencil on every editable field; day + date on the day line;
+> Settings → Places. Deploy commands and the phone check: `06_Handoffs/OPEN_ITEMS.md` —
+> **the running to-do list; read and update it every session.** Open question for
+> Ravi/Tanya: appointments (board addendum in the round-2 file).
 >
 > **The design of record is `06_Handoffs/design/BOARD_2026-09-05_interaction_model.md`.**
 > `DAY_IN_THE_LIFE.md` is now history: its rules 2, 3, 5 and 7 survive; the clock-shaped
@@ -86,11 +88,12 @@ Full background lives in the numbered folders — see `README.md` for the index.
   history-backed routing (edge swipe works), pressed states, in-app confirm sheet, toasts with
   Undo, offline line (strict), icons, grouped Settings, Dusk + *Match my phone*, 4:3 cropped
   photos above the fold. Built, compiles, SSR-tested; **needs the phone.**
-- **Components:** `Board` `PhotoCard` `ThingCard` `Ask` `Settings` `Header` `Footer`
-  `Confirm` `Toast` `Icons` `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
+- **Components:** `Board` `PhotoCard` `ThingCard` (strip + Earlier mode) `Ask` `Settings` (incl. Places) `Header` `Footer`
+  `Confirm` `Toast` (can carry a camera action) `Icons` `EditableText`. v0.1's `Home/CaptureFlow/AnswerView/Onboarding/PlaceChooser/RecentReel`
   are deleted (git has them). `lib/prefs.js` is new. `docs/styles.css` is in rem.
-- **Engine changes this session (all in DECISIONS.md):** `household`, `order`/`boardKey`,
-  snap cap 10/30, `naming` flag, `absorbInto`, event schema v3. `engine.js` untouched.
+- **Engine changes (all in DECISIONS.md):** `household`, `order`/`boardKey`, snap cap 10/30,
+  `naming` flag, `absorbInto`, event schema v3; 09-14: `aliases[]`, `logId`/`photoCount`,
+  `thumbV`, soft-deleted snaps, `kind: 'place'` docs, `findByName` head-noun tier.
 - **Footer (late 09-05, Ravi):** side-by-side buttons that become floating translucent
   icons when a label cannot fit — measured on the device by `Footer.jsx`, never stacked.
   Built, rig-verified at 375/390/430 px × 3 sizes; deployed 2026-09-05 (`20260905l`).
@@ -133,7 +136,7 @@ it is generated from `04_Engineering/recall-app/src/`.
 - **Firebase** project `recall-d9886`, owned by Tanya's own Google account (NOT the shared
   `tanya-command-center` project — ReCall was deliberately separated, see DECISIONS.md):
   anonymous auth + Firestore. Photos are compressed JPEGs stored inline in Firestore docs.
-  Collections: `recall_items` (docs carry `kind`: item | snap | routine | check), `recall_events`.
+  Collections: `recall_items` (docs carry `kind`: item | snap | routine | check | place), `recall_events`.
 - **AI is abstracted.** The app only ever calls `engine.tagPhoto()` and
   `engine.answerQuery()` from `src/ai/engine.js`. Providers implement `visionJSON` and
   `textJSON` and register in one map. Anthropic (default, Haiku) and Gemini both ship.

@@ -31,7 +31,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 // These mirror the .footer rules in styles.css. Change both or neither.
 const GAP_REM = 0.625;      // between buttons
 const PAD_REM = 1;          // horizontal padding inside a bar button (both sides)
-const ICON_EM = 1.2;        // icon width in the bar, in the button's own font
+const ICON_EM = 1.45;       // icon width in the bar, in the button's own font (bigger since 09-14)
 const ICON_GAP_REM = 0.375; // space between icon and words
 const BORDER_PX = 4;        // .alt has a 2px border each side
 const SLACK_PX = 2;

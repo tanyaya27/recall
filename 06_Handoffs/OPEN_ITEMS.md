@@ -1,12 +1,22 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-14 (labels + thumbnails).
+*Done* when closed. Updated 2026-09-14 (second phone round).
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914a`** from the Mac (labels *Log item* · *Find item* · *My items*;
-  sharp thumbnails). Commands at the end of this file.
+- [ ] **Deploy `20260914b`** from the Mac — everything from today (labels, thumbnails, and
+  the second-round build). Commands at the end of this file.
+- [ ] Phone-check `20260914b` (second round): footer — both buttons the same size and
+  weight, white on green / green on white, bigger than before; still one row at Largest
+  on a 390-px phone. Home: *Sunday evening · September 14*. Log an item, then tap *Add
+  another photo* in the toast → second photo saved silently, tile unchanged; open the
+  thing → swipe between the two photos, dots under. Rename a thing, photograph it again
+  → header says *Your <new name> — new photo*, no duplicate. Move a thing to a second
+  place → *Where it has been* row appears; tap it → Earlier mode; *Back to now*. *Remove
+  this photo* → sheet → toast → Undo brings it back. Search "folio" → folder first;
+  "table" shows things whose *name* has table before things merely *on* a table. Settings
+  → Places: add one, log a photo → it is the first chip; rename it → items follow.
 - [ ] Phone-check `20260914a`: footer says *Log item* · *Find item* on one line at Largest
   on a 390-px phone; Home tiles sharpen within a few seconds of opening (each old item is
   rebuilt once — watch the Firestore console if unsure); a new photo's tile is sharp at
@@ -30,6 +40,10 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Next build (board first, then code)
 
+- [ ] **Appointments** (Ravi, 2026-09-14) — board recommends: after the helper-phone
+  switch, before the join code. Today-only line on her board + list on the helper phone;
+  visible list, no reminders (no push on iOS web). **Ravi/Tanya to decide now vs Phase 2.**
+  Add to the prioritizer either way.
 - [ ] Robert's helper phone — *This phone is used by* setting, *Another?* after save, note
   field, routines editor. Designed in BOARD_2026-09-05 §2, not built.
 - [ ] Priya's one-card status — *did anything happen today?* Designed in §2, not built.
@@ -37,7 +51,8 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Docs
 
-- [ ] `RESEARCH_PLAN.md` still describes event schema v2; v3 adds `merge`, `naming_failed`,
+- [ ] `RESEARCH_PLAN.md`: new events today — `photo_removed`, `photo_restored`, `capture`
+  with `initiatedBy: 'add_another'`, `merge.soft`. Still describes event schema v2; v3 adds `merge`, `naming_failed`,
   `move_to_top`, `capture_leave`, `lookup_failed`, `capture.beforeName`. Update before
   the first export is analysed.
 - [ ] `CLAUDE.md` "Current status" still says v0.2 is not deployed — it is (`20260905l`).
@@ -54,5 +69,5 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "Footer verbs Log item / Find item, screen My items; 600-px square thumbnails with one-time rebuild" && git push origin main
+git add -A && git commit -m "Second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
 ```

@@ -69,13 +69,46 @@ export function useDictation(onText) {
 // Filler words a person says out loud ("where are my glasses", "did I put the keys") are
 // ignored so speaking a whole sentence matches the same as typing the noun.
 const FILLER = new Set(['my', 'the', 'a', 'an', 'is', 'are', 'was', 'were', 'where', 'wheres', "where's", 'did', 'do', 'i', 'put', 'of', 'to', 'in', 'on', 'it', 'its', 'has', 'have', 'find', 'me', 'please', 'um', 'uh', 'and', 'go', 'gone', 'left']);
+// Ranked, 2026-09-14 (Ravi: things that don't match were showing; and name must beat
+// description must beat place). Every query word must land somewhere on the item; the
+// item's tier is its WORST word's tier, then within a tier the newest-seen first.
+//   1  a name/alias word equals or starts with the query word
+//   2  a name/alias word is within edit distance 2 of a query word of 4+ letters
+//      ("glases" → "glasses"), or shares its first letters ("folio" → "folder") — the
+//      "similar item" tier
+//   3  a description word starts with the query word (3+ letters)
+//   4  a place / resting-on word starts with the query word (3+ letters)
+// Two-letter queries search names only — "ta" must not return everything on a table.
+function toks(s) { return (s || '').toLowerCase().split(/[^a-z0-9']+/).filter(Boolean); }
+function editDistance(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+    dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) dp[i][j] = Math.min(dp[i][j], dp[i - 2][j - 2] + 1);
+  }
+  return dp[a.length][b.length];
+}
+function sharedPrefix(a, b) { let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i; }
+function wordTier(w, it) {
+  const names = toks(`${it.name || ''} ${(it.aliases || []).join(' ')}`);
+  if (names.some((t) => t.startsWith(w))) return 1;
+  if (w.length >= 4 && names.some((t) => t.length >= 4 && (editDistance(t, w) <= 2 || sharedPrefix(t, w) >= 4 || (sharedPrefix(t, w) >= 3 && Math.min(t.length, w.length) <= 6)))) return 2;
+  if (w.length < 3) return 0;
+  if (toks(it.description).some((t) => t.startsWith(w))) return 3;
+  if (toks(`${it.location || ''} ${it.restingOn || ''}`).some((t) => t.startsWith(w))) return 4;
+  return 0;
+}
 export function matchThings(items, query) {
   const words = (query || '').toLowerCase().replace(/[^a-z0-9'\s]/g, ' ').split(/\s+/)
     .filter((w) => w.length >= 2 && !FILLER.has(w));
   if (!words.length) return [];
-  return items.filter((it) => {
-    const hay = `${it.name || ''} ${it.location || ''} ${it.description || ''} ${it.restingOn || ''}`.toLowerCase();
-    const toks = hay.split(/[^a-z0-9]+/);
-    return words.every((w) => toks.some((t) => t.startsWith(w)));
-  });
+  return items.map((it) => {
+    let tier = 0;
+    for (const w of words) { const t = wordTier(w, it); if (!t) return null; tier = Math.max(tier, t); }
+    return { it, tier };
+  }).filter(Boolean)
+    .sort((a, b) => a.tier - b.tier || (b.it.lastSeenAt || 0) - (a.it.lastSeenAt || 0))
+    .map((m) => m.it);
 }

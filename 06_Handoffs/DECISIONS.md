@@ -6,6 +6,52 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-14 — Second phone round: photo strip with a history mode, multi-photo logs, remove a photo, ranked search, aliases, places
+
+Full exchange and Ravi's rulings: `design/BOARD_2026-09-14_phone-feedback-round-2.md`.
+
+**Thing card (Ravi's model):** the photo is a swipeable strip of *this log's* photos
+(close-up, wide shot). *Where it has been* rows appear only once a thing has been in more
+than one place; a row, or *Not there? Earlier photos*, switches the strip to **Earlier**
+mode — every older photo, newest first, each with its place and time; *Back to now*
+returns. Dots show there is more. Under the centred photo: *Remove this photo* → confirm
+sheet → toast with Undo; the newest remaining photo becomes the cover; the last photo
+routes to the item's own remove sheet. **Objection (Maya):** a delete control next to a
+photo Margaret is looking at. Answer: the sheet is the guard, and the control two screens
+away would not be found (Ravi could not find the history that was already there).
+
+**One log, several photos:** after a save the toast reads *Saved · Kitchen counter* with
+*Add another photo*; the next photo joins the same log — same place, same time, no
+question, no AI — up to 4. **Why in the toast:** tapping the place stays the whole save
+(D2). **Objection (Maya):** scope; withdrawn once *Found it — new photo* was shown to be
+the wrong tool (asks the place again, stamps a new time).
+
+**Search:** ranked tiers — name › similar name (edit distance ≤ 2 or shared first letters)
+› description › place; every word must land; two-letter queries search names only. Ask no
+longer re-sorts results into board order (that was throwing the ranking away).
+**Objection (Devin):** no visible tier labels; Margaret reads every word. Order only.
+
+**Merge after a rename:** items carry `aliases[]` — every name the AI or a person has
+given them; the match is exact-on-any-name, then head-noun-on-exactly-one ("glasses" ↔
+"reading glasses"). The AI is told the aliases. The D4 guardrails (*not your glasses?*,
+*Is this your glasses?*) stand.
+
+**Editable fields:** pencil at the right, accent hairline under; the photo card's name is a
+bordered field. **Objection (Maya):** the answer becomes a form; conceded for the photo
+card only. **Objection (Harold):** too many pencils — only on fields, never tiles.
+
+**Day line:** *Sunday evening · September 14*; night from 10 pm. **No calendar** —
+unanimous; different product. **Objection (Sam):** the date is a number she can't check;
+overruled by Ravi.
+
+**Places:** Settings → Places — add, rename (updates every item), remove; chips show saved
+places first. First piece of the helper phone (§2).
+
+**Would change our mind:** Margaret hesitating at the dots (then the second photo peeks);
+a name that never soft-matches (widen to any shared noun); Robert not finding Places.
+
+---
+
 ## 2026-09-14 — Footer verbs are *Log item* · *Find item*; the screen is *My items*
 
 **Decision (Ravi):** the two Home buttons read *Log item* and *Find item*. Home, and every

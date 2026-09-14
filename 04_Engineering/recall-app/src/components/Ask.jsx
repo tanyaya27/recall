@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { boardOrder, logEvent } from '../lib/db.js';
+import { logEvent } from '../lib/db.js';
 import { cap } from '../lib/format.js';
 import { useDictation, matchThings, IS_IOS } from '../lib/speech.js';
 import Header from './Header.jsx';
@@ -29,7 +29,9 @@ export default function Ask({ engine, items, onResult, onBack }) {
 
   useEffect(() => { inputRef.current && inputRef.current.focus(); }, []);
 
-  const live = useMemo(() => boardOrder(matchThings(items, q)), [items, q]);
+  // Ranked by matchThings (name › similar name › description › place); NOT re-sorted into
+  // board order — that threw the ranking away (2026-09-14).
+  const live = useMemo(() => matchThings(items, q), [items, q]);
   const typed = q.trim().length >= 2;
 
   function pick(it) {

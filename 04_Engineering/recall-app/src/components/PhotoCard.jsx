@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressPhoto } from '../lib/img.js';
-import { addItem, nameItem, resnapItem, absorbInto, findByName, knownLocations, logEvent } from '../lib/db.js';
+import { addItem, nameItem, resnapItem, absorbInto, findByName, knownLocations, noteAlias, logEvent } from '../lib/db.js';
 import EditableText from './EditableText.jsx';
 import Header from './Header.jsx';
 
@@ -21,7 +21,7 @@ import Header from './Header.jsx';
 // Places are shown as sentences — "Kitchen counter", not "kitchen counter" (audit I2).
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-export default function PhotoCard({ file, engine, items = [], resnapOf = null, onDone, onBack }) {
+export default function PhotoCard({ file, engine, items = [], places = [], resnapOf = null, onDone, onBack }) {
   const [photo, setPhoto] = useState(null);
   const [thumb, setThumb] = useState(null);
   const [tag, setTag] = useState(undefined);   // undefined = pending · null = failed · object = named
@@ -35,7 +35,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
   const [busy, setBusy] = useState(false);
   const [whole, setWhole] = useState(false); // photo shown uncropped (L1)
   const tagPromise = useRef(null);
-  const chips = knownLocations(items, 6);
+  const chips = knownLocations(items, 8, places);
 
   // Compress, show, and start naming — in that order, so the photo is on screen in well
   // under a second whatever the AI does.
@@ -48,7 +48,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
       tagPromise.current = engine.tagPhoto(p, {
         hintName: resnapOf ? resnapOf.name : '',
         knownPlaces: chips,
-        catalog: items.map((it) => it.name).filter(Boolean),
+        catalog: items.filter((it) => it.name).map((it) => ({ name: it.name, aliases: it.aliases || [] })),
         sensitivity: 'personal',
       }).then((r) => r, (err) => { console.error(err); return null; });
       const r = await tagPromise.current;
@@ -74,7 +74,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
       }
       await nameItem(savedId, { name: tag.name, description: tag.description, restingOn: tag.restingOn });
       if (match) setPendingMerge(true);
-      else onDone({ saved: true, place });
+      else onDone({ saved: true, place, itemId: savedId });
     })();
   }, [savedId, tag]); // eslint-disable-line
 
@@ -93,25 +93,30 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
 
     if (resnapOf) {
       await resnapItem(resnapOf, common);
+      if (tag && tag.name) noteAlias(resnapOf, tag.name);
       logEvent('capture', { initiatedBy: 'resnap', itemId: resnapOf.id, itemName: resnapOf.name, savedBy: how,
         locationChanged: chosen !== resnapOf.location, aiFailed: tag === null });
-      onDone({ saved: true, place: chosen });
+      onDone({ saved: true, place: chosen, itemId: resnapOf.id });
       return;
     }
 
     if (tag !== undefined) {
       // Name known (or known to have failed): one write, straight back to the board.
+      let itemId;
       if (match) {
         await resnapItem(match, common);
-        logEvent('merge', { itemId: match.id, result: 'confirmed', savedBy: how });
+        if (tag && tag.name) noteAlias(match, tag.name); // what the AI called it this time
+        itemId = match.id;
+        logEvent('merge', { itemId: match.id, result: 'confirmed', savedBy: how, soft: match.name.toLowerCase() !== (tag.name || '').toLowerCase() });
         logEvent('capture', { initiatedBy: 'self', itemId: match.id, itemName: match.name, savedBy: how, merged: true });
       } else {
-        const id = await addItem({ ...common, name, description: (tag && tag.description) || '' });
-        if (tag === null) logEvent('naming_failed', { itemId: id });
-        logEvent('capture', { initiatedBy: 'self', itemId: id, itemName: name || null, savedBy: how,
+        itemId = await addItem({ ...common, name, description: (tag && tag.description) || '',
+          aliases: tag && tag.name && nameOverride && tag.name !== nameOverride ? [tag.name] : [] });
+        if (tag === null) logEvent('naming_failed', { itemId });
+        logEvent('capture', { initiatedBy: 'self', itemId, itemName: name || null, savedBy: how,
           usedChip: chips.includes(chosen), placeFromGuess: guesses.includes(chosen), aiFailed: tag === null });
       }
-      onDone({ saved: true, place: chosen });
+      onDone({ saved: true, place: chosen, itemId });
       return;
     }
 
@@ -130,18 +135,19 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
     }
     if (pendingMerge && match) logEvent('merge', { itemId: match.id, result: 'unseen' });
     logEvent('capture_leave', { reason, savedId: savedId || null });
-    onDone(savedId ? { saved: true, place } : null);
+    onDone(savedId ? { saved: true, place, itemId: savedId } : null);
   }
 
   async function mergeYes() {
     setBusy(true);
     await absorbInto(match, savedId, { photo, thumb, location: place, restingOn });
+    if (tag && tag.name) noteAlias(match, tag.name);
     logEvent('merge', { itemId: match.id, result: 'confirmed', savedBy: 'asked' });
-    onDone({ saved: true, place });
+    onDone({ saved: true, place, itemId: match.id });
   }
   function mergeNo() {
     logEvent('merge', { itemId: match.id, result: 'declined' });
-    onDone({ saved: true, place });
+    onDone({ saved: true, place, itemId: savedId });
   }
 
   // Back in the header: before a save it cancels; after a save it is simply the way home.
@@ -174,7 +180,7 @@ export default function PhotoCard({ file, engine, items = [], resnapOf = null, o
             </button>
           </>
         ) : (
-          <EditableText value={name} emptyLabel="Name it" big onSave={(v) => { setNameOverride(v); if (savedId) nameItem(savedId, { name: v }); }} />
+          <EditableText value={name} emptyLabel="Name it" big onSave={(v) => { setNameOverride(v); if (savedId) nameItem(savedId, { name: v, aliases: tag && tag.name && tag.name !== v ? [tag.name] : [] }); }} />
         )}
 
         {/* The one question. Tapping the answer saves. */}

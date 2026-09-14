@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.js';
-import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA } from '../lib/db.js';
+import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, knownLocations } from '../lib/db.js';
 import { timeAgo } from '../lib/format.js';
 import { getPrefs, savePrefs, THEMES, SIZES } from '../lib/prefs.js';
 import Header from './Header.jsx';
@@ -19,7 +19,7 @@ export function takeReturnRoute() {
   } catch { return null; }
 }
 
-export default function Settings({ removed = [], onBack, onConfigSaved, justReloaded = false }) {
+export default function Settings({ removed = [], places = [], items = [], onBack, onConfigSaved, justReloaded = false }) {
   const [cfg, setCfg] = useState(getAIConfig());
   const [stored, setStored] = useState(getAIConfig());
   const [saved, setSaved] = useState(false);
@@ -28,6 +28,8 @@ export default function Settings({ removed = [], onBack, onConfigSaved, justRelo
   const [showModel, setShowModel] = useState(false);
   const [prefs, setPrefs] = useState(getPrefs());
   const [purging, setPurging] = useState(null); // item awaiting "delete for good"
+  const [newPlace, setNewPlace] = useState('');
+  const [editingPlace, setEditingPlace] = useState(null); // { id, draft }
   const providers = providerList();
   // What happened the last time the app opened — stages and timings. This is how a hang on
   // "Opening ReCall…" gets diagnosed instead of guessed at.
@@ -153,6 +155,41 @@ export default function Settings({ removed = [], onBack, onConfigSaved, justRelo
               {test.raw && test.raw !== test.message && <div className="raw">{test.raw}</div>}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Places — the helper's list (board 2026-09-14, item 9). The chips on the photo card
+          show these first. Rename fixes every item that uses the old spelling. */}
+      <div className="group-title">Places</div>
+      <div className="group">
+        {places.length === 0 && <div className="grow"><p className="sub">Places you add here are offered first when a photo is logged. Places already used on items: {knownLocations(items, 6).join(', ') || 'none yet'}.</p></div>}
+        {places.map((p) => (
+          <div className="row" key={p.id}>
+            {editingPlace && editingPlace.id === p.id ? (
+              <>
+                <input className="place-input" autoFocus value={editingPlace.draft} enterKeyHint="done"
+                  onChange={(e) => setEditingPlace({ id: p.id, draft: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { renamePlace(p, editingPlace.draft, items); setEditingPlace(null); } }} />
+                <button onClick={() => { renamePlace(p, editingPlace.draft, items); setEditingPlace(null); }}>Save</button>
+                <button onClick={() => setEditingPlace(null)}>Cancel</button>
+              </>
+            ) : (
+              <>
+                <div className="nm">
+                  {p.name}
+                  <small>{(() => { const n = items.filter((it) => (it.location || '').toLowerCase() === p.name.toLowerCase()).length; return n ? `${n} item${n === 1 ? '' : 's'} here` : 'not used yet'; })()}</small>
+                </div>
+                <button onClick={() => setEditingPlace({ id: p.id, draft: p.name })}>Rename</button>
+                <button onClick={() => removePlace(p)}>Remove</button>
+              </>
+            )}
+          </div>
+        ))}
+        <div className="row">
+          <input className="place-input" value={newPlace} placeholder="Add a place — Kitchen counter" enterKeyHint="done"
+            onChange={(e) => setNewPlace(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && newPlace.trim()) { addPlace(newPlace, places); setNewPlace(''); } }} />
+          <button disabled={!newPlace.trim()} onClick={() => { addPlace(newPlace, places); setNewPlace(''); }}>Add</button>
         </div>
       </div>
 

@@ -50,12 +50,31 @@ export async function moveToTop(item, items) {
 }
 
 // Rule 6: a new photo of a thing that is already on the board is a new photo of it, not a
-// new thing. Exact name match, case-insensitive, live things only. Never called silently:
-// the photo card shows the match and offers "not your glasses?" before anything merges.
+// new thing. Never called silently: the photo card shows the match and offers "not your
+// glasses?" before anything merges.
+//
+// 2026-09-14 (Ravi: a renamed item was duplicated on the next photo): the match was an
+// exact string compare between the AI's name this time and the stored name. Now:
+//   1. exact — name or any alias (every name the AI or a person has given the thing);
+//   2. head noun — the AI's name and exactly ONE item's name/alias share their last word
+//      ("glasses" ↔ "reading glasses"); a wrong soft match costs one tap on the card.
+// Names are normalised: lowercase, "your/the/my" dropped, trailing s dropped.
+const DROP = new Set(['your', 'the', 'my', 'a', 'an', 'her', 'his', 'our']);
+export function normName(name) {
+  return (name || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+    .filter((w) => w && !DROP.has(w)).map((w) => w.replace(/s$/, '')).join(' ');
+}
+function namesOf(it) { return [it.name, ...(it.aliases || [])].map(normName).filter(Boolean); }
 export function findByName(items, name) {
-  const n = (name || '').trim().toLowerCase();
+  const n = normName(name);
   if (!n) return null;
-  return items.find((it) => !it.deleted && (it.name || '').trim().toLowerCase() === n) || null;
+  const live = items.filter((it) => !it.deleted);
+  const exact = live.find((it) => namesOf(it).includes(n));
+  if (exact) return exact;
+  const head = n.split(' ').pop();
+  if (head.length < 3) return null;
+  const soft = live.filter((it) => namesOf(it).some((x) => x.split(' ').pop() === head));
+  return soft.length === 1 ? soft[0] : null;
 }
 
 // ---------- live data ----------
@@ -63,12 +82,13 @@ export function findByName(items, name) {
 // One listener; caller gets everything split by kind. Snap photos are heavy, so
 // snaps are NOT included here — fetch them per item with loadSnaps().
 export function watchAll(cb) {
-  const q = query(col, where('kind', 'in', ['item', 'routine', 'check']));
+  const q = query(col, where('kind', 'in', ['item', 'routine', 'check', 'place']));
   return onSnapshot(q, (snap) => {
-    const out = { items: [], routines: [], checks: [], removed: [] };
+    const out = { items: [], routines: [], checks: [], removed: [], places: [] };
     snap.docs.forEach((d) => {
       const data = { id: d.id, ...d.data() };
-      if (data.kind === 'routine') out.routines.push(data);
+      if (data.kind === 'place') out.places.push(data);
+      else if (data.kind === 'routine') out.routines.push(data);
       else if (data.kind === 'check') out.checks.push(data);
       else if (data.deleted) out.removed.push(data);
       else out.items.push(data);
@@ -77,6 +97,7 @@ export function watchAll(cb) {
     out.removed.sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0));
     out.routines.sort((a, b) => (a.order || 0) - (b.order || 0));
     out.checks.sort((a, b) => (b.at || 0) - (a.at || 0));
+    out.places.sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
     cb(out);
   }, (err) => console.error('watchAll', err));
 }
@@ -93,21 +114,40 @@ export function watchAll(cb) {
 // `naming: true` (D3) means the photo was saved before the AI named it. The name is
 // patched in by nameItem(); if naming fails the flag is cleared and the thing stays
 // unnamed — a legitimate state. Nothing on the board ever asks her to name it.
-export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false }) {
+export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false, aliases = [] }) {
   const now = Date.now();
+  const logId = `log_${now}`;
   const ref = await addDoc(col, {
-    kind: 'item', household: HOUSEHOLD, name, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
+    kind: 'item', household: HOUSEHOLD, name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
     needsPlace: !location, naming,
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
-    history: [{ location, at: now }],
+    history: [{ location, at: now }], logId, photoCount: 1,
   });
-  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: ref.id, photo, thumb, location, at: now, by });
+  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: ref.id, logId, photo, thumb, location, at: now, by });
   return ref.id;
 }
 
-export async function nameItem(id, { name = '', description = '', restingOn = '' } = {}) {
+// Every name a thing has been called stays with it, so the next photo still matches.
+function withAlias(item, name) {
+  const cur = item.aliases || [];
+  const n = (name || '').trim();
+  if (!n || normName(n) === normName(item.name) || cur.some((a) => normName(a) === normName(n))) return cur;
+  return [...cur, n].slice(-8);
+}
+// A person renamed it: keep the old name as an alias.
+export async function renameItem(item, name) {
+  await updateItem(item.id, { name, aliases: withAlias(item, item.name) });
+}
+// The AI called it something on a later photo: remember that too.
+export async function noteAlias(item, aiName) {
+  const aliases = withAlias(item, aiName);
+  if (aliases !== (item.aliases || [])) await updateDoc(doc(col, item.id), { aliases });
+}
+
+export async function nameItem(id, { name = '', description = '', restingOn = '', aliases } = {}) {
   const patch = { naming: false };
   if (name) patch.name = name;
+  if (aliases && aliases.length) patch.aliases = aliases;
   if (description) patch.description = description;
   if (restingOn) patch.restingOn = restingOn;
   await updateItem(id, patch);
@@ -120,12 +160,47 @@ export async function updateItem(id, patch) {
 // Re-snap: fresh photo + location; the old photo is kept as a snap
 export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '' }) {
   const now = Date.now();
+  const logId = `log_${now}`;
   const history = [...(item.history || []), { location, at: now }].slice(-100);
   await updateDoc(doc(col, item.id), {
     photo, thumb, thumbV: THUMB_V, location, restingOn, needsPlace: !location,
-    lastSeenAt: now, updatedAt: now, history, capturedBy: by,
+    lastSeenAt: now, updatedAt: now, history, capturedBy: by, logId, photoCount: 1,
   });
-  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, photo, thumb, location, at: now, by });
+  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId, photo, thumb, location, at: now, by });
+}
+
+// 2026-09-14 (Ravi): one log can hold several photos — a close-up and a wide shot. A later
+// photo joins the CURRENT log: same place, same time, no question, no AI. Cap LOG_MAX.
+export const LOG_MAX = 4;
+export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
+  if (!item.logId || (item.photoCount || 1) >= LOG_MAX) return false;
+  const at = (item.lastSeenAt || Date.now()) + (item.photoCount || 1); // keeps the order, stays "the same time"
+  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId: item.logId, photo, thumb, location: item.location || '', at, by, extra: true });
+  await updateDoc(doc(col, item.id), { photoCount: (item.photoCount || 1) + 1, updatedAt: Date.now() });
+  return true;
+}
+
+// Remove one photo from a thing (Ravi, 2026-09-14). Soft: the snap keeps its data under
+// `deleted` so Undo can bring it back; purgeItem sweeps it with the rest. If the removed
+// photo was the cover, the newest remaining photo becomes the cover. Returns what changed,
+// so Undo can put it back exactly.
+export async function removeSnap(item, snap, snaps) {
+  const rest = snaps.filter((s) => s.id !== snap.id && !s.deleted).sort((a, b) => b.at - a.at);
+  const patch = {};
+  const wasCover = snap.photo === item.photo || (snap.logId && snap.logId === item.logId && !snap.extra);
+  if (wasCover && rest[0]) {
+    const next = rest[0];
+    Object.assign(patch, { photo: next.photo, thumb: next.thumb, thumbV: THUMB_V, location: next.location || item.location, lastSeenAt: next.at, logId: next.logId || next.id });
+  }
+  if (snap.logId && snap.logId === item.logId) patch.photoCount = Math.max(1, (item.photoCount || 1) - 1);
+  await updateDoc(doc(col, snap.id), { deleted: true, deletedAt: Date.now() });
+  if (Object.keys(patch).length) await updateDoc(doc(col, item.id), { ...patch, updatedAt: Date.now() });
+  const before = {};
+  Object.keys(patch).forEach((k) => { before[k] = item[k] === undefined ? null : item[k]; });
+  return { undo: async () => {
+    await updateDoc(doc(col, snap.id), { deleted: false, deletedAt: null });
+    if (Object.keys(before).length) await updateDoc(doc(col, item.id), { ...before, updatedAt: Date.now() });
+  } };
 }
 
 // A thing saved before its name arrived turned out to be one already on the board, and
@@ -141,7 +216,7 @@ export async function absorbInto(existing, provisionalId, { photo, thumb, locati
 // prunes beyond SNAPS_KEEP in the background, returns at most SNAPS_SHOW + the current one.
 export async function loadSnaps(itemId) {
   const snap = await getDocs(query(col, where('kind', '==', 'snap'), where('itemId', '==', itemId)));
-  const all = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => b.at - a.at);
+  const all = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((s) => !s.deleted).sort((a, b) => b.at - a.at);
   const extra = all.slice(SNAPS_KEEP);
   if (extra.length) Promise.all(extra.map((s) => deleteDoc(doc(col, s.id)))).catch(() => {});
   return all.slice(0, SNAPS_SHOW + 1);
@@ -179,20 +254,46 @@ export async function purgeItem(item) {
   await deleteDoc(doc(col, item.id));
 }
 
-export function knownLocations(items, limit = 5) {
+// Saved places (Settings → Places, Robert's list) come first, most recently used first;
+// then places only seen on items. 2026-09-14.
+export function knownLocations(items, limit = 5, places = []) {
   const counts = new Map();
+  places.forEach((p) => counts.set(p.name, { n: 0, last: 0, saved: true }));
   items.forEach((it) => {
     (it.history || [{ location: it.location, at: it.lastSeenAt }]).forEach(({ location, at }) => {
       if (!location) return;
-      const c = counts.get(location) || { n: 0, last: 0 };
+      const key = [...counts.keys()].find((k) => k.toLowerCase() === location.toLowerCase()) || location;
+      const c = counts.get(key) || { n: 0, last: 0, saved: false };
       c.n += 1; c.last = Math.max(c.last, at || 0);
-      counts.set(location, c);
+      counts.set(key, c);
     });
   });
   return [...counts.entries()]
-    .sort((a, b) => (b[1].last - a[1].last) || (b[1].n - a[1].n))
+    .sort((a, b) => ((b[1].saved ? 1 : 0) - (a[1].saved ? 1 : 0)) || (b[1].last - a[1].last) || (b[1].n - a[1].n))
     .slice(0, limit).map(([loc]) => loc);
 }
+
+// ---------- places (Settings → Places; the helper's list) ----------
+
+export async function addPlace(name, places = []) {
+  const n = name.trim();
+  if (!n || places.some((p) => p.name.toLowerCase() === n.toLowerCase())) return null;
+  const now = Date.now();
+  const ref = await addDoc(col, { kind: 'place', household: HOUSEHOLD, name: n, order: now, createdAt: now });
+  return ref.id;
+}
+// Rename updates every item that uses the place, so Robert can fix a typo once.
+export async function renamePlace(place, name, items = []) {
+  const n = name.trim();
+  if (!n || n === place.name) return;
+  await updateDoc(doc(col, place.id), { name: n });
+  const hits = items.filter((it) => (it.location || '').toLowerCase() === place.name.toLowerCase());
+  await Promise.all(hits.map((it) => updateDoc(doc(col, it.id), {
+    location: n, updatedAt: Date.now(),
+    history: (it.history || []).map((h) => (h.location || '').toLowerCase() === place.name.toLowerCase() ? { ...h, location: n } : h),
+  })));
+}
+export async function removePlace(place) { await deleteDoc(doc(col, place.id)); }
 
 // ---------- routines (what the app asks for, and when) ----------
 

@@ -96,11 +96,12 @@ export class AIEngine {
   // `catalog` turns open-vocabulary naming into matching against things already in the
   // vault, which is much more reliable — and gets better the more the household uses it.
   async tagPhoto(photoDataUrl, { hintName = '', knownPlaces = [], catalog = [], sensitivity = 'personal' } = {}) {
+    // catalog entries are strings, or { name, aliases } — the names a thing has been called before.
     const placesLine = knownPlaces.length
       ? `Places this household already uses: ${knownPlaces.map((p) => `"${p}"`).join(', ')}.`
       : 'This household has no saved places yet.';
     const catalogLine = catalog.length
-      ? `Things already saved: ${catalog.slice(0, 40).map((n) => `"${n}"`).join(', ')}.`
+      ? `Things already saved: ${catalog.slice(0, 40).map((c) => typeof c === 'string' ? `"${c}"` : `"${c.name}"${c.aliases && c.aliases.length ? ` (also called ${c.aliases.map((a) => `"${a}"`).join(', ')})` : ''}`).join(', ')}.`
       : 'Nothing is saved yet.';
 
     const prompt =

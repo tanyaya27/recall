@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
-import { watchAll, restoreItem, updateItem, logEvent } from './lib/db.js';
-import { THUMB_V, thumbFromPhoto } from './lib/img.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, LOG_MAX, logEvent } from './lib/db.js';
+import { THUMB_V, thumbFromPhoto, compressPhoto } from './lib/img.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
 import Board from './components/Board.jsx';
 import PhotoCard from './components/PhotoCard.jsx';
@@ -36,7 +36,7 @@ noteBoot('script');
 export default function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
-  const [data, setData] = useState({ items: [], routines: [], checks: [], removed: [] });
+  const [data, setData] = useState({ items: [], routines: [], checks: [], removed: [], places: [] });
   const [cfgVersion, setCfgVersion] = useState(0);
   const [route, setRoute] = useState(RETURN_TO === 'settings' ? { view: 'settings', reloaded: true } : HOME);
   const [offline, setOffline] = useState(typeof navigator !== 'undefined' && navigator.onLine === false);
@@ -49,7 +49,8 @@ export default function App() {
   const depth = useRef(0);          // how many cards deep we are; Home is 0
 
   const engine = useMemo(() => new AIEngine(getAIConfig()), [cfgVersion]);
-  const { items, removed } = data;
+  const { items, removed, places = [] } = data;
+  const itemsRef = useRef(items); itemsRef.current = items;
 
   // Thumbnails made before 2026-09-14 are 220 px and blur on a tile (lib/img.js). Rebuild
   // each old one from its stored photo, one at a time, once per item per session. The
@@ -148,17 +149,40 @@ export default function App() {
 
   const say = (text, undo) => setToast({ text, undo, key: Date.now() });
 
+  // 2026-09-14 (Ravi): one log, several photos. After a save the toast offers *Add another
+  // photo*; the next photo joins the same log — same place, same time, no question, no AI —
+  // and the toast offers it again, up to LOG_MAX. Tapping the place is still the save (D2):
+  // nothing extra is asked of her; the offer just sits in the toast for a few seconds.
+  const savedToast = (result) => {
+    const it = itemsRef.current.find((x) => x.id === result.itemId);
+    const text = result.place ? `Saved · ${result.place}` : 'Saved';
+    const count = it ? (it.photoCount || 1) : 1;
+    if (!result.itemId || count >= LOG_MAX) { say(text); return; }
+    setToast({ text, key: Date.now(), action: { label: 'Add another photo', camera: true, onFile: (file) => addAnother(result.itemId, file) } });
+  };
+  const addAnother = async (itemId, file) => {
+    const it = itemsRef.current.find((x) => x.id === itemId);
+    if (!it) return;
+    setToast(null);
+    const { photo, thumb } = await compressPhoto(file);
+    const ok = await addSnapToLog(it, { photo, thumb });
+    logEvent('capture', { initiatedBy: 'add_another', itemId, itemName: it.name || null, extra: true, ok });
+    const n = (it.photoCount || 1) + 1;
+    if (ok && n < LOG_MAX) setToast({ text: `Added · photo ${n}`, key: Date.now(), action: { label: 'Add another photo', camera: true, onFile: (f) => addAnother(itemId, f) } });
+    else say(ok ? `Added · photo ${n}` : 'Not added');
+  };
+
   let screen;
   switch (route.view) {
     case 'photo':
       screen = (
         <PhotoCard
           key={route.key}
-          file={route.file} engine={engine} items={items}
+          file={route.file} engine={engine} items={items} places={places}
           resnapOf={route.resnapOf ? live(route.resnapOf) : null}
           onDone={(result) => {
-            if (result && result.saved) say(result.place ? `Saved · ${result.place}` : 'Saved');
             home();
+            if (result && result.saved) setTimeout(() => savedToast(result), 0);
           }}
           onBack={back}
         />
@@ -174,6 +198,7 @@ export default function App() {
             say(`Removed · ${item.name || 'this'}`, () => { restoreItem(item.id); logEvent('item_restored', { itemId: item.id, via: 'undo' }); });
             home();
           }}
+          onToast={say}
         />
       );
       break;
@@ -187,7 +212,7 @@ export default function App() {
       );
       break;
     case 'settings':
-      screen = <Settings removed={removed} justReloaded={!!route.reloaded} onBack={back} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
+      screen = <Settings removed={removed} places={places} items={items} justReloaded={!!route.reloaded} onBack={back} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
       break;
     default:
       screen = (

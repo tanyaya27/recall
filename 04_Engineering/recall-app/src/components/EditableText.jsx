@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { PencilIcon } from './Icons.jsx';
 
 // Always-correctable text: tap to edit, save on blur/enter. No confirmation friction.
+// 2026-09-14 (Ravi: nothing looked editable): a pencil at the right and an accent hairline
+// under the value — the phone's own sign for "a field". Nothing says "tap to".
 export default function EditableText({ value, label, onSave, big, emptyLabel = 'tap to add' }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -23,13 +26,14 @@ export default function EditableText({ value, label, onSave, big, emptyLabel = '
           onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
         />
       ) : (
-        <div
-          className={big ? 'loc-big field-value' : 'field-value'}
-          style={value ? undefined : { color: '#6B7A78' }}
+        <button type="button"
+          className={'field-value' + (big ? ' big' : '') + (value ? '' : ' empty')}
+          aria-label={`${label || 'Name'}: ${value || emptyLabel}. Change`}
           onClick={() => { setDraft(value || ''); setEditing(true); }}
         >
-          {value || emptyLabel}
-        </div>
+          <span className="field-text">{value || emptyLabel}</span>
+          <PencilIcon />
+        </button>
       )}
     </div>
   );
