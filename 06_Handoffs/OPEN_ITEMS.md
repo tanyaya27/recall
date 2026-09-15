@@ -1,11 +1,32 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-14 (second phone round).
+*Done* when closed. Updated 2026-09-15 (round 7).
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260914p`** from the Mac (p: a little more space above the Home buttons; o: Shared/Private open/closed lock, trash per photo
+- [ ] **Deploy `20260915a`** from the Mac — round 7: when pill + Private on one line (no "this phone"
+  anywhere; one toast shape both ways), amber pin badge for *no place yet* (tap → place field),
+  *Text size & colours*, Locations as a list with photos → one-location screen (photos ≤3 via
+  the camera, rename, things here, remove), *Add a location* = camera then name, "Where is it?"
+  in three views with links, up to 4 shots per *Add photo* (log holds 6), the roll expands as
+  one. Rig: 84/84. Screenshots Ravi reviewed: `06_Handoffs/design/mockups/r7f_combo_*.png`.
+  Commands at the end of this file.
+- [ ] Phone-check `20260915a`: open a private thing → clock pill left, lock + *Private* right on ONE
+  line; tap *Private* → toast *Now shared · everyone at home sees it*; tap again → *Now private ·
+  only you see it*. Home: a thing without a place has an amber pin badge top-right (and a private
+  one keeps its lock too); tap it → card opens in Edit with the place field. Thing card → *Add
+  photo* → the shutter allows 4 → Done → 5 dots. Tap the big photo → every page grows to the same
+  height; swipe — no jump. Hamburger → *Text size & colours* (renamed). Hamburger → Locations →
+  a list with pictures → *Add a location* → camera → 2 shots → Done → name → *Save this place* →
+  row shows your photo. Tap it → photos + *Add photo* slot, rename with the pencil, *Remove this
+  location* asks first. *Log item* → Where is it? shows *Smaller photos* automatically (a place has
+  a photo) with the place's own photo beside its name; links *Names only* / *Bigger photos* switch
+  and the choice sticks after a restart.
+- [ ] **Camera permission on every launch** — iOS limit for home-screen web apps, no web fix
+  (DECISIONS 2026-09-15). Decide on a native wrapper (Capacitor/TestFlight) in the multi-user
+  session.
+- [ ] Deploy `20260914p` from the Mac (p: a little more space above the Home buttons; o: Shared/Private open/closed lock, trash per photo
   bottom-left + photo in the remove sheet, lock watermark, hold → private, hamburger flush; n: thing card layout A — trash on the photo, labelled
   action row, icons-only when words don't fit; m: private items — field, toggle, lock, filtering; l: Add photo · Edit replace Found it/Fix; wrong-photo
   guard; hold on the photo → sheet; shorter footer; k: full-path audit fixes — Add photo on older items,
@@ -86,17 +107,16 @@ MISSED until build i** (deferred without agreement).
 - [ ] Firebase console: tighten rules by `household`; composite index (kind, itemId, at)
   so earlier photos can use `limit()`.
 
-## Multi-user — decided by three boards, staged (PLAN_2026-09-14_multi-user.md)
+## Multi-user — SUSPENDED 2026-09-15 (Ravi disagrees with the boards)
 
-- [ ] **Ravi/Tanya: rule on the six splits** at the end of the plan (tell Margaret once or
-  never · Priya's day-one logging · sign-in in stage 2 or 3 · hamburger under Margaret's role ·
-  AI proxy in stage 1 · Storage now or at 150 items).
-- [ ] Stage 0 (1 day): *This phone is used by* switch; then appointments (Tanya's sequence).
-- [ ] Stage 1 (4 days, two agents): households + rules (incl. private-item visibility rule) + migration ‖ AI-key proxy function.
-- [ ] **Ravi/Tanya: confirm the exclusion model for private items**; per-person exclusion = role default (stage 2) + helper-side exception (stage 3).
-- [ ] Stage 2 (4 days, two agents): join code + Household screens + Priya's card ‖ coverSnapId.
-- [ ] Stage 3 (5 days, two agents): roles from members + helper screens ‖ Google sign-in for helpers.
-- [ ] Firebase: Blaze billing with a $10 alert (proxy needs it); Tanya's console.
+- [ ] **Ravi: run the use-case redefinition in a separate session** — paste
+  `06_Handoffs/PROMPT_2026-09-15_multi-user-redefinition.md`. Until then nothing from
+  `PLAN_2026-09-14_multi-user.md` (stages 0–4, the six splits, stage 0's hamburger question)
+  is decided or built. Kept from that work: private = per person, not per device.
+- [ ] On that session's agenda too: native wrapper (camera permission, remote install);
+  *put it back* (the derived *Usually on* row was parked); the location hierarchy
+  (`parent` reserved on place docs — DECISIONS 2026-09-15); place photos as AI reference
+  images (the prompt's "known places" block is not built yet).
 
 ## Next build (board first, then code)
 
@@ -126,6 +146,8 @@ MISSED until build i** (deferred without agreement).
 
 ## Done
 
+- [x] 2026-09-15 — round 7 built and rig-audited (84/84); mockups → rulings → code.
+
 - [x] 2026-09-05 — v0.2 board model built, deployed, three rounds of phone fixes.
 - [x] 2026-09-05 — Footer side-by-side / floating icons; removed-row layout. Deployed.
 - [x] 2026-09-05 — *Where is my…* live local matching. Deployed.
@@ -135,5 +157,5 @@ MISSED until build i** (deferred without agreement).
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "Thing card layout A (reviewed); private items (exclusion model); thing card: Add photo · Edit, wrong-photo guard, photo hold sheet, shorter footer; multi-user plan (3 boards); full-path audit fixes (add photo on older items, live reload, rename alias, Find→camera) + rig audit script; name and identity-check with every shot, subject-aware; in-app camera (cancel, multi-shot roll); drawer is a history entry; day line hugs the hamburger; Version card: facts only, installed-at time; hamburger menu (Look and feel, Locations, Deleted items, Research log), Settings = Version + AI key; Version card states the update outcome; footer bottom; round 3: the roll, visual duplicate check, Fix/remove split, press-and-hold sheet, peek; footer cascade fix; AI sameAs; second phone round: photo strip + history mode, multi-photo logs, remove a photo, ranked search, aliases, Places; labels and sharp thumbnails" && git push origin main
+git add -A && git commit -m "Round 7: when pill + Private on one line, one toast shape (private = per person, never 'this phone'); pin badge for no place yet; Text size & colours; Locations list with place photos + one-location screen; Where is it? in three views; 4 shots per Add photo; roll expands as one; multi-user plan suspended + redefinition prompt; docs" && git push origin main
 ```

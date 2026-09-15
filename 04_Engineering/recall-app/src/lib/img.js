@@ -77,3 +77,10 @@ export async function shrink(dataUrl, px = 320) {
   const out = Math.min(px, side);
   return draw(img, Math.round((img.width - side) / 2), Math.round((img.height - side) / 2), side, side, out, out).toDataURL('image/jpeg', 0.7);
 }
+
+// Place photos live inside the place doc (≤3 per place, Firestore's 1 MB doc limit), so they
+// are a step smaller than thing photos: ~60–90 KB photo + the usual square thumb.
+export async function compressPlacePhoto(file) {
+  const img = await loadImage(file);
+  return { photo: scaleToJpeg(img, 720, 0.7), thumb: squareThumb(img) };
+}

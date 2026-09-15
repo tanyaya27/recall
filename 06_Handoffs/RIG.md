@@ -39,3 +39,12 @@ Sync back: the changed files go to the Mac with `device_commit_files` (staged un
 `/mnt/user-data/outputs/recall-sync/`), including `docs/app.js` built with the production
 command from `package.json` (externals, minified) and the `?v=` stamp bumped in
 `docs/index.html`. Ravi then commits and pushes from the Mac.
+
+## Mockups from the stylesheet (round 7)
+
+`rig/gen_r7.py` writes option pages into `rig/mock/` using the app's `out/styles.css` plus a
+few mock-only rules; `rig/render_r7.js` screenshots each at 390×844 (full page) into
+`shots/`; a short PIL script composes them side by side into one PNG for Ravi. Label bar at
+the top of each page says which option it is. Copy the pattern for the next round.
+`rig/shots_r7.js` is the post-build review script (seeds private / no-place things and a
+place with photos, walks every new screen, both themes).

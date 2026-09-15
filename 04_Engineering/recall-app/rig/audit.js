@@ -72,7 +72,7 @@ async function main() {
   await page.waitForTimeout(500);
   check('B1 board shows 3 tiles', await count('.tile') === 3);
   check('B2 old item thumb rebuilt (thumbV set)', await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i2').thumbV === 2));
-  check('B3 "no place yet" on the soda tile', (await page.locator('.tile').nth(2).innerText()).includes('no place yet'));
+  check('B3 no-place pin badge on the soda tile (and no amber words)', await page.locator('.tile').nth(2).locator('.tile-pin').count() === 1 && !(await page.locator('.tile').nth(2).innerText()).includes('no place'));
 
   // ---------- D. Thing card: OLD item — Add photo ----------
   await page.click('.tile >> nth=1'); await page.waitForSelector('.card.thing');
@@ -149,6 +149,13 @@ async function main() {
   await page.click('.roll-x >> nth=1'); await page.waitForTimeout(200);
   check('C4 ✕ drops a shot → 1 thumbnail', await count('.roll-shot') === 1);
   await page.click('.photo-card .field-value.big'); await page.fill('.photo-card input.edit-inline', 'coffee mug'); await page.press('.photo-card input.edit-inline', 'Enter'); await page.waitForTimeout(200);
+  check('C4a Where is it? starts as names; two view links under it', await count('.guess.withpic') === 0 && await count('.view-links .link-btn') === 2);
+  await page.click('.view-links .link-btn:has-text("Smaller photos")'); await page.waitForTimeout(150);
+  check('C4b Smaller photos → rows with a picture (last thing seen there) or a pin', await count('.guess.withpic') >= 2 && await count('.guess-pic') >= 2);
+  await page.click('.view-links .link-btn:has-text("Bigger photos")'); await page.waitForTimeout(150);
+  check('C4c Bigger photos → two-across grid', await count('.pgrid .pcell') >= 2);
+  await page.click('.view-links .link-btn:has-text("Names only")'); await page.waitForTimeout(150);
+  check('C4d Names only again; choice remembered on this phone', await count('.guess.withpic') === 0 && await page.evaluate(() => JSON.parse(localStorage.getItem('recall-prefs') || '{}').placeView) === 'names');
   await page.click('text=Somewhere else'); await page.fill('.place-input', 'the shelf'); await page.click('text=Use this'); await page.waitForSelector('.board', { timeout: 5000 });
   const mug = await page.evaluate(() => window.__rig.dump().find((d) => d.kind === 'item' && d.name === 'coffee mug'));
   check('C5 typed place saved, capitalised, AI name kept as alias', mug && mug.location === 'The shelf' && (mug.aliases || []).includes('blue mug'), mug && JSON.stringify([mug.location, mug.aliases]));
@@ -230,20 +237,29 @@ async function main() {
 
   // ---------- G. Menu ----------
   await page.click('.menu-btn'); await page.waitForSelector('.drawer');
-  for (const [i, name] of [['0', 'Look and feel'], ['1', 'Locations'], ['2', 'Deleted items'], ['3', 'Research log']]) {
+  for (const [i, name] of [['0', 'Text size & colours'], ['1', 'Locations'], ['2', 'Deleted items'], ['3', 'Research log']]) {
     await page.click(`.drawer-row >> nth=${i}`); await page.waitForSelector('.screen .header');
     check(`G${i}a ${name} opens`, (await text('.header .title')) === name);
     await back(); await page.waitForSelector('.drawer');
   }
   check('G4 Back from a menu screen → drawer', await count('.drawer') === 1);
   await page.click('.drawer-row >> nth=1'); await page.waitForSelector('.screen .header');
-  await page.fill('.settings .place-input', 'Garage'); await page.click('text=Add'); await page.waitForTimeout(300);
-  check('G5 add a location', await page.locator('.row .nm:has-text("Garage")').count() === 1);
-  await page.click('.row:has-text("Garage") button:has-text("Rename")'); await page.fill('.row input.place-input', 'Garage shelf'); await page.click('.row button:has-text("Save")'); await page.waitForTimeout(300);
-  check('G6 rename a location', await page.locator('.row .nm:has-text("Garage shelf")').count() === 1);
-  await page.click('.row:has-text("Garage shelf") button:has-text("Remove")'); await page.waitForTimeout(300);
-  check('G7 remove a location', await page.locator('.row .nm:has-text("Garage shelf")').count() === 0);
-  await back(); await page.click('.drawer-row >> nth=0'); await page.waitForSelector('.screen .header');
+  check('G5a Locations is a list of used places with pictures', await count('.loc-row') >= 2 && await count('.loc-row img.loc-pic') >= 1);
+  await page.click('.settings .btn-secondary:has-text("Add a location")'); await shoot(2); await page.waitForSelector('.screen .header');
+  check('G5b Add a location → camera → name screen shows the shots', (await text('.header .title')) === 'New location' && await count('.place-photo img') === 2);
+  await page.fill('.settings .place-input', 'Garage'); await page.click('.btn-primary:has-text("Save this place")'); await page.waitForTimeout(400);
+  check('G5c saved place listed with its own photo', await page.locator('.loc-row:has-text("Garage") img.loc-pic').count() === 1);
+  await page.click('.loc-row:has-text("Garage")'); await page.waitForSelector('.place-photos');
+  check('G5d one-location screen: 2 photos + add slot', await count('.place-photo img') === 2 && await count('.place-photo.add') === 1);
+  await page.click('.place-photo.add'); await shoot(1); await page.waitForTimeout(500);
+  check('G5e third photo added, add slot gone', await count('.place-photo img') === 3 && await count('.place-photo.add') === 0);
+  await page.click('.field-value'); await page.fill('.settings input.place-input', 'Garage shelf'); await page.click('.row button:has-text("Save")'); await page.waitForTimeout(400);
+  check('G6 rename a location → back on the list, renamed', await page.locator('.loc-row:has-text("Garage shelf")').count() === 1);
+  await page.click('.loc-row:has-text("Garage shelf")'); await page.waitForSelector('.place-photos');
+  await page.click('.btn-secondary.amber'); await page.waitForSelector('.sheet'); await page.click('.sheet .btn-secondary'); await page.waitForTimeout(400);
+  check('G7 remove a location (confirm) → gone from the list', await page.locator('.loc-row:has-text("Garage")').count() === 0 && await count('.loc-row') >= 2);
+  await back(); await page.waitForSelector('.drawer');
+  await page.click('.drawer-row >> nth=0'); await page.waitForSelector('.screen .header');
   await page.click('.seg button:has-text("Largest")'); await page.waitForTimeout(100);
   check('G8 text size applies at once', await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--scale').trim()) !== '1');
   await page.click('.seg button:has-text("Normal")'); await page.click('.seg button:has-text("Dusk")'); await page.waitForTimeout(100);

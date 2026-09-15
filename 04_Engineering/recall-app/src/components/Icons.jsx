@@ -75,3 +75,26 @@ export function UnlockIcon() {
     </svg>
   );
 }
+
+export function ClockIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+// A map pin with a question mark: "this thing has no place yet" (grid badge, round 7).
+export function PinQuestionIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z" /><path d="M10.2 8.6a1.9 1.9 0 0 1 3.6.6c0 1.2-1.8 1.4-1.8 2.6" /><path d="M12 14.2h.01" />
+    </svg>
+  );
+}
+export function PinIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z" /><circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}

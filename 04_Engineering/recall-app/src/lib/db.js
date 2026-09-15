@@ -223,7 +223,7 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
 
 // 2026-09-14 (Ravi): one log can hold several photos — a close-up and a wide shot. A later
 // photo joins the CURRENT log: same place, same time, no question, no AI. Cap LOG_MAX.
-export const LOG_MAX = 4;
+export const LOG_MAX = 6; // cover + up to 5 more (Ravi 09-15: "only 2 in one go" was 4 - cover - 1)
 export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
   const count = item.photoCount || 1;
   if (count >= LOG_MAX) return false;
@@ -331,12 +331,56 @@ export function knownLocations(items, limit = 5, places = []) {
 
 // ---------- places (Settings → Places; the helper's list) ----------
 
-export async function addPlace(name, places = []) {
+// A place doc: { kind:'place', name, photos:[{photo, thumb, at}] (≤ PLACE_PHOTOS), order, createdAt }.
+// Photos (round 7, Ravi): "drawer 2, at the very back" as a picture, shown when logging and,
+// later, given to the AI as reference images so it can pre-answer "where is it?".
+// Future (Ravi 09-15, architecture note): places will form a hierarchy — back of drawer ⊂
+// third drawer ⊂ filing cabinet ⊂ office ⊂ home — built by the system in the background,
+// never by the user. Reserve `parent` (place id | null) on this doc for it; nothing reads it yet.
+export const PLACE_PHOTOS = 3;
+export async function addPlace(name, places = [], photos = []) {
   const n = name.trim();
-  if (!n || places.some((p) => p.name.toLowerCase() === n.toLowerCase())) return null;
+  if (!n) return null;
+  const dup = places.find((p) => p.name.toLowerCase() === n.toLowerCase());
+  if (dup) { if (photos.length) await addPlacePhotos(dup, photos); return dup.id; }
   const now = Date.now();
-  const ref = await addDoc(col, { kind: 'place', household: HOUSEHOLD, name: n, order: now, createdAt: now });
+  const ref = await addDoc(col, { kind: 'place', household: HOUSEHOLD, name: n, order: now, createdAt: now, parent: null,
+    photos: photos.slice(0, PLACE_PHOTOS).map((p) => ({ ...p, at: now })) });
   return ref.id;
+}
+export async function addPlacePhotos(place, photos) {
+  const now = Date.now();
+  const next = [...(place.photos || []), ...photos.map((p) => ({ ...p, at: now }))].slice(0, PLACE_PHOTOS);
+  await updateDoc(doc(col, place.id), { photos: next, updatedAt: now });
+  return next.length - (place.photos || []).length;
+}
+export async function removePlacePhoto(place, index) {
+  const next = (place.photos || []).filter((_, i) => i !== index);
+  await updateDoc(doc(col, place.id), { photos: next, updatedAt: Date.now() });
+}
+// The saved place with this name, if any (case-insensitive).
+export function placeNamed(name, places = []) {
+  const n = (name || '').toLowerCase();
+  return n ? places.find((p) => p.name.toLowerCase() === n) || null : null;
+}
+// The picture that stands for a place: its own first photo, else the thumb of the thing most
+// recently seen there, else null (the UI shows a camera placeholder).
+export function placeThumb(name, places = [], items = []) {
+  const p = placeNamed(name, places);
+  if (p && p.photos && p.photos.length) return { src: p.photos[0].thumb, own: true };
+  const n = (name || '').toLowerCase();
+  const here = items.filter((it) => (it.location || '').toLowerCase() === n).sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
+  return here.length ? { src: here[0].thumb, own: false } : null;
+}
+// Every place the household knows: saved ones (with photos) and ones only used on things —
+// one list, most recently used first, saved-with-photo never hidden. Used by the Locations screen.
+export function allPlaces(items = [], places = []) {
+  const names = knownLocations(items, 999, places);
+  return names.map((name) => {
+    const saved = placeNamed(name, places);
+    const things = items.filter((it) => (it.location || '').toLowerCase() === name.toLowerCase());
+    return { name, saved, things, count: things.length };
+  });
 }
 // Rename updates every item that uses the place, so Robert can fix a typo once.
 export async function renamePlace(place, name, items = []) {
@@ -349,6 +393,9 @@ export async function renamePlace(place, name, items = []) {
     history: (it.history || []).map((h) => (h.location || '').toLowerCase() === place.name.toLowerCase() ? { ...h, location: n } : h),
   })));
 }
+// One toast shape for both directions (Ravi 09-15: the two were 'terrible and inconsistent';
+// and 'only this phone' was wrong — private means private to the person, on every device).
+export const VISIBILITY_TOAST = { private: 'Now private · only you see it', household: 'Now shared · everyone at home sees it' };
 export async function removePlace(place) { await deleteDoc(doc(col, place.id)); }
 
 // ---------- routines (what the app asks for, and when) ----------

@@ -23,8 +23,9 @@ export function getPrefs() {
   try {
     const p = JSON.parse(localStorage.getItem(KEY)) || {};
     return { theme: THEMES.some((t) => t.id === p.theme) ? p.theme : 'linen', size: SIZES.some((s) => s.id === p.size) ? p.size : 'normal',
-      density: p.density === 'compact' ? 'compact' : 'normal' };
-  } catch { return { theme: 'linen', size: 'normal', density: 'normal' }; }
+      density: p.density === 'compact' ? 'compact' : 'normal',
+      placeView: ['names', 'small', 'big'].includes(p.placeView) ? p.placeView : null }; // null = not chosen yet (round 7)
+  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null }; }
 }
 
 export function savePrefs(p) {

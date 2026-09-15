@@ -264,6 +264,8 @@ input.edit-inline { font: inherit; width: 100%; border: 1.5px solid var(--accent
 .strip-page { flex: 0 0 86%; scroll-snap-align: start; padding: 0 0.25rem; box-sizing: border-box; }
 .strip::after { content: ''; flex: 0 0 14%; } /* so the last page can still snap to the start */
 .strip-page .photo-full { margin: 0; }
+/* Expanded (tap → whole): every page shares ONE height, letterboxed, so the roll never jumps while swiping (Ravi 09-15). */
+.strip-page .photo-full.whole { height: 60vh; aspect-ratio: auto; max-height: none; object-fit: contain; background: #1f2a2a; }
 .dots { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }
 .dot { width: 0.625rem; height: 0.625rem; border-radius: 50%; background: var(--line); padding: 0; min-height: 0; }
 .dot.on { background: var(--accent); }
@@ -360,7 +362,7 @@ input.edit-inline { font: inherit; width: 100%; border: 1.5px solid var(--accent
 .tile-lock { position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; pointer-events: none;
   color: rgba(255,255,255,0.82); font-size: 4rem; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45)); }
 .tile-lock svg { width: 1em; height: 1em; }
-.private-line { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.75rem; color: var(--accent); font-weight: 600; }
+.private-line { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--accent); font-weight: 700; font-size: 1.0625rem; flex: none; }
 .private-line svg { width: 1em; height: 1em; }
 .toggle-row { display: flex; align-items: center; gap: 0.625rem; width: 100%; text-align: left; margin-top: 0.875rem; padding: 0.75rem 0.875rem;
   min-height: 3.25rem; background: var(--card); border: 1.5px solid var(--line); color: var(--ink); font-size: min(1.0625rem, 4.4vw); font-weight: 600; }
@@ -429,3 +431,55 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .ask .hint { color: var(--ink-soft); font-size: min(1rem, 4.4vw); margin-top: 0.5rem; }
 .ask .board.live { margin-top: 0.75rem; }
 .tile .tile-sub.place { color: var(--ink-soft); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- round 7 (2026-09-15) ---------------------------------------------------------------- */
+/* When line: the time is a soft pill with a clock (it was a plain grey line that vanished
+   between the place and the buttons); Private sits on the same line, right — no extra row. */
+.when-line { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.5rem; min-height: 2.125rem; }
+.when-pill { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 1rem; padding: 0.3rem 0.75rem; border-radius: 999px; min-width: 0; }
+.when-pill svg { width: 1.1rem; height: 1.1rem; flex: none; }
+.private-line svg { width: 1.25rem; height: 1.25rem; }
+/* Grid: no place yet = amber pin badge, top-right of the photo. */
+.tile-pin { position: absolute; top: 0.5rem; right: 0.5rem; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--amber); color: #fff; display: flex; align-items: center; justify-content: center; pointer-events: none; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+.tile-pin svg { width: 1.5rem; height: 1.5rem; }
+
+/* Locations list (round 7) */
+.loc-row { display: flex; align-items: center; gap: 0.75rem; width: 100%; text-align: left; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.625rem; margin-bottom: 0.625rem; color: var(--ink); min-height: 0; }
+.loc-pic { width: 4.25rem; height: 4.25rem; border-radius: 0.625rem; flex: none; object-fit: cover; display: flex; align-items: center; justify-content: center; }
+.loc-pic.none { background: var(--accent-soft); color: var(--accent); }
+.loc-pic.none svg { width: 1.75rem; height: 1.75rem; }
+.loc-row .nm { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.loc-row .nm b { font-size: 1.1875rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.loc-row .nm small { color: var(--ink-soft); font-size: 0.9375rem; margin-top: 0.125rem; }
+.loc-row .chev { color: var(--ink-soft); flex: none; display: flex; }
+.loc-row .chev svg { width: 1.5rem; height: 1.5rem; }
+.settings .btn-secondary svg, .settings .btn-secondary .icon { width: 1.25em; height: 1.25em; vertical-align: -0.25em; margin-right: 0.25rem; }
+:root[data-density="compact"] .loc-row { padding: 0.375rem 0.5rem; margin-bottom: 0.375rem; }
+:root[data-density="compact"] .loc-pic { width: 3.25rem; height: 3.25rem; }
+/* One place */
+.place-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem; }
+.place-photo { position: relative; aspect-ratio: 1 / 1; border-radius: 0.625rem; overflow: hidden; background: var(--accent-soft); }
+.place-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.place-photo.add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; background: var(--card); border: 2px dashed var(--accent); color: var(--accent); font-size: 0.875rem; font-weight: 600; min-height: 0; padding: 0; }
+.place-photo.add svg { width: 1.6rem; height: 1.6rem; }
+.place-photo-wait { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--ink-soft); font-size: 1.5rem; }
+.photo-trash.small { width: 2.125rem; height: 2.125rem; bottom: 0.375rem; left: 0.375rem; }
+.photo-trash.small svg { width: 1.05rem; height: 1.05rem; }
+.things-here { display: flex; gap: 0.5rem; overflow-x: auto; margin-top: 0.5rem; padding-bottom: 0.25rem; }
+.thing-mini { flex: none; width: 3.5rem; height: 3.5rem; border-radius: 0.5rem; overflow: hidden; padding: 0; min-height: 0; background: var(--accent-soft); }
+.thing-mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.settings .card .btn-primary { margin-top: 0.75rem; }
+.settings .card .place-input { margin-top: 0.25rem; }
+
+/* "Where is it?" views (round 7) */
+.guess.withpic { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem 0.5rem 0.5rem; }
+.guess-pic { width: 3.5rem; height: 3.5rem; border-radius: 0.5rem; flex: none; object-fit: cover; display: flex; align-items: center; justify-content: center; }
+.guess-pic.none { background: rgba(0,0,0,0.08); color: var(--accent); }
+.guess-pic.none svg { width: 1.5rem; height: 1.5rem; }
+.pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; }
+.pcell { padding: 0; overflow: hidden; border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); text-align: left; color: var(--ink); min-height: 0; display: flex; flex-direction: column; }
+.pcell img, .pcell-none { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+.pcell-none svg { width: 2rem; height: 2rem; }
+.pcell .cap { padding: 0.5rem 0.625rem; font-size: 1.0625rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.pcell:disabled { opacity: 0.5; }
+.view-links { display: flex; justify-content: center; gap: 1.5rem; }

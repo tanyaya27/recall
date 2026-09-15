@@ -46,7 +46,7 @@
       try { localStorage.setItem('recall-last-boot', JSON.stringify({ startedAt: Date.now(), stages: [{ stage: 'script-never-ran', ms: 6000 }] })); } catch (e) {}
     }, 6000);
   </script>
-  <script type="module" src="./app.js?v=20260915a"></script>
+  <script type="module" src="./app.js?v=20260914p"></script>
   <script>
     // SERVICE WORKER DELIBERATELY DISABLED (2026-09-05).
     //

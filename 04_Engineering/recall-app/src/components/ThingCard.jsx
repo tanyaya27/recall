@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, setVisibility, isPrivate, logEvent } from '../lib/db.js';
+import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { whenSeen, cap } from '../lib/format.js';
 import EditableText from './EditableText.jsx';
@@ -7,7 +7,7 @@ import { own } from './PhotoCard.jsx';
 import Header from './Header.jsx';
 import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon, UnlockIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, UnlockIcon, ClockIcon } from './Icons.jsx';
 
 // The thing card — the answer. Board decision 2026-09-05, Rules 1, 3, 4, 7; revised
 // 2026-09-14 (Ravi's second phone round, BOARD_2026-09-14_phone-feedback-round-2.md).
@@ -153,7 +153,7 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
           <div className="strip" ref={stripRef} onScroll={onScroll}>
             {pages.map((p, i) => (
               <div className="strip-page" key={p.id}>
-                <img className={'photo-full' + (whole && i === index ? ' whole' : '')} src={p.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => setWhole((w) => !w))} />
+                <img className={'photo-full' + (whole ? ' whole' : '')} src={p.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => setWhole((w) => !w))} />
                 <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(p)}><TrashIcon /></button>
               </div>
             ))}
@@ -173,7 +173,10 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
           ? <div className="loc-big">{page.location}</div>
           : <div className="loc-big soft">No place saved</div>}
         {mode === 'now' && item.restingOn && <div className="resting">{item.restingOn}</div>}
-        <div className="when">{whenSeen(page.at)}{isPrivate(item) && <span className="private-line"><LockIcon /> Private</span>}</div>
+        <div className="when-line">
+          <span className="when-pill"><ClockIcon /> {whenSeen(page.at)}</span>
+          {isPrivate(item) && <span className="private-line"><LockIcon /> Private</span>}
+        </div>
 
         {mode === 'earlier' && pages.length === 0 && (
           <p className="end">{snaps === null ? '…' : `That's every photo of ${label}.`}</p>
@@ -203,10 +206,10 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
             the tile's press-and-hold sheet, and in the last-photo path of Remove this photo. */}
         {mode === 'now' && (
           <div className={'actbar' + (iconsOnly ? ' icons' : '')} ref={actRef}>
-            <button type="button" className="act primary" aria-label="Add photo" disabled={(item.photoCount || 1) >= 4} onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /><span>Add photo</span></button>
+            <button type="button" className="act primary" aria-label="Add photo" disabled={(item.photoCount || 1) >= LOG_MAX} onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /><span>Add photo</span></button>
             <button type="button" className={'act' + (fixing ? ' on' : '')} aria-label={fixing ? 'Done' : 'Edit'} aria-pressed={fixing} onClick={() => setFixing((f) => !f)}><PencilIcon /><span>{fixing ? 'Done' : 'Edit'}</span></button>
             <button type="button" className={'act' + (isPrivate(item) ? ' on' : '')} aria-pressed={isPrivate(item)} aria-label={isPrivate(item) ? 'Private — tap to share with the household' : 'Shared — tap to make private'}
-              onClick={async () => { const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'actbar' }); onToast && onToast(to === 'private' ? 'Private — only this phone shows it' : 'Shared with the household'); }}>
+              onClick={async () => { const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'actbar' }); onToast && onToast(VISIBILITY_TOAST[to]); }}>
               {isPrivate(item) ? <LockIcon /> : <UnlockIcon />}<span>{isPrivate(item) ? 'Private' : 'Shared'}</span></button>
             <button type="button" className="act amber" aria-label="Remove item" onClick={() => setConfirming('item')}><TrashIcon /><span>Remove</span></button>
             <div className="act-probe" ref={probeRef} aria-hidden="true" />
@@ -233,7 +236,7 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
           onRename={() => { setSheet(false); setFixing(true); }}
           onMoveToTop={async () => { setSheet(false); await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id, via: 'photo_sheet' }); onToast && onToast('Moved to the top'); }}
           onRemovePhoto={() => { setSheet(false); askRemove(page); }}
-          onPrivate={async () => { setSheet(false); const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'sheet' }); onToast && onToast(to === 'private' ? 'Private — only this phone shows it' : 'Shared with the household'); }}
+          onPrivate={async () => { setSheet(false); const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'sheet' }); onToast && onToast(VISIBILITY_TOAST[to]); }}
           onRemove={() => { setSheet(false); setConfirming('item'); }}
           onCancel={() => setSheet(false)} />
       )}

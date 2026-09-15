@@ -243,3 +243,19 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   there is no excuse: two or three options, one composite PNG, his pick, then code. Round 5
   moved the thing card's actions into the footer on my own judgement and he opened a card
   with no visible actions. Bug fixes don't need this; anything that moves a control does.
+- **2026-09-15 — when Ravi says "I have no clue what you are suggesting", the fix is a
+  picture with the thing circled, not a longer paragraph.** Two of four questions in round 7
+  came back that way (the "age pill", the "Lives on" row). A second sheet with the element
+  arrowed and one sentence of *why* got clear rulings in one pass. Explain in his words,
+  show it on the real stylesheet, ask again.
+- **2026-09-15 — check an attachment is what it claims before spending time on it.** The
+  "phone video" in round 7 was a 6½-minute desktop recording of an unrelated web app. Pull
+  a contact sheet of frames first (ffmpeg, 1 frame / 8 s) and say so if it does not match.
+- **2026-09-15 — "only this phone" was the wrong model, not just the wrong words.** Private
+  is per person across all their devices. Write user-facing strings from the person's point
+  of view, and keep one string per state in one place (`VISIBILITY_TOAST`) so three call
+  sites cannot drift — Ravi called the drift "terrible and inconsistent".
+- **2026-09-15 — the approach note before the build worked.** Options rendered from the
+  real stylesheet, board positions and splits written down, his rulings via one question
+  set, then code: no regressions, no "what crap". Keep the order: bugs fixed outright,
+  everything that moves a control waits for a ruling.

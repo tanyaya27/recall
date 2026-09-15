@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressPhoto, shrink } from '../lib/img.js';
-import { addItem, nameItem, resnapItem, absorbInto, findMatch, knownLocations, noteAlias, logEvent } from '../lib/db.js';
+import { addItem, nameItem, resnapItem, absorbInto, findMatch, knownLocations, noteAlias, logEvent, placeThumb } from '../lib/db.js';
+import { getPrefs, savePrefs } from '../lib/prefs.js';
 import { matchThings } from '../lib/speech.js';
 import EditableText from './EditableText.jsx';
 import Header from './Header.jsx';
-import { CameraIcon, CloseIcon } from './Icons.jsx';
+import { CameraIcon, CloseIcon, PinIcon } from './Icons.jsx';
 import { MAX_SHOTS } from './Camera.jsx';
 
 // The photo card — after the camera. Board decision 2026-09-05, screen 2 (D2, D3, D4);
@@ -132,6 +133,16 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   const guesses = (tag && tag.placeGuesses) || [];
   const seen = new Set(guesses.map((g) => g.toLowerCase()));
   const options = [...guesses, ...chips.filter((c) => !seen.has(c.toLowerCase()))].slice(0, 7);
+
+  // "Where is it?" view (round 7, Ravi): names only / smaller photos / bigger photos, switched by
+  // the links under the list and remembered on this phone. Until a choice is made, photos come
+  // in on their own as soon as any place has a picture of its own.
+  const [placeView, setPlaceView] = useState(() => getPrefs().placeView);
+  const anyPlacePhoto = places.some((p) => p.photos && p.photos.length);
+  const view = placeView || (anyPlacePhoto ? 'small' : 'names');
+  const pickView = (v) => { setPlaceView(v); savePrefs({ ...getPrefs(), placeView: v }); logEvent('place_view', { view: v }); };
+  const VIEW_LABEL = { names: 'Names only', small: 'Smaller photos', big: 'Bigger photos' };
+  const pic = (name) => placeThumb(name, places, items);
 
   // More shots came back from the camera after this card opened. Name again with ALL of
   // them (the close-up may change the answer), and look again for a duplicate.
@@ -292,14 +303,32 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
         {!savedId && (
           <div className="ask-place">
             <div className="ask-q">Where is it?</div>
-            <div className="guesses">
-              {options.map((g) => (
-                <button key={g} type="button" className="guess" disabled={busy} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>{g}</button>
-              ))}
+            <div className={'guesses' + (view === 'big' ? ' big' : '')}>
+              {view === 'big' && (
+                <div className="pgrid">
+                  {options.map((g) => { const t = pic(g); return (
+                    <button key={g} type="button" className="pcell" disabled={busy} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>
+                      {t ? <img src={t.src} alt="" /> : <span className="pcell-none"><PinIcon /></span>}
+                      <span className="cap">{g}</span>
+                    </button>); })}
+                </div>
+              )}
+              {view !== 'big' && options.map((g) => { const t = view === 'small' ? pic(g) : null; return (
+                <button key={g} type="button" className={'guess' + (view === 'small' ? ' withpic' : '')} disabled={busy} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>
+                  {view === 'small' && (t ? <img className="guess-pic" src={t.src} alt="" /> : <span className="guess-pic none"><PinIcon /></span>)}
+                  <span>{g}</span>
+                </button>); })}
               {!typing && (
                 <button type="button" className="guess other" disabled={busy} onClick={() => { setDraft(''); setTyping(true); }}>Somewhere else</button>
               )}
               <button type="button" className="guess quiet" disabled={busy} onClick={() => save('', 'not_sure')}>Not sure</button>
+              {options.length > 0 && (
+                <div className="view-links">
+                  {['names', 'small', 'big'].filter((v) => v !== view).map((v) => (
+                    <button key={v} type="button" className="link-btn" onClick={() => pickView(v)}>{VIEW_LABEL[v]}</button>
+                  ))}
+                </div>
+              )}
             </div>
             {typing && (
               <div className="typing">

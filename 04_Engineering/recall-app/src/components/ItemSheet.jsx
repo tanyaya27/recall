@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { LOG_MAX } from '../lib/db.js';
 import { CameraIcon, PencilIcon, TrashIcon, LockIcon, UnlockIcon } from './Icons.jsx';
 
 // The item's actions, from press-and-hold on its tile (Ravi, 2026-09-14 round 3). Same
@@ -13,7 +14,7 @@ export default function ItemSheet({ item, onAdd, onChangePlace, onRename, onMove
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet item-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-title" id="sheet-title">{label.charAt(0).toUpperCase() + label.slice(1)}</div>
-        {(item.photoCount || 1) < 4 && (
+        {(item.photoCount || 1) < LOG_MAX && (
           <button className="sheet-row" onClick={onAdd}><CameraIcon /> Add a photo</button>
         )}
         <button className="sheet-row" onClick={onChangePlace}><PencilIcon /> Change the place</button>

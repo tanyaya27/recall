@@ -2,7 +2,7 @@ import { boardOrder, logEvent } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
-import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon } from './Icons.jsx';
+import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon, PinQuestionIcon } from './Icons.jsx';
 
 // Home — THE BOARD. Board decision 2026-09-05, Rules 1–3.
 //
@@ -49,19 +49,16 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
               onClick={hold.tap(() => {
                 logEvent('lookup', { entryMode: 'tile', itemId: it.id, itemName: it.name || null,
                   answerAgeMin: Math.round((Date.now() - it.lastSeenAt) / 60000), matched: 1 });
-                onOpenThing(it);
+                onOpenThing(it, !it.location); // no place yet → open with the place field ready (round 7)
               })}>
               <img src={it.thumb} alt={it.name || ''} />
-              {it.visibility === 'private' && <span className="tile-lock" aria-label="Private — only on this phone"><LockIcon /></span>}
-              {/* A thing saved without a place says so — a fact in the app's amber, not a
-                  badge. Board decision 2026-09-05 (Ravi): the one cue a caregiver can scan
-                  for that Margaret can also read without feeling tested. */}
-              {(it.name || !it.location) && (
-                <div className="tile-label">
-                  {cap(it.name)}
-                  {!it.location && <span className="tile-sub">no place yet</span>}
-                </div>
-              )}
+              {it.visibility === 'private' && <span className="tile-lock" aria-label="Private"><LockIcon /></span>}
+              {/* No place yet: an amber pin badge in the corner (Ravi 09-15, replacing the amber
+                  words of 09-05) — the tile stays one line tall and the two overlays are one
+                  rule: lock = private, pin = needs a place. Both are shapes, not colours. It
+                  coexists with the lock (watermark centre, badge corner). */}
+              {!it.location && <span className="tile-pin" aria-label="No place yet"><PinQuestionIcon /></span>}
+              {it.name && <div className="tile-label">{cap(it.name)}</div>}
             </button>
           ))}
         </div>

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, knownLocations } from '../lib/db.js';
+import { useState, useEffect } from 'react';
+import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, removePlacePhoto, placeNamed, placeThumb, allPlaces, changeLocation, logEvent, PLACE_PHOTOS } from '../lib/db.js';
+import { compressPlacePhoto } from '../lib/img.js';
+import { CameraIcon, ChevronIcon, PencilIcon, TrashIcon } from './Icons.jsx';
 import { timeAgo } from '../lib/format.js';
 import { getPrefs, savePrefs, THEMES, SIZES } from '../lib/prefs.js';
 import Header from './Header.jsx';
@@ -13,7 +15,7 @@ import SwipeRow from './SwipeRow.jsx';
 // is slated for removal.
 
 export const MENU_ITEMS = [
-  { id: 'look', label: 'Look and feel' },
+  { id: 'look', label: 'Text size & colours' }, // was 'Look and feel' — 'a bad name' (Ravi 09-15)
   { id: 'locations', label: 'Locations' },
   { id: 'deleted', label: 'Deleted items' },
   { id: 'research', label: 'Research log' },
@@ -39,7 +41,7 @@ export function LookScreen({ onBack }) {
   const setPref = (k, v) => { const p = { ...prefs, [k]: v }; setPrefs(p); savePrefs(p); };
   return (
     <div className="screen settings">
-      <Header title="Look and feel" onBack={onBack} />
+      <Header title="Text size & colours" onBack={onBack} />
       <div className="group-title">Text size</div>
       <div className="group"><div className="grow">
         <div className="seg">
@@ -64,41 +66,124 @@ export function LookScreen({ onBack }) {
   );
 }
 
-export function LocationsScreen({ places = [], items = [], onBack }) {
-  const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState(null); // { id, draft }
-  const count = (p) => items.filter((it) => (it.location || '').toLowerCase() === p.name.toLowerCase()).length;
+// ---- Locations (round 7, 2026-09-15 — Ravi: "a blob of text" → a list with photos) ----
+// One list of every place the household knows, used or saved, with its picture, how many
+// things are there, and a chevron. Tap → PlaceScreen. "Add a location" opens the camera
+// first and asks the name after, the same shape as logging a thing.
+export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd }) {
+  const rows = allPlaces(items, places);
   return (
     <div className="screen settings">
       <Header title="Locations" onBack={onBack} />
-      <div className="group-title">Saved locations</div>
-      <div className="group">
-        {places.length === 0 && <div className="grow"><p className="sub">Locations you add here are offered first when a photo is logged. Already used on items: {knownLocations(items, 6).join(', ') || 'none yet'}.</p></div>}
-        {places.map((p) => (
-          <div className="row" key={p.id}>
-            {editing && editing.id === p.id ? (
-              <>
-                <input className="place-input" autoFocus value={editing.draft} enterKeyHint="done"
-                  onChange={(e) => setEditing({ id: p.id, draft: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { renamePlace(p, editing.draft, items); setEditing(null); } }} />
-                <button onClick={() => { renamePlace(p, editing.draft, items); setEditing(null); }}>Save</button>
-                <button onClick={() => setEditing(null)}>Cancel</button>
-              </>
-            ) : (
-              <>
-                <div className="nm">{p.name}<small>{count(p) ? `${count(p)} item${count(p) === 1 ? '' : 's'} here` : 'not used yet'}</small></div>
-                <button onClick={() => setEditing({ id: p.id, draft: p.name })}>Rename</button>
-                <button onClick={() => removePlace(p)}>Remove</button>
-              </>
-            )}
-          </div>
-        ))}
-        <div className="row">
-          <input className="place-input" value={draft} placeholder="Add a location — Kitchen counter" enterKeyHint="done"
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) { addPlace(draft, places); setDraft(''); } }} />
-          <button disabled={!draft.trim()} onClick={() => { addPlace(draft, places); setDraft(''); }}>Add</button>
+      {rows.length === 0 && <div className="card"><p className="sub" style={{ margin: 0 }}>No places yet. Add one with a photo, or they appear here as things are logged.</p></div>}
+      {rows.map((r) => {
+        const pic = placeThumb(r.name, places, items);
+        const sub = r.count ? `${r.count} thing${r.count === 1 ? '' : 's'} here` : 'nothing here now';
+        const pics = r.saved && r.saved.photos ? r.saved.photos.length : 0;
+        return (
+          <button type="button" className="loc-row" key={r.name} onClick={() => onOpen(r.name)}>
+            {pic ? <img className="loc-pic" src={pic.src} alt="" /> : <span className="loc-pic none"><CameraIcon /></span>}
+            <span className="nm"><b>{r.name}</b><small>{sub}{pics ? '' : ' · no photo of the place'}</small></span>
+            <span className="chev"><ChevronIcon /></span>
+          </button>
+        );
+      })}
+      <button className="btn-secondary" onClick={onAdd}><CameraIcon /> Add a location</button>
+    </div>
+  );
+}
+
+// One place: its photos (add / remove), its name (rename updates every thing there), the
+// things there now, and Remove at the bottom (things keep their place text; only the saved
+// place and its photos go).
+export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto, onOpenThing, onToast }) {
+  const saved = placeNamed(name, places);
+  const photos = (saved && saved.photos) || [];
+  const things = items.filter((it) => (it.location || '').toLowerCase() === name.toLowerCase());
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const [confirming, setConfirming] = useState(null); // 'place' | { photo: index }
+  const rename = async () => {
+    const n = draft.trim(); setEditing(false);
+    if (!n || n === name) return;
+    if (saved) await renamePlace(saved, n, items);
+    else { const id = await addPlace(n, places); await Promise.all(things.map((it) => changeLocation(it, n))); void id; }
+    logEvent('place_renamed', { from: name, to: n, things: things.length });
+    onToast && onToast(`Renamed · ${n}`); onBack();
+  };
+  return (
+    <div className="screen settings">
+      <Header title={name} onBack={onBack} />
+      <div className="card">
+        <div className="field-label">Photos of this place</div>
+        <div className="place-photos">
+          {photos.map((p, i) => (
+            <div className="place-photo" key={p.at + '_' + i}>
+              <img src={p.thumb} alt="" />
+              <button type="button" className="photo-trash small" aria-label="Remove this photo" onClick={() => setConfirming({ photo: i })}><TrashIcon /></button>
+            </div>
+          ))}
+          {photos.length < PLACE_PHOTOS && (
+            <button type="button" className="place-photo add" onClick={() => onAddPhoto(PLACE_PHOTOS - photos.length)}><CameraIcon /><span>{photos.length ? 'Add photo' : 'Take a photo'}</span></button>
+          )}
         </div>
+        {photos.length === 0 && <p className="note-quiet left">A photo of the exact spot — "drawer 2, at the very back" — says more than words, and it is what the app will use to recognise the place.</p>}
+
+        <div className="field-label">Name</div>
+        {editing ? (
+          <div className="row" style={{ padding: 0, borderBottom: 'none' }}>
+            <input className="place-input" autoFocus value={draft} enterKeyHint="done" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') rename(); }} />
+            <button onClick={rename}>Save</button>
+            <button onClick={() => { setEditing(false); setDraft(name); }}>Cancel</button>
+          </div>
+        ) : (
+          <button type="button" className="field-value" onClick={() => setEditing(true)}><span className="field-text">{name}</span><PencilIcon /></button>
+        )}
+
+        <div className="field-label">{things.length ? 'Things here now' : 'Nothing here now'}</div>
+        {things.length > 0 && (
+          <div className="things-here">
+            {things.map((it) => <button type="button" className="thing-mini" key={it.id} onClick={() => onOpenThing(it)}><img src={it.thumb} alt={it.name || ''} /></button>)}
+          </div>
+        )}
+
+        <button className="btn-secondary amber" onClick={() => setConfirming('place')}><TrashIcon /> Remove this location</button>
+      </div>
+      {confirming === 'place' && (
+        <Confirm title={`Remove ${name}?`} image={photos[0] ? photos[0].thumb : undefined}
+          body={things.length ? `${things.length} thing${things.length === 1 ? ' keeps' : 's keep'} "${name}" as ${things.length === 1 ? 'its' : 'their'} place; only the saved location and its photos go.` : 'The saved location and its photos go.'}
+          actionLabel="Remove" onKeep={() => setConfirming(null)}
+          onAction={async () => { setConfirming(null); if (saved) await removePlace(saved); logEvent('place_removed', { name, things: things.length }); onToast && onToast(`Removed · ${name}`); onBack(); }} />
+      )}
+      {confirming && confirming.photo !== undefined && (
+        <Confirm title="Remove this photo?" image={photos[confirming.photo].thumb} body="The place keeps its name and its things." actionLabel="Remove"
+          onKeep={() => setConfirming(null)} onAction={async () => { const i = confirming.photo; setConfirming(null); await removePlacePhoto(saved, i); }} />
+      )}
+    </div>
+  );
+}
+
+// After the camera, for a NEW location: the photos just taken, and the one question.
+export function NewPlaceScreen({ files = [], places = [], onBack, onDone }) {
+  const [draft, setDraft] = useState('');
+  const [pics, setPics] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { let on = true; Promise.all(files.slice(0, PLACE_PHOTOS).map(compressPlacePhoto)).then((p) => { if (on) setPics(p); }); return () => { on = false; }; }, [files]);
+  const save = async () => {
+    const n = draft.trim(); if (!n || busy) return;
+    setBusy(true); const id = await addPlace(n, places, pics || []); logEvent('place_added', { name: n, photos: (pics || []).length, via: 'camera' }); setBusy(false); onDone(n, id);
+  };
+  return (
+    <div className="screen settings">
+      <Header title="New location" onBack={onBack} />
+      <div className="card">
+        <div className="place-photos">
+          {(pics || files.map(() => null)).map((p, i) => <div className="place-photo" key={i}>{p ? <img src={p.thumb} alt="" /> : <span className="place-photo-wait">…</span>}</div>)}
+        </div>
+        <div className="ask-q">What is this place called?</div>
+        <input className="place-input" autoFocus value={draft} placeholder="Kitchen counter" enterKeyHint="done" autoCapitalize="sentences"
+          onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
+        <button className="btn-primary" disabled={!draft.trim() || !pics || busy} onClick={save}>Save this place</button>
       </div>
     </div>
   );

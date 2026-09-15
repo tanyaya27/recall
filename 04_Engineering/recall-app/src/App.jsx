@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent } from './lib/db.js';
-import { THUMB_V, thumbFromPhoto, compressPhoto } from './lib/img.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS } from './lib/db.js';
+import { THUMB_V, thumbFromPhoto, compressPhoto, compressPlacePhoto } from './lib/img.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
 import Board from './components/Board.jsx';
 import PhotoCard, { own } from './components/PhotoCard.jsx';
@@ -10,8 +10,8 @@ import Ask from './components/Ask.jsx';
 import Settings, { takeReturnRoute, noteInstalled } from './components/Settings.jsx';
 import Toast from './components/Toast.jsx';
 import ItemSheet from './components/ItemSheet.jsx';
-import Camera from './components/Camera.jsx';
-import { MenuDrawer, LookScreen, LocationsScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
+import Camera, { MAX_SHOTS } from './components/Camera.jsx';
+import { MenuDrawer, LookScreen, LocationsScreen, PlaceScreen, NewPlaceScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
 import Confirm from './components/Confirm.jsx';
 import Choice from './components/Choice.jsx';
 import { shrink } from './lib/img.js';
@@ -204,6 +204,16 @@ export default function App() {
     else if (c.for === 'resnap') go('photo', { files, resnapOf: c.item, key: Date.now() });
     else if (c.for === 'add') addPhotosTo(c.itemId, files);
     else if (c.for === 'more') setMoreFiles(files);
+    else if (c.for === 'place_new') go('place_new', { files, key: Date.now() });
+    else if (c.for === 'place_add') addPlacePhotosTo(c.name, files);
+  };
+  // Photos for a saved place (round 7). The place doc holds them, so compress smaller.
+  const addPlacePhotosTo = async (name, files) => {
+    const p = placeNamed(name, places); if (!p) return;
+    const pics = await Promise.all(files.slice(0, PLACE_PHOTOS - (p.photos || []).length).map(compressPlacePhoto));
+    const added = await addPlacePhotos(p, pics);
+    logEvent('place_photo', { name, added });
+    say(added ? `Added · ${added} photo${added === 1 ? '' : 's'} of ${name}` : `${name} already has ${PLACE_PHOTOS} photos`);
   };
   const removeItem = async (item) => {
     await softDeleteItem(item);
@@ -234,7 +244,7 @@ export default function App() {
         <ThingCard
           item={live(route.item)} items={items} openFix={!!route.fix}
           onBack={back}
-          onAdd={() => setCamera({ for: 'add', itemId: route.item.id, max: 4 - (live(route.item).photoCount || 1), title: 'Add photos' })}
+          onAdd={() => setCamera({ for: 'add', itemId: route.item.id, max: Math.min(MAX_SHOTS, LOG_MAX - (live(route.item).photoCount || 1)), title: 'Add photos' })}
           onRemoved={(item) => {
             say(`Removed · ${item.name || 'this'}`, () => { restoreItem(item.id); logEvent('item_restored', { itemId: item.id, via: 'undo' }); });
             home();
@@ -257,7 +267,18 @@ export default function App() {
       screen = <Settings justReloaded={!!route.reloaded} onBack={back} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
       break;
     case 'look': screen = <LookScreen onBack={back} />; break;
-    case 'locations': screen = <LocationsScreen places={places} items={items} onBack={back} />; break;
+    case 'locations':
+      screen = <LocationsScreen places={places} items={items} onBack={back} onOpen={(name) => go('place', { name })}
+        onAdd={() => setCamera({ for: 'place_new', max: PLACE_PHOTOS, title: 'New location' })} />;
+      break;
+    case 'place':
+      screen = <PlaceScreen name={route.name} places={places} items={items} onBack={back} onToast={say}
+        onAddPhoto={(n) => setCamera({ for: 'place_add', name: route.name, max: n, title: `Photo of ${route.name}` })}
+        onOpenThing={(item) => go('thing', { item })} />;
+      break;
+    case 'place_new':
+      screen = <NewPlaceScreen files={route.files} places={places} onBack={back} onDone={(name) => { say(`Saved · ${name}`); back(); }} />;
+      break;
     case 'deleted': screen = <DeletedScreen removed={removed} onBack={back} />; break;
     case 'research': screen = <ResearchScreen onBack={back} />;
       break;
@@ -266,7 +287,7 @@ export default function App() {
       screen = (
         <Board
           items={items} ready={engine.ready}
-          onOpenThing={(item) => go('thing', { item })}
+          onOpenThing={(item, fix) => go('thing', { item, fix: !!fix })}
           onPhoto={() => setCamera({ for: 'log' })}
           onAsk={() => go('ask')}
           onSettings={() => go('settings')}
@@ -286,11 +307,11 @@ export default function App() {
       {camera && <Camera title={camera.title || 'Log item'} max={camera.max || 4} onDone={cameraDone} onCancel={() => setCamera(null)} />}
       {sheet && (
         <ItemSheet item={live(sheet)}
-          onAdd={() => { const it = live(sheet); setSheet(null); setCamera({ for: 'add', itemId: it.id, max: 4 - (it.photoCount || 1), title: 'Add photos' }); }}
+          onAdd={() => { const it = live(sheet); setSheet(null); setCamera({ for: 'add', itemId: it.id, max: Math.min(MAX_SHOTS, LOG_MAX - (it.photoCount || 1)), title: 'Add photos' }); }}
           onChangePlace={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onRename={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onMoveToTop={async () => { setSheet(null); await moveToTop(sheet, items); logEvent('move_to_top', { itemId: sheet.id, via: 'sheet' }); say('Moved to the top'); }}
-          onPrivate={async () => { const it = live(sheet); setSheet(null); const to = it.visibility === 'private' ? 'household' : 'private'; await setVisibility(it, to); logEvent('visibility', { itemId: it.id, to, via: 'tile_sheet' }); say(to === 'private' ? 'Private — only this phone shows it' : 'Shared with the household'); }}
+          onPrivate={async () => { const it = live(sheet); setSheet(null); const to = it.visibility === 'private' ? 'household' : 'private'; await setVisibility(it, to); logEvent('visibility', { itemId: it.id, to, via: 'tile_sheet' }); say(VISIBILITY_TOAST[to]); }}
           onRemove={() => { setSheet(null); setRemoving(sheet); }}
           onCancel={() => setSheet(null)} />
       )}
