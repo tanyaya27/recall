@@ -5,15 +5,14 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 
 ## Needs a phone / the Mac (Ravi)
 
-- [ ] **Deploy `20260915a`** from the Mac — round 7: when pill + Private on one line (no "this phone"
+- [ ] **Deploy `20260916a`** from the Mac — round 7b fixes (flipped *No place assigned* label, pin on the place line, AM/PM, real photo times, BOTH stamps bumped) on top of round 7: when pill + Private on one line (no "this phone"
   anywhere; one toast shape both ways), amber pin badge for *no place yet* (tap → place field),
   *Text size & colours*, Locations as a list with photos → one-location screen (photos ≤3 via
   the camera, rename, things here, remove), *Add a location* = camera then name, "Where is it?"
   in three views with links, up to 4 shots per *Add photo* (log holds 6), the roll expands as
   one. Rig: 84/84. Screenshots Ravi reviewed: `06_Handoffs/design/mockups/r7f_combo_*.png`.
   Commands at the end of this file.
-- [ ] Phone-check `20260915a`: open a private thing → clock pill left, lock + *Private* right on ONE
-  line; tap *Private* → toast *Now shared · everyone at home sees it*; tap again → *Now private ·
+- [ ] Phone-check `20260916a`: Locations rows have SMALL square pictures (if still huge, hard-refresh — the stylesheet stamp). A thing without a place: amber label block reading *No place assigned*; card shows a pin before the place line. Open a private thing → clock pill (icon centred) left, lock + *Private* right on ONE line; time reads *today, 1:09 PM*; add a photo, swipe to it → the time changes; tap *Private* → toast *Now shared · everyone at home sees it*; tap again → *Now private ·
   only you see it*. Home: a thing without a place has an amber pin badge top-right (and a private
   one keeps its lock too); tap it → card opens in Edit with the place field. Thing card → *Add
   photo* → the shutter allows 4 → Done → 5 dots. Tap the big photo → every page grows to the same
@@ -157,5 +156,5 @@ MISSED until build i** (deferred without agreement).
 ```
 cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"
 find .git -name "*.lock" -delete
-git add -A && git commit -m "Round 7: when pill + Private on one line, one toast shape (private = per person, never 'this phone'); pin badge for no place yet; Text size & colours; Locations list with place photos + one-location screen; Where is it? in three views; 4 shots per Add photo; roll expands as one; multi-user plan suspended + redefinition prompt; docs" && git push origin main
+git add -A && git commit -m "Round 7 + 7b: No place assigned label, pin on the place line, AM\/PM, real photo times, both cache stamps; when pill + Private on one line, one toast shape (private = per person, never 'this phone'); pin badge for no place yet; Text size & colours; Locations list with place photos + one-location screen; Where is it? in three views; 4 shots per Add photo; roll expands as one; multi-user plan suspended + redefinition prompt; docs" && git push origin main
 ```

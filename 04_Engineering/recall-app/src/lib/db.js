@@ -230,7 +230,10 @@ export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
   // Things logged before 2026-09-14 have no logId (audit D2: Add photo silently did nothing
   // on every one of Ravi's items). Give the current log one now; the cover stays the cover.
   const logId = item.logId || `log_${item.lastSeenAt || Date.now()}`;
-  const at = (item.lastSeenAt || Date.now()) + count; // keeps the order, stays "the same time"
+  // Real capture time (2026-09-16, Ravi: the when line must change as the roll is swiped —
+  // photos in one log can be days apart). Before this the time was faked to the log's own,
+  // so photos added before 09-16 all show the day they were first logged.
+  const at = Date.now();
   await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId, photo, thumb, location: item.location || '', at, by, extra: true });
   await updateDoc(doc(col, item.id), { photoCount: count + 1, logId, updatedAt: Date.now() });
   return true;

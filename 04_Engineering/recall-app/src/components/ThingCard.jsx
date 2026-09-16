@@ -7,7 +7,7 @@ import { own } from './PhotoCard.jsx';
 import Header from './Header.jsx';
 import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon, UnlockIcon, ClockIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, UnlockIcon, ClockIcon, PinIcon } from './Icons.jsx';
 
 // The thing card — the answer. Board decision 2026-09-05, Rules 1, 3, 4, 7; revised
 // 2026-09-14 (Ravi's second phone round, BOARD_2026-09-14_phone-feedback-round-2.md).
@@ -170,8 +170,8 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
         )}
 
         {page.location
-          ? <div className="loc-big">{page.location}</div>
-          : <div className="loc-big soft">No place saved</div>}
+          ? <div className="loc-big"><PinIcon /><span>{page.location}</span></div>
+          : <div className="loc-big soft"><PinIcon /><span>No place assigned</span></div>}
         {mode === 'now' && item.restingOn && <div className="resting">{item.restingOn}</div>}
         <div className="when-line">
           <span className="when-pill"><ClockIcon /> {whenSeen(page.at)}</span>

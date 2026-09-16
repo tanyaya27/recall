@@ -259,3 +259,11 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   real stylesheet, board positions and splits written down, his rulings via one question
   set, then code: no regressions, no "what crap". Keep the order: bugs fixed outright,
   everything that moves a control waits for a ruling.
+- **2026-09-16 — bump BOTH cache stamps: `app.js?v=` AND `styles.css?v=` in `docs/index.html`.**
+  Round 7 shipped new JS with the old stylesheet — giant Locations pictures, an unstyled
+  pin, a misaligned clock — three of Ravi's four "5/10" items were one missed sed. The
+  deploy block in OPEN_ITEMS now bumps both; the rig can't catch this (it has no cache).
+- **2026-09-16 — a faked timestamp always surfaces.** `addSnapToLog` set a photo's time to
+  the log's time ("same place, same time") so photos added days later showed the wrong day
+  and the when line never changed while swiping. Store the real time; derive grouping from
+  `logId`, never from a made-up `at`.

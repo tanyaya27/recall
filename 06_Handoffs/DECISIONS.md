@@ -6,6 +6,24 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-16 (round 7b) — Ravi's 5/10: flipped label instead of the pin badge; real photo times; AM/PM; pin on the place line
+
+Three of the four complaints were one deploy mistake — `styles.css?v=` was not bumped, so
+the phone ran round-7 JS with the 09-14 stylesheet (huge Locations pictures, an unstyled pin,
+the clock not centred). Fixed by bumping both stamps (LESSONS). The rulings that stand:
+
+- **No place: no badge.** The tile's label block flips to reverse colours (amber block,
+  card-coloured text) and says **No place assigned**. The pin badge is gone.
+- **The place line carries a pin** (aligned to the text) on the thing card, including
+  *No place assigned*.
+- **Times keep AM/PM** — *today, 1:09 PM*, *yesterday, 6:40 PM*, then the weekday, then the
+  date. "this afternoon, 1:09" (no AM/PM) was "terrible".
+- **A photo added to a log keeps its real capture time**, so the when line changes as the
+  roll is swiped. The 09-14 "same time as the log" shortcut is reversed; photos added
+  before 09-16 still carry the log's time and cannot be recovered.
+
+---
+
 ## 2026-09-15 (round 7) — The when pill and Private on one line; pin badge; Locations with photos; "Where is it?" in three views; multi-user plan SUSPENDED
 
 Ravi's seventh phone round, run the new way: approach and rendered options first

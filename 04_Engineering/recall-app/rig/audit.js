@@ -60,7 +60,7 @@ async function main() {
     { id: 'i1', kind: 'item', household: 'default', name: 'reading glasses', aliases: ['glasses'], location: 'Kitchen counter', description: 'black frames', restingOn: 'on a wooden table', ...pG, thumbV: 2, order: now - 5 * D, createdAt: now - 5 * D, lastSeenAt: now - 2 * H, logId: 'log_a', photoCount: 2,
       history: [{ location: 'Bedside table', at: now - 5 * D }, { location: 'Kitchen counter', at: now - 2 * H }] },
     { id: 's1', kind: 'snap', itemId: 'i1', logId: 'log_a', ...pG, location: 'Kitchen counter', at: now - 2 * H },
-    { id: 's1b', kind: 'snap', itemId: 'i1', logId: 'log_a', ...pG2, location: 'Kitchen counter', at: now - 2 * H + 1, extra: true },
+    { id: 's1b', kind: 'snap', itemId: 'i1', logId: 'log_a', ...pG2, location: 'Kitchen counter', at: now - 3 * D, extra: true }, // a photo added days earlier — the when line must change when swiped to it
     { id: 's1c', kind: 'snap', itemId: 'i1', logId: 'log_c', ...pOld, location: 'Bedside table', at: now - 5 * D },
     // OLD format: no logId, no photoCount, no aliases, no thumbV (logged on build 20260905l)
     { id: 'i2', kind: 'item', household: 'default', name: 'keys', location: 'Hall table', description: 'car keys', ...pK, order: now - 4 * D, createdAt: now - 4 * D, lastSeenAt: now - D, history: [{ location: 'Hall table', at: now - D }] },
@@ -72,7 +72,7 @@ async function main() {
   await page.waitForTimeout(500);
   check('B1 board shows 3 tiles', await count('.tile') === 3);
   check('B2 old item thumb rebuilt (thumbV set)', await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i2').thumbV === 2));
-  check('B3 no-place pin badge on the soda tile (and no amber words)', await page.locator('.tile').nth(2).locator('.tile-pin').count() === 1 && !(await page.locator('.tile').nth(2).innerText()).includes('no place'));
+  check('B3 no-place tile: flipped label block says "No place assigned"', await page.locator('.tile').nth(2).locator('.tile-label.noplace').count() === 1 && (await page.locator('.tile').nth(2).innerText()).includes('No place assigned'));
 
   // ---------- D. Thing card: OLD item — Add photo ----------
   await page.click('.tile >> nth=1'); await page.waitForSelector('.card.thing');
@@ -94,6 +94,11 @@ async function main() {
   check('D8 Back to now', await count('.mode-row') === 0 && /Kitchen/.test(await text('.loc-big')));
   await page.click('.act.primary'); await shoot(1); await page.waitForTimeout(900);
   check('D9 new item: Add photo → 3 dots', await count('.dots .dot') === 3);
+  const when0 = await text('.when-pill'); await page.click('.dot >> nth=1'); await page.waitForTimeout(500); const when1 = await text('.when-pill');
+  check('D9a when line changes with the page (2 h ago → 3 days ago)', when0 !== when1 && /today|yesterday/.test(when0) && !/today|yesterday/.test(when1), `${when0} | ${when1}`);
+  await page.click('.dot >> nth=2'); await page.waitForTimeout(500);
+  check('D9b the photo just added shows its real time (just now / today)', /just now|today/.test(await text('.when-pill')), await text('.when-pill'));
+  await page.click('.dot >> nth=0'); await page.waitForTimeout(400);
   // remove the extra (page 3)
   await page.click('.dot >> nth=2'); await page.waitForTimeout(400); await page.click('.photo-trash'); await page.waitForSelector('.sheet');
   check('D10 remove-photo sheet (not the item sheet)', /Remove this photo/.test(await text('.sheet-title')));

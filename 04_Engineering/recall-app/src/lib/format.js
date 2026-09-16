@@ -50,12 +50,15 @@ export function whenSeen(ts) {
   const part = h < 5 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
   const sameDay = d.toDateString() === now.toDateString();
   const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M$/i, '');
+  // The clock time keeps its AM/PM (or is 24-hour where the phone is) — "1:09" alone read as
+  // nonsense to Ravi (2026-09-16). With the time present, "this afternoon" adds nothing.
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   if (sameDay) {
     if (now - d < 2 * 60000) return 'just now';
-    return `${part === 'night' ? 'tonight' : `this ${part}`}, ${time}`;
+    return `today, ${time}`;
   }
-  if (d.toDateString() === yesterday.toDateString()) return `yesterday ${part}`;
+  if (d.toDateString() === yesterday.toDateString()) return `yesterday, ${time}`;
+  void part;
   if (now - d < 6 * 24 * 3600000) return d.toLocaleDateString(undefined, { weekday: 'long' });
   return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
 }
