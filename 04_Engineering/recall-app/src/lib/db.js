@@ -185,10 +185,20 @@ export async function nameItem(id, { name = '', description = '', restingOn = ''
 
 // Editing the place by hand IS a move: it goes into the history with a time, and the thing
 // counts as seen there now (round 5 — Edit replaces *Found it*).
+// Since 2026-09-16 (design §5, ruling 6) a move also writes a SIGHTING: the cover photo, at
+// the new place, now — so the new stay has a photo and the history never has a row without
+// one. Adding the place to a thing that had none is not a move: no sighting is written.
 export async function changeLocation(item, location) {
   const now = Date.now();
   const history = [...(item.history || []), { location, at: now }].slice(-100);
-  await updateDoc(doc(col, item.id), { location, needsPlace: !location, history, lastSeenAt: now, updatedAt: now });
+  const moved = !!item.location && !!location && item.location.toLowerCase() !== location.toLowerCase();
+  const patch = { location, needsPlace: !location, history, lastSeenAt: now, updatedAt: now };
+  if (moved && item.photo) {
+    const logId = `log_${now}`;
+    await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId, photo: item.photo, thumb: item.thumb || null, location, at: now, moved: true });
+    Object.assign(patch, { logId, photoCount: 1 });
+  }
+  await updateDoc(doc(col, item.id), patch);
 }
 
 // Private: only this phone shows it; the household's other phones never receive it (the

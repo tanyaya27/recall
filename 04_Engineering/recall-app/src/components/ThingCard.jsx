@@ -1,36 +1,37 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
-import { whenSeen, cap } from '../lib/format.js';
+import { photoStamp, cap } from '../lib/format.js';
+import { getPrefs, savePrefs } from '../lib/prefs.js';
 import EditableText from './EditableText.jsx';
 import { own } from './PhotoCard.jsx';
-import Header from './Header.jsx';
 import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon, UnlockIcon, ClockIcon, PinIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon } from './Icons.jsx';
 
-// The thing card — the answer. Board decision 2026-09-05, Rules 1, 3, 4, 7; revised
-// 2026-09-14 (Ravi's second phone round, BOARD_2026-09-14_phone-feedback-round-2.md).
+// The thing card — the answer. Redesigned 2026-09-16 with Ravi over seven rendered passes
+// (design/DESIGN_2026-09-16_things-places-sightings.md §2, §13):
 //
-// Photo, place in big words, what it was resting on, when. It asks nothing.
+//   Title   — chevron Back · the thing's name (never wraps) · lock icon if private;
+//             line 2, tight: pin · CURRENT place · context. The current place lives up here
+//             so an older photo can never sit under it in big type.
+//   Roll    — every SIGHTING of the thing (a photo at a place at a time), newest first,
+//             filtered to the current STAY (the run of newest sightings at the current place)
+//             unless *Show earlier places* is on. On each photo: the time, bottom-left, at a
+//             fixed 13 px; the trash, top-right, fixed 36 px — nothing on a photo scales with
+//             the text setting. Under a photo from another place: that place, amber, dashed pin.
+//   Switches — Keep this private · Show times on photos · Show earlier places (n): a list,
+//             label left, switch right. The third row is absent when there is nothing earlier.
+//   Bar     — the three operations: Add photo · Edit · Remove.
 //
-// Two modes, one strip (Ravi: left/right is too useful to spend on history alone):
-//   now      — the strip holds the photos of the CURRENT log (a close-up and a wide shot,
-//              say). One photo, no strip. Swiping is only there when the next photo peeks in.
-//   earlier  — "Where it has been" rows (only once it has been in more than one place) or
-//              *Earlier photos* switch the strip to every older photo, newest first, each
-//              with its own place and time. *Back to now* returns.
-// Under the centred photo, one quiet control: *Remove this photo* → confirm sheet → toast
-// with Undo. If it is the last photo, the sheet offers removing the item instead.
-//
-// Edit (name, place, move to the top) is the footer's second verb; it was *Fix* until round 5.
+// "Earlier photos" as a mode is gone; a stay is derived from the sightings, never stored.
 export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, onToast, openFix = false }) {
   const [sheet, setSheet] = useState(false);       // press-and-hold on the photo
   const [snaps, setSnaps] = useState(null);      // every live snap, newest first; null = not loaded
-  const [mode, setMode] = useState('now');
   const [index, setIndex] = useState(0);         // centred page in the strip
   const [fixing, setFixing] = useState(openFix);
-  const [whole, setWhole] = useState(false);     // photo uncropped (audit L1)
+  const [showTimes, setShowTimes] = useState(() => getPrefs().showTimes !== false);      // per phone
+  const [showEarlier, setShowEarlier] = useState(false);                                  // per visit
   const [confirming, setConfirming] = useState(null); // 'item' | { snap }
   const stripRef = useRef(null);
   // The action row never wraps (Ravi): when a label cannot fit on one line at the current
@@ -56,61 +57,54 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
     measure();
     const ro = new ResizeObserver(measure); ro.observe(el); ro.observe(pr); ro.observe(document.documentElement);
     return () => ro.disconnect();
-  }, [item?.id, mode, fixing, item?.visibility]);
+  }, [item?.id, fixing, item?.visibility]);
   const hold = useHold(() => { logEvent('photo_hold', { itemId: item && item.id }); setSheet(true); });
 
-  useEffect(() => { setSnaps(null); setMode('now'); setIndex(0); setFixing(openFix); setWhole(false); }, [item?.id]); // eslint-disable-line
+  useEffect(() => { setSnaps(null); setIndex(0); setFixing(openFix); setShowEarlier(false); }, [item?.id]); // eslint-disable-line
 
   // The current log's extra photos are the only reason to read snaps up front.
-  const wantsSnaps = !!item && ((item.photoCount || 1) > 1);
+  const wantsSnaps = !!item; // always: the roll needs the log's extras and the Earlier button needs the count (09-16)
   // Re-read when the photo count changes (a photo was just added — audit D9: the new photo
   // never appeared until the card was reopened) or after snaps were reset to null.
   useEffect(() => {
-    if (!item || snaps !== null || (!wantsSnaps && mode === 'now')) return;
+    if (!item || snaps !== null || !wantsSnaps) return;
     let alive = true;
     loadSnaps(item.id).then((all) => { if (alive) setSnaps(all); });
     return () => { alive = false; };
-  }, [item?.id, mode, wantsSnaps, snaps]); // eslint-disable-line
+  }, [item?.id, wantsSnaps, snaps]); // eslint-disable-line
   const photoCount = item ? (item.photoCount || 1) : 0;
-  useEffect(() => { setSnaps(null); }, [photoCount]);
+  useEffect(() => { setSnaps(null); }, [photoCount, item?.logId]); // a move writes a sighting and a new logId (09-16)
 
   if (!item) return null;
 
-  const cover = { id: 'cover', photo: item.photo, thumb: item.thumb, location: item.location, at: item.lastSeenAt, logId: item.logId, cover: true };
+  const cover = { id: 'cover', photo: item.photo, thumb: item.thumb, location: item.location, at: item.lastSeenAt, cover: true };
   const live = (snaps || []);
-  const inLog = (s) => item.logId && s.logId === item.logId;
-  // now: the cover, then the other photos of the same log (oldest of them first — the order they were taken)
-  const nowPages = [cover, ...live.filter((s) => inLog(s) && s.photo !== item.photo).sort((a, b) => a.at - b.at)];
-  // earlier: everything not in the current log, newest first
-  const earlierPages = live.filter((s) => !inLog(s) && s.photo !== item.photo);
-  const pages = mode === 'now' ? nowPages : earlierPages;
+  const here = (loc) => (loc || '').toLowerCase() === (item.location || '').toLowerCase();
+  // Every sighting, newest first. The cover is a sighting too; since 09-14 it also exists as a
+  // snap doc, so drop that duplicate. Older items (no snaps) have the cover only.
+  const sightings = [...live.filter((s) => s.photo !== item.photo), { ...cover, at: Math.max(cover.at || 0, ...live.filter((s) => s.photo === item.photo).map((s) => s.at || 0)) }]
+    .sort((a, b) => (b.at || 0) - (a.at || 0));
+  // The current stay: the run of newest sightings at the current place.
+  let stayLen = 0; while (stayLen < sightings.length && here(sightings[stayLen].location)) stayLen += 1;
+  if (stayLen === 0) stayLen = 1; // a thing whose newest photo predates a place change: show at least the newest
+  const stay = sightings.slice(0, stayLen);
+  const earlierCount = sightings.length - stayLen;
+  const pages = showEarlier ? sightings : stay;
   const page = pages[Math.min(index, pages.length - 1)] || cover;
+  const stayFull = stay.length >= LOG_MAX;
 
-  // Distinct places, newest first, from the item's own history — no read needed.
-  const placeRows = [];
-  [...(item.history || [])].reverse().forEach((h) => {
-    if (h.location && !placeRows.some((r) => r.location.toLowerCase() === h.location.toLowerCase())) placeRows.push(h);
-  });
-  const hasHistory = placeRows.length > 1 || (item.history || []).length > 1;
-
+  // A page is 86% of the strip plus the gap — measure it from the first two pages rather than
+  // assuming the strip's width (the dots pointed at the wrong page before 09-16).
+  function pageStep(el) { const a = el.children[0], b = el.children[1]; return a && b ? b.offsetLeft - a.offsetLeft : el.clientWidth; }
   function onScroll() {
     const el = stripRef.current; if (!el) return;
-    const i = Math.round(el.scrollLeft / el.clientWidth);
+    const i = Math.max(0, Math.min(pages.length - 1, Math.round(el.scrollLeft / pageStep(el))));
     if (i !== index) setIndex(i);
   }
   function slideTo(i) {
     setIndex(i);
-    const el = stripRef.current; if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+    const el = stripRef.current; if (el) el.scrollTo({ left: i * pageStep(el), behavior: 'smooth' });
   }
-  function earlier(fromRow) {
-    logEvent('lookup_outcome', { itemId: item.id, outcome: 'not_there', answerAgeMin: Math.round((Date.now() - item.lastSeenAt) / 60000) });
-    setMode('earlier'); setIndex(0); setWhole(false);
-    if (fromRow != null && snaps) {
-      const i = earlierPages.findIndex((s) => Math.abs(s.at - fromRow.at) < 60000 || (s.location || '').toLowerCase() === fromRow.location.toLowerCase());
-      if (i >= 0) setTimeout(() => slideTo(i), 0);
-    }
-  }
-  function now() { setMode('now'); setIndex(0); setWhole(false); const el = stripRef.current; if (el) el.scrollTo({ left: 0 }); }
 
   // Know what else there is before offering to remove: the sheet differs for the last photo.
   async function askRemove(p) {
@@ -136,85 +130,82 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
   const label = item.name ? `your ${own(item.name)}` : 'this';
 
   return (
-    <div className="screen">
-      <Header title={cap(item.name) || ''} onBack={onBack} />
+    <div className="screen with-footer">
+      <div className="thing-head">
+        <div className="row1">
+          <button type="button" className="chev" aria-label="Back" onClick={onBack}><ChevronLeftIcon /></button>
+          <div className="name">{cap(item.name) || 'This thing'}</div>
+          {isPrivate(item) && <span className="lk" aria-label="Private"><LockIcon /></span>}
+        </div>
+        <div className="row2">
+          <PinIcon />
+          {item.location ? <b>{item.location}</b> : <b className="soft">No place assigned</b>}
+          {item.restingOn && <span> · {item.restingOn}</span>}
+        </div>
+      </div>
       <div className="card thing">
-        {mode === 'earlier' && (
-          <div className="mode-row">
-            <span className="eyebrow">Earlier</span>
-            <button type="button" className="link-btn" onClick={now}>Back to now</button>
-          </div>
-        )}
-        {/* Layout A (Ravi, 2026-09-14, chosen from three rendered options): the trash sits ON the
-            photo it removes; the place stays right under the photo; the actions are a labelled
-            row under the details. Press-and-hold remains a shortcut, never the only way. */}
         <div className="photo-wrap">
-        {pages.length > 1 ? (
-          <div className="strip" ref={stripRef} onScroll={onScroll}>
-            {pages.map((p, i) => (
-              <div className="strip-page" key={p.id}>
-                <img className={'photo-full' + (whole ? ' whole' : '')} src={p.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => setWhole((w) => !w))} />
-                <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(p)}><TrashIcon /></button>
-              </div>
-            ))}
+          <div className={'strip' + (pages.length > 1 ? '' : ' one')} ref={stripRef} onScroll={onScroll}>
+            {pages.map((p) => {
+              const was = !here(p.location) && p.location;
+              return (
+                <div className="strip-page" key={p.id}>
+                  <div className="photo-box">
+                    <img className="photo-full" src={p.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => {})} />
+                    {showTimes && <span className="stamp">{photoStamp(p.at)}</span>}
+                    <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(p)}><TrashIcon /></button>
+                  </div>
+                  {was ? <div className="was"><PinWasIcon /><span>{p.location}</span></div> : <div className="was empty" aria-hidden="true" />}
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          <img className={'photo-full' + (whole ? ' whole' : '')} src={page.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => setWhole((w) => !w))} />
-        )}
-        {pages.length <= 1 && <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(page)}><TrashIcon /></button>}
         </div>
         {pages.length > 1 && (
-          <div className="dots" aria-label={`Photo ${index + 1} of ${pages.length}`}>
-            {pages.map((p, i) => <button type="button" key={p.id} className={'dot' + (i === index ? ' on' : '')} onClick={() => slideTo(i)} aria-label={`Photo ${i + 1}`} />)}
+          <div className="dotsrow">
+            <div className="dots" aria-label={`Photo ${index + 1} of ${pages.length}`}>
+              {pages.map((p, i) => <button type="button" key={p.id} className={'dot' + (i === index ? ' on' : '')} onClick={() => slideTo(i)} aria-label={`Photo ${i + 1}`} />)}
+            </div>
+            <span className="cnt">{Math.min(index, pages.length - 1) + 1} of {pages.length}</span>
           </div>
         )}
 
-        {page.location
-          ? <div className="loc-big"><PinIcon /><span>{page.location}</span></div>
-          : <div className="loc-big soft"><PinIcon /><span>No place assigned</span></div>}
-        {mode === 'now' && item.restingOn && <div className="resting">{item.restingOn}</div>}
-        <div className="when-line">
-          <span className="when-pill"><ClockIcon /> {whenSeen(page.at)}</span>
-          {isPrivate(item) && <span className="private-line"><LockIcon /> Private</span>}
+        {/* The three states of the card, each a switch (Ravi 09-16). */}
+        <div className="switches">
+          <div className="sw-row">
+            <span className="lab"><LockIcon /> Keep this private</span>
+            <button type="button" role="switch" aria-checked={isPrivate(item)} className={'sw' + (isPrivate(item) ? ' on' : '')} aria-label="Keep this private"
+              onClick={async () => { const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'switch' }); onToast && onToast(VISIBILITY_TOAST[to]); }} />
+          </div>
+          <div className="sw-row">
+            <span className="lab"><ClockIcon /> Show times on photos</span>
+            <button type="button" role="switch" aria-checked={showTimes} className={'sw' + (showTimes ? ' on' : '')} aria-label="Show times on photos"
+              onClick={() => { const v = !showTimes; setShowTimes(v); savePrefs({ ...getPrefs(), showTimes: v }); logEvent('show_times', { on: v }); }} />
+          </div>
+          {earlierCount > 0 && (
+            <div className="sw-row">
+              <span className="lab amber"><PinWasIcon /> Show earlier places <small>{earlierCount}</small></span>
+              <button type="button" role="switch" aria-checked={showEarlier} className={'sw' + (showEarlier ? ' on' : '')} aria-label="Show earlier places"
+                onClick={() => { const v = !showEarlier; setShowEarlier(v); setIndex(0); const el = stripRef.current; if (el) el.scrollTo({ left: 0 }); logEvent('show_earlier', { itemId: item.id, on: v, earlier: earlierCount }); }} />
+            </div>
+          )}
         </div>
+      </div>
 
-        {mode === 'earlier' && pages.length === 0 && (
-          <p className="end">{snaps === null ? '…' : `That's every photo of ${label}.`}</p>
-        )}
-        {mode === 'earlier' && pages.length > 0 && index === pages.length - 1 && (
-          <p className="end">That's every photo of {label}.</p>
-        )}
-
-        {/* Where it has been — only once there is somewhere else to have been. */}
-        {mode === 'now' && placeRows.length > 1 && (
-          <div className="places">
-            <div className="field-label">Where it has been</div>
-            {placeRows.slice(1, 5).map((h) => (
-              <button type="button" className="place-row" key={h.at} onClick={() => earlier(h)}>
-                <span className="place-row-loc">{h.location}</span>
-                <span className="place-row-when">{whenSeen(h.at)}</span>
-              </button>
-            ))}
-          </div>
-        )}
-        {mode === 'now' && hasHistory && (
-          <button className="btn-secondary" onClick={() => earlier()}>Not there? Earlier photos</button>
-        )}
-
-        {/* Three quiet actions (round 3): add to this log · remove this photo · fix words.
-            Removing the ITEM is not here — it conflated with removing a photo. It lives in
-            the tile's press-and-hold sheet, and in the last-photo path of Remove this photo. */}
-        {mode === 'now' && (
-          <div className={'actbar' + (iconsOnly ? ' icons' : '')} ref={actRef}>
-            <button type="button" className="act primary" aria-label="Add photo" disabled={(item.photoCount || 1) >= LOG_MAX} onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /><span>Add photo</span></button>
+      {/* The actions live in a fixed bar at the bottom, like Home's Log item · Find item
+          (Ravi 09-16: the row sat at a different height on every card). Same padding,
+          same gradient, same button height as the Home footer. */}
+      {(
+        <div className="footer actfoot">
+          <div className={'actbar three' + (iconsOnly ? ' icons' : '')} ref={actRef}>
+            <button type="button" className="act primary" aria-label="Add photo" disabled={stayFull} onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /><span>Add photo</span></button>
             <button type="button" className={'act' + (fixing ? ' on' : '')} aria-label={fixing ? 'Done' : 'Edit'} aria-pressed={fixing} onClick={() => setFixing((f) => !f)}><PencilIcon /><span>{fixing ? 'Done' : 'Edit'}</span></button>
-            <button type="button" className={'act' + (isPrivate(item) ? ' on' : '')} aria-pressed={isPrivate(item)} aria-label={isPrivate(item) ? 'Private — tap to share with the household' : 'Shared — tap to make private'}
-              onClick={async () => { const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'actbar' }); onToast && onToast(VISIBILITY_TOAST[to]); }}>
-              {isPrivate(item) ? <LockIcon /> : <UnlockIcon />}<span>{isPrivate(item) ? 'Private' : 'Shared'}</span></button>
             <button type="button" className="act amber" aria-label="Remove item" onClick={() => setConfirming('item')}><TrashIcon /><span>Remove</span></button>
             <div className="act-probe" ref={probeRef} aria-hidden="true" />
           </div>
-        )}
+        </div>
+      )}
+      <div className="card thing edit-card" hidden={!fixing}>
         {fixing && (
           <div className="fix">
             <EditableText label="What it is" value={item.name} emptyLabel="Name it"

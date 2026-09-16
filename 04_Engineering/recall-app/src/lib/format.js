@@ -94,3 +94,15 @@ export function weekdayName(d = new Date()) {
 
 // Display names as the owner would write them: "Adjustable dumbbells", not "adjustable dumbbells".
 export function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+// The label on a photo (thing card, 2026-09-16): one line at a fixed size, shortening as the
+// photo ages — Today 5:52 PM · Sat 3:10 PM · Sep 5, 9:41 AM · Sep 5, 2024.
+export function photoStamp(ts) {
+  if (!ts) return '';
+  const d = new Date(ts), now = new Date();
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return `Today ${time}`;
+  if (now - d < 6 * 24 * 3600000) return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`;
+  if (d.getFullYear() === now.getFullYear()) return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}

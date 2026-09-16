@@ -16,7 +16,7 @@ import SwipeRow from './SwipeRow.jsx';
 
 export const MENU_ITEMS = [
   { id: 'look', label: 'Text size & colours' }, // was 'Look and feel' — 'a bad name' (Ravi 09-15)
-  { id: 'locations', label: 'Locations' },
+  { id: 'locations', label: 'Places' }, // 'place' everywhere (Ravi 09-16); the route id stays
   { id: 'deleted', label: 'Deleted items' },
   { id: 'research', label: 'Research log' },
 ];
@@ -74,7 +74,7 @@ export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd
   const rows = allPlaces(items, places);
   return (
     <div className="screen settings">
-      <Header title="Locations" onBack={onBack} />
+      <Header title="Places" onBack={onBack} />
       {rows.length === 0 && <div className="card"><p className="sub" style={{ margin: 0 }}>No places yet. Add one with a photo, or they appear here as things are logged.</p></div>}
       {rows.map((r) => {
         const pic = placeThumb(r.name, places, items);
@@ -88,7 +88,7 @@ export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd
           </button>
         );
       })}
-      <button className="btn-secondary" onClick={onAdd}><CameraIcon /> Add a location</button>
+      <button className="btn-secondary" onClick={onAdd}><CameraIcon /> Add a place</button>
     </div>
   );
 }
@@ -147,11 +147,11 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
           </div>
         )}
 
-        <button className="btn-secondary amber" onClick={() => setConfirming('place')}><TrashIcon /> Remove this location</button>
+        <button className="btn-secondary amber" onClick={() => setConfirming('place')}><TrashIcon /> Remove this place</button>
       </div>
       {confirming === 'place' && (
         <Confirm title={`Remove ${name}?`} image={photos[0] ? photos[0].thumb : undefined}
-          body={things.length ? `${things.length} thing${things.length === 1 ? ' keeps' : 's keep'} "${name}" as ${things.length === 1 ? 'its' : 'their'} place; only the saved location and its photos go.` : 'The saved location and its photos go.'}
+          body={things.length ? `${things.length} thing${things.length === 1 ? ' keeps' : 's keep'} "${name}" as ${things.length === 1 ? 'its' : 'their'} place; only the saved place and its photos go.` : 'The saved place and its photos go.'}
           actionLabel="Remove" onKeep={() => setConfirming(null)}
           onAction={async () => { setConfirming(null); if (saved) await removePlace(saved); logEvent('place_removed', { name, things: things.length }); onToast && onToast(`Removed · ${name}`); onBack(); }} />
       )}
@@ -175,7 +175,7 @@ export function NewPlaceScreen({ files = [], places = [], onBack, onDone }) {
   };
   return (
     <div className="screen settings">
-      <Header title="New location" onBack={onBack} />
+      <Header title="New place" onBack={onBack} />
       <div className="card">
         <div className="place-photos">
           {(pics || files.map(() => null)).map((p, i) => <div className="place-photo" key={i}>{p ? <img src={p.thumb} alt="" /> : <span className="place-photo-wait">…</span>}</div>)}
@@ -195,7 +195,7 @@ export function DeletedScreen({ removed = [], onBack }) {
   const Row = ({ it }) => (
     <div className="nm">
       {it.name || 'Unnamed'}
-      <small>{it.location || 'no location'} · removed {timeAgo(it.deletedAt)}</small>
+      <small>{it.location || 'no place'} · removed {timeAgo(it.deletedAt)}</small>
     </div>
   );
   return (

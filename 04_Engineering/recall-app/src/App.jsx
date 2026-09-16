@@ -269,7 +269,7 @@ export default function App() {
     case 'look': screen = <LookScreen onBack={back} />; break;
     case 'locations':
       screen = <LocationsScreen places={places} items={items} onBack={back} onOpen={(name) => go('place', { name })}
-        onAdd={() => setCamera({ for: 'place_new', max: PLACE_PHOTOS, title: 'New location' })} />;
+        onAdd={() => setCamera({ for: 'place_new', max: PLACE_PHOTOS, title: 'New place' })} />;
       break;
     case 'place':
       screen = <PlaceScreen name={route.name} places={places} items={items} onBack={back} onToast={say}

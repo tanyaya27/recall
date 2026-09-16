@@ -24,8 +24,9 @@ export function getPrefs() {
     const p = JSON.parse(localStorage.getItem(KEY)) || {};
     return { theme: THEMES.some((t) => t.id === p.theme) ? p.theme : 'linen', size: SIZES.some((s) => s.id === p.size) ? p.size : 'normal',
       density: p.density === 'compact' ? 'compact' : 'normal',
-      placeView: ['names', 'small', 'big'].includes(p.placeView) ? p.placeView : null }; // null = not chosen yet (round 7)
-  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null }; }
+      placeView: ['names', 'small', 'big'].includes(p.placeView) ? p.placeView : null, // null = not chosen yet (round 7)
+      showTimes: p.showTimes !== false }; // times on photos (thing card, 09-16), on by default
+  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null, showTimes: true }; }
 }
 
 export function savePrefs(p) {

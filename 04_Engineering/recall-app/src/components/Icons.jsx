@@ -98,3 +98,19 @@ export function PinIcon() {
     </svg>
   );
 }
+
+// The "was here" pin: dashed, drawn in amber by CSS — a different shape from the current place's pin.
+export function PinWasIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z" strokeDasharray="2.5 2" /><circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+export function ChevronLeftIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 5l-7 7 7 7" />
+    </svg>
+  );
+}

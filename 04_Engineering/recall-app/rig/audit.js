@@ -40,7 +40,7 @@ async function main() {
     return { photo: c.toDataURL('image/jpeg', 0.7), thumb: t.toDataURL('image/jpeg', 0.8) };
   }, [label, color, w, h]);
   const shoot = async (n = 1) => { await page.waitForSelector('.camera'); await page.waitForTimeout(400); for (let i = 0; i < n; i++) { await page.click('.shutter'); await page.waitForTimeout(250); } await page.click('.camera-done'); };
-  const back = async () => { await page.click('.header .back'); await page.waitForTimeout(300); };
+  const back = async () => { await page.click('.header .back, .thing-head .chev'); await page.waitForTimeout(300); };
 
   // ---------- A. Boot without a key ----------
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen');
@@ -87,18 +87,21 @@ async function main() {
   // ---------- D. Thing card: NEW item — strip, earlier, add, remove ----------
   await page.click('.tile >> nth=0'); await page.waitForSelector('.card.thing');
   check('D5 new item: 2 dots (cover + extra)', await count('.dots .dot') === 2);
-  check('D6 Where it has been rows (1 other place)', await count('.place-row') === 1);
-  await page.click('.place-row'); await page.waitForTimeout(400);
-  check('D7 row → Earlier mode', await count('.mode-row') === 1 && /Bedside/.test(await text('.loc-big')));
-  await page.click('text=Back to now'); await page.waitForTimeout(300);
-  check('D8 Back to now', await count('.mode-row') === 0 && /Kitchen/.test(await text('.loc-big')));
+  check('D6 title: name, lock absent, current place on line 2', /Reading glasses/.test(await text('.thing-head .name')) && /Kitchen counter/.test(await text('.thing-head .row2')) && await count('.thing-head .lk') === 0);
+  check('D6a Show earlier places row present with count 1', await count('.sw-row') === 3 && /Show earlier places\s*1/.test(await text('.sw-row >> nth=2')));
+  await page.click('.sw-row >> nth=2 >> .sw'); await page.waitForTimeout(400);
+  check('D7 earlier on → 3 photos; the Bedside one carries its place under it, title unchanged', await count('.dots .dot') === 3 && (await page.locator('.was:not(.empty)').allInnerTexts()).join('|').includes('Bedside table') && /Kitchen counter/.test(await text('.thing-head .row2')));
+  await page.click('.sw-row >> nth=2 >> .sw'); await page.waitForTimeout(300);
+  check('D8 earlier off → back to the current stay (2)', await count('.dots .dot') === 2);
   await page.click('.act.primary'); await shoot(1); await page.waitForTimeout(900);
   check('D9 new item: Add photo → 3 dots', await count('.dots .dot') === 3);
-  const when0 = await text('.when-pill'); await page.click('.dot >> nth=1'); await page.waitForTimeout(500); const when1 = await text('.when-pill');
-  check('D9a when line changes with the page (2 h ago → 3 days ago)', when0 !== when1 && /today|yesterday/.test(when0) && !/today|yesterday/.test(when1), `${when0} | ${when1}`);
-  await page.click('.dot >> nth=2'); await page.waitForTimeout(500);
-  check('D9b the photo just added shows its real time (just now / today)', /just now|today/.test(await text('.when-pill')), await text('.when-pill'));
-  await page.click('.dot >> nth=0'); await page.waitForTimeout(400);
+  const stamps = await page.locator('.stamp').allInnerTexts();
+  check('D9a every photo carries its own time, newest first (the one just added is Today)', stamps.length === 3 && /^Today/.test(stamps[0]) && stamps[0] !== stamps[2], stamps.join(' | '));
+  const stampPx = await page.evaluate(() => getComputedStyle(document.querySelector('.stamp')).fontSize);
+  check('D9b the time label is a fixed 13 px', stampPx === '13px', stampPx);
+  await page.click('.sw-row >> nth=1 >> .sw'); await page.waitForTimeout(200);
+  check('D9c Show times off → no labels', await count('.stamp') === 0);
+  await page.click('.sw-row >> nth=1 >> .sw'); await page.waitForTimeout(200);
   // remove the extra (page 3)
   await page.click('.dot >> nth=2'); await page.waitForTimeout(400); await page.click('.photo-trash'); await page.waitForSelector('.sheet');
   check('D10 remove-photo sheet (not the item sheet)', /Remove this photo/.test(await text('.sheet-title')));
@@ -110,12 +113,12 @@ async function main() {
   await page.click('.act:has-text("Edit")'); await page.waitForTimeout(300); await page.click('.fix .field-value >> nth=0'); await page.fill('.fix input.edit-inline', 'spectacles'); await page.press('.fix input.edit-inline', 'Enter'); await page.waitForTimeout(400);
   const i1 = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D13 rename keeps old name as alias', i1.name === 'spectacles' && (i1.aliases || []).includes('reading glasses'), JSON.stringify(i1.aliases));
-  check('D14 header shows new name', /Spectacles/.test(await text('.header .title')));
+  check('D14 header shows new name', /Spectacles/.test(await text('.thing-head .name')));
   // Edit the place → history grows, seen now
   await page.click('.fix .field-value >> nth=1'); await page.fill('.fix input.edit-inline', 'sofa'); await page.press('.fix input.edit-inline', 'Enter'); await page.waitForTimeout(400);
   const i1b = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D15a edit place → history entry + lastSeenAt now', i1b.location === 'Sofa' && i1b.history.length === 3 && Date.now() - i1b.lastSeenAt < 5000);
-  check('D15b Where it has been now lists Kitchen counter', /Kitchen counter/.test(await text('.places')));
+  check('D15b title says Sofa; the move wrote a sighting (1 photo at Sofa); earlier counts 3', /Sofa/.test(await text('.thing-head .row2')) && await count('.strip-page') === 1 && /Show earlier places\s*3/.test(await text('.sw-row >> nth=2')));
   await page.click('.fix-row button:has-text("Done")'); await page.waitForTimeout(200);
   check('D15 Edit panel closes; actbar reads Edit again', await page.locator('.fix').count() === 0 && /Edit/.test(await text('.actbar')));
   // Press-and-hold on the photo → the item sheet with Remove this photo
@@ -123,24 +126,23 @@ async function main() {
   await page.mouse.move(pb.x + 60, pb.y + 60); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
   check('D16 hold on the photo → item sheet, with Remove this photo', await count('.item-sheet') === 1 && /Remove this photo/.test(await text('.item-sheet')));
   await page.click('.item-sheet .btn-primary.alt'); await page.waitForTimeout(200);
-  check('D17 no whole-photo toggle fired by the hold', await count('.photo-full.whole') === 0);
   // Add a photo that is a different thing → guard
   like = { same: false, seen: 'coffee cup' };
   await page.click('.act.primary'); await shoot(1); await page.waitForTimeout(900);
-  check('D18 mismatched photo → question, not saved', await count('.item-sheet') === 1 && /coffee cup/.test(await text('.sheet-title')) && await count('.dots .dot') === 3);
+  check('D18 mismatched photo → question, not saved', await count('.item-sheet') === 1 && /coffee cup/.test(await text('.sheet-title')) && await count('.strip-page') === 1);
   await page.click('text=Don\'t add it'); await page.waitForTimeout(200);
-  check('D18b Don\'t add → nothing added', await count('.dots .dot') === 3 && await count('.item-sheet') === 0);
+  check('D18b Don\'t add → nothing added', await count('.strip-page') === 1 && await count('.item-sheet') === 0);
   like = null;
   // Private: Edit → toggle → lock on the tile; a private thing of ANOTHER phone never shows
-  await page.click('.act:has-text("Shared")'); await page.waitForTimeout(300);
-  check('D20 Share → Private (actbar)', /Private/.test(await text('.actbar')) && (await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1').visibility)) === 'private');
+  await page.click('.sw-row >> nth=0 >> .sw'); await page.waitForTimeout(300);
+  check('D20 Keep this private switch → private; lock appears in the title; toast', await count('.thing-head .lk') === 1 && (await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1').visibility)) === 'private' && /Now private/.test(await text('.toast')));
   await back(); await page.waitForSelector('.board');
   check('D21 private tile shows a lock on this phone', await count('.tile-lock') === 1);
   await page.evaluate(() => window.__rig.seed([{ id: 'ix', kind: 'item', household: 'default', name: 'other phone secret', visibility: 'private', owner: 'dev_other', location: 'Drawer', thumb: '', photo: '', order: 1, createdAt: 1, lastSeenAt: 1, history: [] }]));
   await page.waitForTimeout(300);
   check('D22 another phone\'s private thing is not on this board', await count('.tile') === 3 && !/other phone secret/.test(await text('.board')));
-  await page.click('.tile >> nth=0'); await page.waitForSelector('.card.thing'); await page.click('.act:has-text("Private")'); await page.waitForTimeout(300);
-  check('D19 actbar: Add photo · Edit · Share · Remove item', /Add photo/.test(await text('.actbar')) && /Remove/.test(await text('.actbar')) && /Shared/.test(await text('.actbar')));
+  await page.click('.tile >> nth=0'); await page.waitForSelector('.card.thing'); await page.click('.sw-row >> nth=0 >> .sw'); await page.waitForTimeout(300);
+  check('D19 bar: Add photo · Edit · Remove (three operations); switch back → shared, lock gone', /Add photo/.test(await text('.actbar')) && /Remove/.test(await text('.actbar')) && !/Shared|Private/.test(await text('.actbar')) && await count('.thing-head .lk') === 0);
   await back(); await page.waitForSelector('.board');
 
   // ---------- C. Log item paths ----------
@@ -229,7 +231,7 @@ async function main() {
   await page.fill('#ask-input', 'spec'); await page.waitForTimeout(200);
   check('F2 typing → live tile for spectacles', await count('.ask .tile') >= 1 && /Spectacles/.test(await text('.ask .tile')));
   await page.click('.ask .tile >> nth=0'); await page.waitForSelector('.card.thing');
-  check('F3 tile → thing card', /Spectacles/.test(await text('.header .title')));
+  check('F3 tile → thing card', /Spectacles/.test(await text('.thing-head .name')));
   await back(); await page.waitForSelector('.ask');
   await page.fill('#ask-input', 'zzzz'); await page.waitForTimeout(200);
   check('F4a no live match → Find it (AI) offered', await count('.ask button[type="submit"]') === 1);
@@ -242,7 +244,7 @@ async function main() {
 
   // ---------- G. Menu ----------
   await page.click('.menu-btn'); await page.waitForSelector('.drawer');
-  for (const [i, name] of [['0', 'Text size & colours'], ['1', 'Locations'], ['2', 'Deleted items'], ['3', 'Research log']]) {
+  for (const [i, name] of [['0', 'Text size & colours'], ['1', 'Places'], ['2', 'Deleted items'], ['3', 'Research log']]) {
     await page.click(`.drawer-row >> nth=${i}`); await page.waitForSelector('.screen .header');
     check(`G${i}a ${name} opens`, (await text('.header .title')) === name);
     await back(); await page.waitForSelector('.drawer');
@@ -250,8 +252,8 @@ async function main() {
   check('G4 Back from a menu screen → drawer', await count('.drawer') === 1);
   await page.click('.drawer-row >> nth=1'); await page.waitForSelector('.screen .header');
   check('G5a Locations is a list of used places with pictures', await count('.loc-row') >= 2 && await count('.loc-row img.loc-pic') >= 1);
-  await page.click('.settings .btn-secondary:has-text("Add a location")'); await shoot(2); await page.waitForSelector('.screen .header');
-  check('G5b Add a location → camera → name screen shows the shots', (await text('.header .title')) === 'New location' && await count('.place-photo img') === 2);
+  await page.click('.settings .btn-secondary:has-text("Add a place")'); await shoot(2); await page.waitForSelector('.screen .header');
+  check('G5b Add a location → camera → name screen shows the shots', (await text('.header .title')) === 'New place' && await count('.place-photo img') === 2);
   await page.fill('.settings .place-input', 'Garage'); await page.click('.btn-primary:has-text("Save this place")'); await page.waitForTimeout(400);
   check('G5c saved place listed with its own photo', await page.locator('.loc-row:has-text("Garage") img.loc-pic').count() === 1);
   await page.click('.loc-row:has-text("Garage")'); await page.waitForSelector('.place-photos');

@@ -6,6 +6,59 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-16 (round 8) — Things, places, sightings: the thing card rebuilt; "earlier photos" retired; *place* everywhere
+
+Design of record: `design/DESIGN_2026-09-16_things-places-sightings.md` (§2 model, §13 the
+card as finally agreed, after seven rendered passes with Ravi) and `design/mockups/r8_T_*.png`.
+
+**Model.** Thing, Place, Sighting (a photo of a thing at a place at a time). A place photo
+is a property of the Place, never a sighting. A *stay* is the run of newest sightings at
+the current place — derived from the sightings at read time, never stored; `logId` is still
+written but nothing in the UI reads it. **A move (Edit → place) writes a sighting** — the
+cover photo at the new place, now — so a new stay always has a photo and history never has
+a row without one. Adding a place to a thing that had none is not a move.
+
+**The card.** Title: chevron Back (36 px) · name, never wraps · lock icon if private; line 2,
+tight: pin · current place · context — the current place lives up here so an older photo can
+never sit under it in big type. Roll: sightings newest first, the current stay by default.
+On each photo: the time bottom-left at a fixed 13 px on a 38 % black, blurred label (Ravi:
+"a bit less dark"); the trash top-right at a fixed 36 px — nothing on a photo scales with the
+text setting. Under a photo from another place: the place name only, amber, dashed pin, on
+the same left edge as the title's pin. Dots + *n of m* when more than one. Three switches,
+label left, switch right: *Keep this private* · *Show times on photos* (per phone) · *Show
+earlier places (n)* (absent when nothing is earlier). Bar: *Add photo · Edit · Remove*.
+Gone: the *Earlier* mode, *Where it has been*, *Not there? Earlier photos*, the when line,
+the big place line under the photo, tap-to-expand.
+
+**Time label formats** (`photoStamp`): *Today 5:52 PM* · *Sat 3:10 PM* · *Sep 5, 9:41 AM* ·
+*Sep 5, 2024* — shorter as the photo ages, always one line.
+
+**Words.** *Place* everywhere; the menu row and screen are *Places*; *Add a place*, *New
+place*, *Remove this place*. (Ravi's 09-15 question, answered 09-16.)
+
+**Parked, in the design note:** tidy-up (in Edit, in the thing's name, after this ships);
+the *Usually on* row; the place hierarchy.
+
+---
+
+## 2026-09-16 (round 7c) — The thing card's actions are a fixed bottom bar; *Earlier photos* is always there, live only when there are some
+
+**Decision (Ravi):** *Add photo · Edit · Shared/Private · Remove* move out of the card into a
+bar fixed to the bottom of the screen — same padding, gradient and button height as Home's
+*Log item · Find item* (both bars now 3.5 rem). The row had sat at a different height on every
+card depending on the photo and the text under it. Icons-only measurement is unchanged. The
+Edit fields open in a second card under the first. Known trade-off (Priyanka, 09-05): a fixed
+bar rides up over the content when the keyboard opens for Edit; watch it on the phone.
+
+**Earlier photos, explained and fixed.** *Earlier* means photos from BEFORE the current log —
+the thing was logged again, or moved (Edit → place). The roll shows only the current log.
+The button was shown whenever the item had a history row, even when no earlier photo existed
+(Ravi's folders: one photo, live button). Now snaps load on open, the button keeps its place,
+reads *Not there? 2 earlier photos* when there are some and *No earlier photos*, disabled,
+when there are none.
+
+---
+
 ## 2026-09-16 (round 7b) — Ravi's 5/10: flipped label instead of the pin badge; real photo times; AM/PM; pin on the place line
 
 Three of the four complaints were one deploy mistake — `styles.css?v=` was not bumped, so

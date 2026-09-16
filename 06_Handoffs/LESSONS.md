@@ -267,3 +267,17 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   the log's time ("same place, same time") so photos added days later showed the wrong day
   and the when line never changed while swiping. Store the real time; derive grouping from
   `logId`, never from a made-up `at`.
+- **2026-09-16 — design in rendered passes, with the real stylesheet, until Ravi says "ready
+  to go".** The thing card took seven passes (`design/mockups/r8_*.png`) and every one
+  moved something he could only judge by looking: the toggles read as labels, the overlays
+  cluttered, the Back button ate space, the pins did not align. Each pass was ~10 minutes in
+  `rig/gen_r7.py`; the build was one pass. Never skip to code on a screen he has opinions
+  about.
+- **2026-09-16 — a `nowrap` line inside a flex page widens the page.** Flex items default to
+  `min-width:auto`, so a no-wrap caption under a roll photo silently made the page wider
+  than the strip and clipped the overlay. `.strip-page { min-width: 0; overflow: hidden }`.
+  The mock caught it before the build did — one more reason to draw first.
+- **2026-09-16 — measure the roll's page step; never assume it is the strip's width.** The
+  pages are 86 % of the strip plus a gap; `scrollLeft / clientWidth` pointed the dots at
+  the wrong page as soon as there were more than two. Read `children[1].offsetLeft -
+  children[0].offsetLeft`.

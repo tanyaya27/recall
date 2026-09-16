@@ -237,3 +237,369 @@ write('r7b_liveson.html', screen2('LIVES ON · explained. Margaret finds the gla
   f'<div class="card thing">{strip()}<div class="loc-big">Kitchen counter</div><div class="wl"><span class="when-pill">{I["clock"]} this evening, 5:52</span></div>'
   f'<div class="home-card" style="position:relative"><span class="arrow" style="top:-0.9rem;right:0.5rem">where it usually is → put it back here</span><div class="ph" style="background:#8a6d4a">bedside</div><div class="t"><small>{I["home"]} Usually on</small><b>Bedside table</b><span>9 of the last 12 times</span></div></div>'
   f'<div class="note">Only appears once a thing has been logged in more than one place; otherwise "now" and "usually" are the same and the box is not shown — no wasted space. Edit lets you pin it by hand if the history is wrong.</div>{actbar()}</div>'))
+
+# ================= r8 sketch — one roll of sightings, captions, two links =================
+X8 = '''<style>
+.cap8 { display:flex; align-items:center; gap:0.35rem; font-size:0.9375rem; color:var(--ink-soft); font-weight:600; margin-top:0.375rem; }
+.cap8 svg { width:1rem; height:1rem; }
+.links8 { display:flex; flex-direction:column; gap:0.375rem; margin-top:0.75rem; }
+.links8 .btn-secondary { margin-top:0; display:flex; justify-content:space-between; align-items:center; padding-left:1rem; padding-right:1rem; text-align:left; }
+.links8 .btn-secondary small { font-weight:600; color:var(--ink-soft); font-size:0.9375rem; }
+.filter8 { display:flex; justify-content:space-between; align-items:center; font-size:0.9375rem; color:var(--ink-soft); margin:0 0 0.5rem; }
+.filter8 b { color:var(--ink); }
+.prior8 { margin-top:0.5rem; }
+.prior8 .place-row-when { font-size:0.9375rem; }
+.footer8 { position:fixed; left:0; right:0; bottom:0; padding:0.75rem 1rem env(safe-area-inset-bottom); background:linear-gradient(to bottom, transparent 0, var(--bg) 0.75rem); }
+</style>'''
+def page8(color, label, cap=None):
+    c = f'<div class="cap8">{I["pin"]} {cap}</div>' if cap else ''
+    return f'<div class="strip-page" style="flex:0 0 86%"><div style="position:relative"><div class="ph" style="background:{color}">{label}</div><button class="photo-trash">{I["trash"]}</button></div>{c}</div>'
+def bar8(): return f'<div class="footer8"><div class="actbar"><button class="act primary">{I["camera"]}<span>Add photo</span></button><button class="act">{I["pencil"]}<span>Edit</span></button><button class="act">{I["unlock"]}<span>Shared</span></button><button class="act amber">{I["trash"]}<span>Remove</span></button></div></div>'
+def screen8(label, body):
+    return HEAD + X8 + f'<div class="label">{label}</div><div class="screen with-footer">{header("Reading glasses")}{body}</div>{bar8()}' + TAIL
+write('r8_sketch_a.html', screen8('SKETCH A · default = the current stay. Header is the current answer and does not move while swiping. No captions (all photos are here, now). Two links, with counts, only because there IS something behind them.',
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{page8("#5b7f9a","glasses")}{page8("#4a6d86","glasses wide")}</div></div><div class="dots"><span class="dot on"></span><span class="dot"></span></div>'
+  f'<div class="loc-big">{I["pin"]}<span>Kitchen counter</span></div><div class="resting">on a wooden table</div><div class="wl"><span class="when-pill">{I["clock"]} today, 5:52 PM</span></div>'
+  f'<div class="links8"><button class="btn-secondary"><span>Older photos in this place</span><small>3</small></button><button class="btn-secondary"><span>Prior places</span><small>2</small></button></div></div>'))
+write('r8_sketch_b.html', screen8('SKETCH B · after "Older photos in this place": the roll widens; a photo from another day carries its own caption; the filter line says what you see and how to get back.',
+  f'<div class="card thing"><div class="filter8"><span>Showing <b>Kitchen counter · 5 photos</b></span><button class="link-btn" style="min-height:0;padding:0">Back to now</button></div><div class="photo-wrap"><div class="strip">{page8("#7a8ea0","glasses, Sept 5", "Kitchen counter · September 5")}{page8("#5b7f9a","glasses")}</div></div><div class="dots"><span class="dot"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>'
+  f'<div class="loc-big">{I["pin"]}<span>Kitchen counter</span></div><div class="resting">on a wooden table</div><div class="wl"><span class="when-pill">{I["clock"]} today, 5:52 PM</span></div>'
+  f'<div class="links8"><button class="btn-secondary"><span>Prior places</span><small>2</small></button></div></div>'))
+write('r8_sketch_c.html', screen8('SKETCH C · after "Prior places": a list with counts and last dates; tap one → the roll filters to that place (its photos get captions with their day).',
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{page8("#5b7f9a","glasses")}{page8("#4a6d86","glasses wide")}</div></div><div class="dots"><span class="dot on"></span><span class="dot"></span></div>'
+  f'<div class="loc-big">{I["pin"]}<span>Kitchen counter</span></div><div class="resting">on a wooden table</div><div class="wl"><span class="when-pill">{I["clock"]} today, 5:52 PM</span></div>'
+  f'<div class="field-label">Prior places</div><div class="places prior8"><button class="place-row"><span class="place-row-loc">Sofa</span><span class="place-row-when">2 photos · Saturday</span></button><button class="place-row"><span class="place-row-loc">Bedside table</span><span class="place-row-when">1 photo · Sept 2</span></button></div></div>'))
+
+# ================= r8 UX — the recommended card, every state =================
+X9 = X8 + '''<style>
+.sheet8 { position:fixed; left:0; right:0; bottom:0; background:var(--card); border-radius:1.25rem 1.25rem 0 0; padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom)); box-shadow:0 -6px 24px rgba(0,0,0,0.25); z-index:20; }
+.sheet8 .sheet-title { font-size:1.25rem; font-weight:700; margin-bottom:0.75rem; }
+.sheet8 .sheet-row { display:block; width:100%; text-align:left; background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:1.0625rem; padding:0.875rem 1rem; border-radius:0.875rem; margin-bottom:0.5rem; min-height:3.5rem; }
+.sheet8 .sheet-row small { display:block; font-weight:600; color:var(--ink-soft); font-size:0.9375rem; margin-top:0.125rem; }
+.sheet8 .sheet-row.ai { background:var(--card); border:1.5px dashed var(--accent); }
+.dim { position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:19; }
+.edit8 .field-label { margin-top:0.75rem; }
+.edit8 .field-value { padding:0.5rem 0; }
+.tidy-row { display:flex; align-items:center; justify-content:space-between; width:100%; text-align:left; padding:0.75rem 0; border-top:1px solid var(--line); margin-top:0.75rem; color:var(--accent); font-weight:700; font-size:1.0625rem; }
+.tidy-row svg { width:1.25rem; height:1.25rem; }
+</style>'''
+def cardA(size_note=''):
+    return (f'<div class="card thing"><div class="photo-wrap"><div class="strip">{page8("#5b7f9a","glasses")}{page8("#4a6d86","glasses wide")}</div></div><div class="dots"><span class="dot on"></span><span class="dot"></span></div>'
+      f'<div class="loc-big">{I["pin"]}<span>Kitchen counter</span></div><div class="resting">on a wooden table</div><div class="wl"><span class="when-pill">{I["clock"]} today, 5:52 PM</span><span class="priv">{I["lock"]} Private</span></div>'
+      f'<div class="links8"><button class="btn-secondary"><span>Older photos in this place</span><small>3</small></button><button class="btn-secondary"><span>Prior places</span><small>2</small></button></div></div>')
+def screen9(label, body, extra='', theme=None, scale=None):
+    h = HEAD + X9 + X
+    if theme or scale: h = h.replace('<html>', f'<html{(" data-theme=%s" % theme) if theme else ""} style="{("--scale:%s" % scale) if scale else ""}">')
+    return h + f'<div class="label">{label}</div><div class="screen with-footer">{header("Reading glasses")}{body}</div>{bar8()}{extra}' + TAIL
+# 1 default
+write('r8_ux_1_default.html', screen9('1 · DEFAULT — the current stay (2 photos, both here). Header = current answer. Links only because there are 3 older photos here and 2 prior places.', cardA()))
+# 2 a thing with nothing behind it — Margaret's common case: no links at all
+write('r8_ux_2_simple.html', screen9('2 · NOTHING BEHIND IT — one stay, one place: no links, no captions. Identical to today.',
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{page8("#8a6d4a","keys")}</div></div>'
+  f'<div class="loc-big">{I["pin"]}<span>Hall table</span></div><div class="wl"><span class="when-pill">{I["clock"]} yesterday, 1:21 AM</span></div></div>'))
+# 3 older photos in this place
+write('r8_ux_3_older.html', screen9('3 · "OLDER PHOTOS IN THIS PLACE" — roll widens to 5; a photo from another day carries its own caption; filter line says what you see. Header unchanged.',
+  f'<div class="card thing"><div class="filter8"><span>Showing <b>Kitchen counter · 5 photos</b></span><button class="link-btn" style="min-height:0;padding:0">Back to now</button></div><div class="photo-wrap"><div class="strip">{page8("#7a8ea0","glasses, Sept 5","Kitchen counter · September 5")}{page8("#5b7f9a","glasses")}</div></div><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>'
+  f'<div class="loc-big">{I["pin"]}<span>Kitchen counter</span></div><div class="resting">on a wooden table</div><div class="wl"><span class="when-pill">{I["clock"]} today, 5:52 PM</span><span class="priv">{I["lock"]} Private</span></div>'
+  f'<div class="links8"><button class="btn-secondary"><span>Prior places</span><small>2</small></button></div></div>'))
+# 4 prior places list
+write('r8_ux_4_prior.html', screen9('4 · "PRIOR PLACES" — a list under the header: place, photos, last seen there. Tap Sofa → 5.',
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{page8("#5b7f9a","glasses")}{page8("#4a6d86","glasses wide")}</div></div><div class="dots"><span class="dot on"></span><span class="dot"></span></div>'
+  f'<div class="loc-big">{I["pin"]}<span>Kitchen counter</span></div><div class="resting">on a wooden table</div><div class="wl"><span class="when-pill">{I["clock"]} today, 5:52 PM</span><span class="priv">{I["lock"]} Private</span></div>'
+  f'<div class="links8"><button class="btn-secondary"><span>Older photos in this place</span><small>3</small></button></div>'
+  f'<div class="field-label">Prior places</div><div class="places prior8"><button class="place-row"><span class="place-row-loc">Sofa</span><span class="place-row-when">2 photos · Saturday</span></button><button class="place-row"><span class="place-row-loc">Bedside table</span><span class="place-row-when">1 photo · Sept 2</span></button></div></div>'))
+# 5 filtered to a prior place
+write('r8_ux_5_place.html', screen9('5 · AFTER TAPPING "SOFA" — the roll shows only the Sofa sightings, each captioned with its day; header still says where it is NOW.',
+  f'<div class="card thing"><div class="filter8"><span>Showing <b>Sofa · 2 photos</b></span><button class="link-btn" style="min-height:0;padding:0">Back to now</button></div><div class="photo-wrap"><div class="strip">{page8("#6b8f6b","glasses on sofa","Sofa · Saturday")}{page8("#5f7f5f","sofa, wide","Sofa · Saturday")}</div></div><div class="dots"><span class="dot on"></span><span class="dot"></span></div>'
+  f'<div class="loc-big">{I["pin"]}<span>Kitchen counter</span></div><div class="resting">on a wooden table</div><div class="wl"><span class="when-pill">{I["clock"]} today, 5:52 PM</span><span class="priv">{I["lock"]} Private</span></div>'
+  f'<div class="links8"><button class="btn-secondary"><span>Older photos in this place</span><small>3</small></button><button class="btn-secondary"><span>Prior places</span><small>2</small></button></div></div>'))
+# 6 tidy up — Edit card row + sheet
+write('r8_ux_6_tidy.html', screen9('6 · TIDY UP — a row in Edit (never on the default screen) → a sheet with two plain choices and counts; the AI suggestion is dashed and off until the visual check has a record.',
+  cardA() + f'<div class="card thing edit8"><div class="field-label">What it is</div><button class="field-value"><span class="field-text">Reading glasses</span>{I["pencil"]}</button><div class="field-label">Where it is</div><button class="field-value"><span class="field-text">Kitchen counter</span>{I["pencil"]}</button><button class="tidy-row"><span>Tidy up this thing…</span>{I["chev"]}</button></div>',
+  extra=f'<div class="dim"></div><div class="sheet8"><div class="sheet-title">Tidy up reading glasses</div><button class="sheet-row">Keep only the newest photo at each place<small>removes 4 photos</small></button><button class="sheet-row">Forget places not visited since August<small>removes 1 place · 1 photo</small></button><button class="sheet-row ai">These 3 photos look alike — keep the sharpest<small>the app’s suggestion · removes 2</small></button><button class="btn-primary alt" style="margin-top:0.25rem">Cancel</button></div>'))
+# 7 Largest, 8 Dusk
+write('r8_ux_7_largest.html', screen9('7 · LARGEST text size — links still one line, captions wrap, bar goes icons-only.', cardA(), scale='1.38'))
+write('r8_ux_8_dusk.html', screen9('8 · DUSK — state 3 (older photos, captioned).',
+  f'<div class="card thing"><div class="filter8"><span>Showing <b>Kitchen counter · 5 photos</b></span><button class="link-btn" style="min-height:0;padding:0">Back to now</button></div><div class="photo-wrap"><div class="strip">{page8("#7a8ea0","glasses, Sept 5","Kitchen counter · September 5")}{page8("#5b7f9a","glasses")}</div></div><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>'
+  f'<div class="loc-big">{I["pin"]}<span>Kitchen counter</span></div><div class="resting">on a wooden table</div><div class="wl"><span class="when-pill">{I["clock"]} today, 5:52 PM</span><span class="priv">{I["lock"]} Private</span></div>'
+  f'<div class="links8"><button class="btn-secondary"><span>Prior places</span><small>2</small></button></div></div>', theme='dusk'))
+
+# ================= r8 options X / Y after Ravi's pushback =================
+def cardhdr(place, when, priv=True, soft=False):
+    return (f'<div class="loc-big{" soft" if soft else ""}">{I["pin"]}<span>{place}</span></div>' + ('' if soft else '<div class="resting">on a wooden table</div>') +
+      f'<div class="wl"><span class="when-pill">{I["clock"]} {when}</span>' + (f'<span class="priv">{I["lock"]} Private</span>' if priv else '') + '</div>')
+# X — one roll, every photo of the thing, captions on the ones not here-and-now, no links, no list
+write('r8_ux_X.html', screen9('X · ONE ROLL, NO LINKS — every photo of the glasses, newest first. A photo not from the current stay says where and when it was. Nothing else.',
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{page8("#5b7f9a","glasses")}{page8("#6b8f6b","on sofa","Sofa · Saturday")}</div></div><div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>'
+  + cardhdr('Kitchen counter', 'today, 5:52 PM') + '</div>'))
+write('r8_ux_X2.html', screen9('X · swiped to the 4th photo — the caption under it carries the place and day; the header still says where the glasses are NOW.',
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{page8("#7a8ea0","Sept 5","Kitchen counter · September 5")}{page8("#8a7a9a","bedside","Bedside table · Sept 2")}</div></div><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>'
+  + cardhdr('Kitchen counter', 'today, 5:52 PM') + '</div>'))
+# Y — roll = current stay; ONE list in the thing's own name; tap → that stay's photos, header turns soft "then"
+write('r8_ux_Y.html', screen9('Y · ROLL = NOW, ONE LIST — "Where the glasses have been", one row per earlier stay (place · when · photos). No other links.',
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{page8("#5b7f9a","glasses")}{page8("#4a6d86","glasses wide")}</div></div><div class="dots"><span class="dot on"></span><span class="dot"></span></div>'
+  + cardhdr('Kitchen counter', 'today, 5:52 PM') +
+  f'<div class="field-label">Where the glasses have been</div><div class="places prior8"><button class="place-row"><span class="place-row-loc">Sofa</span><span class="place-row-when">Saturday · 2 photos</span></button><button class="place-row"><span class="place-row-loc">Kitchen counter</span><span class="place-row-when">Sept 5 · 3 photos</span></button><button class="place-row"><span class="place-row-loc">Bedside table</span><span class="place-row-when">Sept 2 · 1 photo</span></button></div></div>'))
+write('r8_ux_Y2.html', screen9('Y · after tapping "Sofa" — the roll is that stay\'s photos; the header goes soft and says THEN; one link back. Nothing above the roll moves.',
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{page8("#6b8f6b","glasses on sofa")}{page8("#5f7f5f","sofa, wide")}</div></div><div class="dots"><span class="dot on"></span><span class="dot"></span></div>'
+  f'<div class="loc-big soft">{I["pin"]}<span>Sofa — then</span></div><div class="wl"><span class="when-pill">{I["clock"]} Saturday, 3:10 PM</span><button class="link-btn" style="min-height:0;padding:0">Back to now</button></div>'
+  f'<div class="field-label">Where the glasses have been</div><div class="places prior8"><button class="place-row"><span class="place-row-loc">Sofa</span><span class="place-row-when">Saturday · 2 photos</span></button><button class="place-row"><span class="place-row-loc">Kitchen counter</span><span class="place-row-when">Sept 5 · 3 photos</span></button><button class="place-row"><span class="place-row-loc">Bedside table</span><span class="place-row-when">Sept 2 · 1 photo</span></button></div></div>'))
+
+# ================= r8 Z — Ravi's own layout (09-16, third pass) =================
+XZ = X9 + '''<style>
+.hdr2 { display:flex; align-items:flex-start; gap:0.75rem; margin:0 0 0.75rem; }
+.hdr2 .ttl { min-width:0; flex:1; }
+.hdr2 .ttl .t1 { font-size:min(1.375rem,6vw); font-weight:600; line-height:1.2; }
+.hdr2 .ttl .t2 { display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.2rem; }
+.hdr2 .ttl .t2 .pl { min-width:0; flex:1; font-size:1.0625rem; line-height:1.3; color:var(--ink); }
+.hdr2 .ttl .t2 .pl b { font-weight:700; }
+.hdr2 .ttl .t2 .pl span { color:var(--ink-soft); }
+.hdr2 .ttl .t2 .pl svg { width:1.1rem; height:1.1rem; vertical-align:-0.15em; color:var(--accent); }
+.hdr2 .ttl .t2 .pv { flex:none; display:inline-flex; align-items:center; gap:0.3rem; color:var(--accent); font-weight:700; font-size:1rem; padding-top:0.1rem; }
+.hdr2 .ttl .t2 .pv svg { width:1.2rem; height:1.2rem; }
+.under { display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem; min-width:0; white-space:nowrap; overflow:hidden; }
+.under .when-pill { margin:0; flex:none; }
+.under .prev { display:inline-flex; align-items:center; gap:0.3rem; color:var(--amber); font-weight:700; font-size:0.9375rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.under .prev svg { width:1rem; height:1rem; flex:none; }
+.under .prev.pill { background:var(--amber-bg); padding:0.3rem 0.65rem; border-radius:999px; }
+.toggle8 { margin-top:0.75rem; }
+</style>'''
+def pageZ(color, label, when, prev=None, prev_long=False):
+    p = f'<span class="prev pill">{I["pin"]} {"previously at " if not prev_long else ""}{prev}</span>' if prev else ''
+    return f'<div class="strip-page" style="flex:0 0 86%"><div style="position:relative"><div class="ph" style="background:{color}">{label}</div><button class="photo-trash">{I["trash"]}</button></div><div class="under"><span class="when-pill">{I["clock"]} {when}</span>{p}</div></div>'
+def hdrZ(name, place, ctx, priv=True, label=True):
+    pv = (f'<span class="pv">{I["lock"]}{" Private" if label else ""}</span>') if priv else ''
+    return f'<div class="header hdr2"><button class="back">‹ Back</button><div class="ttl"><div class="t1">{name}</div><div class="t2"><div class="pl">{I["pin"]} <b>{place}</b>{(" <span>· " + ctx + "</span>") if ctx else ""}</div>{pv}</div></div></div>'
+def screenZ(label, hdr, body, theme=None, scale=None):
+    h = HEAD + XZ + X
+    if theme or scale: h = h.replace('<html>', f'<html{(" data-theme=%s" % theme) if theme else ""} style="{("--scale:%s" % scale) if scale else ""}">')
+    return h + f'<div class="label">{label}</div><div class="screen with-footer">{hdr}{body}</div>{bar8()}' + TAIL
+write('r8_Z1.html', screenZ('Z1 · DEFAULT — title: name / place · context, Private right. Every photo has its time under it, left. Prior places hidden; one button to show them.',
+  hdrZ('Reading glasses', 'Kitchen counter', 'on a wooden table'),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageZ("#5b7f9a","glasses","today, 5:52 PM")}{pageZ("#4a6d86","wide","today, 5:51 PM")}</div></div><div class="dots"><span class="dot on"></span><span class="dot"></span></div>'
+  f'<button class="btn-secondary toggle8">Show where the glasses were before</button></div>'))
+write('r8_Z2.html', screenZ('Z2 · PRIOR PLACES SHOWN, swiped to an older photo — "previously at Sofa" sits on the same line as the time, amber, in a pill. Title still says where it is NOW.',
+  hdrZ('Reading glasses', 'Kitchen counter', 'on a wooden table'),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageZ("#6b8f6b","on the sofa","Saturday, 3:10 PM","Sofa")}{pageZ("#8a7a9a","bedside","Sept 2, 9:41 AM","Bedside table")}</div></div><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>'
+  f'<button class="btn-secondary toggle8">Hide where the glasses were before</button></div>'))
+write('r8_Z3.html', screenZ('Z3 · LONG PLACE NAME — the word "Private" drops, the lock stays (responsive). Under a photo, when the line cannot fit, "previously at" drops and the pin + place remain.',
+  hdrZ('Reading glasses', 'Third drawer of the filing cabinet in the office', 'at the very back', label=False),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageZ("#6b8f6b","on the sofa","Saturday, 3:10 PM","Living room sofa, left cushion", prev_long=True)}{pageZ("#8a7a9a","bedside","Sept 2, 9:41 AM","Bedside table")}</div></div><div class="dots"><span class="dot"></span><span class="dot on"></span><span class="dot"></span></div>'
+  f'<button class="btn-secondary toggle8">Hide where the glasses were before</button></div>'))
+write('r8_Z4.html', screenZ('Z4 · LARGEST text — title wraps to a third line if it must; under the photo the time keeps the clock time, the place pill truncates with …',
+  hdrZ('Reading glasses', 'Kitchen counter', 'on a wooden table', label=False),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageZ("#6b8f6b","on the sofa","Saturday, 3:10 PM","Sofa")}{pageZ("#5b7f9a","glasses","today, 5:52 PM")}</div></div><div class="dots"><span class="dot"></span><span class="dot on"></span><span class="dot"></span></div>'
+  f'<button class="btn-secondary toggle8">Hide where the glasses were before</button></div>', scale='1.38'))
+def pageZ2(color, label, when, prev=None):
+    p = f'<span class="prev pill">{I["pin"]} {prev}</span>' if prev else ''
+    return f'<div class="strip-page" style="flex:0 0 86%"><div style="position:relative"><div class="ph" style="background:{color}">{label}</div><button class="photo-trash">{I["trash"]}</button></div><div class="under"><span class="when-pill">{I["clock"]} {when}</span>{p}</div></div>'
+write('r8_Z5.html', screenZ('Z5 · FITTING ON ONE LINE — shorter time on old photos ("Sat 3:10 PM"), the amber pill says just "was at Sofa" (amber = the past). Toggle label shortened.',
+  hdrZ('Reading glasses', 'Kitchen counter', 'on a wooden table'),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageZ2("#6b8f6b","on the sofa","Sat 3:10 PM","was at Sofa")}{pageZ2("#8a7a9a","bedside","Sep 2, 9:41 AM","was at Bedside table")}</div></div><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>'
+  f'<button class="btn-secondary toggle8">Hide earlier places</button></div>'))
+write('r8_Z6.html', screenZ('Z6 · SAME, long place — the amber pill truncates with … rather than wrapping; tap it to read the whole name (a toast).',
+  hdrZ('Reading glasses', 'Kitchen counter', 'on a wooden table'),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageZ2("#6b8f6b","on the sofa","Sat 3:10 PM","was at Living room sofa, left cushion")}{pageZ2("#8a7a9a","bedside","Sep 2, 9:41 AM","was at Bedside table")}</div></div><div class="dots"><span class="dot"></span><span class="dot on"></span><span class="dot"></span></div>'
+  f'<button class="btn-secondary toggle8">Hide earlier places</button></div>'))
+
+# ================= r8 W — header on one line, state chips, overlays, 3-button bar =================
+XW = XZ + '''<style>
+.hdr3 { margin:0 0 0.75rem; }
+.hdr3 .row1 { display:flex; align-items:center; gap:0.75rem; min-height:3.25rem; }
+.hdr3 .row1 .t1 { flex:1; min-width:0; font-size:min(1.375rem,6vw); font-weight:600; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hdr3 .row1 .lk { flex:none; color:var(--accent); display:flex; }
+.hdr3 .row1 .lk svg { width:1.35rem; height:1.35rem; }
+.hdr3 .row2 { margin-top:0.25rem; font-size:1.0625rem; line-height:1.3; }
+.hdr3 .row2 b { font-weight:700; }
+.hdr3 .row2 span { color:var(--ink-soft); }
+.hdr3 .row2 svg { width:1.1rem; height:1.1rem; vertical-align:-0.15em; color:var(--accent); }
+.ov { position:absolute; top:0.5rem; display:inline-flex; align-items:center; gap:0.3rem; background:rgba(0,0,0,0.55); color:#fff; font-size:0.875rem; font-weight:600; padding:0.25rem 0.6rem; border-radius:999px; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); max-width:60%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ov svg { width:0.95rem; height:0.95rem; flex:none; }
+.ov.tl { left:0.5rem; }
+.ov.tr { right:0.5rem; top:auto; bottom:0.625rem; background:rgba(138,101,40,0.9); }
+.chips { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.625rem; }
+.chip { display:inline-flex; align-items:center; gap:0.35rem; padding:0.45rem 0.8rem; border-radius:999px; font-size:0.9375rem; font-weight:700; background:var(--card); border:1.5px solid var(--line); color:var(--ink-soft); min-height:2.25rem; }
+.chip.on { background:var(--accent-soft); border-color:var(--accent-soft); color:var(--accent); }
+.chip svg { width:1.05rem; height:1.05rem; }
+.cnt { color:var(--ink-soft); font-size:0.875rem; font-weight:600; margin-left:0.5rem; }
+.dotsrow { display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-top:0.5rem; }
+.dotsrow .dots { margin:0; }
+.bar3 .actbar { grid-template-columns:repeat(3,1fr); }
+.act .lbl3 { font-size:0.8125rem; }
+</style>'''
+def hdrW(name, place, ctx, priv=True):
+    lk = f'<span class="lk">{I["lock"]}</span>' if priv else ''
+    return f'<div class="hdr3"><div class="row1"><button class="back">‹ Back</button><div class="t1">{name}</div>{lk}</div><div class="row2">{I["pin"]} <b>{place}</b> <span>· {ctx}</span></div></div>'
+def pageW(color, label, when=None, prev=None):
+    t = f'<span class="ov tl">{I["clock"]} {when}</span>' if when else ''
+    p = f'<span class="ov tr">{I["pin"]} {prev}</span>' if prev else ''
+    return f'<div class="strip-page" style="flex:0 0 86%"><div style="position:relative"><div class="ph" style="background:{color}">{label}</div>{t}{p}<button class="photo-trash">{I["trash"]}</button></div></div>'
+def bar3(): return f'<div class="footer8 bar3"><div class="actbar"><button class="act primary">{I["camera"]}<span>Add photo</span></button><button class="act">{I["pencil"]}<span>Edit</span></button><button class="act amber">{I["trash"]}<span>Remove</span></button></div></div>'
+def screenW(label, hdr, body, scale=None, theme=None):
+    h = HEAD + XW + X
+    if theme or scale: h = h.replace('<html>', f'<html{(" data-theme=%s" % theme) if theme else ""} style="{("--scale:%s" % scale) if scale else ""}">')
+    return h + f'<div class="label">{label}</div><div class="screen with-footer">{hdr}{body}</div>{bar3()}' + TAIL
+def dotsW(n, on, count=True):
+    d = ''.join(f'<span class="dot{" on" if i==on else ""}"></span>' for i in range(n))
+    return f'<div class="dotsrow"><div class="dots">{d}</div>' + (f'<span class="cnt">{on+1} of {n}</span>' if count and n>1 else '') + '</div>'
+chips_all = lambda priv, times, earlier, n: (f'<div class="chips"><button class="chip{" on" if priv else ""}">{I["lock"] if priv else I["unlock"]} {"Private" if priv else "Shared"}</button>'
+  f'<button class="chip{" on" if times else ""}">{I["clock"]} Times</button><button class="chip{" on" if earlier else ""}">{I["pin"]} Earlier places · {n}</button></div>')
+write('r8_W1.html', screenW('W1 · Back + name on one line, lock ICON only, right. Place · context on line 2, full width. Times as overlays top-left; "was at Sofa" bottom-right in amber (opposite corner from the trash; can never collide with the time). Chips = the three states, each a switch. Bar = three operations.',
+  hdrW('Reading glasses', 'Kitchen counter', 'on a wooden table'),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageW("#6b8f6b","on the sofa","Sat 3:10 PM","was at Sofa")}{pageW("#5b7f9a","glasses","today, 5:52 PM")}</div></div>{dotsW(5,2)}{chips_all(True,True,True,2)}</div>'))
+write('r8_W2.html', screenW('W2 · Margaret\'s default: earlier places hidden, times shown, shared. Two photos → "1 of 2". Nothing else on the card.',
+  hdrW('Reading glasses', 'Kitchen counter', 'on a wooden table', priv=False),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageW("#5b7f9a","glasses","today, 5:52 PM")}{pageW("#4a6d86","wide","today, 5:51 PM")}</div></div>{dotsW(2,0)}{chips_all(False,True,False,2)}</div>'))
+write('r8_W3.html', screenW('W3 · Times hidden, one photo, never moved: no dots, no count; the Earlier chip is absent (nothing behind it). The quietest card.',
+  hdrW('Keys', 'Hall table', 'by the door', priv=False),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageW("#8a6d4a","keys")}</div></div><div class="chips"><button class="chip">{I["unlock"]} Shared</button><button class="chip">{I["clock"]} Times</button></div></div>'))
+write('r8_W4.html', screenW('W4 · ALTERNATIVE for Private: no chip — the lock in the title is the indicator, the switch lives in Edit (a setting, rarely changed). Chips are then only the two views.',
+  hdrW('Reading glasses', 'Kitchen counter', 'on a wooden table'),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageW("#6b8f6b","on the sofa","Sat 3:10 PM","was at Sofa")}{pageW("#5b7f9a","glasses","today, 5:52 PM")}</div></div>{dotsW(5,2)}<div class="chips"><button class="chip on">{I["clock"]} Times</button><button class="chip on">{I["pin"]} Earlier places · 2</button></div></div>'
+  f'<div class="card thing edit8"><div class="field-label">What it is</div><button class="field-value"><span class="field-text">Reading glasses</span>{I["pencil"]}</button><div class="field-label">Where it is</div><button class="field-value"><span class="field-text">Kitchen counter</span>{I["pencil"]}</button><button class="tidy-row"><span>{I["lock"]} Private — only you see it</span><span style="color:var(--ink-soft);font-weight:600">Share…</span></button></div>'))
+write('r8_W5.html', screenW('W5 · LARGEST — header still two lines (name truncates with …), overlays scale, chips wrap to two rows, bar has three buttons so words still fit.',
+  hdrW('Reading glasses', 'Kitchen counter', 'on a wooden table'),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageW("#6b8f6b","on the sofa","Sat 3:10 PM","was at Sofa")}{pageW("#5b7f9a","glasses","today, 5:52 PM")}</div></div>{dotsW(5,2)}{chips_all(True,True,True,2)}</div>', scale='1.38'))
+
+# ================= r8 V — tight header, chevron back, plain line under photo, segmented toggles =================
+XV = XW + '''<style>
+.hdr4 { margin:0 0 0.625rem; }
+.hdr4 .row1 { display:flex; align-items:center; gap:0.5rem; min-height:2.75rem; }
+.hdr4 .bk { flex:none; width:2.75rem; height:2.75rem; min-height:0; padding:0; display:flex; align-items:center; justify-content:center; background:var(--card); border:1.5px solid var(--line); border-radius:0.75rem; color:var(--accent); margin-left:-0.25rem; }
+.hdr4 .bk svg { width:1.5rem; height:1.5rem; }
+.hdr4 .t1 { flex:1; min-width:0; font-size:min(1.375rem,6vw); font-weight:600; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hdr4 .lk { flex:none; color:var(--accent); display:flex; }
+.hdr4 .lk svg { width:1.35rem; height:1.35rem; }
+.hdr4 .row2 { margin:0 0 0 3rem; font-size:1.0625rem; line-height:1.25; }
+.hdr4 .row2 b { font-weight:700; }
+.hdr4 .row2 span { color:var(--ink-soft); }
+.hdr4 .row2 svg { width:1.05rem; height:1.05rem; vertical-align:-0.15em; color:var(--accent); }
+.hdr4.tight .row2 { margin-left:0; margin-top:0.125rem; }
+.sub2 { display:flex; align-items:center; gap:0.35rem; margin-top:0.375rem; font-size:0.9375rem; color:var(--ink-soft); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sub2 svg { width:1rem; height:1rem; flex:none; }
+.sub2 .was { color:var(--amber); }
+.tog { display:grid; grid-template-columns:repeat(3,1fr); gap:0; margin-top:0.625rem; border:1.5px solid var(--accent); border-radius:0.875rem; overflow:hidden; }
+.tog button { min-height:2.75rem; padding:0.375rem 0.25rem; background:var(--card); color:var(--accent); font-weight:700; font-size:min(0.9375rem,3.9vw); display:flex; align-items:center; justify-content:center; gap:0.35rem; border-radius:0; border-right:1.5px solid var(--accent); white-space:nowrap; min-width:0; }
+.tog button:last-child { border-right:none; }
+.tog button.on { background:var(--accent); color:var(--accent-ink); }
+.tog button svg { width:1.1rem; height:1.1rem; flex:none; }
+.tog.icons button span { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+.tog.icons button svg { width:1.5rem; height:1.5rem; }
+.dots { margin-top:0.375rem; }
+</style>'''
+CHEV_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>'
+def hdrV(name, place, ctx, priv=True, tight=False):
+    lk = f'<span class="lk">{I["lock"]}</span>' if priv else ''
+    return f'<div class="hdr4{" tight" if tight else ""}"><div class="row1"><button class="bk" aria-label="Back">{CHEV_L}</button><div class="t1">{name}</div>{lk}</div><div class="row2">{I["pin"]} <b>{place}</b> <span>· {ctx}</span></div></div>'
+def pageV(color, label, when=None, prev=None):
+    line = ''
+    if when: line = f'<div class="sub2">{I["clock"]} {when}' + (f'<span class="was">· was at {prev}</span>' if prev else '') + '</div>'
+    return f'<div class="strip-page" style="flex:0 0 86%"><div style="position:relative"><div class="ph" style="background:{color}">{label}</div><button class="photo-trash">{I["trash"]}</button></div>{line}</div>'
+def togV(priv, times, earlier, n, icons=False):
+    e = f'<button class="{"on" if earlier else ""}">{I["pin"]}<span>Earlier · {n}</span></button>' if n else ''
+    return f'<div class="tog{" icons" if icons else ""}" style="grid-template-columns:repeat({3 if n else 2},1fr)"><button class="{"on" if priv else ""}">{I["lock"] if priv else I["unlock"]}<span>{"Private" if priv else "Shared"}</span></button><button class="{"on" if times else ""}">{I["clock"]}<span>Times</span></button>{e}</div>'
+def screenV(label, hdr, body, scale=None):
+    h = HEAD + XV + X
+    if scale: h = h.replace('<html>', f'<html style="--scale:{scale}">')
+    return h + f'<div class="label">{label}</div><div class="screen with-footer">{hdr}{body}</div>{bar3()}' + TAIL
+write('r8_V1.html', screenV('V1 · Chevron-only Back (44 px). Name never wraps (…). Line 2 tight under line 1, starting under the name. Under each photo: ONE plain line, time · "was at Sofa" in amber. Toggles = one segmented control, never wraps.',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table'),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageV("#6b8f6b","on the sofa","Sat 3:10 PM","Sofa")}{pageV("#5b7f9a","glasses","today, 5:52 PM")}</div></div>{dotsW(5,2)}{togV(True,True,True,2)}</div>'))
+write('r8_V2.html', screenV('V2 · Line 2 flush left instead (under the chevron) — your call which of V1/V2. Margaret\'s default: shared, earlier hidden, times on.',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table', priv=False, tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageV("#5b7f9a","glasses","today, 5:52 PM")}{pageV("#4a6d86","wide","today, 5:51 PM")}</div></div>{dotsW(2,0)}{togV(False,True,False,2)}</div>'))
+write('r8_V3.html', screenV('V3 · Times off, one photo, never moved: no line under the photo, no dots, two segments only.',
+  hdrV('Keys', 'Hall table', 'by the door', priv=False, tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageV("#8a6d4a","keys")}</div></div>{togV(False,False,False,0)}</div>'))
+write('r8_V4.html', screenV('V4 · Long name and long place: name truncates, line 2 wraps; a long prior place truncates on its one line.',
+  hdrV('Grandmother\'s reading glasses with the tortoiseshell frames', 'Third drawer of the filing cabinet in the office', 'at the very back', tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageV("#6b8f6b","on the sofa","Sat 3:10 PM","Living room sofa, left cushion")}{pageV("#5b7f9a","glasses","today, 5:52 PM")}</div></div>{dotsW(3,1)}{togV(True,True,True,2)}</div>'))
+write('r8_V5.html', screenV('V5 · LARGEST — segments go icons-only when the words cannot fit (measured, like the bar); nothing wraps.',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table', tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageV("#6b8f6b","on the sofa","Sat 3:10 PM","Sofa")}{pageV("#5b7f9a","glasses","today, 5:52 PM")}</div></div>{dotsW(5,2)}{togV(True,True,True,2,icons=True)}</div>', scale='1.38'))
+
+# ================= r8 U — toggle list, smaller back, fixed-size time overlay, amber "was at" line =================
+I['hist'] = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>'
+I['pinback'] = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.5 2"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/><circle cx="12" cy="10" r="2.5" stroke-dasharray="0"/></svg>'
+XU = XV + '''<style>
+.hdr4 .bk { width:2.25rem; height:2.25rem; border-radius:0.625rem; }
+.hdr4 .bk svg { width:1.25rem; height:1.25rem; }
+.hdr4 .row1 { min-height:2.5rem; }
+.strip-page { min-width:0; overflow:hidden; }  /* a nowrap line under the photo must never widen the page (flex min-width:auto trap) */
+.ts { position:absolute; right:0.5rem; bottom:0.5rem; max-width:calc(100% - 1rem); overflow:hidden; text-overflow:ellipsis; background:rgba(0,0,0,0.6); color:#fff; font:600 13px/1 -apple-system, system-ui, sans-serif; padding:5px 8px; border-radius:6px; white-space:nowrap; letter-spacing:0.01em; }
+.was { display:flex; align-items:center; gap:0.4rem; margin-top:0.375rem; color:var(--amber); font-weight:700; font-size:0.9375rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.was svg { width:1.1rem; height:1.1rem; flex:none; }
+.tl { margin-top:0.625rem; border-top:1px solid var(--line); }
+.tl .r { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; min-height:3rem; padding:0.375rem 0; border-bottom:1px solid var(--line); font-size:1.0625rem; font-weight:600; color:var(--ink); }
+.tl .r .lab { display:flex; align-items:center; gap:0.5rem; min-width:0; }
+.tl .r .lab svg { width:1.2rem; height:1.2rem; flex:none; color:var(--accent); }
+.tl .r .lab.amber svg { color:var(--amber); }
+.tl .r .lab small { color:var(--ink-soft); font-weight:500; font-size:0.9375rem; }
+.sw { flex:none; width:3.25rem; height:2rem; border-radius:999px; background:var(--line); position:relative; border:none; padding:0; min-height:0; }
+.sw::after { content:""; position:absolute; top:0.2rem; left:0.2rem; width:1.6rem; height:1.6rem; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.3); transition:left 120ms; }
+.sw.on { background:var(--accent); }
+.sw.on::after { left:1.45rem; }
+</style>'''
+def pageU(color, label, when=None, prev=None):
+    t = f'<span class="ts">{when}</span>' if when else ''
+    w = f'<div class="was">{I["pinback"]} was at {prev}</div>' if prev else ''
+    return f'<div class="strip-page" style="flex:0 0 86%"><div style="position:relative"><div class="ph" style="background:{color};position:relative">{label}{t}</div><button class="photo-trash">{I["trash"]}</button></div>{w}</div>'
+def tlU(priv, times, earlier, n):
+    rows = [(f'{I["lock"] if priv else I["unlock"]}', 'Keep this private' if priv else 'Keep this private', '' , priv, ''),
+            (I['clock'], 'Show times on photos', '', times, ''),]
+    html = '<div class="tl">'
+    html += f'<div class="r"><span class="lab">{I["lock"]} Keep this private</span><button class="sw{" on" if priv else ""}"></button></div>'
+    html += f'<div class="r"><span class="lab">{I["clock"]} Show times on photos</span><button class="sw{" on" if times else ""}"></button></div>'
+    if n: html += f'<div class="r"><span class="lab amber">{I["pinback"]} Show earlier places <small>{n}</small></span><button class="sw{" on" if earlier else ""}"></button></div>'
+    return html + '</div>'
+def screenU(label, hdr, body, scale=None):
+    h = HEAD + XU + X
+    if scale: h = h.replace('<html>', f'<html style="--scale:{scale}">')
+    return h + f'<div class="label">{label}</div><div class="screen with-footer">{hdr}{body}</div>{bar3()}' + TAIL
+write('r8_U1.html', screenU('U1 · Toggle LIST (label left, switch right, action wording). Back a bit smaller. Time on the photo, bottom-right, fixed 13 px. Earlier place under the photo, amber, dashed pin — same icon on its toggle row.',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table', tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageU("#6b8f6b","on the sofa","Sat 3:10 PM","Sofa")}{pageU("#5b7f9a","glasses","Today 5:52 PM")}</div></div>{dotsW(5,2)}{tlU(True,True,True,2)}</div>'))
+write('r8_U2.html', screenU('U2 · Margaret\'s default: shared, earlier hidden. A photo of the current stay has no line under it.',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table', priv=False, tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageU("#5b7f9a","glasses","Today 5:52 PM")}{pageU("#4a6d86","wide","Today 5:51 PM")}</div></div>{dotsW(2,0)}{tlU(False,True,False,2)}</div>'))
+write('r8_U3.html', screenU('U3 · One photo, never moved, times off: no overlay, no dots, two rows.',
+  hdrV('Keys', 'Hall table', 'by the door', priv=False, tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageU("#8a6d4a","keys")}</div></div>{tlU(False,False,False,0)}</div>'))
+write('r8_U4.html', screenU('U4 · LARGEST, very old date "Sep 5, 2024, 9:41 AM": the overlay stays 13 px (it does not scale with the text setting) — one line, no wrap. Everything else scales.',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table', tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageU("#7a8ea0","old photo","Sep 5, 2024, 9:41 AM","Living room sofa, left cushion")}{pageU("#5b7f9a","glasses","Today 5:52 PM")}</div></div>{dotsW(5,2)}{tlU(True,True,True,2)}</div>', scale='1.38'))
+write('r8_U5.html', screenU('U5 · NORMAL, same very old date, Dusk-free check of the overlay on a light photo.',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table', tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageU("#d8d2c4","light photo","Sep 5, 2024, 9:41 AM","Sofa")}{pageU("#5b7f9a","glasses","Today 5:52 PM")}</div></div>{dotsW(3,1)}{tlU(True,True,True,2)}</div>'))
+
+# ================= r8 T — aligned pins, fixed-size trash, timestamp bottom-left, place only =================
+XT = XU + '''<style>
+.hdr4 .row2 { margin-left:0; padding-left:0.875rem; }   /* the card's inner padding: the title pin and the photo/prior-place line share one left edge */
+.hdr4 .row2 svg { margin-left:0; }
+.ts { left:0.5rem; right:auto; bottom:0.5rem; max-width:calc(100% - 1rem); }
+.ts.short { }
+.photo-trash { left:auto; right:0.5rem; top:0.5rem; bottom:auto; width:36px; height:36px; }   /* fixed px: overlays never scale with the text setting */
+.photo-trash svg { width:18px; height:18px; }
+.was { margin-top:0.375rem; }
+.was svg { width:1.1rem; height:1.1rem; }
+</style>'''
+def pageT(color, label, when=None, prev=None):
+    t = f'<span class="ts">{when}</span>' if when else ''
+    w = f'<div class="was">{I["pinback"]} {prev}</div>' if prev else ''
+    return f'<div class="strip-page" style="flex:0 0 86%"><div style="position:relative"><div class="ph" style="background:{color};position:relative">{label}{t}</div><button class="photo-trash">{I["trash"]}</button></div>{w}</div>'
+def screenT(label, hdr, body, scale=None):
+    h = HEAD + XT + X
+    if scale: h = h.replace('<html>', f'<html style="--scale:{scale}">')
+    return h + f'<div class="label">{label}</div><div class="screen with-footer">{hdr}{body}</div>{bar3()}' + TAIL
+write('r8_T1.html', screenT('T1 · Trash top-right, 36 px fixed. Time bottom-LEFT, 13 px fixed. Prior place under it, place name only, dashed amber pin on the SAME left edge as the title pin.',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table', tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageT("#6b8f6b","on the sofa","Sat 3:10 PM","Sofa")}{pageT("#5b7f9a","glasses","Today 5:52 PM")}</div></div>{dotsW(5,2)}{tlU(True,True,True,2)}</div>'))
+write('r8_T2.html', screenT('T2 · LARGEST — trash and time stay the same size as at Normal; a long place name truncates on its line.',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table', tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageT("#7a8ea0","old photo","Sep 5, 2024, 9:41 AM","Living room sofa, left cushion")}{pageT("#5b7f9a","glasses","Today 5:52 PM")}</div></div>{dotsW(5,2)}{tlU(True,True,True,2)}</div>', scale='1.38'))
+write('r8_T3.html', screenT('T3 · Time formats, longest to shortest, all one line at 13 px: same year → "Sep 5, 9:41 AM"; older → "Sep 5, 2024"; today → "Today 5:52 PM"; this week → "Sat 3:10 PM".',
+  hdrV('Reading glasses', 'Kitchen counter', 'on a wooden table', priv=False, tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageT("#7a8ea0","2024","Sep 5, 2024","Bedside table")}{pageT("#8a7a9a","this year","Sep 5, 9:41 AM","Sofa")}</div></div>{dotsW(4,0)}{tlU(False,True,True,2)}</div>'))
+write('r8_T4.html', screenT('T4 · Margaret\'s default — current stay only, times on: nothing under the photo.',
+  hdrV('Keys', 'Hall table', 'by the door', priv=False, tight=True),
+  f'<div class="card thing"><div class="photo-wrap"><div class="strip">{pageT("#8a6d4a","keys","Today 1:21 PM")}</div></div>{tlU(False,True,False,0)}</div>'))
