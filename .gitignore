@@ -16,3 +16,7 @@ secrets.json
 # Word/Office lock files
 ~$*
 .preview/
+
+# scratch from Cowork sessions
+_to_delete/
+Claude outputs/

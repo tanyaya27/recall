@@ -7,6 +7,8 @@ import EditableText from './EditableText.jsx';
 import { own } from './PhotoCard.jsx';
 import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
+import PlacePicker from './PlacePicker.jsx';
+import TidySheet from './TidySheet.jsx';
 import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon } from './Icons.jsx';
 
 // The thing card — the answer. Redesigned 2026-09-16 with Ravi over seven rendered passes
@@ -25,7 +27,9 @@ import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWas
 //   Bar     — the three operations: Add photo · Edit · Remove.
 //
 // "Earlier photos" as a mode is gone; a stay is derived from the sightings, never stored.
-export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, onToast, openFix = false }) {
+export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, openFix = false }) {
+  const [picking, setPicking] = useState(false);   // Edit → Where it is → the place list
+  const [tidying, setTidying] = useState(false);
   const [sheet, setSheet] = useState(false);       // press-and-hold on the photo
   const [snaps, setSnaps] = useState(null);      // every live snap, newest first; null = not loaded
   const [index, setIndex] = useState(0);         // centred page in the strip
@@ -88,10 +92,13 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
   let stayLen = 0; while (stayLen < sightings.length && here(sightings[stayLen].location)) stayLen += 1;
   if (stayLen === 0) stayLen = 1; // a thing whose newest photo predates a place change: show at least the newest
   const stay = sightings.slice(0, stayLen);
-  const earlierCount = sightings.length - stayLen;
+  const earlierPhotos = sightings.length - stayLen;
+  // The count on the switch is the number of earlier PLACES, not photos (Ravi 09-16).
+  const earlierCount = new Set(sightings.slice(stayLen).map((s) => (s.location || '').toLowerCase())).size;
   const pages = showEarlier ? sightings : stay;
   const page = pages[Math.min(index, pages.length - 1)] || cover;
   const stayFull = stay.length >= LOG_MAX;
+  const dupCount = (() => { const seen = new Set(); let n = 0; sightings.forEach((s) => { const k = (s.location || '').toLowerCase(); if (seen.has(k)) n += 1; else seen.add(k); }); return n; })();
 
   // A page is 86% of the strip plus the gap — measure it from the first two pages rather than
   // assuming the strip's width (the dots pointed at the wrong page before 09-16).
@@ -125,6 +132,25 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
     setIndex(0);
     logEvent('photo_removed', { itemId: item.id, snapId: target.id, wasCover: !!snap.cover });
     onToast && onToast('Photo removed', async () => { await undo(); setSnaps(null); logEvent('photo_restored', { itemId: item.id, snapId: target.id }); });
+  }
+
+  // Tidy up: soft-delete a set of sightings with one Undo. 'newest' keeps the newest photo at
+  // each place; 'earlier' removes every sighting outside the current stay.
+  async function tidy(kind) {
+    setTidying(false);
+    let all = snaps; if (all === null) { all = await loadSnaps(item.id); setSnaps(all); }
+    const bySnap = (s) => all.find((x) => x.photo === s.photo) || null;
+    let victims;
+    if (kind === 'newest') { const seen = new Set(); victims = sightings.filter((s) => { const k = (s.location || '').toLowerCase(); if (seen.has(k)) return true; seen.add(k); return false; }); }
+    else victims = sightings.slice(stayLen);
+    const targets = victims.map(bySnap).filter(Boolean);
+    if (!targets.length) return;
+    const undos = [];
+    let remaining = all;
+    for (const t of targets) { const { undo } = await removeSnap(item, t, remaining); undos.push(undo); remaining = remaining.filter((s) => s.id !== t.id); }
+    setSnaps(remaining); setIndex(0);
+    logEvent('tidy', { itemId: item.id, kind, removed: targets.length });
+    onToast && onToast(`Deleted · ${targets.length} old photo${targets.length === 1 ? '' : 's'}`, async () => { for (const u of undos.reverse()) await u(); setSnaps(null); logEvent('tidy_undone', { itemId: item.id, kind }); });
   }
 
   const label = item.name ? `your ${own(item.name)}` : 'this';
@@ -186,7 +212,7 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
             <div className="sw-row">
               <span className="lab amber"><PinWasIcon /> Show earlier places <small>{earlierCount}</small></span>
               <button type="button" role="switch" aria-checked={showEarlier} className={'sw' + (showEarlier ? ' on' : '')} aria-label="Show earlier places"
-                onClick={() => { const v = !showEarlier; setShowEarlier(v); setIndex(0); const el = stripRef.current; if (el) el.scrollTo({ left: 0 }); logEvent('show_earlier', { itemId: item.id, on: v, earlier: earlierCount }); }} />
+                onClick={() => { const v = !showEarlier; setShowEarlier(v); setIndex(0); const el = stripRef.current; if (el) el.scrollTo({ left: 0 }); logEvent('show_earlier', { itemId: item.id, on: v, places: earlierCount, photos: earlierPhotos }); }} />
             </div>
           )}
         </div>
@@ -210,8 +236,13 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
           <div className="fix">
             <EditableText label="What it is" value={item.name} emptyLabel="Name it"
               onSave={(v) => { renameItem(item, v); logEvent('correction', { itemId: item.id, field: 'name' }); }} />
-            <EditableText label="Where it is" value={item.location} emptyLabel="Add the place"
-              onSave={(v) => { changeLocation(item, v.charAt(0).toUpperCase() + v.slice(1)); logEvent('correction', { itemId: item.id, field: 'location' }); }} />
+            <div className="field-label">Where it is</div>
+            <button type="button" className={'field-value' + (item.location ? '' : ' empty')} aria-label={`Where it is: ${item.location || 'Add the place'}. Change`} onClick={() => setPicking(true)}>
+              <span className="field-text">{item.location || 'Add the place'}</span><PencilIcon />
+            </button>
+            {(earlierPhotos > 0 || sightings.length > stay.length || dupCount > 0) && (
+              <button type="button" className="btn-secondary amber tidy-btn" onClick={() => setTidying(true)}><TrashIcon /> Remove old photos…</button>
+            )}
             <div className="fix-row">
               <button className="btn-quiet" onClick={async () => { await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id }); setFixing(false); }}>Move to the top</button>
               <button className="btn-quiet" onClick={() => setFixing(false)}>Done</button>
@@ -220,6 +251,15 @@ export default function ThingCard({ item, items = [], onBack, onAdd, onRemoved, 
         )}
       </div>
 
+      {picking && (
+        <PlacePicker current={item.location} items={items} places={places} onCancel={() => setPicking(false)}
+          onPick={async (v) => { setPicking(false); const name = v.charAt(0).toUpperCase() + v.slice(1); await changeLocation(item, name); logEvent('correction', { itemId: item.id, field: 'location', via: 'picker' }); onToast && onToast(`Now at ${name}`); }} />
+      )}
+      {tidying && (
+        <TidySheet name={item.name ? own(item.name) : 'this thing'} dupCount={dupCount} earlierPlaces={earlierCount} earlierPhotos={earlierPhotos}
+          onCancel={() => setTidying(false)}
+          onKeepNewest={() => tidy('newest')} onForgetEarlier={() => tidy('earlier')} />
+      )}
       {sheet && (
         <ItemSheet item={item}
           onAdd={() => { setSheet(false); setSnaps(null); onAdd(); }}

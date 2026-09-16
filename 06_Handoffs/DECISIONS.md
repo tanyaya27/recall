@@ -6,6 +6,30 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-16 (round 8b) — Place picker in Edit; tidy-up; earlier count = places; the "was" pin
+
+- **Edit → Where it is opens the place list** (`PlacePicker.jsx`): the household's places with
+  their pictures, the current one excluded, *Somewhere else* to type — the same list as
+  "Where is it?" after a photo. Typing alone was "very poor and incomplete" (Ravi).
+- **Tidy up** (`TidySheet.jsx`, design §6a): a *Tidy up… · n photos* row in Edit, shown only
+  when there is something to tidy → *Keep only the newest photo at each place (removes n)*
+  and *Forget where it was before (removes n places · m photos)*. Soft-deletes with one
+  Undo. The AI look-alike suggestion is still out (Sam). The thing's name is only in the
+  sheet's title — a long name made the row a sentence.
+- **The number on *Show earlier places* is the number of earlier PLACES**, not photos.
+- The switch's words are amber like the earlier-place line; the "was" glyph is a HISTORY icon
+  (circular arrow with clock hands) — a different shape from the title's pin, not just a
+  colour (Ravi: colour alone won't be enough). The title's pin is a step bigger than the
+  body's. The number after *Show earlier places* is the same size as the words, on their
+  baseline; in the sheet a two-line choice keeps its icon on the first line.
+- **Alignment is asserted**, not eyeballed: the audit measures that icon, text and number
+  share a centre line in the title, the place line and every switch row (`rig/align.js`
+  prints the centres at Normal and Largest).
+- **Title: option C** — line 2 (pin · place · context) in a soft accent band under the name; Ravi: "go with 3 now but know we may pick 4" (D = whole title in a card plus the band).
+- *Forget where it was before* → **Delete its earlier places** ("forget" is the one thing this app is meant to help with — Ravi). The button is *Remove old photos…* (amber, trash) — "tidy up" read as editing the photos, and a bare number read as nothing (Ravi); the sheet is *Remove old photos of <name>* with *deletes n older photos* / *deletes n photos from m earlier places — the thing stays*.
+
+---
+
 ## 2026-09-16 (round 8) — Things, places, sightings: the thing card rebuilt; "earlier photos" retired; *place* everywhere
 
 Design of record: `design/DESIGN_2026-09-16_things-places-sightings.md` (§2 model, §13 the

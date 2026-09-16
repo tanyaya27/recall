@@ -241,7 +241,7 @@ export default function App() {
       break;
     case 'thing':
       screen = (
-        <ThingCard
+        <ThingCard places={places}
           item={live(route.item)} items={items} openFix={!!route.fix}
           onBack={back}
           onAdd={() => setCamera({ for: 'add', itemId: route.item.id, max: Math.min(MAX_SHOTS, LOG_MAX - (live(route.item).photoCount || 1)), title: 'Add photos' })}

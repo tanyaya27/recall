@@ -31,6 +31,15 @@ const server = http.createServer((q, s) => { const f = path.join(root, q.url.spl
   const S = async (n) => { await page.waitForTimeout(250); await page.screenshot({ path: `shots/r7f-${n}.png` }); };
   await S('grid');
   await page.click('.tile >> nth=0'); await page.waitForSelector('.thing'); await S('thing-private');
+  const css = (t) => page.evaluate((t) => { let el = document.getElementById('variant'); if (!el) { el = document.createElement('style'); el.id = 'variant'; document.head.appendChild(el); } el.textContent = t; }, t);
+  await css('.thing-head { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.5rem 0.625rem 0.625rem; margin-bottom: 0.625rem; } .thing-head .row2 { padding-left: 0.25rem; }'); await S('title-B');
+  await css('.thing-head .row2 { background: var(--accent-soft); border-radius: 0.625rem; padding: 0.375rem 0.625rem; margin-top: 0.375rem; }'); await S('title-C');
+  await css('.thing-head { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.5rem 0.625rem 0; margin-bottom: 0.625rem; overflow: hidden; } .thing-head .row2 { background: var(--accent-soft); margin: 0.375rem -0.625rem 0; padding: 0.375rem 0.875rem; }'); await S('title-D');
+  await css('');
+  await page.click('.act:has-text("Edit")'); await page.waitForTimeout(200); await page.evaluate(() => window.scrollTo(0, 400)); await S('edit-tidy-row');
+  await page.click('.fix .field-value >> nth=1'); await page.waitForSelector('.place-sheet'); await S('place-picker'); await page.click('.place-sheet .btn-primary.alt'); await page.waitForTimeout(200);
+  await page.click('.tidy-btn'); await page.waitForSelector('.sheet'); await S('tidy-sheet'); await page.click('.sheet .btn-primary.alt'); await page.waitForTimeout(200);
+  await page.click('.act:has-text("Done")'); await page.evaluate(() => window.scrollTo(0, 0));
   await page.click('.sw-row >> nth=2 >> .sw'); await page.waitForTimeout(300); await page.click('.dot >> nth=2'); await page.waitForTimeout(700); await S('thing-earlier'); await page.click('.dot >> nth=3'); await page.waitForTimeout(700); await S('thing-oldest');
   await page.evaluate(() => { document.documentElement.style.setProperty('--scale', '1.38'); }); await page.waitForTimeout(300); await S('thing-largest');
   await page.evaluate(() => { document.documentElement.style.setProperty('--scale', '1'); });

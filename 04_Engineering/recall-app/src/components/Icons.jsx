@@ -103,7 +103,7 @@ export function PinIcon() {
 export function PinWasIcon() {
   return (
     <svg className="icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z" strokeDasharray="2.5 2" /><circle cx="12" cy="10" r="2.5" />
+      <path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /><path d="M12 8v4l3 2" />
     </svg>
   );
 }
@@ -111,6 +111,14 @@ export function ChevronLeftIcon() {
   return (
     <svg className="icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
       <path d="M15 5l-7 7 7 7" />
+    </svg>
+  );
+}
+
+export function BroomIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 3l-7.5 7.5" /><path d="M11.5 10.5l-2 2" /><path d="M9.5 12.5c-2.5 0-4.5 1.5-5.5 4l6 6c2.5-1 4-3 4-5.5z" /><path d="M6 14.5l3.5 3.5" />
     </svg>
   );
 }

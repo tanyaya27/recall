@@ -87,8 +87,12 @@ async function main() {
   // ---------- D. Thing card: NEW item — strip, earlier, add, remove ----------
   await page.click('.tile >> nth=0'); await page.waitForSelector('.card.thing');
   check('D5 new item: 2 dots (cover + extra)', await count('.dots .dot') === 2);
+  {
+    const mids = await page.evaluate(() => { const mid = (el) => { const r = el.getBoundingClientRect(); return (r.top + r.bottom) / 2; }; const r2 = document.querySelector('.thing-head .row2'); const rows = Array.from(document.querySelectorAll('.sw-row')).map((r) => Math.abs(mid(r.querySelector('svg')) - mid(r.querySelector('.lab'))) + Math.abs(mid(r.querySelector('.sw')) - mid(r.querySelector('.lab')))); return { row2: Math.abs(mid(r2.querySelector('svg')) - mid(r2.querySelector('b'))), rows: Math.max(...rows), title: Math.abs(mid(document.querySelector('.thing-head .chev')) - mid(document.querySelector('.thing-head .name'))) }; });
+    check('D5a icons, text and numbers share a centre line (title, place line, switch rows)', mids.row2 < 1.5 && mids.rows < 1.5 && mids.title < 1.5, JSON.stringify(mids));
+  }
   check('D6 title: name, lock absent, current place on line 2', /Reading glasses/.test(await text('.thing-head .name')) && /Kitchen counter/.test(await text('.thing-head .row2')) && await count('.thing-head .lk') === 0);
-  check('D6a Show earlier places row present with count 1', await count('.sw-row') === 3 && /Show earlier places\s*1/.test(await text('.sw-row >> nth=2')));
+  check('D6a Show earlier places row present, count = 1 earlier place', await count('.sw-row') === 3 && /Show earlier places\s*1/.test(await text('.sw-row >> nth=2')));
   await page.click('.sw-row >> nth=2 >> .sw'); await page.waitForTimeout(400);
   check('D7 earlier on → 3 photos; the Bedside one carries its place under it, title unchanged', await count('.dots .dot') === 3 && (await page.locator('.was:not(.empty)').allInnerTexts()).join('|').includes('Bedside table') && /Kitchen counter/.test(await text('.thing-head .row2')));
   await page.click('.sw-row >> nth=2 >> .sw'); await page.waitForTimeout(300);
@@ -115,10 +119,19 @@ async function main() {
   check('D13 rename keeps old name as alias', i1.name === 'spectacles' && (i1.aliases || []).includes('reading glasses'), JSON.stringify(i1.aliases));
   check('D14 header shows new name', /Spectacles/.test(await text('.thing-head .name')));
   // Edit the place → history grows, seen now
-  await page.click('.fix .field-value >> nth=1'); await page.fill('.fix input.edit-inline', 'sofa'); await page.press('.fix input.edit-inline', 'Enter'); await page.waitForTimeout(400);
+  await page.click('.fix .field-value >> nth=1'); await page.waitForSelector('.place-sheet');
+  check('D15p Where it is → the place list with pictures (household places, current one excluded)', await count('.place-sheet .guess.withpic') >= 2 && !/Kitchen counter/.test(await text('.place-sheet .guesses')));
+  await page.click('.place-sheet .guess.other'); await page.fill('.place-sheet .place-input', 'sofa'); await page.press('.place-sheet .place-input', 'Enter'); await page.waitForTimeout(500);
   const i1b = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D15a edit place → history entry + lastSeenAt now', i1b.location === 'Sofa' && i1b.history.length === 3 && Date.now() - i1b.lastSeenAt < 5000);
-  check('D15b title says Sofa; the move wrote a sighting (1 photo at Sofa); earlier counts 3', /Sofa/.test(await text('.thing-head .row2')) && await count('.strip-page') === 1 && /Show earlier places\s*3/.test(await text('.sw-row >> nth=2')));
+  check('D15b title says Sofa; the move wrote a sighting (1 photo at Sofa); earlier counts 2 PLACES', /Sofa/.test(await text('.thing-head .row2')) && await count('.strip-page') === 1 && /Show earlier places\s*2/.test(await text('.sw-row >> nth=2')));
+  // Tidy up: forget earlier → the 3 older photos go, one Undo brings them back
+  await page.click('.tidy-btn'); await page.waitForSelector('.sheet');
+  check('D15c Tidy sheet: counts are right (2 earlier places · 3 photos)', /deletes 3 photos from 2 earlier places/.test(await text('.sheet')));
+  await page.click('.sheet-row.tidy.amber'); await page.waitForTimeout(600);
+  check('D15d forget earlier → no earlier row, toast with Undo', await count('.sw-row') === 2 && await count('.toast-undo') === 1);
+  await page.click('.toast-undo'); await page.waitForTimeout(800);
+  check('D15e Undo → earlier places back (2)', /Show earlier places\s*2/.test(await text('.sw-row >> nth=2')));
   await page.click('.fix-row button:has-text("Done")'); await page.waitForTimeout(200);
   check('D15 Edit panel closes; actbar reads Edit again', await page.locator('.fix').count() === 0 && /Edit/.test(await text('.actbar')));
   // Press-and-hold on the photo → the item sheet with Remove this photo
