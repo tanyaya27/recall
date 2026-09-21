@@ -145,7 +145,7 @@ it is generated from `04_Engineering/recall-app/src/`.
 
 - **React 18**, JSX, modular components, bundled by **esbuild**. React, ReactDOM and
   Firebase load from a CDN import map in `docs/index.html`, so `node_modules` is ~10MB.
-- **Firebase** project `recall-d9886`, owned by Tanya's own Google account (NOT the shared
+- **Firebase** project `recall-d9886`, owned by Tanya's Google account **tangadi.biz@gmail.com** (found 2026-09-21 after a hunt — NOT tanya.angadi@gmail.com, and NOT the shared
   `tanya-command-center` project — ReCall was deliberately separated, see DECISIONS.md):
   anonymous auth + Firestore. Photos are compressed JPEGs stored inline in Firestore docs.
   Collections: `recall_items` (docs carry `kind`: item | snap | routine | check | place), `recall_events`.

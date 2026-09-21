@@ -1,5 +1,7 @@
 # Firebase — multi-user Phase 1 (2026-09-19)
 
+**Console account: tangadi.biz@gmail.com** (project `recall-d9886`). `firebase login` must use this account.
+
 What is here: `firestore.rules` (the roles model; mirrors `recall-app/rig/stubs/firestore.js`),
 `firestore.indexes.json` (four composites), `functions/` (createInvite · acceptInvite ·
 transfer · ai · setAiKey). Nothing is deployed until the steps below.
