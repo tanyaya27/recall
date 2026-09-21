@@ -101,7 +101,7 @@ export default function PeopleScreen({ people = [], invites = [], grants = [], w
       )}
 
       {inviting && <InviteSheet onSend={send} onCancel={() => setInviting(false)} />}
-      {signing && <SignInSheet onCancel={() => setSigning(false)} onPick={(kind) => { try { sessionStorage.setItem('recall-return-to', 'people'); } catch { /* */ } signIn(kind); }} />}
+      {signing && <SignInSheet onCancel={() => setSigning(false)} onPick={async (kind) => { try { sessionStorage.setItem('recall-return-to', 'people'); } catch { /* */ } try { await signIn(kind); } catch (e) { setSigning(false); onToast && onToast(`Sign-in did not start: ${e && (e.code || e.message) || e}`); } }} />}
 
       {person && (
         <div className="sheet-back" onClick={() => setPerson(null)} role="presentation">

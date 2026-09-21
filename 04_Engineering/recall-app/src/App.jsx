@@ -155,7 +155,7 @@ export default function App() {
       .then(async (user) => {
         // Multi-user Phase 1: the redirect back from Apple/Google lands here; then the person's
         // row; then adopt any pre-09-19 docs so the owner-scoped listeners see them.
-        try { const r = await finishSignIn(); if (r && r.orphaned) console.warn('signed in as an existing account; anonymous data left behind (claimAnonymous, Phase 3)'); } catch (e) { console.error('finishSignIn', e); }
+        try { const r = await finishSignIn(); if (r && r.orphaned) console.warn('signed in as an existing account; anonymous data left behind (claimAnonymous, Phase 3)'); if (r && r.user) setTimeout(() => say(`Signed in as ${r.user.displayName || 'you'}`), 400); } catch (e) { console.error('finishSignIn', e); setTimeout(() => say(`Sign-in failed: ${e && (e.code || e.message) || e}`), 400); }
         upsertUser(user).catch(() => {});
         try { let n; do { n = await adoptLegacy(); } while (n > 0); } catch (e) { console.error('adoptLegacy', e); }
         unsub = watchAll(setData);

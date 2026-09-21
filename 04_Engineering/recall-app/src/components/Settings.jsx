@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.js';
 import Header from './Header.jsx';
-import { currentUser, isAnonymous, signIn } from '../lib/auth.js';
+import { currentUser, isAnonymous, signIn, lastSignIn } from '../lib/auth.js';
 import { legacyCount } from '../lib/db.js';
 import { APPLE_SIGNIN } from './People.jsx';
 
@@ -54,6 +54,10 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
   const [legacy, setLegacy] = useState(null);
   useEffect(() => { let on = true; legacyCount().then((n) => { if (on) setLegacy(n); }).catch(() => { if (on) setLegacy('?'); }); return () => { on = false; }; }, []);
   const user = currentUser();
+  // 2026-09-21: the button on Dad's phone did nothing. Now a failure to START says so here.
+  const [signErr, setSignErr] = useState('');
+  const trySignIn = async (kind) => { setSignErr(''); try { await signIn(kind); } catch (e) { setSignErr(String(e && (e.code || e.message) || e)); } };
+  const last = lastSignIn();
   const [cfg, setCfg] = useState(getAIConfig());
   const [stored, setStored] = useState(getAIConfig());
   const [saved, setSaved] = useState(false);
@@ -175,9 +179,10 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
           <>
             <p className="sub">You’re using ReCall without an account. Your things are saved and will be here when you come back.<br />Sign in to share with someone or to use ReCall on a second phone.</p>
             <div className="seg">
-              {APPLE_SIGNIN && <button onClick={() => signIn('apple')}>Sign in with Apple</button>}
-              <button onClick={() => signIn('google')}>Sign in with Google</button>
+              {APPLE_SIGNIN && <button onClick={() => trySignIn('apple')}>Sign in with Apple</button>}
+              <button onClick={() => trySignIn('google')}>Sign in with Google</button>
             </div>
+            {signErr && <div className="banner amber">Sign-in did not start: {signErr}</div>}
           </>
         ) : (
           <p className="sub" style={{ margin: 0 }}>Signed in as <b>{(user && user.displayName) || 'you'}</b>{user && user.email ? <> · {user.email}</> : null}.</p>
@@ -225,7 +230,7 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
         </div>
       </div>
 
-      <p className="note-quiet left support">For support · ID <code className="uid">{user ? user.uid : '…'}</code>{legacy !== null && legacy !== 0 ? <> · legacy docs left {legacy}</> : null}</p>
+      <p className="note-quiet left support">For support · ID <code className="uid">{user ? user.uid : '…'}</code>{legacy !== null && legacy !== 0 ? <> · legacy docs left {legacy}</> : null}{last ? <> · sign-in {last.stage}{last.error ? ` (${last.error})` : ''} {new Date(last.at).toLocaleTimeString()}</> : null}</p>
     </div>
   );
 }

@@ -10,12 +10,14 @@ export const signInAnonymously = async () => ({ user: user() });
 export const onAuthStateChanged = (auth, cb) => { subs.add(cb); setTimeout(() => cb(user()), 0); return () => subs.delete(cb); };
 export const setPersistence = async () => {};
 export const inMemoryPersistence = {};
-export class GoogleAuthProvider { static credentialFromError() { return null; } }
+export class GoogleAuthProvider { static credentialFromError() { return null; } static credential(idToken) { return { idToken }; } }
 export class OAuthProvider { constructor() {} addScope() {} static credentialFromError() { return null; } }
 export const linkWithRedirect = async () => { anonymous = false; subs.forEach((cb) => cb(user())); };
 export const signInWithRedirect = linkWithRedirect;
 export const getRedirectResult = async () => null;
-export const signInWithCredential = async () => ({ user: user() });
+export const signInWithCredential = async () => { anonymous = false; subs.forEach((cb) => cb(user())); return { user: user() }; };
+export const linkWithCredential = signInWithCredential;
+export const updateProfile = async () => {};
 if (typeof window !== 'undefined') {
   window.__rig = window.__rig || {};
   window.__rig.auth = { as(id, anon = false) { uid = id; anonymous = anon; try { localStorage.setItem('rig-uid', id); localStorage.setItem('rig-anon', anon ? '1' : '0'); } catch { /* */ } subs.forEach((cb) => cb(user())); }, me: () => uid };

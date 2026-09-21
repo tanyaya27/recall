@@ -6,6 +6,25 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-21 — Google sign-in is our own same-origin OpenID redirect, not Firebase's
+
+Dad's phone: *Sign in with Google* did nothing. Firebase's `signInWithRedirect`/`linkWithRedirect`
+bounce through `recall-d9886.firebaseapp.com`, which needs cross-site storage; Safari 16.1+
+(and Chrome 115+) block it unless the app is served from that auth domain — Firebase Hosting,
+not GitHub Pages (firebase.google.com/docs/auth/web/redirect-best-practices). Options were:
+move hosting to Firebase (new origin → new anonymous uid on Dad's phone → his things orphaned
+until `claimAnonymous`), a reverse proxy (no server), self-hosting the helper files at the
+domain root (a second repo; not Apple), popups (unreliable in a home-screen app), or Google
+directly. Chosen: the plain OpenID redirect to accounts.google.com with `response_type=id_token`
+and `redirect_uri` = our own page; the ID token comes back in the fragment (same origin, nothing
+cross-site) and goes to `linkWithCredential` (anonymous → keeps the uid) or
+`signInWithCredential`; `auth/credential-already-in-use` → sign in as that uid and mark the
+anonymous one orphaned (Phase 3 claims it). State/nonce in localStorage (sessionStorage does
+not survive a home-screen app's round trip). Apple later, the same shape. Every failure is now
+shown on the button and kept in localStorage for Settings' *For support* line — a sign-in
+button must never do nothing again. Would change our mind: moving to Firebase Hosting for
+another reason.
+
 ## 2026-09-21 — Multi-user Phase 2 built: People, the invite link, the join page, a helper's view; the accidental first family
 
 Ravi: "move to the next phase and have this fixed via the app". Context: the Firebase

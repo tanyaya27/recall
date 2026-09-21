@@ -60,7 +60,7 @@ export default function JoinScreen({ code, onJoined, onDismiss }) {
         <p>{who || 'Someone'} has shared the photos of where {who ? 'their' : 'the'} things are, so you can {verb} them.<br />{named ? 'Joining…' : `Sign in so ${who || 'they'} know${who ? 's' : ''} it’s you.`}</p>
         {error && <div className="banner amber">{error}</div>}
         {!named && APPLE_SIGNIN && <button className="btn-primary" disabled={busy} onClick={() => { parkJoin(code); signIn('apple'); }}><AppleIcon /> Continue with Apple</button>}
-        {!named && <button className={'btn-primary' + (APPLE_SIGNIN ? ' alt' : '')} disabled={busy} onClick={() => { parkJoin(code); signIn('google'); }}><GoogleIcon /> Continue with Google</button>}
+        {!named && <button className={'btn-primary' + (APPLE_SIGNIN ? ' alt' : '')} disabled={busy} onClick={async () => { parkJoin(code); try { await signIn('google'); } catch (e) { setError(`Sign-in did not start: ${e && (e.code || e.message) || e}`); } }}><GoogleIcon /> Continue with Google</button>}
         {named && error && <button className="btn-primary" disabled={busy} onClick={accept}>Try again</button>}
         <button className="btn-quiet" style={{ width: '100%', marginTop: '0.5rem' }} disabled={busy} onClick={() => { clearJoin(); onDismiss(); }}>Not now</button>
       </div>

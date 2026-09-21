@@ -15,6 +15,13 @@ const firebaseConfig = {
   appId: '1:595363085339:web:e06619ef8f93de84fdccbe',
 };
 
+// The Google OAuth web client of this project (Firebase console → Authentication → Google →
+// Web SDK configuration). Public by design. Used by lib/auth.js for the same-origin sign-in
+// (2026-09-21); empty = fall back to Firebase's own redirect (works on Firebase Hosting, not on
+// GitHub Pages under Safari 16.1+). The Google Cloud console must list this page's URL as an
+// authorised redirect URI on that client.
+export const GOOGLE_CLIENT_ID = '595363085339-5m4rh7mg3lvf5dv7lp9n1f098oe1otlt.apps.googleusercontent.com';
+
 export const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
