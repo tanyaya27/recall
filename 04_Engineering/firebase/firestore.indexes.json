@@ -1,0 +1,9 @@
+{
+  "indexes": [
+    { "collectionGroup": "recall_items", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "owner", "order": "ASCENDING" }, { "fieldPath": "kind", "order": "ASCENDING" } ] },
+    { "collectionGroup": "recall_items", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "owner", "order": "ASCENDING" }, { "fieldPath": "private", "order": "ASCENDING" }, { "fieldPath": "kind", "order": "ASCENDING" } ] },
+    { "collectionGroup": "recall_items", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "household", "order": "ASCENDING" }, { "fieldPath": "kind", "order": "ASCENDING" } ] },
+    { "collectionGroup": "recall_items", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "kind", "order": "ASCENDING" }, { "fieldPath": "itemId", "order": "ASCENDING" } ] }
+  ],
+  "fieldOverrides": []
+}

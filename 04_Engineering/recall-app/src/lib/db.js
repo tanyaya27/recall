@@ -12,18 +12,32 @@
 //
 // Shared household vault: any anonymous user of this Firebase project can read/write.
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, where,
+  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, where, getDoc, setDoc,
 } from 'firebase/firestore';
 import { db } from './firebase.js';
+import { me } from './auth.js';
 import { dayKey, timeOfDay } from './format.js';
 import { THUMB_V } from './img.js';
 
 const col = collection(db, 'recall_items');
 const eventsCol = collection(db, 'recall_events');
 
-// Board decision 2026-09-05 (D7): every new document carries a household so the rules can
-// be scoped later without migrating. One household until join codes exist.
-export const HOUSEHOLD = 'default';
+// Multi-user Phase 1 (2026-09-19, PLAN_2026-09-19_multi-user.md): every doc carries
+//   owner      — the uid whose ReCall it is in ("a ReCall is every doc whose owner is me")
+//   by         — the uid that wrote it
+// and every THING also carries
+//   private    — boolean, always present; true = shared with no one (rules refuse roles on it)
+//   roles      — { uid: 'viewer' | 'editor' } per-thing shares (Can see / Can help)
+//   sharedWith — keys of roles, for the array-contains query
+// A whole-ReCall share is one doc in `recall_grants/{grantor}_{grantee}`; the rules resolve it
+// with exists(), nothing is copied. `household` is legacy (pre-09-19) and no longer written.
+export const HOUSEHOLD = 'default'; // read-only legacy marker; see adoptLegacy()
+const grantsCol = collection(db, 'recall_grants');
+const usersCol = collection(db, 'recall_users');
+export const ROLE_WORDS = { viewer: 'Can see', editor: 'Can help' };
+// The fields every new thing gets (Phase 1). `owner` defaults to me; a helper logging into
+// Margaret's ReCall passes her uid.
+export function ownership(owner = me()) { return { owner, by: me(), private: false, roles: {}, sharedWith: [] }; }
 
 export const MAX_PINNED = 8;
 
@@ -102,14 +116,25 @@ export function findMatch(items, tag) {
 // One listener; caller gets everything split by kind. Snap photos are heavy, so
 // snaps are NOT included here — fetch them per item with loadSnaps().
 export function watchAll(cb) {
-  const q = query(col, where('kind', 'in', ['item', 'routine', 'check', 'place']));
-  return onSnapshot(q, (snap) => {
-    const out = { items: [], routines: [], checks: [], removed: [], places: [] };
-    snap.docs.forEach((d) => {
-      const data = { id: d.id, ...d.data() };
+  // Four listener shapes, merged by id (tech board 2026-09-19 §5):
+  //   L1  owner == me                       — my ReCall, including private things
+  //   L2  sharedWith array-contains me      — things shared with me one by one
+  //   L0  grants where grantee == me        — whose ReCalls I am in, at what role
+  //   L3ₙ owner == grantor && private==false — one per grant
+  //   Lx  legacy docs with no owner (household == 'default') — until adoptLegacy() runs
+  const uid = me();
+  const parts = new Map(); // key -> docs[]
+  const unsubs = new Map();
+  let grants = [];
+  const emit = () => {
+    const seen = new Map();
+    parts.forEach((docs, key) => docs.forEach((d) => { if (!seen.has(d.id)) seen.set(d.id, d); if (key.startsWith('g:')) seen.get(d.id).grantRole = grants.find((g) => g.grantor === d.owner)?.role || null; }));
+    const out = { items: [], routines: [], checks: [], removed: [], places: [], grants };
+    seen.forEach((data) => {
       if (data.kind === 'place') out.places.push(data);
       else if (data.kind === 'routine') out.routines.push(data);
       else if (data.kind === 'check') out.checks.push(data);
+      else if (data.kind !== 'item') return;
       else if (data.deleted) out.removed.push(data);
       else out.items.push(data);
     });
@@ -119,9 +144,53 @@ export function watchAll(cb) {
     out.checks.sort((a, b) => (b.at || 0) - (a.at || 0));
     out.places.sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
     cb(out);
-  }, (err) => console.error('watchAll', err));
+  };
+  const listen = (key, q) => {
+    if (unsubs.has(key)) return;
+    unsubs.set(key, onSnapshot(q, (snap) => { parts.set(key, snap.docs.map((d) => ({ id: d.id, ...d.data() }))); emit(); }, (err) => console.error('watchAll', key, err)));
+  };
+  const KINDS = ['item', 'routine', 'check', 'place'];
+  listen('mine', query(col, where('owner', '==', uid), where('kind', 'in', KINDS)));
+  listen('shared', query(col, where('sharedWith', 'array-contains', uid)));
+  listen('legacy', query(col, where('household', '==', HOUSEHOLD), where('kind', 'in', KINDS)));
+  unsubs.set('grants', onSnapshot(query(grantsCol, where('grantee', '==', uid)), (snap) => {
+    grants = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const want = new Set(grants.map((g) => 'g:' + g.grantor));
+    [...unsubs.keys()].filter((k) => k.startsWith('g:') && !want.has(k)).forEach((k) => { unsubs.get(k)(); unsubs.delete(k); parts.delete(k); });
+    grants.forEach((g) => listen('g:' + g.grantor, query(col, where('owner', '==', g.grantor), where('private', '==', false), where('kind', 'in', KINDS))));
+    emit();
+  }, (err) => console.error('watchAll grants', err)));
+  return () => unsubs.forEach((u) => u());
 }
 
+// Legacy docs (before 2026-09-19) have `household: 'default'` and no `owner`. The only person
+// who can see them is the one anonymous user of this project — Ravi — so the client adopts
+// them on first load: owner = me, private from the old `visibility`. Bounded per call; runs
+// until nothing is left. (Tech split 5 chose an admin script; with one user, lazy adoption
+// is the same cut with no console step. The rules flip only after `legacyCount()` is 0.)
+export async function adoptLegacy(limitN = 40) {
+  const uid = me(); if (!uid) return 0;
+  const snap = await getDocs(query(col, where('household', '==', HOUSEHOLD)));
+  const todo = snap.docs.filter((d) => !d.data().owner).slice(0, limitN);
+  for (const d of todo) {
+    const data = d.data();
+    const patch = { owner: uid, by: data.by && data.by !== 'self' ? data.by : uid };
+    if (data.kind === 'item') Object.assign(patch, { private: data.visibility === 'private', roles: {}, sharedWith: [] });
+    await updateDoc(doc(col, d.id), patch);
+  }
+  return todo.length;
+}
+export async function legacyCount() {
+  const snap = await getDocs(query(col, where('household', '==', HOUSEHOLD)));
+  return snap.docs.filter((d) => !d.data().owner).length;
+}
+
+// The People list reads names here; each person writes their own row on sign-in.
+export async function upsertUser(user) {
+  if (!user) return;
+  await setDoc(doc(usersCol, user.uid), { name: user.displayName || null, photo: user.photoURL || null, anonymous: !!user.isAnonymous, lastOpenedAt: Date.now() }, { merge: true });
+}
+export async function readUser(uid) { const d = await getDoc(doc(usersCol, uid)); return d.exists() ? { id: uid, ...d.data() } : null; }
 // The board only shows items whose `kind` is item and that are not removed. Routines
 // and checks are still read (they exist in test data) but the 09-05 board does not
 // render them; they return with the helper's device.
@@ -138,13 +207,12 @@ export async function addItem({ name = '', location = '', description = '', phot
   const now = Date.now();
   const logId = `log_${now}`;
   const ref = await addDoc(col, {
-    kind: 'item', household: HOUSEHOLD, name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
-    owner: deviceId(), visibility: 'household', // Ravi, 2026-09-14 (stage 1 must-have): private = only the phone that logged it
+    kind: 'item', ...ownership(), name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
     needsPlace: !location, naming,
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }], logId, photoCount: 1 + extras.length,
   });
-  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: ref.id, logId, photo, thumb, location, at: now, by });
+  await addDoc(col, { kind: 'snap', owner: me(), by: me(), itemId: ref.id, logId, photo, thumb, location, at: now });
   await writeExtras(ref.id, logId, extras, location, now, by);
   return ref.id;
 }
@@ -152,7 +220,7 @@ export async function addItem({ name = '', location = '', description = '', phot
 // The other photos of one log (a wide shot after the close-up), in the order taken.
 async function writeExtras(itemId, logId, extras, location, at, by) {
   for (let i = 0; i < extras.length; i++) {
-    await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId, logId, photo: extras[i].photo, thumb: extras[i].thumb, location, at: at + i + 1, by, extra: true });
+    await addDoc(col, { kind: 'snap', owner: me(), by: me(), itemId, logId, photo: extras[i].photo, thumb: extras[i].thumb, location, at: at + i + 1, extra: true });
   }
 }
 
@@ -195,25 +263,31 @@ export async function changeLocation(item, location) {
   const patch = { location, needsPlace: !location, history, lastSeenAt: now, updatedAt: now };
   if (moved && item.photo) {
     const logId = `log_${now}`;
-    await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId, photo: item.photo, thumb: item.thumb || null, location, at: now, moved: true });
+    await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo: item.photo, thumb: item.thumb || null, location, at: now, moved: true });
     Object.assign(patch, { logId, photoCount: 1 });
   }
   await updateDoc(doc(col, item.id), patch);
 }
 
-// Private: only this phone shows it; the household's other phones never receive it (the
-// Firestore rules enforce that from multi-user stage 1; until then it is a field).
-// Exclusion model: everything is shared unless she says otherwise (board, 2026-09-14).
+// Private = shared with no one (Only me), on every device of the owner. Making a thing private
+// clears its per-thing roles; the rules refuse a private thing that still has roles. The
+// owner's whole-ReCall grants skip private things by query. Only the owner may call this.
 export async function setVisibility(item, visibility) {
-  await updateDoc(doc(col, item.id), { visibility, owner: item.owner || deviceId(), updatedAt: Date.now() });
+  const priv = visibility === 'private';
+  const patch = { private: priv, updatedAt: Date.now() };
+  if (priv) Object.assign(patch, { roles: {}, sharedWith: [] });
+  if (!item.owner) Object.assign(patch, { owner: me(), by: item.by || me(), roles: {}, sharedWith: [] }); // legacy doc adopted on the way
+  await updateDoc(doc(col, item.id), patch);
 }
-export function isPrivate(it) { return it.visibility === 'private'; }
+export function isPrivate(it) { return it.private === true || it.visibility === 'private'; }
+export function isMine(it) { return it.owner === me(); }
+export function roleOn(it) { if (!it) return null; if (isMine(it)) return 'owner'; return (it.roles || {})[me()] || it.grantRole || null; }
+export function canEditThing(it) { const r = roleOn(it); return r === 'owner' || r === 'editor'; }
 // What THIS phone may show: everything shared, plus what it logged itself.
 export function visibleHere(items) {
-  const me = deviceId();
-  return items.filter((it) => !isPrivate(it) || it.owner === me || !it.owner);
+  // Private things arrive only through the owner's own listener; this is belt and braces.
+  return items.filter((it) => !isPrivate(it) || isMine(it) || !it.owner);
 }
-
 export async function updateItem(id, patch) {
   await updateDoc(doc(col, id), { ...patch, updatedAt: Date.now() });
 }
@@ -227,7 +301,7 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
     photo, thumb, thumbV: THUMB_V, location, restingOn, needsPlace: !location,
     lastSeenAt: now, updatedAt: now, history, capturedBy: by, logId, photoCount: 1 + extras.length,
   });
-  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId, photo, thumb, location, at: now, by });
+  await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location, at: now });
   await writeExtras(item.id, logId, extras, location, now, by);
 }
 
@@ -244,7 +318,7 @@ export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
   // photos in one log can be days apart). Before this the time was faked to the log's own,
   // so photos added before 09-16 all show the day they were first logged.
   const at = Date.now();
-  await addDoc(col, { kind: 'snap', household: HOUSEHOLD, itemId: item.id, logId, photo, thumb, location: item.location || '', at, by, extra: true });
+  await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location: item.location || '', at, extra: true });
   await updateDoc(doc(col, item.id), { photoCount: count + 1, logId, updatedAt: Date.now() });
   return true;
 }
@@ -357,7 +431,7 @@ export async function addPlace(name, places = [], photos = []) {
   const dup = places.find((p) => p.name.toLowerCase() === n.toLowerCase());
   if (dup) { if (photos.length) await addPlacePhotos(dup, photos); return dup.id; }
   const now = Date.now();
-  const ref = await addDoc(col, { kind: 'place', household: HOUSEHOLD, name: n, order: now, createdAt: now, parent: null,
+  const ref = await addDoc(col, { kind: 'place', owner: me(), by: me(), name: n, order: now, createdAt: now, parent: null,
     photos: photos.slice(0, PLACE_PHOTOS).map((p) => ({ ...p, at: now })) });
   return ref.id;
 }
@@ -427,10 +501,10 @@ export const DEFAULT_ROUTINES = [
 // Not called since 2026-09-05: routines are set by a helper, never seeded. Kept for that build.
 export async function seedRoutinesIfEmpty(existing) {
   if (existing.length) return;
-  for (const r of DEFAULT_ROUTINES) await addDoc(col, { kind: 'routine', household: HOUSEHOLD, active: true, ...r, createdAt: Date.now() });
+  for (const r of DEFAULT_ROUTINES) await addDoc(col, { kind: 'routine', owner: me(), by: me(), active: true, ...r, createdAt: Date.now() });
 }
 export async function addRoutine(r) {
-  await addDoc(col, { kind: 'routine', household: HOUSEHOLD, active: true, createdAt: Date.now(), ...r });
+  await addDoc(col, { kind: 'routine', owner: me(), by: me(), active: true, createdAt: Date.now(), ...r });
 }
 export async function updateRoutine(id, patch) { await updateDoc(doc(col, id), patch); }
 export async function deleteRoutine(id) { await deleteDoc(doc(col, id)); }
@@ -439,7 +513,7 @@ export async function deleteRoutine(id) { await deleteDoc(doc(col, id)); }
 export async function addCheck({ routineId, photo, thumb, claim, retakes = 0, by = 'self' }) {
   const now = Date.now();
   const ref = await addDoc(col, {
-    kind: 'check', household: HOUSEHOLD, routineId, photo, thumb, claim, retakes, by, at: now, dayKey: dayKey(new Date(now)),
+    kind: 'check', owner: me(), by: me(), routineId, photo, thumb, claim, retakes, at: now, dayKey: dayKey(new Date(now)),
   });
   return ref.id;
 }
@@ -471,7 +545,7 @@ const ROLE = (() => { try { return localStorage.getItem('recall-role') || 'patie
 export function logEvent(type, meta = {}) {
   const now = new Date();
   addDoc(eventsCol, {
-    type, ...meta, household: HOUSEHOLD,
+    type, ...meta, owner: me(),
     at: now.getTime(), dayKey: dayKey(now), hour: now.getHours(), timeOfDay: timeOfDay(now),
     deviceId: deviceId(), sessionId: SESSION_ID, role: ROLE, schema: EVENT_SCHEMA,
   }).catch(() => {});

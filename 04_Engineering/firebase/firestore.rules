@@ -1,0 +1,64 @@
+rules_version = '2';
+// ReCall — multi-user Phase 1 (2026-09-19). Mirrors rig/stubs/firestore.js's permission table;
+// change both or neither. Design: 06_Handoffs/design/TECH_BOARD_2026-09-19.md §2.
+//
+// A ReCall is every doc whose `owner` is one uid. A person holds `viewer`/`editor` on a thing
+// directly (item.roles) or on all of an owner's non-private things through one grant doc
+// `recall_grants/{owner}_{me}`. Private = private:true AND roles == {} (consistent()).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function me() { return request.auth != null ? request.auth.uid : null; }
+    function signedIn() { return request.auth != null; }
+    function grantPath(o) { return /databases/$(database)/documents/recall_grants/$(o + '_' + me()); }
+    function grantRole(o) { return exists(grantPath(o)) ? get(grantPath(o)).data.role : null; }
+    function roleOf(d) { return ('roles' in d && me() in d.roles) ? d.roles[me()] : null; }
+    function canRead(d) { return d.owner == me() || roleOf(d) in ['viewer', 'editor'] || (d.private == false && grantRole(d.owner) != null); }
+    function canEdit(d) { return d.owner == me() || roleOf(d) == 'editor' || (d.private == false && grantRole(d.owner) == 'editor'); }
+    function consistent(d) {
+      return d.sharedWith.toSet() == d.roles.keys().toSet() && (!d.private || d.roles.size() == 0);
+    }
+    function item(s) { return get(/databases/$(database)/documents/recall_items/$(s.itemId)).data; }
+    function editorKeys() {
+      return ['name', 'aliases', 'location', 'history', 'photo', 'thumb', 'thumbV', 'restingOn', 'description',
+              'needsPlace', 'lastSeenAt', 'updatedAt', 'logId', 'photoCount', 'order', 'pinnedOrder', 'naming'];
+    }
+    // Legacy docs (pre-2026-09-19) have no owner. Until adoptLegacy() has run on Ravi's phone
+    // these are readable/adoptable by any signed-in user of this project (there is one).
+    // REMOVE the two `legacy` clauses once legacyCount() reports 0 — see OPEN_ITEMS.
+    function legacy(d) { return !('owner' in d) && d.household == 'default'; }
+
+    match /recall_items/{id} {
+      allow read: if signedIn() && (
+        legacy(resource.data)
+        || (resource.data.kind == 'snap' ? canRead(item(resource.data)) : canRead(resource.data)));
+      allow create: if signedIn() && request.resource.data.by == me() && (
+        request.resource.data.kind == 'snap'
+          ? canEdit(item(request.resource.data))
+          : request.resource.data.kind == 'place'
+            ? (request.resource.data.owner == me() || grantRole(request.resource.data.owner) == 'editor')
+            : ((request.resource.data.owner == me() || grantRole(request.resource.data.owner) == 'editor') && consistent(request.resource.data)));
+      allow update: if signedIn() && (
+        legacy(resource.data) && request.resource.data.owner == me()                               // adoption
+        || (resource.data.kind == 'snap'
+            ? (item(resource.data).owner == me()
+               || (canEdit(item(resource.data)) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted', 'deletedAt'])))
+            : (resource.data.owner == me() && request.resource.data.owner == me() && consistent(request.resource.data))
+              || (canEdit(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(editorKeys()))));
+      allow delete: if signedIn() && (
+        resource.data.kind == 'snap' ? item(resource.data).owner == me() : resource.data.owner == me());
+    }
+    match /recall_grants/{id} {
+      allow read: if signedIn() && (resource.data.grantor == me() || resource.data.grantee == me());
+      allow update: if signedIn() && resource.data.grantor == me() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
+      allow delete: if signedIn() && resource.data.grantor == me();
+      allow create: if false; // acceptInvite (function) only
+    }
+    match /recall_invites/{code} { allow read, write: if false; } // functions only
+    match /recall_users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && uid == me();
+    }
+    match /recall_secrets/{uid} { allow read, write: if false; } // functions only
+    match /recall_events/{id} { allow create: if signedIn(); allow read, update, delete: if false; }
+  }
+}

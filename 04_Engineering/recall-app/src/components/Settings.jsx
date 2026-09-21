@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.js';
 import Header from './Header.jsx';
+import { currentUser, isAnonymous, signIn } from '../lib/auth.js';
+import { legacyCount } from '../lib/db.js';
 
 // Settings — reduced to what setup needs. Board decision 2026-09-05, screen 6; platform
 // audit V5: this is the one screen where "looks like the phone's Settings" is exactly
@@ -46,6 +48,11 @@ export function takeReturnRoute() {
 // Since round 4 (2026-09-14) this screen is the developer's: Version + AI key. Everything
 // for the household moved to the hamburger menu (MenuScreens.jsx). Slated for removal.
 export default function Settings({ onBack, onConfigSaved, justReloaded = false }) {
+  // Multi-user Phase 1: the developer's view of identity — who this phone is, whether the
+  // pre-09-19 docs have been adopted (the rules can flip only at 0), and the sign-in upgrade.
+  const [legacy, setLegacy] = useState(null);
+  useEffect(() => { let on = true; legacyCount().then((n) => { if (on) setLegacy(n); }).catch(() => { if (on) setLegacy('?'); }); return () => { on = false; }; }, []);
+  const user = currentUser();
   const [cfg, setCfg] = useState(getAIConfig());
   const [stored, setStored] = useState(getAIConfig());
   const [saved, setSaved] = useState(false);
@@ -156,6 +163,16 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
       </div>
 
 
+      <div className="group-title">Account</div>
+      <div className="group"><div className="grow account">
+        <p className="sub">{isAnonymous() ? 'This phone is not signed in — your things live on this phone until you sign in or share.' : <>Signed in as <b>{(user && user.displayName) || 'you'}</b>.</>}<br />ID: <code className="uid">{user ? user.uid : '…'}</code><br />Legacy docs left: <b>{legacy === null ? '…' : legacy}</b></p>
+        {isAnonymous() && (
+          <div className="seg">
+            <button onClick={() => signIn('apple')}>Sign in with Apple</button>
+            <button onClick={() => signIn('google')}>Sign in with Google</button>
+          </div>
+        )}
+      </div></div>
       <div className="group-title">AI key</div>
       <div className="group">
         <div className="grow">

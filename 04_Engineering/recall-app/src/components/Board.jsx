@@ -1,4 +1,4 @@
-import { boardOrder, logEvent } from '../lib/db.js';
+import { boardOrder, logEvent, isPrivate } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
@@ -52,7 +52,7 @@ export default function Board({ items, ready, onOpenThing, onPhoto, onAsk, onSet
                 onOpenThing(it, !it.location); // no place yet → open with the place field ready (round 7)
               })}>
               <img src={it.thumb} alt={it.name || ''} />
-              {it.visibility === 'private' && <span className="tile-lock" aria-label="Private"><LockIcon /></span>}
+              {isPrivate(it) && <span className="tile-lock" aria-label="Private"><LockIcon /></span>}
               {/* No place: the label block flips to reverse colours and says so (Ravi 09-16 —
                   the corner pin badge of 09-15 was "pure crap"). Words plus the flipped block,
                   so it reads without colour; the lock watermark is unaffected. */}

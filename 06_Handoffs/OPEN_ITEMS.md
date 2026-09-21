@@ -107,7 +107,25 @@ MISSED until build i** (deferred without agreement).
 - [ ] Firebase console: tighten rules by `household`; composite index (kind, itemId, at)
   so earlier photos can use `limit()`.
 
-## Multi-user — SUSPENDED 2026-09-15 (Ravi disagrees with the boards)
+## Multi-user — reset 2026-09-19; plan and 16 screens ready for rulings
+
+- [ ] **Ravi: the six rulings** at the end of `06_Handoffs/design/PLAN_2026-09-19_multi-user.md`
+  (words *Can see / Can help*; *added by* on by default; two ReCalls + guard on Log; *Give*;
+  phase order; any screen changes) — screens: `design/mockups/MU1_a_people.png`, `MU1_b_peter.png`,
+  `MU2_a_card.png`, `MU2_b_roles.png`.
+- [x] Phase 1 built (2026-09-19): model, listeners, legacy adoption, auth upgrade, rules,
+  functions, rig permission table + role audit (16/16). Build `20260919a` on the Mac, not pushed.
+- [ ] **Deploy `20260919a`** — nothing visible; on first open it adopts your docs. Then Settings →
+  Account should read *Legacy docs left: 0* and show your ID.
+- [ ] **Firebase console steps** (`04_Engineering/firebase/README.md`): Blaze + budget alert; Apple
+  and Google sign-in; deploy indexes and functions; after *Legacy docs left: 0*, deploy the rules;
+  then drop the legacy clauses and deploy rules again.
+- [ ] Phase 2 (6 d): People, invite, join, guest views. Phase 3 (3.5 d): Shared with, Only me,
+  Give. Phase 4 (1.5 d): status line.
+- [ ] Tanya: a lawyer's read of the sharing/consent model before a second family (reset note §2).
+- [ ] Firebase: Blaze billing for functions; Apple Sign-In configuration (the slow part).
+
+## (superseded) Multi-user — SUSPENDED 2026-09-15
 
 - [ ] **Ravi: run the use-case redefinition in a separate session** — paste
   `06_Handoffs/PROMPT_2026-09-15_multi-user-redefinition.md`. Until then nothing from

@@ -6,6 +6,52 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-19 — Multi-user Phase 1 built: owner on every doc, roles, the rules, identity
+
+Ravi: "proceed" — the plan's recommendations taken as rulings (Can see / Can help; *added by*
+on by default; two ReCalls + guard; *Give*; identity first). Built and audited, nothing visible:
+
+- **Every doc carries `owner` and `by`; every thing `private` (boolean), `roles`, `sharedWith`.**
+  `household`/`visibility`/device-id owner are no longer written. `me()` (`lib/auth.js`) is
+  the uid from Firebase auth.
+- **watchAll merges four listener shapes** (mine · shared-with-me · grants → one per grantor ·
+  legacy) so a person's grid is everything they own or hold a role on; private arrives only
+  through the owner's own listener.
+- **Legacy adoption on boot, not an admin script** (deviating from tech split 5): Ravi is the
+  one user, so `adoptLegacy()` on his phone gives every pre-09-19 doc `owner = his uid`, private
+  from the old `visibility`. Settings → Account shows *Legacy docs left: n*; the rules flip at 0.
+- **Rules** (`04_Engineering/firebase/firestore.rules`) mirror the rig's permission table
+  (`rig/stubs/firestore.js`); *change both or neither*. Snaps borrow their item's access via
+  `get`; editors are limited to a field allow-list; transfer is impossible from a client.
+- **Functions** (`firebase/functions/index.js`): createInvite · acceptInvite (transactional,
+  single-use, 7 days, provider sign-in required) · transfer · ai (owner's key, server-side) ·
+  setAiKey. Not deployed — needs Blaze and Apple Sign-In (steps in `firebase/README.md`).
+- **Identity**: anonymous → `linkWithRedirect` (Apple/Google) in place; the redirect result is
+  picked up on boot; `credential-already-in-use` falls back to signing in as the existing uid
+  and flags the orphaned anonymous data for Phase 3's `claimAnonymous`.
+- **Rig**: `audit_roles.js` boots the app as six people over one persisted store with rules on
+  — owner, viewer-by-grant, editor-by-grant, direct viewer, stranger, legacy anonymous — and
+  proves reads and refused writes (16 checks). The main audit still passes (92).
+
+---
+
+## 2026-09-19 — Multi-user reset: Margaret owns her things and invites people; the Drive model
+
+Ravi rejected the 09-14 plan's premise (a "patient" slot on a phone, helpers as proxies,
+her phone never naming another person): "that implies Margaret is not legally in charge of
+her own life." Reset in `design/BOARD_2026-09-19_multi-user_reset.md`: Margaret is a
+competent adult and the **owner** of her things; Robert and Peter are people she invited at a
+role she chose, listed on her phone. §10: ownership is per **thing** (the Drive model) —
+roles *Can see / Can help* per thing, a whole-ReCall grant as the common case, *Only me* =
+no roles, *Give* transfers a thing with its photos. Peter must sign in (Apple/Google) to hold
+a role; Margaret stays anonymous until her first share or second device. Three boards
+reviewed the settled premise (`TECH_/UX_/PERSONA_BOARD_2026-09-19.md`); sixteen screens drawn
+(`mockups/MU1_*.png`, `MU2_*.png`); the reconciled plan and rulings are in
+`design/PLAN_2026-09-19_multi-user.md`. `PLAN_2026-09-14_multi-user.md` is superseded.
+Nothing built yet.
+
+---
+
 ## 2026-09-16 (round 8b) — Place picker in Edit; tidy-up; earlier count = places; the "was" pin
 
 - **Edit → Where it is opens the place list** (`PlacePicker.jsx`): the household's places with

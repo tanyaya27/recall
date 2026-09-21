@@ -43,7 +43,7 @@ async function main() {
   const back = async () => { await page.click('.header .back, .thing-head .chev'); await page.waitForTimeout(300); };
 
   // ---------- A. Boot without a key ----------
-  await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen');
+  await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen'); await page.evaluate(() => { localStorage.removeItem('rig-store'); localStorage.removeItem('rig-uid'); localStorage.removeItem('rig-rules'); }); await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen');
   check('A1 no key → One-time setup card on Home', await count('.card.setup') === 1);
   check('A2 no key → footer buttons disabled', await page.locator('.footer .btn-primary:disabled, .footer .btn-primary.disabled').count() === 2);
   await page.click('.card.setup .btn-primary'); await page.waitForSelector('.settings');
@@ -148,7 +148,7 @@ async function main() {
   like = null;
   // Private: Edit → toggle → lock on the tile; a private thing of ANOTHER phone never shows
   await page.click('.sw-row >> nth=0 >> .sw'); await page.waitForTimeout(300);
-  check('D20 Keep this private switch → private; lock appears in the title; toast', await count('.thing-head .lk') === 1 && (await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1').visibility)) === 'private' && /Now private/.test(await text('.toast')));
+  check('D20 Keep this private switch → private; lock appears in the title; toast', await count('.thing-head .lk') === 1 && (await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1').private)) === true && /Now private/.test(await text('.toast')));
   await back(); await page.waitForSelector('.board');
   check('D21 private tile shows a lock on this phone', await count('.tile-lock') === 1);
   await page.evaluate(() => window.__rig.seed([{ id: 'ix', kind: 'item', household: 'default', name: 'other phone secret', visibility: 'private', owner: 'dev_other', location: 'Drawer', thumb: '', photo: '', order: 1, createdAt: 1, lastSeenAt: 1, history: [] }]));

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS } from './lib/db.js';
+import { watchUser, finishSignIn } from './lib/auth.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate } from './lib/db.js';
 import { THUMB_V, thumbFromPhoto, compressPhoto, compressPlacePhoto } from './lib/img.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
 import Board from './components/Board.jsx';
@@ -118,8 +119,14 @@ export default function App() {
     let unsub = () => {};
     const slowTimer = setTimeout(() => setSlow(true), 4000);
     const onStage = (st) => { noteBoot(st); setStage(st); };
+    const unsubUser = watchUser();
     ensureSignedIn(onStage)
-      .then(() => {
+      .then(async (user) => {
+        // Multi-user Phase 1: the redirect back from Apple/Google lands here; then the person's
+        // row; then adopt any pre-09-19 docs so the owner-scoped listeners see them.
+        try { const r = await finishSignIn(); if (r && r.orphaned) console.warn('signed in as an existing account; anonymous data left behind (claimAnonymous, Phase 3)'); } catch (e) { console.error('finishSignIn', e); }
+        upsertUser(user).catch(() => {});
+        try { let n; do { n = await adoptLegacy(); } while (n > 0); } catch (e) { console.error('adoptLegacy', e); }
         unsub = watchAll(setData);
         onStage('ready');
         clearTimeout(slowTimer);
@@ -129,7 +136,7 @@ export default function App() {
       })
       .catch((e) => { onStage('error'); setError(String(e)); });
     const iv = setInterval(() => tick((n) => n + 1), 60000);
-    return () => { unsub(); clearInterval(iv); };
+    return () => { unsub(); unsubUser(); clearInterval(iv); };
   }, []);
 
   if (error) return <div className="boot">Couldn't connect: {error}</div>;
@@ -311,7 +318,7 @@ export default function App() {
           onChangePlace={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onRename={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onMoveToTop={async () => { setSheet(null); await moveToTop(sheet, items); logEvent('move_to_top', { itemId: sheet.id, via: 'sheet' }); say('Moved to the top'); }}
-          onPrivate={async () => { const it = live(sheet); setSheet(null); const to = it.visibility === 'private' ? 'household' : 'private'; await setVisibility(it, to); logEvent('visibility', { itemId: it.id, to, via: 'tile_sheet' }); say(VISIBILITY_TOAST[to]); }}
+          onPrivate={async () => { const it = live(sheet); setSheet(null); const to = isPrivate(it) ? 'household' : 'private'; await setVisibility(it, to); logEvent('visibility', { itemId: it.id, to, via: 'tile_sheet' }); say(VISIBILITY_TOAST[to]); }}
           onRemove={() => { setSheet(null); setRemoving(sheet); }}
           onCancel={() => setSheet(null)} />
       )}
