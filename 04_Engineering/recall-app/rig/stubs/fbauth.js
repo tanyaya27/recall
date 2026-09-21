@@ -3,7 +3,8 @@ let uid = 'rig';
 let anonymous = true;
 try { uid = localStorage.getItem('rig-uid') || 'rig'; anonymous = localStorage.getItem('rig-anon') !== '0'; } catch { /* */ }
 const subs = new Set();
-const user = () => ({ uid, isAnonymous: anonymous, displayName: anonymous ? null : `User ${uid}` });
+const NAMES = { margaret: 'Margaret Hale', peter: 'Peter Hale', robert: 'Robert Lin', linda: 'Linda Park', ken: 'Ken Ito', newguy: 'Newguy Ng', another: 'Another One', stranger: 'Stranger Danger' };
+const user = () => ({ uid, isAnonymous: anonymous, displayName: anonymous ? null : (NAMES[uid] || `User ${uid}`), email: anonymous ? null : `${uid}@example.com` });
 export const getAuth = () => ({ get currentUser() { return user(); } });
 export const signInAnonymously = async () => ({ user: user() });
 export const onAuthStateChanged = (auth, cb) => { subs.add(cb); setTimeout(() => cb(user()), 0); return () => subs.delete(cb); };

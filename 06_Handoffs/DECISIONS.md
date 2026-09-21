@@ -6,6 +6,49 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-21 — Multi-user Phase 2 built: People, the invite link, the join page, a helper's view; the accidental first family
+
+Ravi: "move to the next phase and have this fixed via the app". Context: the Firebase
+deploy (indexes, functions on Node 22, rules with the legacy clauses) went out 09-21; the
+legacy adoption ran on **Dad's phone**, so he owns every pre-09-19 doc and Ravi's phone can
+read (legacy clause) but not write — exactly the Margaret/Peter shape. Rather than hand-write
+the grant in the console, Phase 2's invite becomes the fix and the first real test.
+
+Built to the sixteen screens Ravi reviewed 09-19 (MU1·1–8, MU2·4/5/7/8): People (second row
+of the drawer; empty state = one consent sentence; rows carry role and date; tap → role change
+or Remove; pending invitations with *Send the link again* / *Cancel the invitation*; *Show who
+added each photo* switch, on by default — split 4); the invite sheet (no role preselected;
+*Send a link…* → `createInvite` → the system share sheet, or the clipboard where there is
+none); *Sign in to share* at the first send, *Not now* costs nothing (MU1·8); the join page
+(`?j=CODE`, parked in localStorage across the redirect; anonymous → Continue with Google;
+signed in → accepts by itself; expired/used → one card); the helper's board (*Margaret's
+ReCall ▾* with the role under it, Find item alone for Can see, *Log item · in Margaret's
+ReCall* for Can help, the photo card header says it again — MU2·7); the owner tag under a tile
+that is not the grid owner's (MU1·7); the thing card by role (Can help: no *Keep this private*,
+no *Remove*, *Shared by Margaret*, two-button bar; Can see: no trash, no bar, no hold sheet;
+the stamp ends *· Robert* when someone other than the owner added the photo); *Shared with me*
+rows in People with Open / Leave; the switcher on the day line; the removed card with *Start
+my own ReCall* (MU2·8). Settings' Account card rewritten in plain words (Ravi 09-21: the Phase
+1 text "doesn't even make grammatical sense"); ID and legacy count moved to a *For support*
+line; Apple hidden behind `APPLE_SIGNIN` until the console has the provider.
+
+Rules changes, all proven on the real engine (`04_Engineering/firebase/rules-test/`, Firestore
+emulator): `canRead` gains `me() in sharedWith` AND the shared-with-me listener gains a `kind
+in` filter — without both, a list rule with a `get()` in one branch cannot be proven and the
+whole query is refused (the emulator showed it; the rig's JS table could not); invites are
+readable by code by any signed-in user (the code is the secret), listable/cancellable by their
+sender; a grantee may delete a grant (leave). Data fix: adopted places/routines/checks lacked
+`private:false`, so a grant holder's listener never saw them — the owner's phone repairs its own
+on boot (`repairPrivateFlags`). New composite index: sharedWith CONTAINS + kind.
+
+Not built (parked to Phase 3/4 as planned): per-thing *Shared with* sheet and *Only me*
+confirm, *Give*, `claimAnonymous`, the status line. Also: the AI key is still the helper's own
+phone key when logging into someone else's ReCall (the `ai` callable is deployed but the
+client does not use it yet).
+
+Would change our mind: a family that wants one merged grid (the switcher is the answer for
+now, per Robert's "the switcher is a hazard" being outvoted by the two-ReCalls ruling).
+
 ## 2026-09-19 — Multi-user Phase 1 built: owner on every doc, roles, the rules, identity
 
 Ravi: "proceed" — the plan's recommendations taken as rulings (Can see / Can help; *added by*

@@ -12,7 +12,9 @@ service cloud.firestore {
     function grantPath(o) { return /databases/$(database)/documents/recall_grants/$(o + '_' + me()); }
     function grantRole(o) { return exists(grantPath(o)) ? get(grantPath(o)).data.role : null; }
     function roleOf(d) { return ('roles' in d && me() in d.roles) ? d.roles[me()] : null; }
-    function canRead(d) { return d.owner == me() || roleOf(d) in ['viewer', 'editor'] || (d.private == false && grantRole(d.owner) != null); }
+    // `me() in d.sharedWith` is what lets the array-contains query (L2, things shared with me one by
+    // one) through: a list rule must be provable from the query's own constraints (2026-09-21).
+    function canRead(d) { return d.owner == me() || roleOf(d) in ['viewer', 'editor'] || ('sharedWith' in d && me() in d.sharedWith) || (d.private == false && grantRole(d.owner) != null); }
     function canEdit(d) { return d.owner == me() || roleOf(d) == 'editor' || (d.private == false && grantRole(d.owner) == 'editor'); }
     function consistent(d) {
       return d.sharedWith.toSet() == d.roles.keys().toSet() && (!d.private || d.roles.size() == 0);
@@ -50,10 +52,18 @@ service cloud.firestore {
     match /recall_grants/{id} {
       allow read: if signedIn() && (resource.data.grantor == me() || resource.data.grantee == me());
       allow update: if signedIn() && resource.data.grantor == me() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
-      allow delete: if signedIn() && resource.data.grantor == me();
+      allow delete: if signedIn() && (resource.data.grantor == me() || resource.data.grantee == me()); // remove, or leave
       allow create: if false; // acceptInvite (function) only
     }
-    match /recall_invites/{code} { allow read, write: if false; } // functions only
+    // Invitations are written by createInvite/acceptInvite only. The sender lists and cancels
+    // their own; anyone signed in may GET one by its code (the code is the secret) — the join
+    // page needs the inviter and the role before the person signs in with a provider.
+    match /recall_invites/{code} {
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.from == me();
+      allow delete: if signedIn() && resource.data.from == me();
+      allow create, update: if false;
+    }
     match /recall_users/{uid} {
       allow read: if signedIn();
       allow write: if signedIn() && uid == me();

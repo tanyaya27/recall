@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST } from '../lib/db.js';
+import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { photoStamp, cap } from '../lib/format.js';
 import { getPrefs, savePrefs } from '../lib/prefs.js';
@@ -9,7 +9,7 @@ import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
 import PlacePicker from './PlacePicker.jsx';
 import TidySheet from './TidySheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, PeopleIcon } from './Icons.jsx';
 
 // The thing card — the answer. Redesigned 2026-09-16 with Ravi over seven rendered passes
 // (design/DESIGN_2026-09-16_things-places-sightings.md §2, §13):
@@ -27,7 +27,18 @@ import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWas
 //   Bar     — the three operations: Add photo · Edit · Remove.
 //
 // "Earlier photos" as a mode is gone; a stay is derived from the sightings, never stored.
-export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, openFix = false }) {
+//
+// Multi-user Phase 2 (2026-09-21 — MU2·4, MU2·5): the card follows the person's ROLE on the
+// thing. Owner: everything. Can help: no *Keep this private*, no *Remove*; *Shared by Margaret*
+// in the list; bar is Add photo · Edit; trash and Remove old photos stay. Can see: photo, place,
+// the two switches, *Shared by Margaret*; no trash, no bar, no hold sheet — a card with nothing
+// to do. With *Show who added each photo* on, the stamp ends with the adder's first name
+// whenever someone other than the owner added it.
+export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, openFix = false, showAddedBy = true, peopleCount = 0 }) {
+  const role = roleOn(item) || 'viewer';          // owner | editor | viewer
+  const isOwner = role === 'owner', canEdit = role !== 'viewer';
+  const [, bump] = useState(0);
+  useEffect(() => { if (item) wantNames([item.owner, item.by]); return watchNames(() => bump((n) => n + 1)); }, [item?.id, item?.owner]); // eslint-disable-line
   const [picking, setPicking] = useState(false);   // Edit → Where it is → the place list
   const [tidying, setTidying] = useState(false);
   const [sheet, setSheet] = useState(false);       // press-and-hold on the photo
@@ -64,7 +75,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   }, [item?.id, fixing, item?.visibility]);
   const hold = useHold(() => { logEvent('photo_hold', { itemId: item && item.id }); setSheet(true); });
 
-  useEffect(() => { setSnaps(null); setIndex(0); setFixing(openFix); setShowEarlier(false); }, [item?.id]); // eslint-disable-line
+  useEffect(() => { setSnaps(null); setIndex(0); setFixing(openFix && canEdit); setShowEarlier(false); }, [item?.id]); // eslint-disable-line
 
   // The current log's extra photos are the only reason to read snaps up front.
   const wantsSnaps = !!item; // always: the roll needs the log's extras and the Earlier button needs the count (09-16)
@@ -73,7 +84,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   useEffect(() => {
     if (!item || snaps !== null || !wantsSnaps) return;
     let alive = true;
-    loadSnaps(item.id).then((all) => { if (alive) setSnaps(all); });
+    loadSnaps(item.id).then((all) => { if (alive) { setSnaps(all); wantNames(all.map((s) => s.by)); } }); // the adders' names, for the stamps
     return () => { alive = false; };
   }, [item?.id, wantsSnaps, snaps]); // eslint-disable-line
   const photoCount = item ? (item.photoCount || 1) : 0;
@@ -81,12 +92,17 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
 
   if (!item) return null;
 
-  const cover = { id: 'cover', photo: item.photo, thumb: item.thumb, location: item.location, at: item.lastSeenAt, cover: true };
+  const cover = { id: 'cover', photo: item.photo, thumb: item.thumb, location: item.location, at: item.lastSeenAt, cover: true, by: item.by || null };
+  // The adder's name goes on the stamp when the ReCall has more than one person in it and the
+  // adder is not the owner (split 4: on by default; the owner's own photos stay unlabelled).
+  const shared = !isOwner || peopleCount > 0;
+  const adder = (p) => (showAddedBy && shared && p.by && p.by !== item.owner ? firstName(p.by) : '');
   const live = (snaps || []);
   const here = (loc) => (loc || '').toLowerCase() === (item.location || '').toLowerCase();
   // Every sighting, newest first. The cover is a sighting too; since 09-14 it also exists as a
   // snap doc, so drop that duplicate. Older items (no snaps) have the cover only.
-  const sightings = [...live.filter((s) => s.photo !== item.photo), { ...cover, at: Math.max(cover.at || 0, ...live.filter((s) => s.photo === item.photo).map((s) => s.at || 0)) }]
+  const coverSnap = live.find((s) => s.photo === item.photo) || null; // the cover's own snap doc carries who took it
+  const sightings = [...live.filter((s) => s.photo !== item.photo), { ...cover, by: coverSnap ? coverSnap.by || null : cover.by, at: Math.max(cover.at || 0, ...live.filter((s) => s.photo === item.photo).map((s) => s.at || 0)) }]
     .sort((a, b) => (b.at || 0) - (a.at || 0));
   // The current stay: the run of newest sightings at the current place.
   let stayLen = 0; while (stayLen < sightings.length && here(sightings[stayLen].location)) stayLen += 1;
@@ -156,7 +172,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   const label = item.name ? `your ${own(item.name)}` : 'this';
 
   return (
-    <div className="screen with-footer">
+    <div className={'screen' + (canEdit ? ' with-footer' : '')}>
       <div className="thing-head">
         <div className="row1">
           <button type="button" className="chev" aria-label="Back" onClick={onBack}><ChevronLeftIcon /></button>
@@ -177,9 +193,9 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
               return (
                 <div className="strip-page" key={p.id}>
                   <div className="photo-box">
-                    <img className="photo-full" src={p.photo} alt={item.name || ''} {...hold.props()} onClick={hold.tap(() => {})} />
-                    {showTimes && <span className="stamp">{photoStamp(p.at)}</span>}
-                    <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(p)}><TrashIcon /></button>
+                    <img className="photo-full" src={p.photo} alt={item.name || ''} {...(canEdit ? hold.props() : {})} onClick={canEdit ? hold.tap(() => {}) : undefined} />
+                    {showTimes && <span className="stamp">{photoStamp(p.at)}{adder(p) ? ` · ${adder(p)}` : ''}</span>}
+                    {canEdit && <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(p)}><TrashIcon /></button>}
                   </div>
                   {was ? <div className="was"><PinWasIcon /><span>{p.location}</span></div> : <div className="was empty" aria-hidden="true" />}
                 </div>
@@ -198,11 +214,16 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
 
         {/* The three states of the card, each a switch (Ravi 09-16). */}
         <div className="switches">
-          <div className="sw-row">
+          {!isOwner && (
+            <div className="sw-row">
+              <span className="lab"><PeopleIcon /> Shared by {firstName(item.owner) || 'someone'}</span>
+            </div>
+          )}
+          {isOwner && <div className="sw-row">
             <span className="lab"><LockIcon /> Keep this private</span>
             <button type="button" role="switch" aria-checked={isPrivate(item)} className={'sw' + (isPrivate(item) ? ' on' : '')} aria-label="Keep this private"
               onClick={async () => { const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'switch' }); onToast && onToast(VISIBILITY_TOAST[to]); }} />
-          </div>
+          </div>}
           <div className="sw-row">
             <span className="lab"><ClockIcon /> Show times on photos</span>
             <button type="button" role="switch" aria-checked={showTimes} className={'sw' + (showTimes ? ' on' : '')} aria-label="Show times on photos"
@@ -221,12 +242,12 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
       {/* The actions live in a fixed bar at the bottom, like Home's Log item · Find item
           (Ravi 09-16: the row sat at a different height on every card). Same padding,
           same gradient, same button height as the Home footer. */}
-      {(
+      {canEdit && (
         <div className="footer actfoot">
-          <div className={'actbar three' + (iconsOnly ? ' icons' : '')} ref={actRef}>
+          <div className={'actbar ' + (isOwner ? 'three' : 'two') + (iconsOnly ? ' icons' : '')} ref={actRef}>
             <button type="button" className="act primary" aria-label="Add photo" disabled={stayFull} onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /><span>Add photo</span></button>
             <button type="button" className={'act' + (fixing ? ' on' : '')} aria-label={fixing ? 'Done' : 'Edit'} aria-pressed={fixing} onClick={() => setFixing((f) => !f)}><PencilIcon /><span>{fixing ? 'Done' : 'Edit'}</span></button>
-            <button type="button" className="act amber" aria-label="Remove item" onClick={() => setConfirming('item')}><TrashIcon /><span>Remove</span></button>
+            {isOwner && <button type="button" className="act amber" aria-label="Remove item" onClick={() => setConfirming('item')}><TrashIcon /><span>Remove</span></button>}
             <div className="act-probe" ref={probeRef} aria-hidden="true" />
           </div>
         </div>
@@ -261,18 +282,18 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
           onKeepNewest={() => tidy('newest')} onForgetEarlier={() => tidy('earlier')} />
       )}
       {sheet && (
-        <ItemSheet item={item}
+        <ItemSheet item={item} role={role}
           onAdd={() => { setSheet(false); setSnaps(null); onAdd(); }}
           onChangePlace={() => { setSheet(false); setFixing(true); }}
           onRename={() => { setSheet(false); setFixing(true); }}
           onMoveToTop={async () => { setSheet(false); await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id, via: 'photo_sheet' }); onToast && onToast('Moved to the top'); }}
           onRemovePhoto={() => { setSheet(false); askRemove(page); }}
-          onPrivate={async () => { setSheet(false); const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'sheet' }); onToast && onToast(VISIBILITY_TOAST[to]); }}
-          onRemove={() => { setSheet(false); setConfirming('item'); }}
+          onPrivate={isOwner ? async () => { setSheet(false); const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'sheet' }); onToast && onToast(VISIBILITY_TOAST[to]); } : null}
+          onRemove={isOwner ? () => { setSheet(false); setConfirming('item'); } : null}
           onCancel={() => setSheet(false)} />
       )}
       {confirming && confirming !== 'item' && (
-        confirming.last ? (
+        confirming.last ? (isOwner ? (
           <Confirm
             title={`This is the only photo of ${label}. Remove the item?`}
             image={confirming.snap.photo}
@@ -287,6 +308,8 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             }}
           />
         ) : (
+          <Confirm title={`This is the only photo of ${label}.`} image={confirming.snap.photo} body={`Only ${firstName(item.owner) || 'the owner'} can remove the thing itself.`} keepLabel="OK" actionLabel="Keep it" onKeep={() => setConfirming(null)} onAction={() => setConfirming(null)} />
+        )) : (
           <Confirm
             title="Remove this photo?"
             image={confirming.snap.photo}

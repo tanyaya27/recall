@@ -31,7 +31,7 @@ const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 // "your my favorite mug" → "your favorite mug": drop a leading my/the from a name in a sentence.
 export const own = (s) => (s || '').toLowerCase().replace(/^(my|the|our)\s+/, '');
 
-export default function PhotoCard({ files = [], engine, items = [], places = [], resnapOf = null, onDone, onBack, onMore, pendingFiles = null, onPendingTaken }) {
+export default function PhotoCard({ files = [], engine, items = [], places = [], resnapOf = null, onDone, onBack, onMore, pendingFiles = null, onPendingTaken, owner = undefined, ownerName = '' }) {
   const [shots, setShots] = useState([]);       // [{ photo, thumb }] — first is the cover
   const [current, setCurrent] = useState(0);    // which shot is big
   const [tag, setTag] = useState(undefined);    // undefined = pending · null = failed · object = named
@@ -185,7 +185,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     setBusy(true);
     setPlace(chosen);
     const by = 'self';
-    const common = { photo: cover.photo, thumb: cover.thumb, location: chosen, by, restingOn, extras };
+    const common = { photo: cover.photo, thumb: cover.thumb, location: chosen, by, restingOn, extras, ...(owner ? { owner } : {}) }; // Phase 2: a helper logs INTO the owner's ReCall
 
     if (resnapOf) {
       await resnapItem(resnapOf, common);
@@ -258,7 +258,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
 
   return (
     <div className="screen">
-      <Header title={resnapOf ? 'New photo' : 'Log item'} onBack={back} />
+      <Header title={resnapOf ? 'New photo' : (ownerName ? `Log item · in ${ownerName}’s ReCall` : 'Log item')} onBack={back} />
       <div className="card photo-card">
         <img className={'photo-full' + (whole ? ' whole' : '')} src={big.photo} alt="" onClick={() => setWhole((w) => !w)} />
 

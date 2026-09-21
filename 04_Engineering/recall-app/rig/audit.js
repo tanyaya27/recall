@@ -257,13 +257,14 @@ async function main() {
 
   // ---------- G. Menu ----------
   await page.click('.menu-btn'); await page.waitForSelector('.drawer');
-  for (const [i, name] of [['0', 'Text size & colours'], ['1', 'Places'], ['2', 'Deleted items'], ['3', 'Research log']]) {
-    await page.click(`.drawer-row >> nth=${i}`); await page.waitForSelector('.screen .header');
-    check(`G${i}a ${name} opens`, (await text('.header .title')) === name);
+  // Phase 2 (09-21): People is the second row (MU1·1) and uses the thing card's chevron header.
+  for (const [i, name] of [['0', 'Text size & colours'], ['1', 'People'], ['2', 'Places'], ['3', 'Deleted items'], ['4', 'Research log']]) {
+    await page.click(`.drawer-row >> nth=${i}`); await page.waitForSelector('.screen .header, .screen .thing-head');
+    check(`G${i}a ${name} opens`, (await text('.header .title, .thing-head .name')) === name);
     await back(); await page.waitForSelector('.drawer');
   }
   check('G4 Back from a menu screen → drawer', await count('.drawer') === 1);
-  await page.click('.drawer-row >> nth=1'); await page.waitForSelector('.screen .header');
+  await page.click('.drawer-row >> nth=2'); await page.waitForSelector('.screen .header');
   check('G5a Locations is a list of used places with pictures', await count('.loc-row') >= 2 && await count('.loc-row img.loc-pic') >= 1);
   await page.click('.settings .btn-secondary:has-text("Add a place")'); await shoot(2); await page.waitForSelector('.screen .header');
   check('G5b Add a location → camera → name screen shows the shots', (await text('.header .title')) === 'New place' && await count('.place-photo img') === 2);
@@ -293,7 +294,7 @@ async function main() {
   // ---------- H. Deleted items flow end to end ----------
   await page.mouse.move(t0.x + 40, t0.y + 40); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
   await page.click('text=Remove from my items'); await page.waitForSelector('.sheet'); await page.click('.sheet .btn-secondary'); await page.waitForTimeout(400);
-  await page.click('.menu-btn'); await page.click('.drawer-row >> nth=2'); await page.waitForSelector('.screen .header');
+  await page.click('.menu-btn'); await page.click('.drawer-row >> nth=3'); await page.waitForSelector('.screen .header');
   check('H1 removed item listed', await count('.settings .row') === 1);
   await page.click('button:has-text("Put back")'); await page.waitForTimeout(300);
   check('H2 Put back → list empty', await count('.settings .row') === 0);

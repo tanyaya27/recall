@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
 import { watchUser, finishSignIn } from './lib/auth.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate } from './lib/db.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, wantNames, watchNames, firstName, possessive, roleOn } from './lib/db.js';
+import { me } from './lib/auth.js';
+import { getPrefs, savePrefs } from './lib/prefs.js';
+import PeopleScreen from './components/People.jsx';
+import JoinScreen, { pendingJoin, parkJoin, clearJoin } from './components/Join.jsx';
 import { THUMB_V, thumbFromPhoto, compressPhoto, compressPlacePhoto } from './lib/img.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
 import Board from './components/Board.jsx';
@@ -24,6 +28,9 @@ import { shrink } from './lib/img.js';
 // so the edge swipe and the Android back button do what they do in every other app. A
 // reload on a deep URL lands on Home (Rule 1) — the route objects live in memory only.
 const RETURN_TO = takeReturnRoute();
+// An invitation link (?j=CODE) — park the code so it survives the sign-in redirect, and take
+// it off the URL so a reload does not re-run it (multi-user Phase 2, MU1·5).
+(() => { try { const c = new URLSearchParams(location.search).get('j'); if (c) { parkJoin(c); history.replaceState(null, '', location.pathname); } } catch { /* */ } })();
 const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const HOME = { view: 'home' };
 
@@ -44,9 +51,16 @@ noteBoot('script');
 export default function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
-  const [data, setData] = useState({ items: [], routines: [], checks: [], removed: [], places: [] });
+  const [data, setData] = useState({ items: [], routines: [], checks: [], removed: [], places: [], grants: [], people: [], invites: [], grantsReady: false });
+  // Which ReCall this phone is looking at (Phase 2): null = mine, else the owner's uid. Peter,
+  // with nothing of his own and one grant, lands in hers; the choice is remembered per phone.
+  const [whose, setWhoseState] = useState(() => getPrefs().whose || null);
+  const setWhose = (uid) => { setWhoseState(uid); savePrefs({ ...getPrefs(), whose: uid }); };
+  const [switching, setSwitching] = useState(false);
+  const [join, setJoin] = useState(() => { const j = pendingJoin(); return j && j.code ? j.code : null; });
+  const [, namesTick] = useState(0);
   const [cfgVersion, setCfgVersion] = useState(0);
-  const [route, setRoute] = useState(RETURN_TO === 'settings' ? { view: 'settings', reloaded: true } : HOME);
+  const [route, setRoute] = useState(RETURN_TO === 'settings' ? { view: 'settings', reloaded: true } : RETURN_TO === 'people' ? { view: 'people' } : HOME);
   const [offline, setOffline] = useState(typeof navigator !== 'undefined' && navigator.onLine === false);
   const [toast, setToast] = useState(null);
   const [sheet, setSheet] = useState(null);      // item under press-and-hold
@@ -67,9 +81,26 @@ export default function App() {
   const depth = useRef(0);          // how many cards deep we are; Home is 0
 
   const engine = useMemo(() => new AIEngine(getAIConfig()), [cfgVersion]);
-  const { removed, places = [] } = data;
-  const items = visibleHere(data.items); // private things of another phone never reach the screens
+  const { grants = [], people = [], invites = [], grantsReady = false } = data;
+  // The grid shows ONE ReCall: mine (my things + things shared with me one by one, tagged) or
+  // the owner's whose grant I hold. Places and the removed list follow the same owner.
+  const myUid = me();
+  const cur = whose || myUid;
+  const grant = whose ? grants.find((g) => g.grantor === whose) || null : null;
+  const role = whose ? (grant ? grant.role : 'viewer') : 'owner';
+  const removedFrom = !!whose && grantsReady && !grant; // she took me out (MU2·8), or I left
+  const allItems = visibleHere(data.items); // private things of another phone never reach the screens
+  const items = allItems.filter((it) => whose ? it.owner === whose : (it.owner === myUid || !it.owner || (it.sharedWith || []).includes(myUid)));
+  const places = (data.places || []).filter((p) => (p.owner || myUid) === cur);
+  const removed = (data.removed || []).filter((it) => (it.owner || myUid) === cur);
   const itemsRef = useRef(items); itemsRef.current = items;
+  useEffect(() => { wantNames([whose, ...grants.map((g) => g.grantor), ...people.map((g) => g.grantee), ...allItems.map((it) => it.owner)]); }, [whose, grants, people, allItems]); // eslint-disable-line
+  useEffect(() => watchNames(() => namesTick((n) => n + 1)), []);
+  // Peter's first open after joining: nothing of his own, one grant → her grid (MU1·6).
+  useEffect(() => { if (!whose && grantsReady && grants.length === 1 && allItems.filter((it) => it.owner === myUid).length === 0) setWhose(grants[0].grantor); }, [grantsReady, grants.length]); // eslint-disable-line
+  // The owner's phone repairs docs adopted without `private` (2026-09-21), once per doc.
+  const repaired = useRef(false);
+  useEffect(() => { if (repaired.current || !ready) return; repaired.current = true; repairPrivateFlags(data).then((n) => { if (n) logEvent('repair_private', { n }); }).catch((e) => console.error('repairPrivateFlags', e)); }, [ready, data.places.length]); // eslint-disable-line
 
   // Thumbnails made before 2026-09-14 are 220 px and blur on a tile (lib/img.js). Rebuild
   // each old one from its stored photo, one at a time, once per item per session. The
@@ -100,7 +131,7 @@ export default function App() {
     // Home is the base history entry. If we were sent back to Settings after a reload,
     // that is one card deep, like any other.
     history.replaceState({ id: 0, depth: 0 }, '');
-    if (RETURN_TO === 'settings') { depth.current = 1; history.pushState({ id: -1, depth: 1 }, ''); }
+    if (RETURN_TO === 'settings' || RETURN_TO === 'people') { depth.current = 1; history.pushState({ id: -1, depth: 1 }, ''); }
     const onPop = (e) => {
       const st = e.state || { id: 0, depth: 0 };
       depth.current = st.depth || 0;
@@ -157,6 +188,16 @@ export default function App() {
   }
 
   const live = (it) => items.find((x) => x.id === it?.id) || it;
+  if (join) {
+    return (
+      <>
+        <JoinScreen code={join}
+          onJoined={(r, who) => { setJoin(null); if (!r.itemId) setWhose(r.grantor); say(`You can now see ${who ? possessive(who) : 'their'} things`); }}
+          onDismiss={() => setJoin(null)} />
+        <Toast toast={toast} onDone={() => setToast(null)} />
+      </>
+    );
+  }
 
   // Open a card: one history entry deeper.
   const go = (view, extra = {}) => {
@@ -235,6 +276,7 @@ export default function App() {
         <PhotoCard
           key={route.key}
           files={route.files} engine={engine} items={items} places={places}
+          owner={whose || undefined} ownerName={whose ? firstName(whose) : ''}
           resnapOf={route.resnapOf ? live(route.resnapOf) : null}
           onMore={(max) => setCamera({ for: 'more', max })}
           pendingFiles={moreFiles} onPendingTaken={() => setMoreFiles(null)}
@@ -248,7 +290,7 @@ export default function App() {
       break;
     case 'thing':
       screen = (
-        <ThingCard places={places}
+        <ThingCard places={places} showAddedBy={getPrefs().showAddedBy !== false} peopleCount={people.length}
           item={live(route.item)} items={items} openFix={!!route.fix}
           onBack={back}
           onAdd={() => setCamera({ for: 'add', itemId: route.item.id, max: Math.min(MAX_SHOTS, LOG_MAX - (live(route.item).photoCount || 1)), title: 'Add photos' })}
@@ -274,17 +316,21 @@ export default function App() {
       screen = <Settings justReloaded={!!route.reloaded} onBack={back} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
       break;
     case 'look': screen = <LookScreen onBack={back} />; break;
+    case 'people':
+      screen = <PeopleScreen people={people} invites={invites} grants={grants} whose={whose} onBack={back} onToast={say}
+        onOpenRecall={(uid) => { setWhose(uid); home(); }} onLeft={(uid) => { if (whose === uid) setWhose(null); }} />;
+      break;
     case 'locations':
-      screen = <LocationsScreen places={places} items={items} onBack={back} onOpen={(name) => go('place', { name })}
+      screen = <LocationsScreen places={places} items={items} onBack={back} onOpen={(name) => go('place', { name })} canEdit={role !== 'viewer'}
         onAdd={() => setCamera({ for: 'place_new', max: PLACE_PHOTOS, title: 'New place' })} />;
       break;
     case 'place':
-      screen = <PlaceScreen name={route.name} places={places} items={items} onBack={back} onToast={say}
+      screen = <PlaceScreen name={route.name} places={places} items={items} onBack={back} onToast={say} owner={cur}
         onAddPhoto={(n) => setCamera({ for: 'place_add', name: route.name, max: n, title: `Photo of ${route.name}` })}
         onOpenThing={(item) => go('thing', { item })} />;
       break;
     case 'place_new':
-      screen = <NewPlaceScreen files={route.files} places={places} onBack={back} onDone={(name) => { say(`Saved · ${name}`); back(); }} />;
+      screen = <NewPlaceScreen files={route.files} places={places} owner={cur} onBack={back} onDone={(name) => { say(`Saved · ${name}`); back(); }} />;
       break;
     case 'deleted': screen = <DeletedScreen removed={removed} onBack={back} />; break;
     case 'research': screen = <ResearchScreen onBack={back} />;
@@ -293,13 +339,15 @@ export default function App() {
     default:
       screen = (
         <Board
-          items={items} ready={engine.ready}
+          items={items} ready={engine.ready} whose={whose} role={role} removed={removedFrom}
           onOpenThing={(item, fix) => go('thing', { item, fix: !!fix })}
-          onPhoto={() => setCamera({ for: 'log' })}
+          onPhoto={() => setCamera({ for: 'log', title: whose ? `Log item · in ${possessive(firstName(whose))} ReCall` : 'Log item' })}
           onAsk={() => go('ask')}
           onSettings={() => go('settings')}
           onMenu={() => go('menu')}
-          onHold={(item) => setSheet(item)}
+          onHold={(item) => { if (roleOn(item) !== 'viewer') setSheet(item); }}
+          onSwitch={() => { if (grants.length || whose) setSwitching(true); }}
+          onStartOwn={() => { setWhose(null); logEvent('start_own', {}); }}
         />
       );
   }
@@ -312,14 +360,21 @@ export default function App() {
           returns to the drawer, not to Home. Close is one step back. */}
       <MenuDrawer open={route.view === 'menu'} onClose={back} onPick={(id) => go(id)} />
       {camera && <Camera title={camera.title || 'Log item'} max={camera.max || 4} onDone={cameraDone} onCancel={() => setCamera(null)} />}
+      {switching && (
+        <Choice title="Which ReCall?" options={[
+          ...(!whose ? [] : [{ label: 'My ReCall', onClick: () => { setSwitching(false); setWhose(null); } }]),
+          ...grants.filter((g) => g.grantor !== whose).map((g) => ({ label: `${possessive(firstName(g.grantor) || 'Someone')} ReCall`, onClick: () => { setSwitching(false); setWhose(g.grantor); logEvent('switch_recall', {}); } })),
+          { label: 'Cancel', onClick: () => setSwitching(false) },
+        ]} onCancel={() => setSwitching(false)} />
+      )}
       {sheet && (
-        <ItemSheet item={live(sheet)}
+        <ItemSheet item={live(sheet)} role={roleOn(live(sheet))}
           onAdd={() => { const it = live(sheet); setSheet(null); setCamera({ for: 'add', itemId: it.id, max: Math.min(MAX_SHOTS, LOG_MAX - (it.photoCount || 1)), title: 'Add photos' }); }}
           onChangePlace={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onRename={() => { setSheet(null); go('thing', { item: sheet, fix: true }); }}
           onMoveToTop={async () => { setSheet(null); await moveToTop(sheet, items); logEvent('move_to_top', { itemId: sheet.id, via: 'sheet' }); say('Moved to the top'); }}
-          onPrivate={async () => { const it = live(sheet); setSheet(null); const to = isPrivate(it) ? 'household' : 'private'; await setVisibility(it, to); logEvent('visibility', { itemId: it.id, to, via: 'tile_sheet' }); say(VISIBILITY_TOAST[to]); }}
-          onRemove={() => { setSheet(null); setRemoving(sheet); }}
+          onPrivate={roleOn(live(sheet)) === 'owner' ? async () => { const it = live(sheet); setSheet(null); const to = isPrivate(it) ? 'household' : 'private'; await setVisibility(it, to); logEvent('visibility', { itemId: it.id, to, via: 'tile_sheet' }); say(VISIBILITY_TOAST[to]); } : null}
+          onRemove={roleOn(live(sheet)) === 'owner' ? () => { setSheet(null); setRemoving(sheet); } : null}
           onCancel={() => setSheet(null)} />
       )}
       {mismatch && (

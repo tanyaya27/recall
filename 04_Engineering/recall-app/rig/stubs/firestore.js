@@ -55,7 +55,7 @@ function applyPatch(cur, patch) {
 const deny = (why) => { const e = new Error('permission-denied: ' + why); e.code = 'permission-denied'; throw e; };
 const EDITOR_KEYS = new Set(['name', 'aliases', 'location', 'history', 'photo', 'thumb', 'thumbV', 'restingOn', 'description', 'needsPlace', 'lastSeenAt', 'updatedAt', 'logId', 'photoCount', 'order', 'pinnedOrder', 'naming']);
 const grantRole = (owner, me) => { const g = S('recall_grants').get(`${owner}_${me}`); return g ? g.role : null; };
-const canRead = (d, me) => d.owner === me || ['viewer', 'editor'].includes((d.roles || {})[me]) || (d.private === false && !!grantRole(d.owner, me));
+const canRead = (d, me) => d.owner === me || ['viewer', 'editor'].includes((d.roles || {})[me]) || (d.sharedWith || []).includes(me) || (d.private === false && !!grantRole(d.owner, me));
 const canEdit = (d, me) => d.owner === me || (d.roles || {})[me] === 'editor' || (d.private === false && grantRole(d.owner, me) === 'editor');
 const consistent = (d) => { const keys = Object.keys(d.roles || {}).sort().join(','); const arr = [...(d.sharedWith || [])].sort().join(','); return keys === arr && (!d.private || keys === ''); };
 const itemOf = (s) => S('recall_items').get(s.itemId) || null;
@@ -83,7 +83,8 @@ function checkUpdate(colName, cur, next, patch, me) {
 }
 function checkDelete(colName, cur, me) {
   if (!enforce) return;
-  if (colName === 'recall_grants') { if (cur.grantor !== me) deny('grant: only grantor'); return; }
+  if (colName === 'recall_grants') { if (cur.grantor !== me && cur.grantee !== me) deny('grant: grantor or grantee'); return; }
+  if (colName === 'recall_invites') { if (cur.from !== me) deny('invite: only its sender'); return; }
   if (colName !== 'recall_items') return;
   if (cur.kind === 'snap') { const it = itemOf(cur); if (!it || it.owner !== me) deny('snap delete: owner only'); return; }
   if (cur.owner !== me) deny('delete: owner only');
@@ -91,7 +92,7 @@ function checkDelete(colName, cur, me) {
 function checkRead(colName, d, me) {
   if (!enforce) return true;
   if (colName === 'recall_grants') return d.grantor === me || d.grantee === me;
-  if (colName === 'recall_invites') return false;
+  if (colName === 'recall_invites') return d.from === me || !!d.__get; // a get by code is allowed for any signed-in user; a list only of my own
   if (colName === 'recall_users' || colName === 'recall_events') return true;
   if (d.kind === 'snap') { const it = itemOf(d); return !!it && canRead(it, me); }
   return canRead(d, me);
@@ -111,7 +112,7 @@ export async function updateDoc(ref, patch) {
   S(ref.__col).set(ref.__doc, next); notify();
 }
 export async function deleteDoc(ref) { const cur = S(ref.__col).get(ref.__doc); if (cur) checkDelete(ref.__col, cur, auth()); S(ref.__col).delete(ref.__doc); notify(); }
-export async function getDoc(ref) { const d = S(ref.__col).get(ref.__doc); const ok = d && checkRead(ref.__col, d, auth()); return { exists: () => !!ok, id: ref.__doc, data: () => (ok ? { ...d } : undefined) }; }
+export async function getDoc(ref) { const d = S(ref.__col).get(ref.__doc); const ok = d && checkRead(ref.__col, { ...d, __get: true }, auth()); return { exists: () => !!ok, id: ref.__doc, data: () => (ok ? { ...d } : undefined) }; }
 export async function getDocs(q) { const me = auth(); return { docs: docsOf(q).filter((d) => checkRead(q.__col, d.data(), me)) }; }
 export function onSnapshot(q, cb) {
   const fire = () => { const me = auth(); cb({ docs: docsOf(q).filter((d) => checkRead(q.__col, d.data(), me)) }); };
@@ -120,9 +121,11 @@ export function onSnapshot(q, cb) {
 export function writeBatch() { const ops = []; return { set: (r, d, o) => ops.push(() => setDoc(r, d, o)), update: (r, p) => ops.push(() => updateDoc(r, p)), delete: (r) => ops.push(() => deleteDoc(r)), commit: async () => { for (const op of ops) await op(); } }; }
 export async function runTransaction(dbx, fn) { return fn({ get: getDoc, set: setDoc, update: updateDoc, delete: deleteDoc }); }
 
+// Admin-side access for stubs/fbfunctions.js (the real functions use the Admin SDK, which bypasses rules).
+export const __raw = { get: (c, id) => S(c).get(id) || null, set: (c, id, d) => { S(c).set(id, { ...d }); notify(); }, update: (c, id, p) => { S(c).set(id, applyPatch(S(c).get(id) || {}, p)); notify(); }, del: (c, id) => { S(c).delete(id); notify(); }, list: (c, pred) => [...S(c).entries()].filter(([, d]) => pred(d)).map(([id, d]) => ({ id, ...d })), nextId: () => `d${++seq}` };
 // Rig helpers
 export function __seed(list, colName = 'recall_items') { list.forEach((d) => { const { id, ...rest } = d; S(colName).set(id || `d${++seq}`, { ...rest }); }); notify(); }
 export function __dump(colName = 'recall_items') { return [...S(colName).entries()].map(([id, d]) => ({ id, ...d })); }
 export function __rules(on) { enforce = !!on; try { localStorage.setItem('rig-rules', on ? '1' : '0'); } catch { /* */ } notify(); }
 export function __reset() { stores.clear(); notify(); }
-if (typeof window !== 'undefined') { window.__rig = window.__rig || {}; Object.assign(window.__rig, { seed: __seed, dump: __dump, rules: __rules, reset: __reset }); }
+if (typeof window !== 'undefined') { window.__rig = window.__rig || {}; Object.assign(window.__rig, { seed: __seed, dump: __dump, rules: __rules, reset: __reset }); window.__rigfs = { updateDoc, setDoc, deleteDoc, addDoc, doc, collection }; }

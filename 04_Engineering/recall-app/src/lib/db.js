@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { me } from './auth.js';
+import { call } from './functions.js';
 import { dayKey, timeOfDay } from './format.js';
 import { THUMB_V } from './img.js';
 
@@ -34,6 +35,7 @@ const eventsCol = collection(db, 'recall_events');
 export const HOUSEHOLD = 'default'; // read-only legacy marker; see adoptLegacy()
 const grantsCol = collection(db, 'recall_grants');
 const usersCol = collection(db, 'recall_users');
+const invitesCol = collection(db, 'recall_invites');
 export const ROLE_WORDS = { viewer: 'Can see', editor: 'Can help' };
 // The fields every new thing gets (Phase 1). `owner` defaults to me; a helper logging into
 // Margaret's ReCall passes her uid.
@@ -125,11 +127,14 @@ export function watchAll(cb) {
   const uid = me();
   const parts = new Map(); // key -> docs[]
   const unsubs = new Map();
-  let grants = [];
+  let grants = [];          // ReCalls I am in (grantee == me)
+  let people = [];          // people in MY ReCall (grantor == me) — Phase 2
+  let invites = [];         // my open invitations (from == me, unused, unexpired) — Phase 2
+  let grantsReady = false;  // the grants snapshot has arrived at least once (the removed card waits for it)
   const emit = () => {
     const seen = new Map();
     parts.forEach((docs, key) => docs.forEach((d) => { if (!seen.has(d.id)) seen.set(d.id, d); if (key.startsWith('g:')) seen.get(d.id).grantRole = grants.find((g) => g.grantor === d.owner)?.role || null; }));
-    const out = { items: [], routines: [], checks: [], removed: [], places: [], grants };
+    const out = { items: [], routines: [], checks: [], removed: [], places: [], grants, people, invites, grantsReady };
     seen.forEach((data) => {
       if (data.kind === 'place') out.places.push(data);
       else if (data.kind === 'routine') out.routines.push(data);
@@ -151,10 +156,13 @@ export function watchAll(cb) {
   };
   const KINDS = ['item', 'routine', 'check', 'place'];
   listen('mine', query(col, where('owner', '==', uid), where('kind', 'in', KINDS)));
-  listen('shared', query(col, where('sharedWith', 'array-contains', uid)));
+  listen('shared', query(col, where('sharedWith', 'array-contains', uid), where('kind', 'in', KINDS))); // the kind filter is what makes the rule provable for a list (real engine, 2026-09-21)
   listen('legacy', query(col, where('household', '==', HOUSEHOLD), where('kind', 'in', KINDS)));
+  unsubs.set('people', onSnapshot(query(grantsCol, where('grantor', '==', uid)), (snap) => { people = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); emit(); }, (err) => console.error('watchAll people', err)));
+  unsubs.set('invites', onSnapshot(query(invitesCol, where('from', '==', uid)), (snap) => { invites = snap.docs.map((d) => ({ id: d.id, code: d.id, ...d.data() })).filter((i) => !i.usedBy && i.expiresAt > Date.now()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); emit(); }, (err) => console.error('watchAll invites', err)));
   unsubs.set('grants', onSnapshot(query(grantsCol, where('grantee', '==', uid)), (snap) => {
     grants = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    grantsReady = true;
     const want = new Set(grants.map((g) => 'g:' + g.grantor));
     [...unsubs.keys()].filter((k) => k.startsWith('g:') && !want.has(k)).forEach((k) => { unsubs.get(k)(); unsubs.delete(k); parts.delete(k); });
     grants.forEach((g) => listen('g:' + g.grantor, query(col, where('owner', '==', g.grantor), where('private', '==', false), where('kind', 'in', KINDS))));
@@ -176,8 +184,19 @@ export async function adoptLegacy(limitN = 40) {
     const data = d.data();
     const patch = { owner: uid, by: data.by && data.by !== 'self' ? data.by : uid };
     if (data.kind === 'item') Object.assign(patch, { private: data.visibility === 'private', roles: {}, sharedWith: [] });
+    else if (data.kind !== 'snap') patch.private = false; // places/routines/checks: the per-grant listener filters on it
     await updateDoc(doc(col, d.id), patch);
   }
+  return todo.length;
+}
+// 2026-09-21: docs adopted before this fix (Dad's phone) lack `private` on places, routines and
+// checks, so a grant holder's listener (owner == X && private == false) never sees them. The
+// owner's phone repairs its own docs as they arrive; nothing repeats (the write comes back
+// with the flag set). Returns how many it patched.
+export async function repairPrivateFlags(data) {
+  const uid = me(); if (!uid) return 0;
+  const todo = [...(data.places || []), ...(data.routines || []), ...(data.checks || [])].filter((d) => d.owner === uid && d.private === undefined);
+  for (const d of todo) await updateDoc(doc(col, d.id), { private: false });
   return todo.length;
 }
 export async function legacyCount() {
@@ -191,6 +210,54 @@ export async function upsertUser(user) {
   await setDoc(doc(usersCol, user.uid), { name: user.displayName || null, photo: user.photoURL || null, anonymous: !!user.isAnonymous, lastOpenedAt: Date.now() }, { merge: true });
 }
 export async function readUser(uid) { const d = await getDoc(doc(usersCol, uid)); return d.exists() ? { id: uid, ...d.data() } : null; }
+
+// ---------- people (multi-user Phase 2, 2026-09-21 — MU1·2–7, MU2·4–8) ----------
+//
+// Names come from recall_users, read once per uid per session and cached; `firstName` is
+// what the screens show (Google gives "Margaret Hale"; the tiles say "Margaret's").
+const userCache = new Map(); // uid -> { name, photo, anonymous } | null
+const userSubs = new Set();
+export function userOf(uid) { return uid ? userCache.get(uid) || null : null; }
+export function firstName(uid) { const u = userOf(uid); const n = u && u.name ? String(u.name).trim().split(/\s+/)[0] : ''; return n || ''; }
+export function watchNames(cb) { userSubs.add(cb); return () => userSubs.delete(cb); }
+// Ask for names the screens will need; each uid is fetched once. Calls back when any arrive.
+export function wantNames(uids) {
+  const missing = [...new Set(uids.filter(Boolean))].filter((u) => !userCache.has(u));
+  if (!missing.length) return;
+  missing.forEach((u) => userCache.set(u, undefined)); // in flight
+  Promise.all(missing.map((u) => readUser(u).then((d) => userCache.set(u, d), () => userCache.set(u, null))))
+    .then(() => userSubs.forEach((cb) => cb()));
+}
+export function possessive(name) { return name ? `${name}’s` : ''; }
+
+// The invite: createInvite (a callable — the client never writes recall_invites) → a link.
+// The text is what the system share sheet sends; the page it opens is JoinScreen.
+export function joinUrl(code) { return `${location.origin}${location.pathname}?j=${encodeURIComponent(code)}`; }
+export async function createInvite(role, itemId = null) {
+  const r = await call('createInvite', { role, itemId });
+  return { code: r.code, expiresAt: r.expiresAt, url: joinUrl(r.code) };
+}
+export function inviteText(role, url, myName) {
+  const who = myName || 'Someone';
+  const verb = role === 'editor' ? 'help with' : 'see';
+  return `${who} has invited you to ${verb} ${myName ? 'their' : 'a'} ReCall — the photos of where ${myName ? 'their' : 'the'} things are. Open this on your phone: ${url}\nIt works for 7 days.`;
+}
+// Whoever holds the link may read the invitation (the code is the secret); the join page
+// needs the inviter's uid for the name and the role for its sentence.
+export async function readInvite(code) {
+  const d = await getDoc(doc(invitesCol, code));
+  if (!d.exists()) return null;
+  const inv = { code, ...d.data() };
+  inv.expired = !!inv.usedBy || inv.expiresAt < Date.now();
+  return inv;
+}
+export async function acceptInvite(code) { return call('acceptInvite', { code }); }
+export async function cancelInvite(code) { await deleteDoc(doc(invitesCol, code)); }
+// The owner's People screen: change a person's role, or remove them. A helper leaves a
+// ReCall by deleting the same grant (rules: grantor or grantee may delete).
+export async function setGrantRole(grant, role) { await updateDoc(doc(grantsCol, grant.id), { role }); }
+export async function removeGrant(grant) { await deleteDoc(doc(grantsCol, grant.id)); }
+export const ROLE_BLURB = { viewer: 'Sees your things and where they are. Cannot change anything.', editor: 'Can also add photos, move things and fix names.' };
 // The board only shows items whose `kind` is item and that are not removed. Routines
 // and checks are still read (they exist in test data) but the 09-05 board does not
 // render them; they return with the helper's device.
@@ -203,24 +270,24 @@ export async function readUser(uid) { const d = await getDoc(doc(usersCol, uid))
 // `naming: true` (D3) means the photo was saved before the AI named it. The name is
 // patched in by nameItem(); if naming fails the flag is cleared and the thing stays
 // unnamed — a legitimate state. Nothing on the board ever asks her to name it.
-export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false, aliases = [], extras = [] }) {
+export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me() }) {
   const now = Date.now();
   const logId = `log_${now}`;
   const ref = await addDoc(col, {
-    kind: 'item', ...ownership(), name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
+    kind: 'item', ...ownership(owner), name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
     needsPlace: !location, naming,
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }], logId, photoCount: 1 + extras.length,
   });
-  await addDoc(col, { kind: 'snap', owner: me(), by: me(), itemId: ref.id, logId, photo, thumb, location, at: now });
-  await writeExtras(ref.id, logId, extras, location, now, by);
+  await addDoc(col, { kind: 'snap', owner, by: me(), itemId: ref.id, logId, photo, thumb, location, at: now });
+  await writeExtras(ref.id, logId, extras, location, now, by, owner);
   return ref.id;
 }
 
 // The other photos of one log (a wide shot after the close-up), in the order taken.
-async function writeExtras(itemId, logId, extras, location, at, by) {
+async function writeExtras(itemId, logId, extras, location, at, by, owner = me()) {
   for (let i = 0; i < extras.length; i++) {
-    await addDoc(col, { kind: 'snap', owner: me(), by: me(), itemId, logId, photo: extras[i].photo, thumb: extras[i].thumb, location, at: at + i + 1, extra: true });
+    await addDoc(col, { kind: 'snap', owner, by: me(), itemId, logId, photo: extras[i].photo, thumb: extras[i].thumb, location, at: at + i + 1, extra: true });
   }
 }
 
@@ -281,7 +348,7 @@ export async function setVisibility(item, visibility) {
 }
 export function isPrivate(it) { return it.private === true || it.visibility === 'private'; }
 export function isMine(it) { return it.owner === me(); }
-export function roleOn(it) { if (!it) return null; if (isMine(it)) return 'owner'; return (it.roles || {})[me()] || it.grantRole || null; }
+export function roleOn(it) { if (!it) return null; if (isMine(it) || !it.owner) return 'owner'; /* a legacy doc not yet adopted is mine */ return (it.roles || {})[me()] || it.grantRole || null; }
 export function canEditThing(it) { const r = roleOn(it); return r === 'owner' || r === 'editor'; }
 // What THIS phone may show: everything shared, plus what it logged itself.
 export function visibleHere(items) {
@@ -302,7 +369,7 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
     lastSeenAt: now, updatedAt: now, history, capturedBy: by, logId, photoCount: 1 + extras.length,
   });
   await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location, at: now });
-  await writeExtras(item.id, logId, extras, location, now, by);
+  await writeExtras(item.id, logId, extras, location, now, by, item.owner || me());
 }
 
 // 2026-09-14 (Ravi): one log can hold several photos — a close-up and a wide shot. A later
@@ -425,13 +492,13 @@ export function knownLocations(items, limit = 5, places = []) {
 // third drawer ⊂ filing cabinet ⊂ office ⊂ home — built by the system in the background,
 // never by the user. Reserve `parent` (place id | null) on this doc for it; nothing reads it yet.
 export const PLACE_PHOTOS = 3;
-export async function addPlace(name, places = [], photos = []) {
+export async function addPlace(name, places = [], photos = [], owner = me()) {
   const n = name.trim();
   if (!n) return null;
   const dup = places.find((p) => p.name.toLowerCase() === n.toLowerCase());
   if (dup) { if (photos.length) await addPlacePhotos(dup, photos); return dup.id; }
   const now = Date.now();
-  const ref = await addDoc(col, { kind: 'place', owner: me(), by: me(), name: n, order: now, createdAt: now, parent: null,
+  const ref = await addDoc(col, { kind: 'place', owner, by: me(), private: false, name: n, order: now, createdAt: now, parent: null,
     photos: photos.slice(0, PLACE_PHOTOS).map((p) => ({ ...p, at: now })) });
   return ref.id;
 }

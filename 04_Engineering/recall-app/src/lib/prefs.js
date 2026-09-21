@@ -25,8 +25,10 @@ export function getPrefs() {
     return { theme: THEMES.some((t) => t.id === p.theme) ? p.theme : 'linen', size: SIZES.some((s) => s.id === p.size) ? p.size : 'normal',
       density: p.density === 'compact' ? 'compact' : 'normal',
       placeView: ['names', 'small', 'big'].includes(p.placeView) ? p.placeView : null, // null = not chosen yet (round 7)
-      showTimes: p.showTimes !== false }; // times on photos (thing card, 09-16), on by default
-  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null, showTimes: true }; }
+      showTimes: p.showTimes !== false, // times on photos (thing card, 09-16), on by default
+      showAddedBy: p.showAddedBy !== false, // who added each photo, on the stamp (Phase 2, split 4: on by default)
+      whose: typeof p.whose === 'string' ? p.whose : null }; // which ReCall this phone is looking at: null = mine, else the owner's uid
+  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null, showTimes: true, showAddedBy: true, whose: null }; }
 }
 
 export function savePrefs(p) {

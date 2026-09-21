@@ -48,3 +48,16 @@ few mock-only rules; `rig/render_r7.js` screenshots each at 390×844 (full page)
 the top of each page says which option it is. Copy the pattern for the next round.
 `rig/shots_r7.js` is the post-build review script (seeds private / no-place things and a
 place with photos, walks every new screen, both themes).
+
+## The real rules engine (2026-09-21)
+
+`04_Engineering/firebase/rules-test/` runs `firestore.rules` on the Firestore **emulator**
+(Java + `firebase-tools` + `@firebase/rules-unit-testing`) against the exact reads and writes
+the app makes: `test.mjs` (the owner on adopted data), `test_grant.mjs` (a whole-ReCall
+editor), `test_p2.mjs` (invites, leave, the shared-with-me query). `npm install && npm test`.
+It found what the rig's JS permission table could not: a list query is refused unless the rule
+is provable from the query's own constraints (`sharedWith array-contains me` needed `me() in
+sharedWith` in `canRead` AND a `kind in` filter on the query). Run it whenever the rules or a
+listener's shape changes. The rig's `audit_roles.js` (41 checks, six roles, invite/join/
+remove/leave/expired flows) stays the UI-level audit; `stubs/fbfunctions.js` runs the four
+callables over the in-memory store; `shots_p2.js` makes the Phase 2 review montages.

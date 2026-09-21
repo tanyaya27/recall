@@ -557,3 +557,39 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .thing-head .row2 { background: var(--accent-soft); border-radius: 0.625rem; padding: 0.375rem 0.625rem; margin-top: 0.375rem; }
 
 .account .uid { font-size: 0.8125rem; color: var(--ink-soft); word-break: break-all; }
+
+/* ---- Multi-user Phase 2 (2026-09-21): People, the invite, the join page, whose ReCall ---- */
+.prow { display: flex; align-items: center; gap: 0.75rem; width: 100%; text-align: left; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.75rem 0.875rem; margin-bottom: 0.625rem; color: var(--ink); min-height: 3.75rem; }
+.prow .nm { flex: 1; min-width: 0; }
+.prow .nm b { display: block; font-size: 1.125rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.prow .nm small { display: block; color: var(--ink-soft); font-size: 0.9375rem; margin-top: 0.125rem; }
+.prow .chev { color: var(--ink-soft); display: flex; flex: none; }
+.prow .chev svg { width: 1.5rem; height: 1.5rem; }
+.prow.pending .nm b { color: var(--ink-soft); font-weight: 600; }
+.people .btn-secondary { display: flex; align-items: center; justify-content: center; }
+.rolepick { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0; }
+.rolepick button { display: block; width: 100%; text-align: left; padding: 0.75rem 0.875rem; background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); color: var(--ink); min-height: 0; }
+.rolepick button.on { border-color: var(--accent); background: var(--accent-soft); }
+.rolepick b { display: block; font-size: 1.125rem; font-weight: 700; }
+.rolepick span { display: block; color: var(--ink-soft); font-size: 0.9375rem; margin-top: 0.125rem; line-height: 1.3; }
+.consent { color: var(--ink-soft); font-size: 0.9375rem; line-height: 1.35; margin: 0.5rem 0.25rem 0.75rem; }
+.sheet .btn-primary + .btn-primary.alt { margin-top: 0.5rem; }
+.join-sheet .btn-primary, .card.join .btn-primary { display: flex; align-items: center; justify-content: center; gap: 0.25rem; margin-top: 0.5rem; }
+/* the day line is a button now (it switches ReCalls when there is one to switch to) */
+.dayline { background: none; border: 0; padding: 0; text-align: left; min-height: 0; border-radius: 0; }
+.dayline.owner { display: flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
+.title-owner { display: flex; align-items: center; gap: 0.35rem; color: var(--ink); font-size: min(1.25rem, 5vw); font-weight: 600; line-height: 1.2; white-space: nowrap; }
+.title-owner svg { width: 1.1em; height: 1.1em; color: var(--ink-soft); flex: none; }
+.status8 { color: var(--ink-soft); font-size: min(0.9375rem, 4vw); font-weight: 500; line-height: 1.2; }
+.tile .tile-owner { display: block; font-size: min(0.875rem, 3.8vw); color: var(--ink-soft); font-weight: 600; margin-top: 0.125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .tile-label:has(.tile-owner) { -webkit-line-clamp: 3; }
+/* Log item in someone else's ReCall: whose, small, under the words (MU2·7) */
+.footer-inner > .btn-primary.whose { flex-direction: column; gap: 0; line-height: 1.1; padding-top: 0.375rem; padding-bottom: 0.375rem; }
+.footer-inner > .btn-primary.whose .whose-sub { display: block; font-size: min(0.75rem, 3.3vw); font-weight: 600; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.footer.compact .whose-sub { display: none; }
+.card.join { text-align: center; padding: 2rem 1rem 1.25rem; margin-top: 2rem; }
+.card.join h1 { font-size: 1.75rem; margin: 0 0 0.5rem; line-height: 1.2; }
+.card.join p { color: var(--ink-soft); font-size: 1.0625rem; line-height: 1.4; margin: 0 0 1.25rem; }
+.actbar.two { grid-template-columns: repeat(2, 1fr); }
+.support { font-size: 0.8125rem; margin: 1.5rem 0 0 0.75rem; }
+.support .uid { font-size: inherit; }

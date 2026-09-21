@@ -3,6 +3,7 @@ import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.
 import Header from './Header.jsx';
 import { currentUser, isAnonymous, signIn } from '../lib/auth.js';
 import { legacyCount } from '../lib/db.js';
+import { APPLE_SIGNIN } from './People.jsx';
 
 // Settings — reduced to what setup needs. Board decision 2026-09-05, screen 6; platform
 // audit V5: this is the one screen where "looks like the phone's Settings" is exactly
@@ -163,14 +164,23 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
       </div>
 
 
+      {/* Multi-user Phase 2 (2026-09-21). Ravi on the Phase 1 card: "doesn't even make grammatical
+          sense" — it was the developer's identity readout in user-facing prose. Now: one plain
+          sentence about the account, one about why to sign in; the ID and the adoption count go
+          to a small For support line at the foot of the screen. Apple stays hidden until the
+          console has the provider (People.jsx APPLE_SIGNIN). */}
       <div className="group-title">Account</div>
       <div className="group"><div className="grow account">
-        <p className="sub">{isAnonymous() ? 'This phone is not signed in — your things live on this phone until you sign in or share.' : <>Signed in as <b>{(user && user.displayName) || 'you'}</b>.</>}<br />ID: <code className="uid">{user ? user.uid : '…'}</code><br />Legacy docs left: <b>{legacy === null ? '…' : legacy}</b></p>
-        {isAnonymous() && (
-          <div className="seg">
-            <button onClick={() => signIn('apple')}>Sign in with Apple</button>
-            <button onClick={() => signIn('google')}>Sign in with Google</button>
-          </div>
+        {isAnonymous() ? (
+          <>
+            <p className="sub">You’re using ReCall without an account. Your things are saved and will be here when you come back.<br />Sign in to share with someone or to use ReCall on a second phone.</p>
+            <div className="seg">
+              {APPLE_SIGNIN && <button onClick={() => signIn('apple')}>Sign in with Apple</button>}
+              <button onClick={() => signIn('google')}>Sign in with Google</button>
+            </div>
+          </>
+        ) : (
+          <p className="sub" style={{ margin: 0 }}>Signed in as <b>{(user && user.displayName) || 'you'}</b>{user && user.email ? <> · {user.email}</> : null}.</p>
         )}
       </div></div>
       <div className="group-title">AI key</div>
@@ -215,6 +225,7 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
         </div>
       </div>
 
+      <p className="note-quiet left support">For support · ID <code className="uid">{user ? user.uid : '…'}</code>{legacy !== null && legacy !== 0 ? <> · legacy docs left {legacy}</> : null}</p>
     </div>
   );
 }

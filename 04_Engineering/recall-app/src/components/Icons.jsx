@@ -122,3 +122,40 @@ export function BroomIcon() {
     </svg>
   );
 }
+
+// Multi-user Phase 2 (2026-09-21). The provider marks are generic glyphs, not the brands' logos.
+export function PersonAddIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="10" cy="8" r="3.5" /><path d="M3.5 19.5c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" /><path d="M19 8v6M16 11h6" />
+    </svg>
+  );
+}
+export function PeopleIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="9" cy="8" r="3.25" /><path d="M2.5 19.5c0-3.2 2.9-5.25 6.5-5.25s6.5 2.05 6.5 5.25" /><circle cx="17" cy="9" r="2.5" /><path d="M16.5 14.5c2.8 0 5 1.8 5 4.5" />
+    </svg>
+  );
+}
+export function GoogleIcon() {
+  return (
+    <svg {...base} strokeWidth="2.25">
+      <path d="M20 12h-8" /><path d="M20 12a8 8 0 1 1-2.3-5.6" />
+    </svg>
+  );
+}
+export function AppleIcon() {
+  return (
+    <svg {...base}>
+      <path d="M15.5 3.5c-1.6.2-3 1.6-2.9 3.3 1.5.1 3-1.4 2.9-3.3z" /><path d="M16.9 12.6c0-2 1.6-2.9 1.7-3-1-1.4-2.4-1.6-2.9-1.6-1.3-.1-2.4.7-3 .7-.7 0-1.6-.7-2.7-.7-1.4 0-2.7.8-3.4 2.1-1.5 2.5-.4 6.3 1.1 8.4.7 1 1.5 2.1 2.6 2.1s1.4-.7 2.7-.7 1.6.7 2.7.7 1.8-1 2.5-2c.8-1.2 1.1-2.3 1.1-2.4-.1 0-2.4-.9-2.4-3.6z" />
+    </svg>
+  );
+}
+export function SwitchIcon() {
+  return (
+    <svg {...base}>
+      <path d="M7 10l5 5 5-5" />
+    </svg>
+  );
+}

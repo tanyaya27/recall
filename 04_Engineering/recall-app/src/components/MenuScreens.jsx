@@ -16,6 +16,7 @@ import SwipeRow from './SwipeRow.jsx';
 
 export const MENU_ITEMS = [
   { id: 'look', label: 'Text size & colours' }, // was 'Look and feel' — 'a bad name' (Ravi 09-15)
+  { id: 'people', label: 'People' }, // multi-user Phase 2 (MU1·1): second row (Maya; Devin wanted it last — plan split 2)
   { id: 'locations', label: 'Places' }, // 'place' everywhere (Ravi 09-16); the route id stays
   { id: 'deleted', label: 'Deleted items' },
   { id: 'research', label: 'Research log' },
@@ -70,7 +71,7 @@ export function LookScreen({ onBack }) {
 // One list of every place the household knows, used or saved, with its picture, how many
 // things are there, and a chevron. Tap → PlaceScreen. "Add a location" opens the camera
 // first and asks the name after, the same shape as logging a thing.
-export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd }) {
+export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd, canEdit = true }) {
   const rows = allPlaces(items, places);
   return (
     <div className="screen settings">
@@ -88,7 +89,7 @@ export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd
           </button>
         );
       })}
-      <button className="btn-secondary" onClick={onAdd}><CameraIcon /> Add a place</button>
+      {canEdit && <button className="btn-secondary" onClick={onAdd}><CameraIcon /> Add a place</button>}
     </div>
   );
 }
@@ -96,7 +97,7 @@ export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd
 // One place: its photos (add / remove), its name (rename updates every thing there), the
 // things there now, and Remove at the bottom (things keep their place text; only the saved
 // place and its photos go).
-export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto, onOpenThing, onToast }) {
+export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto, onOpenThing, onToast, owner }) {
   const saved = placeNamed(name, places);
   const photos = (saved && saved.photos) || [];
   const things = items.filter((it) => (it.location || '').toLowerCase() === name.toLowerCase());
@@ -107,7 +108,7 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
     const n = draft.trim(); setEditing(false);
     if (!n || n === name) return;
     if (saved) await renamePlace(saved, n, items);
-    else { const id = await addPlace(n, places); await Promise.all(things.map((it) => changeLocation(it, n))); void id; }
+    else { const id = await addPlace(n, places, [], owner); await Promise.all(things.map((it) => changeLocation(it, n))); void id; }
     logEvent('place_renamed', { from: name, to: n, things: things.length });
     onToast && onToast(`Renamed · ${n}`); onBack();
   };
@@ -164,14 +165,14 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
 }
 
 // After the camera, for a NEW location: the photos just taken, and the one question.
-export function NewPlaceScreen({ files = [], places = [], onBack, onDone }) {
+export function NewPlaceScreen({ files = [], places = [], onBack, onDone, owner }) {
   const [draft, setDraft] = useState('');
   const [pics, setPics] = useState(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { let on = true; Promise.all(files.slice(0, PLACE_PHOTOS).map(compressPlacePhoto)).then((p) => { if (on) setPics(p); }); return () => { on = false; }; }, [files]);
   const save = async () => {
     const n = draft.trim(); if (!n || busy) return;
-    setBusy(true); const id = await addPlace(n, places, pics || []); logEvent('place_added', { name: n, photos: (pics || []).length, via: 'camera' }); setBusy(false); onDone(n, id);
+    setBusy(true); const id = await addPlace(n, places, pics || [], owner); logEvent('place_added', { name: n, photos: (pics || []).length, via: 'camera' }); setBusy(false); onDone(n, id);
   };
   return (
     <div className="screen settings">
