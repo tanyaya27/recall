@@ -1,3 +1,4 @@
+// Runtime: Node 22 (firebase.json); redeploy with --force after changing it.
 // ReCall Cloud Functions — multi-user Phase 1 (2026-09-19). Four callables; the client never
 // writes grants, invites, secrets or ownership. Design: TECH_BOARD_2026-09-19.md §3–4.
 import { onCall, HttpsError } from 'firebase-functions/v2/https';

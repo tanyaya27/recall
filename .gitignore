@@ -20,3 +20,7 @@ secrets.json
 # scratch from Cowork sessions
 _to_delete/
 Claude outputs/
+
+# Firebase CLI logs
+firebase-debug.log
+**/firebase-debug.log
