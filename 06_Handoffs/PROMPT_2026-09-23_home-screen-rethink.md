@@ -1,0 +1,21 @@
+# Next session — the home screen, rethought (written 2026-09-23)
+
+Paste everything below the line as the first message of the new session.
+
+---
+
+We're continuing ReCall (Tanya's project). The repo is in my connected folder `ReCall`. Before anything else, read `CLAUDE.md`, `06_Handoffs/OPEN_ITEMS.md` (the top two sections), `06_Handoffs/LESSONS.md`, the last session log `06_Handoffs/sessions/2026-09-21-firebase-deploy-and-multi-user-phase2.md`, and the design of record: `06_Handoffs/design/BOARD_2026-09-05_interaction_model.md`, `DESIGN_2026-09-16_things-places-sightings.md`, `BOARD_2026-09-19_multi-user_reset.md` and `PLAN_2026-09-19_multi-user.md`. The live build is `20260921b` (multi-user Phase 2 + Google sign-in). Rebuild the review rig from `06_Handoffs/RIG.md` before drawing anything.
+
+**The task: a complete rethink of the home screen, from both a UX and an artistic standpoint.** It is not a great opening screen. Today it is a day line, a two-column grid of square photo tiles with a label strip, a hamburger and a small Settings link at the top, and *Log item · Find item* fixed at the bottom. I want it to be the screen Margaret is glad to open, not just a list of her things.
+
+Convene the product board (Maya, Devin, Priyanka, Sam) and the persona board as usual, and add a new member for this round: **a graphic designer with 20 years of experience designing beautiful mobile experiences** (give them a name and a point of view; they own composition, type, colour, imagery, motion and the feeling of the first second). Show me the disagreements, not a consensus.
+
+**Deliverable: six different home-screen mockups**, genuinely different in concept (not six colourways of one layout), each drawn from the real stylesheet and real components in the rig at iPhone size (390 wide), with the same seeded things so they compare fairly. For each: the idea in one sentence, who on the boards champions it and who objects, what it does for Margaret at the Largest text size and in Dusk, and what it costs to build. Put all six side by side in one montage plus one image per mockup, write them into `06_Handoffs/design/`, and send me the file cards. **No code changes to the app until I pick** — my standing rule: no layout change without rendered options first.
+
+**Every mockup must also solve the perspective problem.** Right now it's very difficult to know whose ReCall I'm looking at: my own, one I'm a guest in (*Can see*), or one I help with (*Can help*). There's no way to know. On my own grid there is only the day line; on someone else's there's *Margaret's ReCall ▾* with the role in small grey text, which is far too quiet. Each of the six must make "whose ReCall, and what I can do here" unmistakable at a glance, and say how that identity carries through to the thing card, the photo card and the camera, and how switching between ReCalls works.
+
+Constraints that still hold: the person is a competent adult in her seventies with early memory loss; the board never asks her anything; things stay in the order she first photographed them; nothing on a photo scales with the text size; icons, text and numbers line up horizontally; controls never wrap; words on screen are *Can see / Can help / Only me / People*, never owner/editor/viewer/caregiver; her own screen must not get busier because other people exist. There's an unused visual-identity brief in `03_Design/ReCall_Identity_Design_Prompt.md` (icon, wordmark, mark) — the designer should read it and say whether any mockup needs the identity settled first.
+
+House rules: walk me through the approach before you draw; every deliverable goes to my folder AND as a file card in the chat; keep `06_Handoffs/OPEN_ITEMS.md` current; when we get to building, bump BOTH cache stamps in `docs/index.html`, run the rig audits (`audit.js`, `audit_roles.js`) and, if rules or listeners change, the real rules engine in `04_Engineering/firebase/rules-test/`; nothing goes to the phone without screenshots I've seen; git commands on the Mac start with `find .git -name "*.lock" -delete`.
+
+Parked, for after the home screen: the invite test (Dad's phone → *Can help* → my phone), then stripping the legacy clauses from the rules; multi-user Phases 3–4; Apple sign-in; the Google Cloud trial ends 2026-12-21 (attach real billing before then).

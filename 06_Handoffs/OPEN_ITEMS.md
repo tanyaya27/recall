@@ -1,7 +1,33 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-15 (round 7).
+*Done* when closed. Updated 2026-09-23.
+
+## NEXT SESSION — home screen rethink (Ravi 09-23)
+
+- [ ] **Home screen: a complete rethink**, UX and artistic — "not a great opening screen". Six
+  mockups from the real stylesheet, product board + a senior mobile graphic designer persona
+  (20 years). Prompt: `06_Handoffs/PROMPT_2026-09-23_home-screen-rethink.md`. No code until
+  Ravi picks.
+- [ ] **Whose ReCall am I looking at?** (Ravi 09-23): "No way to know" whether it is my ReCall,
+  one I can see, or one I can help with. Today: own grid = day line only; a helper's grid =
+  *X's ReCall ▾* + role in small grey. Every one of the six home mockups must answer it at a
+  glance, and the thing card / photo card / camera must carry it too.
+
+## Multi-user — where it stands (09-23)
+
+- [x] `20260921b` LIVE: Phase 2 + same-origin Google sign-in. Dad's phone signed in as
+  ravi.bizlogix@gmail.com (his account) — sign-in proven on a real iPhone.
+- [ ] **The invite test** (set aside 09-23): Dad's phone → People → Invite someone… → Can help
+  → Send a link… → Ravi's phone opens it → Continue with Google (a DIFFERENT Google account
+  from Dad's) → lands in Dad's ReCall → Add photo saves. Until then Ravi's phone is read-only.
+- [ ] After the invite works: strip the `legacy()` clauses from `firestore.rules`, run
+  `04_Engineering/firebase/rules-test` (npm test), `firebase deploy --only firestore:rules`.
+- [ ] Phase 3 (Shared with sheet per thing, Only me confirm, Give, claimAnonymous) and Phase 4
+  (status line) — PLAN_2026-09-19_multi-user.md.
+- [ ] A helper logging into someone else's ReCall still uses their OWN phone's AI key; the `ai`
+  callable (owner's key) is deployed but unused by the client.
+- [ ] Apple sign-in: needs an Apple developer account; `APPLE_SIGNIN` in People.jsx stays false.
 
 ## Needs a phone / the Mac (Ravi)
 

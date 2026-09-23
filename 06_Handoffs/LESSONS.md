@@ -281,3 +281,22 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   pages are 86 % of the strip plus a gap; `scrollLeft / clientWidth` pointed the dots at
   the wrong page as soon as there were more than two. Read `children[1].offsetLeft -
   children[0].offsetLeft`.
+
+## Firebase & sign-in (2026-09-21)
+
+- **The console account is tangadi.biz@gmail.com.** `firebase login:list` shows which account
+  the CLI holds; `firebase use recall-d9886` failing = wrong account.
+- **An old firebase-tools gives Google's "400 malformed request" on login.** Update with
+  `sudo npm install -g firebase-tools` (the global folder is root-owned on this Mac).
+- **Firebase's redirect sign-in does not work on GitHub Pages in Safari** (third-party storage
+  blocked since 16.1). We do Google's OpenID redirect ourselves back to our own URL; the OAuth
+  web client must list the page as a redirect URI, exactly, trailing slash included.
+- **A sign-in button must never fail silently.** Every start error shows under the button and
+  in Settings' *For support* line.
+- **The rig's JS permission table is not the rules engine.** A list query is refused unless the
+  rule is provable from the query's constraints; only the emulator
+  (`04_Engineering/firebase/rules-test/`) shows that. Run it whenever rules or a listener change.
+- **A runtime-only change to Cloud Functions is "no changes detected".** Edit the source
+  (a comment will do) and deploy with `--force`.
+- **Legacy adoption runs on whichever phone opens the new build first** — that phone's person
+  owns the old data. Decide who that should be before shipping a migration like it.
