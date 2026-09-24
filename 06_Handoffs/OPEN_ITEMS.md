@@ -116,16 +116,18 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   "Written down, no photo yet"; the first Add photo becomes the cover. Rules: editors may write `details`, `written`.
   Tests: audit 98/98 · roles 42/42 · modes 25/25 · **audit_label 15/15** · rules engine as expected. Screenshots:
   `design/mockups/S2b_label_write_built.jpg`. **Deploy: rules first, then push** (commands in the chat 09-24).
-- [ ] **NEW (Ravi 09-24): things that look private start private.** A typed name like "password", or a photo of a password,
+- [x] **BUILT 09-24 (20260924e): things that look private start private.** A typed name like "password", or a photo of a password,
   bank/ID card or medical/health paper (HIPAA-type), is saved *Only me* by default, and the person is told at or right after the
   photo, with one tap to share it instead. Owner only (a helper can't make things private; they get told instead). Build in step 3.
-- [ ] **Step 3 (proceed, Ravi 09-24): DRAWN, waiting on rulings.** `design/BOARD_2026-09-24_step3.md` +
-  `mockups/S3_private.jpg`, `S3_places.jpg`, `S3_everything.jpg` (rig: gen_s3.py → render_s3.js → compose_s3.py).
-  Rulings: (1) places inside places: B2 "say it, ReCall splits it" (board) or B1 drill-down; (2) a helper logs something
-  private: warn + "Don't save it" (board) or save into the owner's private things (rule change); (3) a sweep = one Home
-  tile (board); (4) "On this phone only": step 4 native (board), plus a "don't type the PIN itself" warning now.
-  Then build in order: private by default → places inside places → Everything in view.
-- [ ] **Idea (Ravi 09-24): "On this phone only"**, a third level beyond Only me: the thing never leaves the device,
+- [ ] **Step 3: RULED 09-24** (DECISIONS "Step 3 rulings"). Done in the rig: **private by default + refusing
+  secrets** — build `20260924e`, audits private 37/37 · main 98/98 · roles 42/42 · modes 25/25 · label 15/15;
+  screenshots `mockups/S3b_private_built.jpg`. **Ravi: look at the screenshots, then push; phone check:** Log item →
+  photo a closed notebook → the card says *Kept private: this looks like passwords* → Done → the tile has a lock;
+  photo an open page of passwords → *This photo won't be kept*; Write it down "PIN 4821" → Save greyed.
+  Next: **places inside places, the natural way** (no tree; a container is a thing; Find answers as a sentence),
+  then **Everything in view** (one tile per sweep). Known gap: a helper who saves a readable-secret photo BEFORE
+  the name arrives can only soft-delete its snap (rules) — the owner's app should purge it; rare.
+- [ ] **"On this phone only" — RULED: waits for the native app** (shown greyed now, "coming soon")., a third level beyond Only me: the thing never leaves the device,
   and other devices show only a count. Board: yes, in step 4 (native; web storage on iPhone isn't a safe ten-year home, and
   naming must happen on the phone), with end-to-end encryption considered alongside. Does NOT change 09-15's "Only me =
   private to the person".

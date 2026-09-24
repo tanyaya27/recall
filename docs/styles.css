@@ -663,3 +663,34 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .note-card .guesses .place-input { margin-top: 0; }
 .note-card .note-private { margin-top: 0.75rem; border-top: 1px solid var(--line); }
 .note-card .btn-primary { gap: 0.4rem; }
+
+/* Private by default (Ravi 09-24; S3_private.jpg). A note, not a question: told on the same
+   screen as the photo, one tap to undo. .stop = a secret the app won't keep; .helper = amber. */
+.privnote { display: flex; align-items: flex-start; gap: 0.625rem; background: var(--accent-soft); color: var(--ink); border-radius: 0.875rem;
+  padding: 0.75rem 0.875rem; margin: 0.625rem 0 0; font-size: min(1.0625rem, 4.5vw); line-height: 1.35; text-align: left; }
+.privnote > svg { width: 1.35em; height: 1.35em; flex: none; color: var(--accent); margin-top: 0.05em; }
+.privnote b { display: block; }
+.privnote .pn-link { display: inline; background: none; border: 0; padding: 0; margin: 0; font: inherit; font-weight: 700; color: var(--accent);
+  text-decoration: underline; text-underline-offset: 0.15em; cursor: pointer; white-space: nowrap; min-height: 0; }
+.privnote.helper, .privnote.stop { background: var(--amber-bg); }
+.privnote.helper > svg, .privnote.stop > svg { color: var(--amber); }
+.privnote.helper .pn-link, .privnote.stop .pn-link { color: var(--amber); }
+.privnote.shared > svg { color: var(--ink-soft); }
+/* "On this phone only": greyed until the native app; a tap says "Coming soon". */
+.phone-only { display: flex; align-items: center; gap: 0.4rem; width: 100%; margin-top: 0.5rem; padding: 0.5rem 0 0; background: none; border: 0;
+  border-top: 1px solid var(--line); font: inherit; font-weight: 600; color: var(--ink-soft); opacity: 0.6; text-align: left; cursor: pointer; min-height: 0; }
+.phone-only svg { width: 1.1em; height: 1.1em; flex: none; }
+.phone-only em { margin-left: auto; font-style: normal; font-weight: 700; white-space: nowrap; }
+.note-card .phone-only { margin-top: 0; padding: 0.75rem 0; border-top: 0; }
+/* Several: the strip says it too */
+.strip1 .lockchip { display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.375rem; margin-left: 0.375rem; padding: 0.3rem 0.65rem; border-radius: 999px;
+  background: #F2C94C; color: #1d1d1b; font-weight: 700; font-size: min(0.9375rem, 4vw); white-space: nowrap; vertical-align: middle; }
+.strip1 .lockchip svg { width: 1.1em; height: 1.1em; }
+.strip1 .share { background: none; border: 0; padding: 0; margin-left: 0.5rem; font: inherit; color: #fff; text-decoration: underline; font-weight: 700; min-height: 0; }
+.rv-cell .rv-lock { display: inline-flex; margin-left: 0.25rem; color: var(--amber); } .rv-cell .rv-lock svg { width: 1em; height: 1em; }
+
+.toast.over { z-index: 40; bottom: calc(7.5rem + env(safe-area-inset-bottom)); }
+.privnote b.inl { display: inline; }
+.privnote .pn-dot { color: var(--ink-soft); }
+.phone-only.inline { display: inline; width: auto; margin: 0; padding: 0; border: 0; opacity: 0.55; color: var(--ink-soft); font-weight: 600; text-decoration: none; }
+.phone-only { flex-wrap: wrap; } .phone-only span { white-space: nowrap; }

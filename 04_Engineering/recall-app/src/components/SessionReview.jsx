@@ -1,5 +1,6 @@
 import Header from './Header.jsx';
-import { PinIcon, PencilIcon, CheckIcon, NoteIcon } from './Icons.jsx';
+import { PinIcon, PencilIcon, CheckIcon, NoteIcon, LockIcon } from './Icons.jsx';
+import { isPrivate } from '../lib/db.js';
 
 // After a "Several" run of two or more things (MVP step 2; drawn as C1 option 1, frame f).
 // Everything is already saved. The person fixes only what's wrong: tap a thing to open its
@@ -18,7 +19,7 @@ export default function SessionReview({ things = [], items = [], onOpen, onFinis
         {rows.map((it) => (
           <button key={it.id} type="button" className="rv-cell" onClick={() => onOpen(it)}>
             {it.thumb ? <img src={it.thumb} alt="" /> : <span className="tile-written"><NoteIcon /></span>}
-            <b className={it.location ? '' : 'fix'}>{cap(it.name) || 'No name yet'}<PencilIcon /></b>
+            <b className={it.location ? '' : 'fix'}>{cap(it.name) || 'No name yet'}{isPrivate(it) && <span className="rv-lock" aria-label="Only me"><LockIcon /></span>}<PencilIcon /></b>
           </button>
         ))}
       </div>

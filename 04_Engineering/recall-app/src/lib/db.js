@@ -272,11 +272,15 @@ export const ROLE_BLURB = { viewer: 'Sees your things and where they are. Cannot
 // unnamed — a legitimate state. Nothing on the board ever asks her to name it.
 // A thing may have NO photo (MVP #10, 09-24): written down, not photographed. Then photo/thumb are
 // null, there is no cover snap and photoCount is 0; the first photo added later becomes the cover.
-export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '' }) {
+// `private` (09-24): a thing that looks private starts private — only the owner may start one so
+// (a helper's is refused by the rules' own logic: they could never see it again). `privateAuto`
+// keeps the reason ReCall gave ("looks like passwords"); '' when she chose it herself.
+export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '' }) {
   const now = Date.now();
   const logId = `log_${now}`;
+  const keep = !!priv && owner === me();
   const ref = await addDoc(col, {
-    kind: 'item', ...ownership(owner), name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
+    kind: 'item', ...ownership(owner), ...(keep ? { private: true, privateAuto: privateAuto || '' } : {}), name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
     needsPlace: !location, naming, placeSource: location ? (placeSource || 'chosen') : '',
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }], logId, photoCount: photo ? 1 + extras.length : 0, details: details || '', written: !photo,
@@ -361,6 +365,28 @@ export function visibleHere(items) {
 }
 export async function updateItem(id, patch) {
   await updateDoc(doc(col, id), { ...patch, updatedAt: Date.now() });
+}
+
+// The AI's verdict arrived AFTER the thing was saved (Several; One thing when she tapped before
+// the name came). v = verdictOf(...) from lib/sensitive. Returns what was done, for the notice:
+//   'private' — made private (owner only);  'photo' — a readable secret: the photo is not kept;
+//   'helper'  — looks private but a helper saved it (they can't make it private).
+// A secret photo is taken off the thing and its snaps deleted (a helper can only soft-delete).
+export async function applyVerdict(id, v, owner = me()) {
+  if (!v || (!v.private && !v.secret)) return [];
+  const mineNow = owner === me();
+  const done = [];
+  const patch = {};
+  if (v.secret) { Object.assign(patch, { photo: null, thumb: null, photoCount: 0, written: true }); done.push('photo'); }
+  if (mineNow) { Object.assign(patch, { private: true, roles: {}, sharedWith: [], privateAuto: v.why || 'looks private' }); done.push('private'); }
+  else done.push('helper');
+  await updateItem(id, patch);
+  if (v.secret) await dropSnapsOf(id, mineNow);
+  return done;
+}
+async function dropSnapsOf(itemId, mineNow) {
+  const snap = await getDocs(query(col, where('kind', '==', 'snap'), where('itemId', '==', itemId)));
+  await Promise.all(snap.docs.map((d) => (mineNow ? deleteDoc(doc(col, d.id)) : updateDoc(doc(col, d.id), { deleted: true, deletedAt: Date.now() }))));
 }
 
 // Re-snap: fresh photo + location; the old photo is kept as a snap

@@ -1115,3 +1115,28 @@ future on-device/private routing via the `sensitivity` flag — a real requireme
 app handling dementia patients' home photos.
 
 **Would change our mind:** nothing foreseeable. Keep this seam intact.
+
+## 2026-09-24 — Step 3 rulings (Ravi, on BOARD_2026-09-24_step3.md)
+
+**Places inside places must feel natural; nobody builds a tree.** "If we force people to create tree
+structure and then nest them, we will lose them. The nesting is the way we structure our data. When
+users store or find they don't think about it in a nested way." So: storing stays as today (the usual
+place, or whatever she types or says); **a container is just a thing** — if a thing's place names
+another thing ("Blue tin"), ReCall links them silently; Find answers as a sentence ("In the blue tin,
+on the top shelf of the bedroom wardrobe") with photos where it has them; moving a box = logging the
+box somewhere new, and everything in it follows. The Places tree (B4) and the box card (B5) are
+dropped; Places stays the flat list.
+
+**Secrets are refused until the native app.** ReCall keeps where the password notebook is, never the
+password: a photo in which a password, PIN or card/account number can be read is not kept (the thing
+is saved as words only, private; *Take it closed* retakes); a secret typed into a name or place blocks
+Save ("ReCall remembers where things are"); the label reader never copies one.
+
+**A helper logging something private: warned** ("Only Margaret can keep things private… Don't save it"),
+no rule change. **A sweep on Home is one tile** with a count. **"On this phone only" waits for the
+native app** — until then it is shown greyed under the private note and on Write it down; a tap says
+"coming soon". (09-15's "Only me = private to the person, not the device" is unchanged.)
+
+**Built the same day:** private by default + refusing secrets (build 20260924e; audit_private 37/37).
+Also fixed a race found by the new audit: saving while "Checking it isn't already saved…" was running
+could leave the photo card stuck (the check was cancelled when the just-saved thing appeared in the list).

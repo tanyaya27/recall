@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { hasSecret } from '../lib/sensitive.js';
 import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { photoStamp, cap } from '../lib/format.js';
@@ -262,7 +263,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         {fixing && (
           <div className="fix">
             <EditableText label="What it is" value={item.name} emptyLabel="Name it"
-              onSave={(v) => { renameItem(item, v); logEvent('correction', { itemId: item.id, field: 'name' }); }} />
+              onSave={(v) => { if (hasSecret(v)) { logEvent('privacy_secret_blocked', { field: 'name', via: 'card' }); onToast && onToast('Not saved · take the PIN or password out'); return; } renameItem(item, v); logEvent('correction', { itemId: item.id, field: 'name' }); }} />
             <div className="field-label">Where it is</div>
             <button type="button" className={'field-value' + (item.location ? '' : ' empty')} aria-label={`Where it is: ${item.location || 'Add the place'}. Change`} onClick={() => setPicking(true)}>
               <span className="field-text">{item.location || 'Add the place'}</span><PencilIcon />
@@ -280,7 +281,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
 
       {picking && (
         <PlacePicker current={item.location} items={items} places={places} onCancel={() => setPicking(false)}
-          onPick={async (v) => { setPicking(false); const name = v.charAt(0).toUpperCase() + v.slice(1); await changeLocation(item, name); logEvent('correction', { itemId: item.id, field: 'location', via: 'picker' }); onToast && onToast(`Now at ${name}`); }} />
+          onPick={async (v) => { setPicking(false); if (hasSecret(v)) { logEvent('privacy_secret_blocked', { field: 'location', via: 'card' }); onToast && onToast('Not saved · take the PIN or password out'); return; } const name = v.charAt(0).toUpperCase() + v.slice(1); await changeLocation(item, name); logEvent('correction', { itemId: item.id, field: 'location', via: 'picker' }); onToast && onToast(`Now at ${name}`); }} />
       )}
       {tidying && (
         <TidySheet name={item.name ? own(item.name) : 'this thing'} dupCount={dupCount} earlierPlaces={earlierCount} earlierPhotos={earlierPhotos}

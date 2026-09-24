@@ -225,6 +225,17 @@ export default function App() {
   const home = () => { if (depth.current > 0) history.go(-depth.current); else setRoute(HOME); };
 
   const say = (text, undo) => setToast({ text, undo, key: Date.now() });
+  // Private by default, when the verdict came after the save (Ravi 09-24): she is told right after
+  // the photo stage, with one tap to share it instead. Returns true if a notice was shown.
+  const privacyNotice = (n) => {
+    if (!n || !n.done || !n.done.length) return false;
+    const share = async () => { await setVisibility({ id: n.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: n.itemId, to: 'shared', via: 'toast' }); say(VISIBILITY_TOAST.household); };
+    const text = n.done.includes('photo') ? 'Photo not kept · a secret could be read in it'
+      : n.done.includes('private') ? `Kept private · ${n.why || 'looks private'}`
+      : `Looks private · only ${firstName(whose) || 'the owner'} can hide it`;
+    setToast({ text, undo: n.done.includes('private') && !n.done.includes('photo') ? share : null, undoLabel: 'Share it', over: true, key: Date.now() });
+    return true;
+  };
 
   // Add one more photo to a thing's CURRENT log (thing card / press-and-hold sheet, round 3).
   // No card, no question: same place, same time, no AI.
@@ -310,8 +321,9 @@ export default function App() {
           pendingFiles={moreFiles} onPendingTaken={() => setMoreFiles(null)}
           presetPlace={route.resnapOf ? '' : presetPlace}
           onNext={route.resnapOf ? null : () => {}}
+          onNotice={privacyNotice}
           onDone={(result) => {
-            if (result && result.saved) { say(result.place ? `Saved · ${result.place}` : 'Saved'); notePlace(result.place); }
+            if (result && result.saved) { if (!privacyNotice(result.notice)) say(result.place ? `Saved · ${result.place}` : 'Saved'); notePlace(result.place); }
             home();
             if (result && result.next) openLog('one'); // One thing mode: Next item goes straight back to the camera
           }}

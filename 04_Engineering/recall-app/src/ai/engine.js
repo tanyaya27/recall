@@ -4,6 +4,7 @@
 // registering it below. Nothing else in the app changes.
 import { anthropic } from './providers/anthropic.js';
 import { gemini } from './providers/gemini.js';
+import { cleanDetails } from '../lib/sensitive.js';
 
 const PROVIDERS = { anthropic, gemini };
 
@@ -121,7 +122,7 @@ export class AIEngine {
 ${photos.length > 1 ? `They took ${photos.length} photos of the SAME thing moments apart. A close-up shows WHAT it is; a wider shot shows WHERE it is. Name the one thing they are photographing — the subject in front — never something that merely appears in the background of a wider shot.\n` : ''}${hintName ? `They say this photo should show their: ${hintName}.\n` : ''}${catalogLine}
 ${placesLine}
 
-Answer three separate things. Do not blend them.
+Answer these separately. Do not blend them.
 
 1. WHAT IT IS. The main object, in AT MOST THREE WORDS — it has to fit under a small
    photo tile. Prefer the shortest name that identifies it: "scissors", not "blue and
@@ -150,7 +151,16 @@ Answer three separate things. Do not blend them.
    for a bill or letter, who it is from, the amount and the due date. Copy exactly, shortest
    useful form, separated by " · " (e.g. "#8 × 1-1/4 in · stainless · pan head · 100 ct",
    "Tulip 'Queen of Night'", "Puget Sound Energy · $84.12 · due Oct 9"). Never guess text you
-   cannot read. "" if there is none. At most 200 characters.
+   cannot read. NEVER copy a password, PIN, security code, or a full card, account or ID number,
+   even if you can read it: leave it out. "" if there is none. At most 200 characters.
+
+5. PRIVATE. Would its owner want this kept from visitors and family helpers? true for passwords or
+   a password book, PINs, bank or account papers and cards, ID (passport, licence, social security
+   card), medical records, prescriptions, medicines with a name on them, insurance papers, tax
+   papers, wills and deeds, a safe. Give the reason in a few plain words ("looks like passwords",
+   "looks medical"). SEPARATELY, "secretVisible" is true ONLY if an actual password, PIN, security
+   code, or full card or account number can be READ in the photo (an open page, the back of a card).
+   A closed notebook or a folder is private but has no visible secret.
 
 Reply with ONLY a JSON object, no other text:
 {"name": "<short everyday name, 1-3 words>",
@@ -160,7 +170,10 @@ Reply with ONLY a JSON object, no other text:
  "placeCertain": <true only if the room is genuinely identifiable from the photo>,
  "placeGuesses": ["<most likely place first, up to 3, prefer the household's existing places>"],
  "description": "<one short sentence a family member would find useful>",
- "details": "<the words and numbers printed on it, copied exactly, or \"\">"}`;
+ "details": "<the words and numbers printed on it, copied exactly, or \"\">",
+ "private": <true or false>,
+ "privateWhy": "<a few plain words, or \"\">",
+ "secretVisible": <true only if a password, PIN or full card/account number can be read>}`;
 
     const text = photos.length > 1 && this.provider.visionJSONMulti
       ? await this.provider.visionJSONMulti(this.cfg, [...photos.flatMap((ph, i) => [{ text: `PHOTO ${i + 1} of ${photos.length}:` }, { image: ph }]), { text: prompt }], { sensitivity })
@@ -176,7 +189,10 @@ Reply with ONLY a JSON object, no other text:
       placeCertain: out.placeCertain === true,
       placeGuesses: list(out.placeGuesses).slice(0, 3),
       description: clean(out.description),
-      details: clean(out.details).slice(0, 200),
+      details: cleanDetails(clean(out.details).slice(0, 200)),
+      private: out.private === true,
+      privateWhy: clean(out.privateWhy).slice(0, 60),
+      secretVisible: out.secretVisible === true,
     };
   }
 

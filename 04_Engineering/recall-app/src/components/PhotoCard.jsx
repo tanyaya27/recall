@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressPhoto, shrink } from '../lib/img.js';
-import { addItem, nameItem, resnapItem, absorbInto, findMatch, knownLocations, noteAlias, logEvent, placeThumb, updateItem } from '../lib/db.js';
+import { addItem, nameItem, resnapItem, absorbInto, findMatch, knownLocations, noteAlias, logEvent, placeThumb, updateItem, applyVerdict, changeLocation } from '../lib/db.js';
+import { verdictOf, hasSecret } from '../lib/sensitive.js';
+import { me } from '../lib/auth.js';
+import PrivNote from './PrivNote.jsx';
 import { getPrefs, savePrefs } from '../lib/prefs.js';
 import { matchThings } from '../lib/speech.js';
 import EditableText from './EditableText.jsx';
@@ -35,7 +38,7 @@ export const own = (s) => (s || '').toLowerCase().replace(/^(my|the|our)\s+/, ''
 // knows the likely place — where this thing usually lives, or the place used a moment ago — that
 // place is already chosen, and *Done* / *Next item* save it with no question. Tapping any other
 // place still saves at once, exactly as before. *Next item* goes straight back to the camera.
-export default function PhotoCard({ files = [], engine, items = [], places = [], resnapOf = null, onDone, onBack, onMore, pendingFiles = null, onPendingTaken, owner = undefined, ownerName = '', presetPlace = '', onNext = null }) {
+export default function PhotoCard({ files = [], engine, items = [], places = [], resnapOf = null, onDone, onBack, onMore, pendingFiles = null, onPendingTaken, owner = undefined, ownerName = '', presetPlace = '', onNext = null, onNotice = () => {} }) {
   const [shots, setShots] = useState([]);       // [{ photo, thumb }] — first is the cover
   const [current, setCurrent] = useState(0);    // which shot is big
   const [tag, setTag] = useState(undefined);    // undefined = pending · null = failed · object = named
@@ -49,11 +52,15 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   const [pendingMerge, setPendingMerge] = useState(false);
   const [busy, setBusy] = useState(false);
   const [whole, setWhole] = useState(false);    // photo shown uncropped (L1)
+  const [shareAnyway, setShareAnyway] = useState(false); // she tapped *Share it instead*
   const tagPromise = useRef(null);
   const finished = useRef(false);
   const nextRef = useRef(false); // saved with *Next item*: the caller reopens the camera
   const finish = (r) => onDone(r && nextRef.current ? { ...r, next: true } : r);
   const visualStarted = useRef(false);
+  const openedAt = useRef(Date.now()); // things created after this card opened are never "already saved"
+  const mounted = useRef(true);
+  useEffect(() => () => { mounted.current = false; }, []);
   const chips = knownLocations(items, 8, places);
 
   // Compress, show, and start naming — in that order, so the photo is on screen in well
@@ -79,17 +86,27 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   const photo = shots[0] ? shots[0].photo : null;
   const name = resnapOf ? resnapOf.name : (nameOverride || (tag && tag.name) || '');
   const restingOn = (tag && tag.restingOn) || '';
-  const others = items.filter((it) => it.id !== savedId && !it.deleted);
+  // Never match the thing this card itself just saved: its doc can arrive through the listener
+  // before savedId is set (09-24 race: the check was cancelled mid-flight and "Checking…" stayed).
+  const others = items.filter((it) => it.id !== savedId && !it.deleted && !((it.createdAt || 0) >= openedAt.current));
   // Never match the provisional thing against itself once it has been named.
   const nameMatch = !resnapOf && !forceNew && tag ? findMatch(others, tag) : null;
   const match = nameMatch || (!resnapOf && !forceNew && visual && typeof visual === 'object' ? visual : null);
+
+  // Private by default (Ravi 09-24). The verdict: the AI's, or the word list on the name. A new thing
+  // that looks private starts private (owner only); a photo in which a secret can be read is not kept;
+  // a secret typed into the name blocks saving until it is taken out.
+  const mine = !owner || owner === me();
+  const v = tag === undefined && !nameOverride ? null : verdictOf(tag || null, nameOverride);
+  const dropPhoto = !!(v && v.secret);
+  const typedSecret = hasSecret(nameOverride, draft);
+  const startPrivate = !!(v && v.private && mine && !shareAnyway && !resnapOf && !match);
 
   // Tier 3 — the AI looks. Only when naming found nothing and there is something to compare.
   useEffect(() => {
     if (resnapOf || tag === undefined || tag === null || nameMatch || visualStarted.current) return;
     visualStarted.current = true;
     if (!others.length || !photo) { setVisual(null); return; }
-    let alive = true;
     setVisual('pending');
     (async () => {
       // Candidates: nearest by name (search tiers), then the most recently seen; six at most.
@@ -100,7 +117,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
       try {
         const small = await Promise.all(cands.map((c) => shrink(c.thumb, 320)));
         const r = await engine.sameThing(shots.map((s) => s.photo), cands.map((c, i) => ({ name: c.name, thumb: small[i] })), { subject: tag.name, sensitivity: 'personal' });
-        if (!alive) return;
+        if (!mounted.current) return;
         // Only a CONFIDENT visual match may stand in for a name (Maya's guardrail): an unsure
         // one is how the can behind the keyboard took over the card.
         const hit = r.index >= 0 && r.sure ? cands[r.index] : null;
@@ -108,10 +125,9 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
         setVisual(hit);
       } catch (err) {
         console.error(err);
-        if (alive) { logEvent('identity_check', { candidates: cands.length, failed: true, latencyMs: Date.now() - t0 }); setVisual(null); }
+        if (mounted.current) { logEvent('identity_check', { candidates: cands.length, failed: true, latencyMs: Date.now() - t0 }); setVisual(null); }
       }
     })();
-    return () => { alive = false; };
   }, [tag, nameMatch]); // eslint-disable-line
 
   // Identity is settled when: naming failed, or a name match exists, or the visual check is done.
@@ -130,8 +146,12 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
       }
       await nameItem(savedId, { name: nameOverride || tag.name, description: tag.description, restingOn: tag.restingOn, details: tag.details,
         aliases: nameOverride && tag.name !== nameOverride ? [tag.name] : [] });
-      if (match) { finished.current = false; setPendingMerge(true); }
-      else finish({ saved: true, place, itemId: savedId });
+      if (match) { finished.current = false; setPendingMerge(true); return; }
+      // Saved before the name came: the verdict applies now, and she's told on the way home.
+      const late = verdictOf(tag, nameOverride);
+      const done = await applyVerdict(savedId, late, owner || me());
+      if (done.length) logEvent('privacy_default', { secret: late.secret, madePrivate: done.includes('private'), helper: done.includes('helper'), why: late.why, mode: 'one', late: true });
+      finish({ saved: true, place, itemId: savedId, notice: done.length ? { itemId: savedId, done, why: late.why } : null });
     })();
   }, [savedId, identityKnown]); // eslint-disable-line
 
@@ -173,6 +193,13 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     })();
   }, [pendingFiles]); // eslint-disable-line
 
+  // *Take it closed*: the photo showed a secret. Start the roll again with a new photo.
+  function retake() {
+    logEvent('privacy_retake', {});
+    setShots([]); setCurrent(0); setTag(undefined); setVisual('idle'); visualStarted.current = false;
+    onMore(MAX_SHOTS);
+  }
+
   // The roll
   async function addShot(f) {
     if (shots.length >= MAX_SHOTS) return;
@@ -198,8 +225,12 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     const by = 'self';
     const placeSource = how === 'preset' ? presetSource : 'chosen';
     const common = { photo: cover.photo, thumb: cover.thumb, location: chosen, by, restingOn, extras, placeSource, ...(owner ? { owner } : {}) }; // Phase 2: a helper logs INTO the owner's ReCall
+    if (dropPhoto) Object.assign(common, { photo: null, thumb: null, extras: [] }); // a readable secret: words only
+    const privacy = startPrivate ? { private: true, privateAuto: v.why } : {};
+    if (v && (v.private || v.secret)) logEvent('privacy_default', { secret: dropPhoto, madePrivate: startPrivate, sharedInstead: shareAnyway, helper: !mine, why: v.why, mode: 'one' });
 
     if (resnapOf) {
+      if (dropPhoto) await changeLocation(resnapOf, chosen, placeSource); else
       await resnapItem(resnapOf, common);
       if (tag && tag.name) noteAlias(resnapOf, tag.name);
       logEvent('capture', { initiatedBy: 'resnap', itemId: resnapOf.id, itemName: resnapOf.name, savedBy: how, shots: shots.length,
@@ -211,6 +242,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     if (identityKnown) {
       let itemId;
       if (match) {
+        if (dropPhoto) await changeLocation(match, chosen, placeSource); else
         await resnapItem(match, common);
         if (tag && tag.name) noteAlias(match, tag.name); // what the AI called it this time
         if (tag && tag.details && !match.details) updateItem(match.id, { details: tag.details }); // the label, if it had none
@@ -218,7 +250,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
         logEvent('merge', { itemId: match.id, result: 'confirmed', savedBy: how, via: nameMatch ? (tag.sameAs ? 'sameAs' : 'name') : 'visual' });
         logEvent('capture', { initiatedBy: 'self', itemId: match.id, itemName: match.name, savedBy: how, merged: true, shots: shots.length });
       } else {
-        itemId = await addItem({ ...common, name, description: (tag && tag.description) || '', details: (tag && tag.details) || '',
+        itemId = await addItem({ ...common, ...privacy, name, description: (tag && tag.description) || '', details: (tag && tag.details) || '',
           aliases: tag && tag.name && nameOverride && tag.name !== nameOverride ? [tag.name] : [] });
         if (tag === null) logEvent('naming_failed', { itemId });
         logEvent('capture', { initiatedBy: 'self', itemId, itemName: name || null, savedBy: how, shots: shots.length,
@@ -229,12 +261,18 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     }
 
     // Name or identity still pending: save now, finish later (D3).
-    const id = await addItem({ ...common, name: tag ? (nameOverride || tag.name) : '', description: (tag && tag.description) || '', details: (tag && tag.details) || '', naming: tag === undefined });
+    const id = await addItem({ ...common, ...privacy, name: tag ? (nameOverride || tag.name) : '', description: (tag && tag.description) || '', details: (tag && tag.details) || '', naming: tag === undefined });
     logEvent('capture', { initiatedBy: 'self', itemId: id, itemName: tag ? tag.name : null, savedBy: how, beforeName: tag === undefined, beforeIdentity: true,
       shots: shots.length, usedChip: chips.includes(chosen), mode: 'one', next: !!next });
     if (next) { // don't wait here: the name is finished in the background, and the camera opens again
       finished.current = true;
-      if (tagPromise.current) tagPromise.current.then((t) => nameItem(id, t ? { name: nameOverride || t.name, description: t.description, restingOn: t.restingOn, details: t.details } : {}));
+      if (tagPromise.current) tagPromise.current.then(async (t) => {
+        await nameItem(id, t ? { name: nameOverride || t.name, description: t.description, restingOn: t.restingOn, details: t.details } : {});
+        if (v) return; // the verdict was already known and used when it was saved
+        const late = verdictOf(t, nameOverride);
+        const done = await applyVerdict(id, late, owner || me());
+        if (done.length) { logEvent('privacy_default', { secret: late.secret, madePrivate: done.includes('private'), helper: done.includes('helper'), why: late.why, mode: 'one', late: true }); onNotice({ itemId: id, done, why: late.why }); }
+      });
       finish({ saved: true, place: chosen, itemId: id });
       return;
     }
@@ -318,6 +356,13 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
           </>
         )}
 
+        {/* Private by default: told here, on the photo card, with one tap to undo it. */}
+        {!savedId && (
+          <PrivNote v={v} mine={mine} ownerName={ownerName} typedSecret={typedSecret} isNew={!resnapOf && !match}
+            shared={shareAnyway} onShare={(x) => { setShareAnyway(x); logEvent('privacy_share', { to: x ? 'shared' : 'private', mode: 'one' }); }}
+            onRetake={retake} onDontSave={() => { logEvent('capture_leave', { reason: 'helper_private' }); onBack(); }} />
+        )}
+
         {/* The one question. Tapping the answer saves. */}
         {!savedId && (
           <div className="ask-place">
@@ -326,7 +371,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
               {view === 'big' && (
                 <div className="pgrid">
                   {options.map((g) => { const t = pic(g); return (
-                    <button key={g} type="button" className="pcell" disabled={busy} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>
+                    <button key={g} type="button" className="pcell" disabled={busy || typedSecret} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>
                       {t ? <img src={t.src} alt="" /> : <span className="pcell-none"><PinIcon /></span>}
                       <span className="cap">{g}</span>
                     </button>); })}
@@ -334,28 +379,28 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
               )}
               {preset && (
                 <>
-                  <button type="button" className="guess pre" disabled={busy} onClick={() => save(preset, 'preset')}>
+                  <button type="button" className="guess pre" disabled={busy || typedSecret} onClick={() => save(preset, 'preset')}>
                     <span>{preset} <small>· {presetSource === 'usual' ? 'usual place' : 'just used'}</small></span><CheckIcon />
                   </button>
                   {/* Done / Next item right under the chosen place, so they're never below the fold. In the flow: a keyboard may open here. */}
                   {!typing && (
                     <div className="next-row">
-                      {onNext && <button type="button" className="btn-primary" disabled={busy} onClick={() => save(preset, 'preset', true)}><CameraIcon /><span>Next item</span></button>}
-                      <button type="button" className="btn-primary alt" disabled={busy} onClick={() => save(preset, 'preset')}><CheckIcon /><span>Done</span></button>
+                      {onNext && <button type="button" className="btn-primary" disabled={busy || typedSecret} onClick={() => save(preset, 'preset', true)}><CameraIcon /><span>Next item</span></button>}
+                      <button type="button" className="btn-primary alt" disabled={busy || typedSecret} onClick={() => save(preset, 'preset')}><CheckIcon /><span>Done</span></button>
                     </div>
                   )}
                   <div className="or-else">Somewhere else?</div>
                 </>
               )}
               {view !== 'big' && options.map((g) => { const t = view === 'small' ? pic(g) : null; return (
-                <button key={g} type="button" className={'guess' + (view === 'small' ? ' withpic' : '')} disabled={busy} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>
+                <button key={g} type="button" className={'guess' + (view === 'small' ? ' withpic' : '')} disabled={busy || typedSecret} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>
                   {view === 'small' && (t ? <img className="guess-pic" src={t.src} alt="" /> : <span className="guess-pic none"><PinIcon /></span>)}
                   <span>{g}</span>
                 </button>); })}
               {!typing && (
-                <button type="button" className="guess other" disabled={busy} onClick={() => { setDraft(''); setTyping(true); }}>Somewhere else</button>
+                <button type="button" className="guess other" disabled={busy || typedSecret} onClick={() => { setDraft(''); setTyping(true); }}>Somewhere else</button>
               )}
-              {!preset && <button type="button" className="guess quiet" disabled={busy} onClick={() => save('', 'not_sure')}>Not sure</button>}
+              {!preset && <button type="button" className="guess quiet" disabled={busy || typedSecret} onClick={() => save('', 'not_sure')}>Not sure</button>}
               {options.length > 0 && (
                 <div className="view-links">
                   {['names', 'small', 'big'].filter((v) => v !== view).map((v) => (
@@ -370,9 +415,9 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
                   className="place-input" autoFocus value={draft} placeholder="the bathroom counter"
                   enterKeyHint="done" autoCapitalize="none"
                   onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) save(draft.trim(), 'typed'); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim() && !typedSecret) save(draft.trim(), 'typed'); }}
                 />
-                <button type="button" className="btn-secondary" disabled={!draft.trim() || busy} onClick={() => save(draft.trim(), 'typed')}>Use this</button>
+                <button type="button" className="btn-secondary" disabled={!draft.trim() || busy || typedSecret} onClick={() => save(draft.trim(), 'typed')}>Use this</button>
               </div>
             )}
           </div>
@@ -391,8 +436,8 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
           <div className="ask-place">
             <div className="ask-q">Is this your {own(match.name)}?</div>
             <div className="guesses">
-              <button type="button" className="guess fixed" disabled={busy} onClick={mergeYes}>Yes, the same thing</button>
-              <button type="button" className="guess other" disabled={busy} onClick={mergeNo}>No, a different thing</button>
+              <button type="button" className="guess fixed" disabled={busy || typedSecret} onClick={mergeYes}>Yes, the same thing</button>
+              <button type="button" className="guess other" disabled={busy || typedSecret} onClick={mergeNo}>No, a different thing</button>
             </div>
           </div>
         )}

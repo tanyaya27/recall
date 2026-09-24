@@ -2,9 +2,11 @@ import { useRef, useState } from 'react';
 import Camera from './Camera.jsx';
 import PlacePicker from './PlacePicker.jsx';
 import { compressPhoto } from '../lib/img.js';
-import { addItem, nameItem, changeLocation, absorbInto, addSnapToLog, findMatch, knownLocations, logEvent } from '../lib/db.js';
+import { addItem, nameItem, changeLocation, absorbInto, addSnapToLog, findMatch, knownLocations, logEvent, applyVerdict, setVisibility, firstName } from '../lib/db.js';
+import { verdictOf } from '../lib/sensitive.js';
+import { me } from '../lib/auth.js';
 import { own } from './PhotoCard.jsx';
-import { PinIcon, CheckIcon, PlusIcon, ChevronDownIcon } from './Icons.jsx';
+import { PinIcon, CheckIcon, PlusIcon, ChevronDownIcon, LockIcon } from './Icons.jsx';
 
 // "Several" capture mode (MVP step 2, DECISIONS 2026-09-24; drawn as C1 option 1).
 //
@@ -34,6 +36,22 @@ export default function SeveralCamera({ engine, items = [], places = [], owner, 
   const t0 = useRef(Date.now());
   const chips = knownLocations(items, 8, places);
   const live = (id) => items.find((it) => it.id === id) || { id, history: [], location: '' };
+  // Private by default (Ravi 09-24): the verdict arrives with the name, after the save. The strip says
+  // so — "Only me" and *Share it* — and the camera stays open. A photo showing a secret is not kept.
+  async function judge(key, id, tag) {
+    const v = verdictOf(tag);
+    if (!v.private && !v.secret) return;
+    const done = await applyVerdict(id, v, owner || me());
+    patch(key, { priv: done, why: v.why });
+    logEvent('privacy_default', { secret: v.secret, madePrivate: done.includes('private'), helper: done.includes('helper'), why: v.why, mode: 'several' });
+  }
+  async function shareIt(key) {
+    const e = entriesRef.current.find((x) => x.key === key);
+    if (!e || !e.id) return;
+    await setVisibility({ id: e.id, owner: me() }, 'household');
+    patch(key, { priv: (e.priv || []).filter((d) => d !== 'private'), shared: true });
+    logEvent('privacy_share', { itemId: e.id, to: 'shared', mode: 'several' });
+  }
   const patch = (key, p) => setEntries((prev) => prev.map((e) => (e.key === key ? { ...e, ...(typeof p === 'function' ? p(e) : p) } : e)));
 
   async function shoot(file) {
@@ -71,10 +89,11 @@ export default function SeveralCamera({ engine, items = [], places = [], owner, 
     const match = findMatch(items.filter((it) => !mine.current.has(it.id) && !it.deleted), tag);
     if (match) { // ask in the strip; never merge silently
       await nameItem(id, { name: tag.name, description: tag.description, restingOn: tag.restingOn, details: tag.details });
-      patch(key, { status: 'ask', name: tag.name, match, shot, restingOn: tag.restingOn, details: tag.details });
+      patch(key, { status: 'ask', name: tag.name, match, shot, restingOn: tag.restingOn, details: tag.details, tag });
       return;
     }
     await nameItem(id, { name: tag.name, description: tag.description, restingOn: tag.restingOn, details: tag.details });
+    judge(key, id, tag);
     const cur = entriesRef.current.find((e) => e.key === key);
     if (cur && !cur.place && tag.placeCertain && tag.placeGuesses && tag.placeGuesses[0]) {
       await changeLocation(live(id), cap(tag.placeGuesses[0]), 'guess');
@@ -108,6 +127,7 @@ export default function SeveralCamera({ engine, items = [], places = [], owner, 
     } else {
       patch(key, (x) => ({ status: 'named', match: null, choices: x.place ? null : chips.slice(0, 3) }));
       logEvent('merge', { itemId: e.match.id, result: 'declined', via: 'several_strip' });
+      if (e.tag) judge(key, e.id, e.tag);
     }
   }
 
@@ -115,7 +135,7 @@ export default function SeveralCamera({ engine, items = [], places = [], owner, 
     const saved = entriesRef.current.filter((e) => e.id);
     logEvent('capture_session', { mode: 'several', things: saved.length, ms: Date.now() - t0.current,
       unplaced: saved.filter((e) => !e.place).length, sessionPlace: sessionRef.current ? sessionRef.current.name : null });
-    onClose(saved.map((e) => ({ id: e.id, name: e.name || '', place: e.place || '' })));
+    onClose(saved.map((e) => ({ id: e.id, name: e.name || '', place: e.place || '', priv: e.priv || [] })));
   }
 
   const last = entries[entries.length - 1];
@@ -147,6 +167,15 @@ export default function SeveralCamera({ engine, items = [], places = [], owner, 
             <PinIcon /> <span>{last.place}</span> <ChevronDownIcon />{last.source && last.source !== 'chosen' && <small>{{ session: 'this run', usual: 'usual place', guess: 'a guess' }[last.source]}</small>}
           </button>
         )}
+        {last.priv && last.priv.includes('private') && (
+          <div><span className="lockchip"><LockIcon /> Only me</span></div>
+        )}
+        {last.priv && last.priv.length > 0 && (
+          <div className="q">{last.priv.includes('photo') ? 'Photo not kept: a secret could be read in it.'
+            : last.priv.includes('private') ? <>This {last.why}, so only you see it. <button type="button" className="share" onClick={() => shareIt(last.key)}>Share it</button></>
+            : `Looks private · only ${firstName(owner) || 'the owner'} can hide it.`}</div>
+        )}
+        {last.shared && <div className="q">Shared.</div>}
         {last.status !== 'ask' && !last.place && last.choices && (
           <>
             <div className="q">Where is it?</div>
