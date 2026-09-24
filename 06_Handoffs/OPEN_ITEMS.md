@@ -108,7 +108,7 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 - [x] (done) **Deploy 20260924c — ORDER MATTERS:** (a) step 1's deploy first if not done (billing → key → `functions:secrets:set
   ANTHROPIC_KEY` → `deploy --only functions:ai`); (b) `firebase deploy --only firestore:rules` (adds `placeSource` for helpers;
   without it a helper's Several/One-thing save is refused); (c) then commit + push.
-- [x] **Step 2 part 2 BUILT 09-24 — `20260924d`, on the Mac, NOT pushed:** **#9** the AI copies what's printed on the thing
+- [x] **Step 2 part 2 LIVE 09-24 — `20260924d` (pushed `a103267`, rules deployed first):** **#9** the AI copies what's printed on the thing
   (label, packet, bill, stamp) into `details` (≤200 chars); shown on the thing card as a tag line; searched by Find item at the
   description tier (quotes ignored: 'Queen of Night' matches). One thing and Several both save it. **#10** camera → *Type it* →
   *Write it down*: What is it? · Where is it? (usual places, or typed) · Keep this private · Save (or Save without a place);
@@ -116,6 +116,19 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   "Written down, no photo yet"; the first Add photo becomes the cover. Rules: editors may write `details`, `written`.
   Tests: audit 98/98 · roles 42/42 · modes 25/25 · **audit_label 15/15** · rules engine as expected. Screenshots:
   `design/mockups/S2b_label_write_built.jpg`. **Deploy: rules first, then push** (commands in the chat 09-24).
+- [ ] **NEW (Ravi 09-24): things that look private start private.** A typed name like "password", or a photo of a password,
+  bank/ID card or medical/health paper (HIPAA-type), is saved *Only me* by default, and the person is told at or right after the
+  photo, with one tap to share it instead. Owner only (a helper can't make things private; they get told instead). Build in step 3.
+- [ ] **Step 3 (proceed, Ravi 09-24): DRAWN, waiting on rulings.** `design/BOARD_2026-09-24_step3.md` +
+  `mockups/S3_private.jpg`, `S3_places.jpg`, `S3_everything.jpg` (rig: gen_s3.py → render_s3.js → compose_s3.py).
+  Rulings: (1) places inside places: B2 "say it, ReCall splits it" (board) or B1 drill-down; (2) a helper logs something
+  private: warn + "Don't save it" (board) or save into the owner's private things (rule change); (3) a sweep = one Home
+  tile (board); (4) "On this phone only": step 4 native (board), plus a "don't type the PIN itself" warning now.
+  Then build in order: private by default → places inside places → Everything in view.
+- [ ] **Idea (Ravi 09-24): "On this phone only"**, a third level beyond Only me: the thing never leaves the device,
+  and other devices show only a count. Board: yes, in step 4 (native; web storage on iPhone isn't a safe ten-year home, and
+  naming must happen on the phone), with end-to-end encryption considered alongside. Does NOT change 09-15's "Only me =
+  private to the person".
 - [ ] Noticed (not new): at Largest the thing card's switch labels ("Keep this private") wrap to two lines.
 - [ ] Step 2 leftovers: #9/#10 Step 2 part 2 was: #9 label text (`details`, searchable) and #10 logging without a photo. Not in Several yet: the AI "looks"
   check (tier 3) for duplicates — Several asks only on a name match; the one-time "Taking several?" suggestion; Largest review.

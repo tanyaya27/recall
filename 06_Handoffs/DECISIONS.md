@@ -6,6 +6,16 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-24 — Things that look private start private (Ravi)
+
+**Decision:** if what's typed ("password", a PIN, account or medical words) or what's photographed (a password list, a bank or ID
+card, medical or health papers) looks private, the thing is saved *Only me* by default, and the person is told at the photo or right
+after it, with one tap to share it instead. **Why:** health and financial details should never reach helpers by accident; asking
+first would slow every log, so the default is the safe side and the choice stays hers. Owner only: the rules don't let a helper make
+things private, so a helper gets a notice instead.
+
+---
+
 ## 2026-09-24 — Capture has three modes in one camera (Ravi: "go with the board's recommendations")
 
 **Decision:** One thing · Several · Everything are modes of one camera. The person switches under the viewfinder or by
