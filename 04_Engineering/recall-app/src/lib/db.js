@@ -270,12 +270,12 @@ export const ROLE_BLURB = { viewer: 'Sees your things and where they are. Cannot
 // `naming: true` (D3) means the photo was saved before the AI named it. The name is
 // patched in by nameItem(); if naming fails the flag is cleared and the thing stays
 // unnamed — a legitimate state. Nothing on the board ever asks her to name it.
-export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me() }) {
+export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '' }) {
   const now = Date.now();
   const logId = `log_${now}`;
   const ref = await addDoc(col, {
     kind: 'item', ...ownership(owner), name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
-    needsPlace: !location, naming,
+    needsPlace: !location, naming, placeSource: location ? (placeSource || 'chosen') : '',
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }], logId, photoCount: 1 + extras.length,
   });
@@ -323,11 +323,11 @@ export async function nameItem(id, { name = '', description = '', restingOn = ''
 // Since 2026-09-16 (design §5, ruling 6) a move also writes a SIGHTING: the cover photo, at
 // the new place, now — so the new stay has a photo and the history never has a row without
 // one. Adding the place to a thing that had none is not a move: no sighting is written.
-export async function changeLocation(item, location) {
+export async function changeLocation(item, location, placeSource = 'chosen') {
   const now = Date.now();
   const history = [...(item.history || []), { location, at: now }].slice(-100);
   const moved = !!item.location && !!location && item.location.toLowerCase() !== location.toLowerCase();
-  const patch = { location, needsPlace: !location, history, lastSeenAt: now, updatedAt: now };
+  const patch = { location, needsPlace: !location, history, lastSeenAt: now, updatedAt: now, placeSource: location ? placeSource : '' };
   if (moved && item.photo) {
     const logId = `log_${now}`;
     await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo: item.photo, thumb: item.thumb || null, location, at: now, moved: true });
@@ -360,12 +360,12 @@ export async function updateItem(id, patch) {
 }
 
 // Re-snap: fresh photo + location; the old photo is kept as a snap
-export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [] }) {
+export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [], placeSource = 'chosen' }) {
   const now = Date.now();
   const logId = `log_${now}`;
   const history = [...(item.history || []), { location, at: now }].slice(-100);
   await updateDoc(doc(col, item.id), {
-    photo, thumb, thumbV: THUMB_V, location, restingOn, needsPlace: !location,
+    photo, thumb, thumbV: THUMB_V, location, restingOn, needsPlace: !location, placeSource: location ? placeSource : '',
     lastSeenAt: now, updatedAt: now, history, capturedBy: by, logId, photoCount: 1 + extras.length,
   });
   await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location, at: now });
@@ -374,6 +374,10 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
 
 // 2026-09-14 (Ravi): one log can hold several photos — a close-up and a wide shot. A later
 // photo joins the CURRENT log: same place, same time, no question, no AI. Cap LOG_MAX.
+// Where a thing's place came from (DECISIONS 2026-09-24, Sam): 'chosen' (the person tapped or typed it),
+// 'session' (the place set for a run of photos), 'usual' (where this thing lives), 'guess' (the AI, sure of it).
+// A guess nobody corrected stays findable as a guess instead of looking like a fact.
+export const PLACE_SOURCES = ['chosen', 'session', 'usual', 'guess'];
 export const LOG_MAX = 6; // cover + up to 5 more (Ravi 09-15: "only 2 in one go" was 4 - cover - 1)
 export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
   const count = item.photoCount || 1;
@@ -416,8 +420,8 @@ export async function removeSnap(item, snap, snaps) {
 // A thing saved before its name arrived turned out to be one already on the board, and
 // the person confirmed it. Its photo becomes a new photo of the existing thing and the
 // provisional doc (and its snap) goes away.
-export async function absorbInto(existing, provisionalId, { photo, thumb, location, restingOn = '', by = 'self', extras = [] }) {
-  await resnapItem(existing, { photo, thumb, location, restingOn, by, extras });
+export async function absorbInto(existing, provisionalId, { photo, thumb, location, restingOn = '', by = 'self', extras = [], placeSource = 'chosen' }) {
+  await resnapItem(existing, { photo, thumb, location, restingOn, by, extras, placeSource });
   await purgeItem({ id: provisionalId });
 }
 

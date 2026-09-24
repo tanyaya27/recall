@@ -53,7 +53,7 @@ function applyPatch(cur, patch) {
 
 // ---------- permission table = firestore.rules, in JS ----------
 const deny = (why) => { const e = new Error('permission-denied: ' + why); e.code = 'permission-denied'; throw e; };
-const EDITOR_KEYS = new Set(['name', 'aliases', 'location', 'history', 'photo', 'thumb', 'thumbV', 'restingOn', 'description', 'needsPlace', 'lastSeenAt', 'updatedAt', 'logId', 'photoCount', 'order', 'pinnedOrder', 'naming']);
+const EDITOR_KEYS = new Set(['name', 'aliases', 'location', 'history', 'photo', 'thumb', 'thumbV', 'restingOn', 'description', 'needsPlace', 'lastSeenAt', 'updatedAt', 'logId', 'photoCount', 'order', 'pinnedOrder', 'naming', 'placeSource']);
 const grantRole = (owner, me) => { const g = S('recall_grants').get(`${owner}_${me}`); return g ? g.role : null; };
 const canRead = (d, me) => d.owner === me || ['viewer', 'editor'].includes((d.roles || {})[me]) || (d.sharedWith || []).includes(me) || (d.private === false && !!grantRole(d.owner, me));
 const canEdit = (d, me) => d.owner === me || (d.roles || {})[me] === 'editor' || (d.private === false && grantRole(d.owner, me) === 'editor');

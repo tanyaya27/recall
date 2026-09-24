@@ -11,3 +11,5 @@ Openly licensed photos from Wikimedia Commons, used only in design mockups. Not 
 - **soda.jpg** — File:202601 A Coffee beverage can with French marigolds garden of orange.jpg · Junyu-K · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:202601_A_Coffee_beverage_can_with_French_marigolds_garden_of_orange.jpg
 - **scissors.jpg** — File:My trusty gardening gloves & secateurs which need a good clean by the look of them (8711272274).jpg · shrinkin'violet from Bristol, UK · CC BY 2.0 · https://commons.wikimedia.org/wiki/File:My_trusty_gardening_gloves_%26_secateurs_which_need_a_good_clean_by_the_look_of_them_(8711272274).jpg
 - **diary.jpg** — File:Leather notebook (Unsplash).jpg · Kelly Jean kellyjean · CC0 · https://commons.wikimedia.org/wiki/File:Leather_notebook_(Unsplash).jpg
+- **drawer.jpg** — File:Maine Cabin Junk Drawer.jpg · Hportfacts5 · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Maine_Cabin_Junk_Drawer.jpg
+- **tooldrawer.jpg** — File:5S Tools drawer.jpg · Tasma3197 · CC BY-SA 3.0 · https://commons.wikimedia.org/wiki/File:5S_Tools_drawer.jpg

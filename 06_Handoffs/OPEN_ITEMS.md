@@ -3,6 +3,41 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-24.
 
+## NOW — the name and the Apple Developer Program (naming session 09-24)
+
+- [x] 09-24 Naming board: criteria (7 from the brief + 4 added; Devin wants ≤ 9 letters, Priyanka a broker-free
+  domain; both recorded as splits), 19 candidates, every one checked (USPTO live marks, App Store, RDAP domains,
+  Play via web search, web). 35 more screened out. `design/BOARD_2026-09-24_naming.md`.
+- [ ] **Tanya + Ravi: pick the name** (board §5): Wherly · Thingspot · Wherewell · Hither · *ReCall: Where I Put It*.
+  The board leans Wherly, with Thingspot as the safe plain alternative. Before picking (Devin): say each once to
+  three people and have them write it down; render the finalists under an icon on a home screen.
+- [ ] Ravi, 2 min: type each finalist into the **Google Play** app (Play blocks automated search; only web-indexed
+  Play results were checked).
+- [ ] A native Spanish speaker and a Hindi speaker glance at the finalists (Claude's check found nothing rude).
+- [ ] **Attorney clearance search** on the pick before committing (board §7). Nothing filed, bought or reserved.
+- [ ] After the pick: register the domain(s) (costs money → Ravi's OK), then write the DECISIONS entry.
+- [ ] **Tanya + Ravi: who enrolls in the Apple Developer Program?** `APPLE.md` §1: Ravi as an individual ·
+  Tanya (only if she's 18+; under 18, Apple's route is a parent's account shared with her) ·
+  Nova Camino Ventures LLC · a new entity. Decides the App Store seller name and who signs Apple's agreements.
+- [ ] If the LLC route: **start the D-U-N-S lookup this week** (developer.apple.com/enroll/duns-lookup; up to 7
+  business days) and check the LLC has a working website + a work email on its domain.
+- [ ] **Waiting on Apple** after sign-up (Ravi pays and accepts the agreements himself): record the Team ID in
+  `APPLE.md` §4 → reserve the App Store name (definitive availability test) → bundle ID `com.<seller>.<appname>`
+  (confirm with Ravi; it can never change after the first upload) → Sign in with Apple Services ID + key into the
+  Firebase console (firebase/README step 2; the `.p8` never enters the repo). `APPLE_SIGNIN` in `People.jsx` stays
+  false until the MVP session turns it on.
+- [ ] Then **MVP step 4 is unblocked**: Capacitor wrap → TestFlight (needs the Team ID, bundle ID, reserved name).
+- [ ] **If the name changes — for the MVP session (no app code changed in the naming session).** User-visible
+  "ReCall" is in: `docs/index.html` (`<title>`, `apple-mobile-web-app-title`), `docs/manifest.webmanifest`
+  (`name`, `short_name`), and strings in `src/App.jsx` (8), `components/Board.jsx` (9), `People.jsx` (6),
+  `Settings.jsx` (5), `PhotoCard.jsx` (2), `MenuScreens.jsx`, `ThingCard.jsx`, `Join.jsx` (1 each),
+  `ai/engine.js` (7) and `ai/providers/anthropic.js` (4) (prompts), `lib/db.js` (10), `lib/firebase.js` (2),
+  `lib/auth.js`, `lib/prefs.js` (1 each), `firebase/functions/index.js` (5); invite links/emails; the app icon label;
+  the identity brief (`03_Design/ReCall_Identity_Design_Prompt.md`); README/CLAUDE.md. Counts are lines containing
+  "ReCall" — some are comments; Devin reviews every visible string. **Do NOT rename identifiers:** Firestore
+  collections (`recall_items`, `recall_events`, `recall_grants`, `recall_invites`, `recall_users`, `recall_usage`,
+  `recall_secrets`), localStorage keys (`recall-*`), the Firebase project `recall-d9886`, the GitHub repo/Pages URL.
+
 ## NOW — scenarios, setup and logging speed (Ravi 09-24)
 
 - [x] 09-24: Ravi on H1: "100% cosmetic … quite useless". The layouts become candidate Settings styles, parked.
@@ -27,7 +62,8 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   *Check it works*, own key folded away. Rig: audit 98/98, audit_roles 42/42; functions on the real emulators 11/11
   (`rules-test/run_ai_test.sh`). Screenshots: `design/mockups/S1_first_run_options.png`, `S1_settings_ai.png`.
 - [x] 09-24 Ravi/Tanya: first-run line **C**, Settings → AI card OK. Built into `20260924b` (both stamps bumped; rig 98/98 + 42/42).
-- [ ] **Naming + Apple Developer sign-up — its own session:** `06_Handoffs/PROMPT_2026-09-24_naming-and-apple.md`
+- [x] 09-24 **Pushed: `160ceb3`** — `20260924b` is on GitHub Pages. The `ai` function is NOT yet deployed with ReCall's key, so a phone with no key of its own saves photos unnamed until deploy steps 1–3 below are done.
+- [x] 09-24 (see the naming section above) **Naming + Apple Developer sign-up — its own session:** `06_Handoffs/PROMPT_2026-09-24_naming-and-apple.md`
   (findings so far: `06_Handoffs/NAMING_2026-09-24_findings.md`). To run it on another machine, the repo must be pushed first.
 - [ ] **Deploy step 1, IN THIS ORDER** (the function must be live before the web build):
   1. Real billing + a budget alert on `recall-d9886` (Firebase console → Billing). Also set a monthly spend limit in the
@@ -43,6 +79,30 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
      switches them to the service.
 - [ ] Follow-up (#4): **App Check** — today anyone with the URL can sign in anonymously and use up to 150 calls/day each; the
   3000/day project breaker bounds the total. App Check (App Attest in the native app, reCAPTCHA on the web) closes that.
+- [ ] **Fast capture: three options RENDERED 09-24:** `design/BOARD_2026-09-24_fast-capture-options.md`, `mockups/C1_*.jpg`.
+  Rulings needed: (1) option 1 "the camera never leaves" for step 2; (2) option 3's list in step 3, labels after the test,
+  sweep things on Home as ONE place tile; (3) option 2 as an everyday-things setting or not at all; (4) `placeSource` stored.
+- [x] **Step 2 part 1 BUILT 09-24 — `20260924c`, on the Mac, NOT pushed:** capture modes (One thing · Several) with the mode
+  row under the viewfinder (gone once a photo is taken), hold *Log item* → *Log item as…*, Settings → *Taking photos* (opens in
+  Last used; which modes show; one mode = no row). **Several**: saved at the shutter, name + place stream into the frosted strip,
+  place from the session / usual place / a sure AI guess, else three choices; ＋ = another angle; a saved thing is ASKED
+  ("Your reading glasses?"), never merged; Close/Done → review of 2+ things. **One thing**: the place used in the last 10 min
+  (or where the thing usually lives) is already chosen, with *Next item* · *Done* right under it. `placeSource` stored on every
+  save; rules: editors may write it. Tests: audit 98/98 · audit_roles 42/42 · **audit_modes 25/25** · rules engine (test,
+  test_grant incl. the new placeSource checks, test_p2) all as expected. Screenshots: `design/mockups/S2_modes_built.jpg`.
+- [ ] **Ravi: look at `S2_modes_built.jpg`** before this goes to the phone.
+- [ ] **Deploy 20260924c — ORDER MATTERS:** (a) step 1's deploy first if not done (billing → key → `functions:secrets:set
+  ANTHROPIC_KEY` → `deploy --only functions:ai`); (b) `firebase deploy --only firestore:rules` (adds `placeSource` for helpers;
+  without it a helper's Several/One-thing save is refused); (c) then commit + push.
+- [ ] Step 2 part 2: #9 label text (`details`, searchable) and #10 logging without a photo. Not in Several yet: the AI "looks"
+  check (tier 3) for duplicates — Several asks only on a name match; the one-time "Taking several?" suggestion; Largest review.
+- [x] 09-24 RULED (board's recommendations) — **Capture MODES** — `design/BOARD_2026-09-24_capture-modes.md`, `mockups/C2_modes.jpg`.
+  One camera, three modes (One thing · Several · Everything), switched under the viewfinder or by holding Log item; Settings →
+  Taking photos sets where it opens (last used) and which modes show; one mode on = no row (Margaret unchanged). ~7 d for all
+  three. Rulings: (1) modes as drawn; (2) open in last used; (3) the names; (4) step 2 = row + One thing + Several, Everything
+  in step 3. Supersedes the "pick one" rulings in the options note.
+- [ ] **S6 insurance inventory (Ravi 09-24):** added to the scenarios note (addendum). A sweep + label details + a PDF/CSV
+  export. After the MVP; add it to the prioritizer.
 - [ ] **Fast capture (#6/#8):** brainstorm `design/BOARD_2026-09-24_fast-capture-brainstorm.md`. Next: render its three
   camera options (§7) + the label-position spike (Gemini boxes / Apple subject lift / Claude) on 20 real drawer photos.
 - [ ] #4 order matters: strip the rules' legacy clauses only AFTER the invite test (Dad → Can help → Ravi), or Ravi's

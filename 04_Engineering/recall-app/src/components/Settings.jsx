@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.js';
 import Header from './Header.jsx';
 import { currentUser, isAnonymous, signIn, lastSignIn } from '../lib/auth.js';
-import { legacyCount } from '../lib/db.js';
+import { legacyCount, logEvent } from '../lib/db.js';
+import { getPrefs, savePrefs, CAPTURE_MODES } from '../lib/prefs.js';
 import { APPLE_SIGNIN } from './People.jsx';
 
 // Settings — reduced to what setup needs. Board decision 2026-09-05, screen 6; platform
@@ -65,6 +66,8 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
   const [testing, setTesting] = useState(false);
   const [showModel, setShowModel] = useState(false);
   const [ownKey, setOwnKey] = useState(false); // the optional own-key form, folded away (step 1)
+  const [cap, setCap] = useState(() => getPrefs());
+  const setCapture = (patch) => { const p = { ...getPrefs(), ...patch }; savePrefs(p); setCap(getPrefs()); logEvent('capture_settings', patch); };
   // Update state: what happened on the reload we came back from, and whether the server has a newer stamp.
   const [reloadResult] = useState(() => {
     if (!justReloaded) return null;
@@ -192,6 +195,36 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
       </div></div>
       {/* MVP step 1 (2026-09-24): AI works with no key, through ReCall's service. Your own key
           is optional and folded away; with one stored, calls go straight from this phone. */}
+      {/* Capture modes (DECISIONS 2026-09-24): where the camera opens, and which modes it offers.
+          With one mode on, the camera shows no choice at all. */}
+      <div className="group-title">Taking photos</div>
+      <div className="group">
+        <div className="grow">
+          <label>The camera opens in</label>
+          <div className="seg wrap">
+            {[['last', 'Last used'], ...CAPTURE_MODES.map((m) => [m.id, m.label])].map(([id, label]) => (
+              <button key={id} type="button" className={cap.captureOpen === id ? 'on' : ''} disabled={id !== 'last' && !cap.captureModes.includes(id)}
+                onClick={() => setCapture({ captureOpen: id })}>{label}</button>
+            ))}
+          </div>
+        </div>
+        <div className="grow">
+          <label>Show these in the camera</label>
+          {CAPTURE_MODES.map((m) => {
+            const on = cap.captureModes.includes(m.id);
+            const only = on && cap.captureModes.length === 1;
+            return (
+              <div className="optrow" key={m.id}>
+                <span className="lab"><b>{m.label}</b><small>{m.blurb}</small></span>
+                <button type="button" className={'sw' + (on ? ' on' : '')} role="switch" aria-checked={on} aria-label={m.label} disabled={only}
+                  onClick={() => setCapture({ captureModes: on ? cap.captureModes.filter((x) => x !== m.id) : CAPTURE_MODES.map((x) => x.id).filter((x) => x === m.id || cap.captureModes.includes(x)) })} />
+              </div>
+            );
+          })}
+          <p className="note-quiet left">With only one switched on, the camera shows no choice at all.</p>
+        </div>
+      </div>
+
       <div className="group-title">AI</div>
       <div className="group">
         <div className="grow">

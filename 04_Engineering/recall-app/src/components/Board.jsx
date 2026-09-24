@@ -20,11 +20,13 @@ import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon, SwitchIcon } from
 // the role under it; the footer follows the role (Can see: Find item alone; Can help: Log
 // item says *in Margaret's ReCall* on the button); a thing that is not the owner's carries
 // its owner's name under the label. Her own grid does not change until she invites someone.
-export default function Board({ items, ready, whose = null, role = 'owner', removed = false, onOpenThing, onPhoto, onAsk, onSettings, onMenu, onHold, onSwitch, onStartOwn }) {
+export default function Board({ items, ready, whose = null, role = 'owner', removed = false, onOpenThing, onPhoto, onPhotoHold = null, onAsk, onSettings, onMenu, onHold, onSwitch, onStartOwn }) {
   const things = boardOrder(items);
   // Press-and-hold on a tile (Ravi, round 3): opens the item's action sheet; a short tap
   // still opens the thing. Robert's shortcut; every action is also on the thing card.
   const hold = useHold((it) => { logEvent('tile_hold', { itemId: it.id }); onHold && onHold(it); });
+  // Hold Log item → choose how to take photos this time (capture modes, 09-24). Only when there is a choice.
+  const logHold = useHold(() => { if (onPhotoHold) { logEvent('log_hold', {}); onPhotoHold(); } });
   const guest = !!whose;
   const ownerName = guest ? (firstName(whose) || 'Their') : '';
   const canLog = !guest || role === 'editor';
@@ -103,7 +105,7 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
         <Footer>
           {/* Opens the in-app camera (Camera.jsx) — several shots, ✕ each, Cancel. */}
           {canLog && (
-            <button className={'btn-primary' + (guest ? ' whose' : '')} disabled={!ready} onClick={onPhoto} aria-label={guest ? `Log item in ${possessive(ownerName)} ReCall` : 'Log item'}>
+            <button className={'btn-primary' + (guest ? ' whose' : '')} disabled={!ready} {...(onPhotoHold ? logHold.props() : {})} onClick={logHold.tap(onPhoto)} aria-label={guest ? `Log item in ${possessive(ownerName)} ReCall` : 'Log item'}>
               <CameraIcon /><span className="lbl">Log item</span>
               {guest && <small className="whose-sub">in {possessive(ownerName)} ReCall</small>}
             </button>

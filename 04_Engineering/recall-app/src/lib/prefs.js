@@ -19,6 +19,26 @@ export const SIZES = [
   { id: 'largest', label: 'Largest', scale: 1.38 },
 ];
 
+// Capture modes (DECISIONS 2026-09-24): which modes the camera offers, where it opens, the last one used.
+// 'all' (Everything in view) arrives in MVP step 3; until then only these two exist.
+export const CAPTURE_MODES = [
+  { id: 'one', label: 'One thing', blurb: 'Name it and say where, one card at a time' },
+  { id: 'several', label: 'Several', blurb: 'The camera stays open; fix only what’s wrong' },
+];
+function captureOf(p) {
+  const ids = CAPTURE_MODES.map((m) => m.id);
+  const modes = Array.isArray(p.captureModes) ? p.captureModes.filter((m) => ids.includes(m)) : ids;
+  const on = modes.length ? modes : ['one'];
+  const open = p.captureOpen === 'last' || ids.includes(p.captureOpen) ? p.captureOpen : 'last';
+  const last = ids.includes(p.lastMode) ? p.lastMode : on[0];
+  return { captureModes: on, captureOpen: open, lastMode: last };
+}
+// The mode the camera opens in right now: the fixed one, or the last used — always one that is switched on.
+export function openingMode(p = getPrefs()) {
+  const want = p.captureOpen === 'last' ? p.lastMode : p.captureOpen;
+  return p.captureModes.includes(want) ? want : p.captureModes[0];
+}
+
 export function getPrefs() {
   try {
     const p = JSON.parse(localStorage.getItem(KEY)) || {};
@@ -27,8 +47,9 @@ export function getPrefs() {
       placeView: ['names', 'small', 'big'].includes(p.placeView) ? p.placeView : null, // null = not chosen yet (round 7)
       showTimes: p.showTimes !== false, // times on photos (thing card, 09-16), on by default
       showAddedBy: p.showAddedBy !== false, // who added each photo, on the stamp (Phase 2, split 4: on by default)
-      whose: typeof p.whose === 'string' ? p.whose : null }; // which ReCall this phone is looking at: null = mine, else the owner's uid
-  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null, showTimes: true, showAddedBy: true, whose: null }; }
+      whose: typeof p.whose === 'string' ? p.whose : null, // which ReCall this phone is looking at: null = mine, else the owner's uid
+      ...captureOf(p) };
+  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null, showTimes: true, showAddedBy: true, whose: null, ...captureOf({}) }; }
 }
 
 export function savePrefs(p) {

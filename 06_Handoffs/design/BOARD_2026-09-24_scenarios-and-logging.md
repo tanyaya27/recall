@@ -313,3 +313,21 @@ accurate it is; (b) a one-day Capacitor wrap to measure launch-to-shutter time n
    appointments first** (§6)?
 6. **Draw §9's three sets next?** And run the two spikes?
 7. **The H1 layouts become Settings styles**, parked until the module views exist. Confirm?
+
+---
+
+## Addendum (Ravi, 09-24): S6, cataloguing a home for insurance
+
+A household records what it owns, room by room, so that after a fire, flood or burglary it can
+prove what was there. This fits the model with no new object:
+
+- **Logging:** a room-by-room sweep with *Everything in view* (MVP #8; `design/BOARD_2026-09-24_fast-capture-options.md`,
+  option 3). Each thing gets its photo and room.
+- **Details the AI reads** (#9): brand, model and serial number from the label; a receipt photo
+  attached to the thing (purchase date, price).
+- **The new part:** an **export**, a dated inventory (PDF, and CSV for the insurer) with photos, rooms
+  and any values the person entered. It can be regenerated at any time, and the cloud copy survives
+  losing the house.
+- **Boards:** Maya: the most *paid-for* scenario of all (people buy inventory apps and services
+  for this). Dr Kim: values and serial numbers are sensitive, so export stays owner-only and
+  *Only me* applies. Priyanka: the export is ~2 days once #8 and #9 exist. **After the MVP.**

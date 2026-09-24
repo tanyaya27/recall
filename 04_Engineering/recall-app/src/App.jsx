@@ -3,7 +3,9 @@ import { ensureSignedIn } from './lib/firebase.js';
 import { watchUser, finishSignIn } from './lib/auth.js';
 import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, wantNames, watchNames, firstName, possessive, roleOn } from './lib/db.js';
 import { me } from './lib/auth.js';
-import { getPrefs, savePrefs } from './lib/prefs.js';
+import { getPrefs, savePrefs, openingMode } from './lib/prefs.js';
+import SeveralCamera from './components/SeveralCamera.jsx';
+import SessionReview from './components/SessionReview.jsx';
 import PeopleScreen from './components/People.jsx';
 import JoinScreen, { pendingJoin, parkJoin, clearJoin } from './components/Join.jsx';
 import { THUMB_V, thumbFromPhoto, compressPhoto, compressPlacePhoto } from './lib/img.js';
@@ -16,7 +18,7 @@ import Ask from './components/Ask.jsx';
 import Settings, { takeReturnRoute, noteInstalled } from './components/Settings.jsx';
 import Toast from './components/Toast.jsx';
 import ItemSheet from './components/ItemSheet.jsx';
-import Camera, { MAX_SHOTS } from './components/Camera.jsx';
+import Camera, { MAX_SHOTS, MODE_LABEL } from './components/Camera.jsx';
 import { MenuDrawer, LookScreen, LocationsScreen, PlaceScreen, NewPlaceScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
 import Confirm from './components/Confirm.jsx';
 import Choice from './components/Choice.jsx';
@@ -71,6 +73,11 @@ export default function App() {
   //   { for: 'add', itemId }               → straight into that thing's current log
   //   { for: 'more', max }                 → more shots for the photo card that is open
   const [camera, setCamera] = useState(null);
+  const [modePick, setModePick] = useState(false); // hold Log item → "Log item as…" (capture modes, 09-24)
+  // The place used a moment ago: One thing mode offers it already chosen, for ten minutes.
+  const [lastPlace, setLastPlace] = useState(null); // { name, at }
+  const notePlace = (name) => { if (name) setLastPlace({ name, at: Date.now() }); };
+  const presetPlace = lastPlace && Date.now() - lastPlace.at < 10 * 60 * 1000 ? lastPlace.name : '';
   const [moreFiles, setMoreFiles] = useState(null); // shots handed to the open photo card
   const [removing, setRemoving] = useState(null); // item awaiting the remove confirm (from the sheet)
   const [mismatch, setMismatch] = useState(null); // { item, files, seen } — added photo looks like a different thing
@@ -247,6 +254,24 @@ export default function App() {
     logEvent('capture', { initiatedBy: 'add_photo', itemId, extra: true, added, asked: files.length });
     say(added ? `Added · ${added} photo${added === 1 ? '' : 's'}` : 'That log already has four photos');
   };
+  // Log item: the camera opens in the mode Settings says (the last used, by default).
+  const logTitle = () => (whose ? `Log item · in ${possessive(firstName(whose))} ReCall` : 'Log item');
+  const openLog = (mode) => {
+    const p = getPrefs(); const m = mode && p.captureModes.includes(mode) ? mode : openingMode(p);
+    if (m !== p.lastMode) savePrefs({ ...p, lastMode: m });
+    setCamera({ for: 'log', mode: m, title: logTitle() });
+  };
+  const switchMode = (m) => {
+    setCamera((c) => ({ ...c, mode: m }));
+    const p = getPrefs(); savePrefs({ ...p, lastMode: m });
+    logEvent('capture_mode', { mode: m, via: 'camera' });
+  };
+  const severalDone = (things) => {
+    setCamera(null);
+    const placed = things.filter((t) => t.place); if (placed.length) notePlace(placed[placed.length - 1].place);
+    if (things.length >= 2) go('review', { things, key: Date.now() });
+    else if (things.length === 1) say(`Saved · ${things[0].name ? things[0].name.charAt(0).toUpperCase() + things[0].name.slice(1) : 'your photo'}${things[0].place ? ` · ${things[0].place}` : ''}`);
+  };
   const cameraDone = (files) => {
     const c = camera; setCamera(null);
     if (!c || !files.length) return;
@@ -282,9 +307,12 @@ export default function App() {
           resnapOf={route.resnapOf ? live(route.resnapOf) : null}
           onMore={(max) => setCamera({ for: 'more', max })}
           pendingFiles={moreFiles} onPendingTaken={() => setMoreFiles(null)}
+          presetPlace={route.resnapOf ? '' : presetPlace}
+          onNext={route.resnapOf ? null : () => {}}
           onDone={(result) => {
-            if (result && result.saved) say(result.place ? `Saved · ${result.place}` : 'Saved');
+            if (result && result.saved) { say(result.place ? `Saved · ${result.place}` : 'Saved'); notePlace(result.place); }
             home();
+            if (result && result.next) openLog('one'); // One thing mode: Next item goes straight back to the camera
           }}
           onBack={back}
         />
@@ -309,10 +337,13 @@ export default function App() {
         <Ask
           engine={engine} items={items}
           onResult={(item) => go('thing', { item })}
-          onPhoto={() => setCamera({ for: 'log' })}
+          onPhoto={() => openLog()}
           onBack={back}
         />
       );
+      break;
+    case 'review':
+      screen = <SessionReview things={route.things} items={items} onOpen={(item) => go('thing', { item })} onFinish={() => { logEvent('capture_review', { things: route.things.length }); home(); }} />;
       break;
     case 'settings':
       screen = <Settings justReloaded={!!route.reloaded} onBack={back} onConfigSaved={() => setCfgVersion((v) => v + 1)} />;
@@ -343,7 +374,8 @@ export default function App() {
         <Board
           items={items} ready={engine.ready} whose={whose} role={role} removed={removedFrom}
           onOpenThing={(item, fix) => go('thing', { item, fix: !!fix })}
-          onPhoto={() => setCamera({ for: 'log', title: whose ? `Log item · in ${possessive(firstName(whose))} ReCall` : 'Log item' })}
+          onPhoto={() => openLog()}
+          onPhotoHold={getPrefs().captureModes.length > 1 ? () => setModePick(true) : null}
           onAsk={() => go('ask')}
           onSettings={() => go('settings')}
           onMenu={() => go('menu')}
@@ -361,7 +393,20 @@ export default function App() {
       {/* The drawer is a history entry of its own (round 4, Ravi): Back from any of its screens
           returns to the drawer, not to Home. Close is one step back. */}
       <MenuDrawer open={route.view === 'menu'} onClose={back} onPick={(id) => go(id)} />
-      {camera && <Camera title={camera.title || 'Log item'} max={camera.max || 4} onDone={cameraDone} onCancel={() => setCamera(null)} />}
+      {camera && camera.for === 'log' && camera.mode === 'several' && (
+        <SeveralCamera engine={engine} items={items} places={places} owner={whose || undefined} title={camera.title || 'Log item'}
+          modes={getPrefs().captureModes} onMode={switchMode} onClose={severalDone} />
+      )}
+      {camera && !(camera.for === 'log' && camera.mode === 'several') && (
+        <Camera title={camera.title || 'Log item'} max={camera.max || 4} onDone={cameraDone} onCancel={() => setCamera(null)}
+          modes={camera.for === 'log' ? getPrefs().captureModes : null} mode={camera.mode || 'one'} onMode={switchMode} />
+      )}
+      {modePick && (
+        <Choice title="Log item as…" options={[
+          ...getPrefs().captureModes.map((m) => ({ label: MODE_LABEL[m], onClick: () => { setModePick(false); logEvent('capture_mode', { mode: m, via: 'hold' }); openLog(m); } })),
+          { label: 'Cancel', onClick: () => setModePick(false) },
+        ]} onCancel={() => setModePick(false)} />
+      )}
       {switching && (
         <Choice title="Which ReCall?" options={[
           ...(!whose ? [] : [{ label: 'My ReCall', onClick: () => { setSwitching(false); setWhose(null); } }]),

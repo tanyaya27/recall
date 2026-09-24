@@ -77,3 +77,11 @@ screens); `node render_h1.js` → `shots/h1/`; `python3 compose_h1.py` → one p
 montage and the own-title strip in `shots/h1_out/`. Photos: `rig/mock/img/` (Wikimedia Commons,
 openly licensed, CREDITS.md — mockups only, never shipped). Fetching from Commons needs a
 descriptive User-Agent and ~1.5 s between requests or it answers 429; thumbnails come back at 500 px.
+
+## Capture modes (2026-09-24)
+
+`audit_modes.js` (25 checks): the mode row, Several (save at shutter, strip, place sources, ＋ angle, the same-thing
+question, review), last-used, hold Log item, One thing's chosen place + Next item, Settings → Taking photos, Largest.
+Run it with the other two before every hand-off. The real rules engine: from `04_Engineering/firebase`,
+`firebase emulators:exec --config firebase.test.json --only firestore --project recall-test "RULES=firestore.rules node rules-test/test.mjs && RULES=firestore.rules node rules-test/test_grant.mjs && node rules-test/test_p2.mjs"`;
+the functions: `./rules-test/run_ai_test.sh`.

@@ -22,7 +22,7 @@ service cloud.firestore {
     function item(s) { return get(/databases/$(database)/documents/recall_items/$(s.itemId)).data; }
     function editorKeys() {
       return ['name', 'aliases', 'location', 'history', 'photo', 'thumb', 'thumbV', 'restingOn', 'description',
-              'needsPlace', 'lastSeenAt', 'updatedAt', 'logId', 'photoCount', 'order', 'pinnedOrder', 'naming'];
+              'needsPlace', 'lastSeenAt', 'updatedAt', 'logId', 'photoCount', 'order', 'pinnedOrder', 'naming', 'placeSource'];
     }
     // Legacy docs (pre-2026-09-19) have no owner. Until adoptLegacy() has run on Ravi's phone
     // these are readable/adoptable by any signed-in user of this project (there is one).

@@ -5,7 +5,7 @@ import { getPrefs, savePrefs } from '../lib/prefs.js';
 import { matchThings } from '../lib/speech.js';
 import EditableText from './EditableText.jsx';
 import Header from './Header.jsx';
-import { CameraIcon, CloseIcon, PinIcon } from './Icons.jsx';
+import { CameraIcon, CloseIcon, PinIcon, CheckIcon } from './Icons.jsx';
 import { MAX_SHOTS } from './Camera.jsx';
 
 // The photo card — after the camera. Board decision 2026-09-05, screen 2 (D2, D3, D4);
@@ -31,7 +31,11 @@ const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 // "your my favorite mug" → "your favorite mug": drop a leading my/the from a name in a sentence.
 export const own = (s) => (s || '').toLowerCase().replace(/^(my|the|our)\s+/, '');
 
-export default function PhotoCard({ files = [], engine, items = [], places = [], resnapOf = null, onDone, onBack, onMore, pendingFiles = null, onPendingTaken, owner = undefined, ownerName = '' }) {
+// "One thing" capture mode (MVP step 2, DECISIONS 2026-09-24; drawn as C1 option 2): when the app
+// knows the likely place — where this thing usually lives, or the place used a moment ago — that
+// place is already chosen, and *Done* / *Next item* save it with no question. Tapping any other
+// place still saves at once, exactly as before. *Next item* goes straight back to the camera.
+export default function PhotoCard({ files = [], engine, items = [], places = [], resnapOf = null, onDone, onBack, onMore, pendingFiles = null, onPendingTaken, owner = undefined, ownerName = '', presetPlace = '', onNext = null }) {
   const [shots, setShots] = useState([]);       // [{ photo, thumb }] — first is the cover
   const [current, setCurrent] = useState(0);    // which shot is big
   const [tag, setTag] = useState(undefined);    // undefined = pending · null = failed · object = named
@@ -47,6 +51,8 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   const [whole, setWhole] = useState(false);    // photo shown uncropped (L1)
   const tagPromise = useRef(null);
   const finished = useRef(false);
+  const nextRef = useRef(false); // saved with *Next item*: the caller reopens the camera
+  const finish = (r) => onDone(r && nextRef.current ? { ...r, next: true } : r);
   const visualStarted = useRef(false);
   const chips = knownLocations(items, 8, places);
 
@@ -119,20 +125,24 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
       if (tag === null) {
         await nameItem(savedId, {});
         logEvent('naming_failed', { itemId: savedId });
-        onDone({ saved: true, place, itemId: savedId });
+        finish({ saved: true, place, itemId: savedId });
         return;
       }
       await nameItem(savedId, { name: nameOverride || tag.name, description: tag.description, restingOn: tag.restingOn,
         aliases: nameOverride && tag.name !== nameOverride ? [tag.name] : [] });
       if (match) { finished.current = false; setPendingMerge(true); }
-      else onDone({ saved: true, place, itemId: savedId });
+      else finish({ saved: true, place, itemId: savedId });
     })();
   }, [savedId, identityKnown]); // eslint-disable-line
 
   // Chips: the AI's ranked guesses first (when they've arrived), then the household's places.
   const guesses = (tag && tag.placeGuesses) || [];
   const seen = new Set(guesses.map((g) => g.toLowerCase()));
-  const options = [...guesses, ...chips.filter((c) => !seen.has(c.toLowerCase()))].slice(0, 7);
+  // The place already chosen (One thing mode): where this thing usually lives, else the place used a moment ago.
+  const usual = !resnapOf && match && match.location ? match.location : '';
+  const preset = resnapOf ? '' : (usual || presetPlace || '');
+  const presetSource = usual ? 'usual' : 'session';
+  const options = [...guesses, ...chips.filter((c) => !seen.has(c.toLowerCase()))].filter((o) => !preset || o.toLowerCase() !== preset.toLowerCase()).slice(0, preset ? 6 : 7);
 
   // "Where is it?" view (round 7, Ravi): names only / smaller photos / bigger photos, switched by
   // the links under the list and remembered on this phone. Until a choice is made, photos come
@@ -179,20 +189,22 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   const cover = shots[0] || {};
   const extras = shots.slice(1);
 
-  async function save(raw, how) {
+  async function save(raw, how, next = false) {
     if (busy || savedId) return;
     const chosen = cap(raw.trim());
+    nextRef.current = !!next;
     setBusy(true);
     setPlace(chosen);
     const by = 'self';
-    const common = { photo: cover.photo, thumb: cover.thumb, location: chosen, by, restingOn, extras, ...(owner ? { owner } : {}) }; // Phase 2: a helper logs INTO the owner's ReCall
+    const placeSource = how === 'preset' ? presetSource : 'chosen';
+    const common = { photo: cover.photo, thumb: cover.thumb, location: chosen, by, restingOn, extras, placeSource, ...(owner ? { owner } : {}) }; // Phase 2: a helper logs INTO the owner's ReCall
 
     if (resnapOf) {
       await resnapItem(resnapOf, common);
       if (tag && tag.name) noteAlias(resnapOf, tag.name);
       logEvent('capture', { initiatedBy: 'resnap', itemId: resnapOf.id, itemName: resnapOf.name, savedBy: how, shots: shots.length,
         locationChanged: chosen !== resnapOf.location, aiFailed: tag === null });
-      onDone({ saved: true, place: chosen, itemId: resnapOf.id });
+      finish({ saved: true, place: chosen, itemId: resnapOf.id });
       return;
     }
 
@@ -211,14 +223,20 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
         logEvent('capture', { initiatedBy: 'self', itemId, itemName: name || null, savedBy: how, shots: shots.length,
           usedChip: chips.includes(chosen), placeFromGuess: guesses.includes(chosen), aiFailed: tag === null });
       }
-      onDone({ saved: true, place: chosen, itemId });
+      finish({ saved: true, place: chosen, itemId });
       return;
     }
 
     // Name or identity still pending: save now, finish later (D3).
     const id = await addItem({ ...common, name: tag ? (nameOverride || tag.name) : '', description: (tag && tag.description) || '', naming: tag === undefined });
     logEvent('capture', { initiatedBy: 'self', itemId: id, itemName: tag ? tag.name : null, savedBy: how, beforeName: tag === undefined, beforeIdentity: true,
-      shots: shots.length, usedChip: chips.includes(chosen) });
+      shots: shots.length, usedChip: chips.includes(chosen), mode: 'one', next: !!next });
+    if (next) { // don't wait here: the name is finished in the background, and the camera opens again
+      finished.current = true;
+      if (tagPromise.current) tagPromise.current.then((t) => nameItem(id, t ? { name: nameOverride || t.name, description: t.description, restingOn: t.restingOn } : {}));
+      finish({ saved: true, place: chosen, itemId: id });
+      return;
+    }
     setSavedId(id);
     setBusy(false);
   }
@@ -230,7 +248,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     }
     if (pendingMerge && match) logEvent('merge', { itemId: match.id, result: 'unseen' });
     logEvent('capture_leave', { reason, savedId: savedId || null });
-    onDone(savedId ? { saved: true, place, itemId: savedId } : null);
+    finish(savedId ? { saved: true, place, itemId: savedId } : null);
   }
 
   async function mergeYes() {
@@ -238,11 +256,11 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     await absorbInto(match, savedId, { photo: cover.photo, thumb: cover.thumb, location: place, restingOn, extras });
     if (tag && tag.name) noteAlias(match, tag.name);
     logEvent('merge', { itemId: match.id, result: 'confirmed', savedBy: 'asked', via: nameMatch ? 'name' : 'visual' });
-    onDone({ saved: true, place, itemId: match.id });
+    finish({ saved: true, place, itemId: match.id });
   }
   function mergeNo() {
     logEvent('merge', { itemId: match.id, result: 'declined', via: nameMatch ? 'name' : 'visual' });
-    onDone({ saved: true, place, itemId: savedId });
+    finish({ saved: true, place, itemId: savedId });
   }
 
   // Back in the header: before a save it cancels; after a save it is simply the way home.
@@ -313,6 +331,21 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
                     </button>); })}
                 </div>
               )}
+              {preset && (
+                <>
+                  <button type="button" className="guess pre" disabled={busy} onClick={() => save(preset, 'preset')}>
+                    <span>{preset} <small>· {presetSource === 'usual' ? 'usual place' : 'just used'}</small></span><CheckIcon />
+                  </button>
+                  {/* Done / Next item right under the chosen place, so they're never below the fold. In the flow: a keyboard may open here. */}
+                  {!typing && (
+                    <div className="next-row">
+                      {onNext && <button type="button" className="btn-primary" disabled={busy} onClick={() => save(preset, 'preset', true)}><CameraIcon /><span>Next item</span></button>}
+                      <button type="button" className="btn-primary alt" disabled={busy} onClick={() => save(preset, 'preset')}><CheckIcon /><span>Done</span></button>
+                    </div>
+                  )}
+                  <div className="or-else">Somewhere else?</div>
+                </>
+              )}
               {view !== 'big' && options.map((g) => { const t = view === 'small' ? pic(g) : null; return (
                 <button key={g} type="button" className={'guess' + (view === 'small' ? ' withpic' : '')} disabled={busy} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>
                   {view === 'small' && (t ? <img className="guess-pic" src={t.src} alt="" /> : <span className="guess-pic none"><PinIcon /></span>)}
@@ -321,7 +354,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
               {!typing && (
                 <button type="button" className="guess other" disabled={busy} onClick={() => { setDraft(''); setTyping(true); }}>Somewhere else</button>
               )}
-              <button type="button" className="guess quiet" disabled={busy} onClick={() => save('', 'not_sure')}>Not sure</button>
+              {!preset && <button type="button" className="guess quiet" disabled={busy} onClick={() => save('', 'not_sure')}>Not sure</button>}
               {options.length > 0 && (
                 <div className="view-links">
                   {['names', 'small', 'big'].filter((v) => v !== view).map((v) => (

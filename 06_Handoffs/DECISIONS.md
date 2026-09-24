@@ -6,6 +6,22 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-24 — Capture has three modes in one camera (Ravi: "go with the board's recommendations")
+
+**Decision:** One thing · Several · Everything are modes of one camera. The person switches under the viewfinder or by
+holding *Log item*. The camera opens in the last-used mode. Settings → Taking photos sets the default and which modes show;
+with one mode on there is no mode row. The app may suggest a mode once, and never switches. Guessed places store where the
+guess came from (`placeSource`). A sweep shows on Home as one place tile until object positions give crops. Step 2 = mode row
++ One thing + Several; Everything (list first, labels after the position test) in step 3.
+
+**Why:** the right approach depends on the person and the job (insurance, a tradesman's tools, one elderly person's glasses);
+making the person choose each time beats the board choosing for everyone. Modes are UI only (same data), so any can be dropped.
+
+**Objections recorded:** Devin (one capture for everyone) withdrew, on conditions: no auto-switching; no row with one mode;
+he owns the names. Priyanka: ~7 days for all three, against ~3 for Several alone.
+
+---
+
 ## 2026-09-24 — AI runs on ReCall's own key, through the server, with daily limits (MVP step 1)
 
 **Decision:** no person pastes an AI key any more. The app calls the `ai` Cloud Function, which forwards to Anthropic with

@@ -307,3 +307,18 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   of user, one kind of thing, a grid) had never been checked against the scenarios the product has
   to serve. Before drawing a screen, ask: who uses it, what they log, how often, and how fast logging
   has to be. The layout falls out of those answers. See `design/BOARD_2026-09-24_scenarios-and-logging.md`.
+
+- **2026-09-24 — mockup PNGs are heavy; the 09-24 push was 35 MB, mostly nine ~5 MB composites.** The repo is
+  public and every clone carries them forever. Save review composites as JPEG (quality ~85) or at half size;
+  keep full-resolution PNGs only in the rig's `shots/`, which is not committed.
+
+- **2026-09-24 — checking an app name: the USPTO, the App Store and RDAP all answer from the cloud sandbox;
+  Google Play doesn't.** `05_Research/naming/name_check.py` screens any list of names in about a minute (live
+  USPTO marks via the tmsearch backend, Apple's App Store search, RDAP for .com/.app). Play blocks automated
+  search (robots.txt), so check finalists by hand in the Play app. Justia's search page works through a web
+  fetch but not with curl. And the "find my stuff" category is crowded: check a real English word first, it's
+  usually taken.
+- **2026-09-24 — Apple's Developer Program needs the legal age of majority (18 in WA).** A minor can't
+  hold the membership; Apple's route is a parent's account shared with them. The seller name on the App Store
+  is the account holder's legal name (or the organization's). Apps can only be transferred after one App Store
+  release. Details and sources: `06_Handoffs/APPLE.md`.

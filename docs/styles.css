@@ -596,3 +596,54 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 
 /* First run, option C (MVP step 1, 2026-09-24): a bold line, then how to get it back. */
 .empty.first-run b:first-child { display: block; color: var(--ink); font-size: 1.3125rem; margin-bottom: 0.375rem; line-height: 1.3; }
+
+/* ---- Capture modes (MVP step 2, 2026-09-24; DECISIONS 09-24; drawn as C1/C2) ------------------ */
+/* The mode row: under the viewfinder, above the shutter — the iPhone camera's own pattern. One line; words scale, never wrap. */
+.modes { display: flex; justify-content: center; gap: 1.25rem; padding: 0.75rem 1rem 0.25rem; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+.modes::-webkit-scrollbar { display: none; }
+.modes button { background: none; color: rgba(255,255,255,0.72); font-weight: 700; font-size: min(1rem, 4.3vw); letter-spacing: 0.02em; padding: 0.375rem 0.25rem; min-height: 2.5rem; flex: none; border-radius: 0.5rem; }
+.modes button.on { color: #F2C94C; }
+.modes button.on::after { content: ''; display: block; width: 5px; height: 5px; border-radius: 50%; background: #F2C94C; margin: 0.15rem auto 0; }
+/* The Several strip: frosted, over the bottom of the live viewfinder. The thumbnail is fixed px (nothing on a photo scales). */
+.camera-view .strip1 { position: absolute; left: 0.625rem; right: 0.625rem; bottom: 0.625rem; border-radius: 1.125rem; padding: 0.625rem; display: flex; gap: 0.75rem; align-items: flex-start; z-index: 3;
+  background: rgba(20,20,18,0.74); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+.strip1 .th { position: relative; flex: none; width: 64px; height: 64px; }
+.strip1 .th img, .strip1 .th-wait { display: block; width: 64px; height: 64px; object-fit: cover; border-radius: 10px; background: rgba(255,255,255,0.15); }
+.strip1 .ang { position: absolute; right: -8px; bottom: -8px; width: 32px; height: 32px; min-height: 0; padding: 0; border-radius: 50%; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.4); font-size: 16px; }
+.strip1 .ang.on { background: #F2C94C; }
+.strip1 .bd { flex: 1; min-width: 0; }
+.strip1 .saved { display: flex; align-items: center; gap: 0.3rem; font-size: min(0.875rem, 3.8vw); font-weight: 700; color: #9FE0C9; }
+.strip1 .nm { font-size: min(1.25rem, 5.2vw); font-weight: 700; line-height: 1.2; margin-top: 0.125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip1 .nm.wait { color: rgba(255,255,255,0.6); font-weight: 600; }
+.strip1 .pl { display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.375rem; padding: 0.3rem 0.65rem; min-height: 2.25rem; border-radius: 999px; background: rgba(255,255,255,0.16); color: #fff; font-weight: 700; font-size: min(1rem, 4.3vw); white-space: nowrap; max-width: 100%; overflow: hidden; }
+.strip1 .pl span { overflow: hidden; text-overflow: ellipsis; }
+.strip1 .pl svg { flex: none; }
+.strip1 .pl small { font-weight: 600; opacity: 0.7; font-size: 0.85em; }
+.strip1 .chips { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.375rem; }
+.strip1 .chips button { padding: 0.35rem 0.7rem; min-height: 2.25rem; border-radius: 999px; background: rgba(255,255,255,0.18); color: #fff; font-weight: 700; font-size: min(0.9375rem, 4vw); white-space: nowrap; }
+.strip1 .q { font-size: min(0.9375rem, 4vw); font-weight: 600; color: rgba(255,255,255,0.75); margin-top: 0.375rem; }
+.cam-place { position: absolute; top: 0.75rem; left: 50%; transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 0.35rem; padding: 0.45rem 0.9rem; min-height: 2.5rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: min(1rem, 4.3vw); white-space: nowrap; max-width: calc(100% - 1.5rem); overflow: hidden; }
+.camera-sheet { position: fixed; inset: 0; z-index: 40; }
+/* One thing mode: the chosen place, and Done / Next item in the flow */
+.guess.pre { background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.guess.pre small { font-weight: 600; opacity: 0.85; font-size: 0.8em; }
+.guess.pre svg { flex: none; width: 1.2em; height: 1.2em; }
+.next-row { display: flex; gap: 0.625rem; margin-top: 0.75rem; }
+.next-row > * { flex: 1 1 0; min-width: 0; margin-top: 0; gap: 0.4rem; }
+/* The review after a Several run */
+.review .rv-sub { color: var(--ink-soft); font-size: min(1.0625rem, 4.5vw); font-weight: 600; margin: -0.25rem 0 0.75rem; display: flex; align-items: center; gap: 0.35rem; }
+.review .rv-sub svg { width: 1.15em; height: 1.15em; color: var(--accent); flex: none; }
+.rv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.rv-cell { padding: 0; min-height: 0; background: var(--card); border-radius: 0.75rem; overflow: hidden; box-shadow: var(--shadow); text-align: left; color: var(--ink); }
+.rv-cell img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+.rv-cell b { display: flex; align-items: center; justify-content: space-between; gap: 0.25rem; padding: 0.35rem 0.5rem; font-size: min(0.9375rem, 4vw); white-space: nowrap; overflow: hidden; }
+.rv-cell b svg { width: 0.95em; height: 0.95em; color: var(--accent); flex: none; }
+.rv-cell b.fix { background: var(--amber-bg); color: var(--amber); } .rv-cell b.fix svg { color: var(--amber); }
+.rv-note { color: var(--ink-soft); font-size: min(0.9375rem, 4vw); margin-top: 0.75rem; }
+/* Settings → Taking photos */
+.optrow { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 3rem; padding: 0.375rem 0; border-bottom: 1px solid var(--line); }
+.optrow .lab b { display: block; font-size: min(1.0625rem, 4.5vw); }
+.optrow .lab small { display: block; color: var(--ink-soft); font-size: min(0.9375rem, 4vw); font-weight: 500; line-height: 1.3; }
+.sw:disabled { opacity: 0.5; }
+.guesses .next-row { margin: 0.125rem 0 0.25rem; }
+.or-else { color: var(--ink-soft); font-size: min(1rem, 4.3vw); font-weight: 600; margin: 0.375rem 0 0; }

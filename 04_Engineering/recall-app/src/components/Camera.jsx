@@ -12,8 +12,15 @@ import { CameraIcon, CloseIcon } from './Icons.jsx';
 //
 // Returns Files (JPEG) through onDone(files); onCancel() returns nothing.
 export const MAX_SHOTS = 4;
+export const MODE_LABEL = { one: 'One thing', several: 'Several', all: 'Everything' };
 
-export default function Camera({ max = MAX_SHOTS, title = 'Log item', onDone, onCancel }) {
+// Capture modes (DECISIONS 2026-09-24): `modes` are the ones switched on in Settings. With more
+// than one, a mode row sits under the viewfinder like the iPhone camera's; it disappears once the
+// first photo is taken, so a mode can't change halfway through a thing. In 'several' mode every
+// shutter press goes straight to onShot(file) (the caller saves it) and the camera stays open;
+// `overlay` is drawn over the viewfinder (the Several strip) and `savedCount` enables Done.
+export default function Camera({ max = MAX_SHOTS, title = 'Log item', onDone, onCancel,
+  modes = null, mode = 'one', onMode, onShot, overlay = null, savedCount = 0, topChip = null }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [shots, setShots] = useState([]);       // [{ file, url }]
@@ -44,9 +51,19 @@ export default function Camera({ max = MAX_SHOTS, title = 'Log item', onDone, on
   // Free the object URLs when we leave.
   useEffect(() => () => shots.forEach((s) => URL.revokeObjectURL(s.url)), []); // eslint-disable-line
 
+  const several = mode === 'several' && !!onShot;
+  const showModes = modes && modes.length > 1 && !shots.length && !savedCount;
+  const touch = useRef(null);
+  const swipe = (e) => {
+    if (!showModes || !touch.current) return;
+    const dx = e.changedTouches[0].clientX - touch.current; touch.current = null;
+    if (Math.abs(dx) < 50) return;
+    const i = modes.indexOf(mode) + (dx < 0 ? 1 : -1);
+    if (i >= 0 && i < modes.length) onMode(modes[i]);
+  };
   async function snap() {
     const v = videoRef.current;
-    if (!v || state !== 'live' || shots.length >= max) return;
+    if (!v || state !== 'live' || (!several && shots.length >= max)) return;
     const w = v.videoWidth, h = v.videoHeight;
     if (!w || !h) return;
     const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -55,22 +72,25 @@ export default function Camera({ max = MAX_SHOTS, title = 'Log item', onDone, on
     if (navigator.vibrate) navigator.vibrate(15);
     const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.92));
     const file = new File([blob], `recall-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    if (several) { onShot(file); return; } // saved by the caller at once; the camera stays open
     setShots((prev) => [...prev, { file, url: URL.createObjectURL(blob) }]);
   }
   function drop(i) { setShots((prev) => { URL.revokeObjectURL(prev[i].url); return prev.filter((_, j) => j !== i); }); }
-  function done() { if (shots.length) onDone(shots.map((s) => s.file)); }
+  function done() { if (several) { if (savedCount) onDone([]); return; } if (shots.length) onDone(shots.map((s) => s.file)); }
 
   return (
     <div className="camera" role="dialog" aria-modal="true" aria-label={title}>
       <div className="camera-top">
-        <button type="button" className="camera-cancel" onClick={onCancel}>Cancel</button>
+        <button type="button" className="camera-cancel" onClick={several && savedCount ? done : onCancel}>{several && savedCount ? 'Close' : 'Cancel'}</button>
         <div className="camera-title">{title}</div>
-        <div className="camera-count">{shots.length ? `${shots.length} of ${max}` : ''}</div>
+        <div className="camera-count">{several ? (savedCount ? `${savedCount} saved` : '') : shots.length ? `${shots.length} of ${max}` : ''}</div>
       </div>
 
-      <div className="camera-view">
+      <div className="camera-view" onTouchStart={(e) => { touch.current = e.touches[0].clientX; }} onTouchEnd={swipe}>
         <video ref={videoRef} playsInline muted autoPlay className={state === 'live' ? '' : 'hidden'} />
         {flash && <div className="camera-flash" />}
+        {topChip}
+        {overlay}
         {state === 'starting' && <div className="camera-msg">Starting the camera…</div>}
         {state === 'failed' && (
           <div className="camera-msg">
@@ -84,20 +104,27 @@ export default function Camera({ max = MAX_SHOTS, title = 'Log item', onDone, on
         )}
       </div>
 
-      {/* The roll: every shot so far, ✕ to drop it. */}
-      <div className="camera-roll">
+      {showModes && (
+        <div className="modes" role="tablist" aria-label="How to take photos">
+          {modes.map((m) => (
+            <button key={m} type="button" role="tab" aria-selected={m === mode} className={m === mode ? 'on' : ''} onClick={() => onMode(m)}>{MODE_LABEL[m] || m}</button>
+          ))}
+        </div>
+      )}
+      {/* The roll: every shot so far, ✕ to drop it. (Several mode shows its strip instead.) */}
+      {!several && <div className="camera-roll">
         {shots.map((s, i) => (
           <div className="roll-shot" key={s.url}>
             <img src={s.url} alt={`Photo ${i + 1}`} />
             <button type="button" className="roll-x" aria-label={`Remove photo ${i + 1}`} onClick={() => drop(i)}><CloseIcon /></button>
           </div>
         ))}
-      </div>
+      </div>}
 
       <div className="camera-bar">
         <div className="camera-slot" />
-        <button type="button" className="shutter" aria-label="Take a photo" disabled={state !== 'live' || shots.length >= max} onClick={snap}><span /></button>
-        <button type="button" className="camera-done" disabled={!shots.length} onClick={done}>{shots.length ? `Done (${shots.length})` : 'Done'}</button>
+        <button type="button" className="shutter" aria-label="Take a photo" disabled={state !== 'live' || (!several && shots.length >= max)} onClick={snap}><span /></button>
+        <button type="button" className="camera-done" disabled={several ? !savedCount : !shots.length} onClick={done}>{!several && shots.length ? `Done (${shots.length})` : 'Done'}</button>
       </div>
     </div>
   );
