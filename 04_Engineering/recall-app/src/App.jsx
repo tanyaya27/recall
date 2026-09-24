@@ -8,6 +8,7 @@ import PeopleScreen from './components/People.jsx';
 import JoinScreen, { pendingJoin, parkJoin, clearJoin } from './components/Join.jsx';
 import { THUMB_V, thumbFromPhoto, compressPhoto, compressPlacePhoto } from './lib/img.js';
 import { AIEngine, getAIConfig } from './ai/engine.js';
+import { setAIOwner } from './ai/providers/anthropic.js';
 import Board from './components/Board.jsx';
 import PhotoCard, { own } from './components/PhotoCard.jsx';
 import ThingCard from './components/ThingCard.jsx';
@@ -86,6 +87,7 @@ export default function App() {
   // the owner's whose grant I hold. Places and the removed list follow the same owner.
   const myUid = me();
   const cur = whose || myUid;
+  setAIOwner(whose); // AI calls in someone else's ReCall use her key if she has one and I can help (step 1, 09-24)
   const grant = whose ? grants.find((g) => g.grantor === whose) || null : null;
   const role = whose ? (grant ? grant.role : 'viewer') : 'owner';
   const removedFrom = !!whose && grantsReady && !grant; // she took me out (MU2·8), or I left

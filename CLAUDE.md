@@ -51,6 +51,11 @@ Step 2 matters more than step 1. A lesson buried in a session file is lost; a le
 
 ## What ReCall is
 
+> **2026-09-24 (Tanya): a general memory app for anyone — ailment or not.** Dementia was the starting
+> point, not the boundary; the person with memory loss stays the hardest case. Logging speed is
+> measured from reaching for the phone. See DECISIONS 09-24 and `06_Handoffs/design/PLAN_2026-09-24_generic-mvp.md`.
+> The original framing below is kept for history.
+
 A camera-first visual memory vault for people with early-stage dementia. Snap a photo of
 where you put something → AI names the item and location → ask in plain language later →
 get the photo back.
@@ -64,6 +69,8 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
+> **2026-09-24 — ReCall is now a general memory app (Tanya, DECISIONS 09-24). MVP step 1 built as `20260924b` (on the Mac, NOT pushed):** AI through the `ai` function with ReCall's key and daily limits; neutral prompts; no setup card; first-run line option C. Deploy order + phone check in OPEN_ITEMS. Plans: `06_Handoffs/design/PLAN_2026-09-24_generic-mvp.md`, `PLAN_2026-09-24_next-steps.md`. **Two sessions run in parallel from here:** (1) MVP work (next: fast-capture renders → step 2); (2) naming + Apple Developer sign-up — prompt `06_Handoffs/PROMPT_2026-09-24_naming-and-apple.md`, findings `06_Handoffs/NAMING_2026-09-24_findings.md`. Session log: `06_Handoffs/sessions/2026-09-23-home-rethink-to-generic-mvp.md`.
+>
 > **2026-09-23 — `20260921b` is LIVE** (multi-user Phase 2 + Google sign-in as a same-origin OpenID redirect). Firebase deployed 09-21 as **tangadi.biz@gmail.com** (rules still carry the legacy clauses). Dad's phone is signed in with Google (ravi.bizlogix@gmail.com) and owns every pre-09-19 doc; the invite test to Ravi's phone is NOT yet done. **Next session: the home screen rethink** — `06_Handoffs/PROMPT_2026-09-23_home-screen-rethink.md` (six mockups, product board + a senior mobile graphic designer persona; must also fix "whose ReCall am I looking at"). Session log: `06_Handoffs/sessions/2026-09-21-firebase-deploy-and-multi-user-phase2.md`. Earlier: Phase 1 (`20260919a`: owner/roles on every doc, merged listeners, legacy adoption, auth upgrade; rules + functions in `04_Engineering/firebase/`). Earlier: build `20260916f` (8b: place picker, tidy-up; round 8: the thing card rebuilt on the things/places/sightings model — `06_Handoffs/design/DESIGN_2026-09-16_things-places-sightings.md`; 7c: fixed action bar, Earlier photos fixed; 7b: Ravi's four fixes — see DECISIONS; both cache stamps now bumped) (round 7, `06_Handoffs/design/BOARD_2026-09-15_round7.md`: mockups → Ravi's rulings → code; when pill + Private on one line; private = per person; pin badge for *no place yet*; *Text size & colours*; Locations with place photos; *Where is it?* in three views; 4 shots per Add photo; **multi-user RESET 2026-09-19** — Margaret owns her things, Drive-style sharing; plan + 16 screens in `06_Handoffs/design/PLAN_2026-09-19_multi-user.md`, Ravi said "proceed" 09-19; Phase 1 built). **Earlier: 2026-09-14 — v0.2 is LIVE (stamp `20260905l`); build `20260914p`** (n: thing card layout A, chosen by Ravi from rendered options)** (m: private items — exclusion model, one switch; rules enforce it in multi-user stage 1)** (l: thing card = Add photo · Edit, no *Found it*; wrong-photo guard; hold on the
 > photo; shorter footer. **Multi-user:** three boards met in parallel — customer, UX, tech —
 > reconciled in `06_Handoffs/design/PLAN_2026-09-14_multi-user.md`; six splits await Ravi/Tanya)** (k: the full-path audit — `06_Handoffs/design/AUDIT_2026-09-14_full-path.md` —

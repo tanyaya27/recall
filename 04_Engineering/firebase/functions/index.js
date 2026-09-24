@@ -2,6 +2,7 @@
 // ReCall Cloud Functions — multi-user Phase 1 (2026-09-19). Four callables; the client never
 // writes grants, invites, secrets or ownership. Design: TECH_BOARD_2026-09-19.md §3–4.
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { defineSecret, defineInt } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { randomBytes } from 'node:crypto';
@@ -64,21 +65,73 @@ export const transfer = onCall(async (req) => {
   return { moved: snaps.size + 1 };
 });
 
-// ai({ ownerUid, body }) → forwards to Anthropic with the OWNER's key (recall_secrets/{owner}).
-// The caller must be the owner or an editor of that owner's things (grant or any direct role).
-export const ai = onCall({ secrets: [] , timeoutSeconds: 60 }, async (req) => {
+// ai({ ownerUid?, body }) → forwards one Messages call to Anthropic (MVP step 1, 2026-09-24).
+//
+// Whose key: the ReCall owner's own key if they stored one (setAiKey), otherwise ReCALL'S OWN
+// key — the secret ANTHROPIC_KEY — so a new person never has to paste a key. A helper logging
+// into someone else's ReCall uses that owner's key only if they hold an editor grant.
+//
+// What it will forward is fixed here, not by the client: one allowed model, a max_tokens cap,
+// one user message, at most 8 images. Anything else is refused — this endpoint spends money.
+//
+// Limits (anyone can sign in anonymously, so these are the only brake on cost):
+//   per person per UTC day: AI_DAILY_PER_PERSON (default 150 calls)
+//   the whole project per UTC day: AI_DAILY_TOTAL (default 3000 calls) — a circuit breaker.
+// Counters live in recall_usage/{uid}_{yyyymmdd} and recall_usage/_all_{yyyymmdd}; the rules
+// grant clients no access to that collection (default deny).
+const ANTHROPIC_KEY = defineSecret('ANTHROPIC_KEY');
+const AI_DAILY_PER_PERSON = defineInt('AI_DAILY_PER_PERSON', { default: 150 });
+const AI_DAILY_TOTAL = defineInt('AI_DAILY_TOTAL', { default: 3000 });
+const AI_MODELS = ['claude-haiku-4-5-20251001'];
+const AI_MAX_TOKENS = 700;
+const AI_MAX_IMAGES = 8;
+
+function cleanBody(body) {
+  const b = body || {};
+  const model = AI_MODELS.includes(b.model) ? b.model : AI_MODELS[0];
+  const msgs = Array.isArray(b.messages) ? b.messages : [];
+  if (msgs.length !== 1 || msgs[0].role !== 'user' || !Array.isArray(msgs[0].content)) throw new HttpsError('invalid-argument', 'one user message');
+  const content = msgs[0].content.map((c) => {
+    if (c && c.type === 'text' && typeof c.text === 'string') return { type: 'text', text: c.text.slice(0, 20000) };
+    if (c && c.type === 'image' && c.source && c.source.type === 'base64' && typeof c.source.data === 'string')
+      return { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: c.source.data } };
+    throw new HttpsError('invalid-argument', 'content');
+  });
+  if (content.filter((c) => c.type === 'image').length > AI_MAX_IMAGES) throw new HttpsError('invalid-argument', 'too many images');
+  return { model, max_tokens: Math.min(Number(b.max_tokens) || 500, AI_MAX_TOKENS), messages: [{ role: 'user', content }] };
+}
+
+async function spend(uid) {
+  const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const mine = db.collection('recall_usage').doc(`${uid}_${day}`);
+  const all = db.collection('recall_usage').doc(`_all_${day}`);
+  await db.runTransaction(async (tx) => {
+    const [m, a] = await Promise.all([tx.get(mine), tx.get(all)]);
+    const n = m.exists ? m.data().calls || 0 : 0; const t = a.exists ? a.data().calls || 0 : 0;
+    if (t >= AI_DAILY_TOTAL.value()) throw new HttpsError('resource-exhausted', 'service-limit');
+    if (n >= AI_DAILY_PER_PERSON.value()) throw new HttpsError('resource-exhausted', 'daily-limit');
+    tx.set(mine, { uid, day, calls: n + 1, at: Date.now() }, { merge: true });
+    tx.set(all, { day, calls: t + 1, at: Date.now() }, { merge: true });
+  });
+}
+
+export const ai = onCall({ secrets: [ANTHROPIC_KEY], timeoutSeconds: 60 }, async (req) => {
   const uid = uidOf(req);
-  const owner = req.data?.ownerUid || uid;
-  if (owner !== uid) {
-    const g = await db.collection('recall_grants').doc(`${owner}_${uid}`).get();
-    if (!g.exists || g.data().role !== 'editor') throw new HttpsError('permission-denied', 'not an editor');
+  const body = cleanBody(req.data?.body);
+  let owner = uid;
+  const asked = req.data?.ownerUid;
+  if (asked && asked !== uid) {
+    const g = await db.collection('recall_grants').doc(`${asked}_${uid}`).get();
+    if (g.exists && g.data().role === 'editor') owner = asked; // otherwise: the caller's own / ReCall's key
   }
   const sec = await db.collection('recall_secrets').doc(owner).get();
-  const key = sec.exists ? sec.data().aiKey : null;
-  if (!key) throw new HttpsError('failed-precondition', 'The owner has not set an AI key.');
-  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, body: JSON.stringify(req.data.body) });
+  const own = sec.exists ? sec.data().aiKey : null;
+  const key = own || ANTHROPIC_KEY.value();
+  if (!key) throw new HttpsError('failed-precondition', 'no-key');
+  if (!own) await spend(uid); // ReCall pays → the caller's daily limit applies
+  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, body: JSON.stringify(body) });
   const text = await r.text();
-  if (!r.ok) throw new HttpsError('internal', `AI ${r.status}`);
+  if (!r.ok) throw new HttpsError('internal', `AI ${r.status}: ${text.slice(0, 200)}`);
   return JSON.parse(text);
 });
 

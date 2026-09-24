@@ -6,6 +6,56 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-24 — AI runs on ReCall's own key, through the server, with daily limits (MVP step 1)
+
+**Decision:** no person pastes an AI key any more. The app calls the `ai` Cloud Function, which forwards to Anthropic with
+ReCall's key (secret `ANTHROPIC_KEY`), or with the ReCall owner's own stored key if she set one. The function, not the
+client, decides what may be sent: one model (Haiku), ≤700 output tokens, one user message, ≤8 images. Limits: 150 calls per
+person per UTC day and 3000 per day for the whole project (params, changeable without code). A key entered on the phone
+still works (direct call) and is folded away in Settings. Prompts no longer say "memory loss" (generic app, 09-24).
+
+**Why:** a stranger cannot get an Anthropic key (PLAN_2026-09-24_generic-mvp.md #1). The limits are the only brake on cost
+while anonymous sign-in is open to anyone with the URL.
+
+**Would change our mind:** real usage near the limits (raise the params); abuse (App Check, #4); a need for Gemini through
+the service (today only Anthropic goes through it).
+
+---
+
+## 2026-09-24 — The MVP sequence (Tanya/Ravi)
+
+Approved as recommended in `design/PLAN_2026-09-24_generic-mvp.md` §3: (1) no API key (the `ai` callable),
+neutral prompts, no setup card; (2) capture without questions, label text, logging without a photo;
+(3) nested places and containers, many things per photo; (4) native app, then the App Store's privacy
+and account requirements; (5) photo storage, search at scale and time-to-log measurement when outside
+testers arrive. The native-first objection (Sam, Noor) is recorded; web steps come first.
+
+---
+
+## 2026-09-24 — ReCall is a memory app for anyone; the logging clock starts at the phone (Tanya)
+
+**Decision (Tanya):** ReCall broadens from a memory aid for early memory loss to a general memory
+app "for people of all walks — ailment or not". Memory lapses happen to everyone, and complex
+situations (a tradesman's tools, a family that has just moved) are where they're most common. The
+app must be targetable to each situation for broad appeal. Mild dementia was the starting point,
+not the boundary. **Logging speed is measured from the moment the person reaches for the phone**,
+not from when ReCall opens.
+
+**Why:** Ravi's scenarios (09-24: garage, storage locker, garden, papers and appointments, and his
+parents' bank locker key, lost for ten years) and the boards' analysis in
+`design/BOARD_2026-09-24_scenarios-and-logging.md`. The MVP gap list is
+`design/PLAN_2026-09-24_generic-mvp.md`.
+
+**Consequences:** the Kano work (built on the memory-loss premise) is re-run for the general user.
+AI prompts and copy go neutral. The person with memory loss stays the hardest case every
+configuration must still serve (Devin: configure, never accumulate). The H1 home layouts are parked
+as possible Settings styles.
+
+**Objections recorded:** Priyanka wants the log → find loop proven with a real user before modules
+are added. Dr Kim: the copy must never promise to find what was never logged.
+
+---
+
 ## 2026-09-21 — Google sign-in is our own same-origin OpenID redirect, not Firebase's
 
 Dad's phone: *Sign in with Google* did nothing. Firebase's `signInWithRedirect`/`linkWithRedirect`

@@ -61,3 +61,19 @@ sharedWith` in `canRead` AND a `kind in` filter on the query). Run it whenever t
 listener's shape changes. The rig's `audit_roles.js` (41 checks, six roles, invite/join/
 remove/leave/expired flows) stays the UI-level audit; `stubs/fbfunctions.js` runs the four
 callables over the in-memory store; `shots_p2.js` makes the Phase 2 review montages.
+
+## Rebuilding in a fresh container (2026-09-23, notes)
+
+- The tarball carries the app's `package.json` (`"type": "module"`), which makes the rig's
+  `require()` scripts fail. In the container, move it aside and write `{"private":true}` in its place.
+- Install `playwright@1.56.1`: it matches the pre-installed `/opt/pw-browsers/chromium-1194`. The
+  latest Playwright wants a newer Chromium and cannot download one. Also `react@18 react-dom@18 esbuild`.
+- `chmod +x build.sh` after unpacking (the tar from the Mac drops the bit).
+
+## Home-screen mockups (H1, 2026-09-23)
+
+`rig/gen_h1.py` writes `mock/h1_<concept>_<frame>.html` (six concepts × home frames + carry-through
+screens); `node render_h1.js` → `shots/h1/`; `python3 compose_h1.py` → one page per concept, the
+montage and the own-title strip in `shots/h1_out/`. Photos: `rig/mock/img/` (Wikimedia Commons,
+openly licensed, CREDITS.md — mockups only, never shipped). Fetching from Commons needs a
+descriptive User-Agent and ~1.5 s between requests or it answers 429; thumbnails come back at 500 px.

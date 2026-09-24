@@ -61,7 +61,10 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
 
       {!removed && (ready || guest) && things.length === 0 && (
         <div className="card">
-          <p className="empty">{guest ? `${ownerName} has not logged anything yet.` : 'Photograph something you often look for — glasses, keys, wallet, anything.'}</p>
+          {guest ? <p className="empty">{`${ownerName} has not logged anything yet.`}</p> : (
+            // First run, option C (Tanya 09-24): what to do, then how to get it back — no key, no setup card.
+            <p className="empty first-run"><b>Take a photo of where you put something.</b>Later, tap <b>Find item</b> and ask for it.</p>
+          )}
         </div>
       )}
 

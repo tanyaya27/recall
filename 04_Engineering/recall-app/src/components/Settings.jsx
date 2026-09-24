@@ -64,6 +64,7 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
   const [test, setTest] = useState(null);
   const [testing, setTesting] = useState(false);
   const [showModel, setShowModel] = useState(false);
+  const [ownKey, setOwnKey] = useState(false); // the optional own-key form, folded away (step 1)
   // Update state: what happened on the reload we came back from, and whether the server has a newer stamp.
   const [reloadResult] = useState(() => {
     if (!justReloaded) return null;
@@ -114,6 +115,7 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
     setTesting(true); setTest(null);
     try {
       const eng = new AIEngine(getAIConfig());
+      if (eng.usesService) { const t = await eng.testKey(); setTest(t); setTesting(false); return; } // one answer: it works, or why not
       const reach = await eng.probeReach();
       if (!reach.reached) {
         setTest({ ok: false, raw: reach.raw,
@@ -188,8 +190,30 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
           <p className="sub" style={{ margin: 0 }}>Signed in as <b>{(user && user.displayName) || 'you'}</b>{user && user.email ? <> · {user.email}</> : null}.</p>
         )}
       </div></div>
-      <div className="group-title">AI key</div>
+      {/* MVP step 1 (2026-09-24): AI works with no key, through ReCall's service. Your own key
+          is optional and folded away; with one stored, calls go straight from this phone. */}
+      <div className="group-title">AI</div>
       <div className="group">
+        <div className="grow">
+          {!stored.apiKey ? (
+            <p className="sub" style={{ margin: 0 }}>ReCall names your photos and answers <i>Where is my…</i> for you. Nothing to set up.</p>
+          ) : (
+            <p className="sub" style={{ margin: 0 }}>Using your own key on this phone: <b>{mask(stored.apiKey)}</b> · {stored.provider}</p>
+          )}
+          <button className="btn-secondary" disabled={testing} onClick={runTest}>
+            {testing ? 'Checking…' : 'Check it works'}
+          </button>
+          {test && (
+            <div className={test.ok ? 'key-ok' : 'key-bad'}>
+              {test.ok ? '✓ ' : '✕ '}{test.message}
+              {test.raw && test.raw !== test.message && <div className="raw">{test.raw}</div>}
+            </div>
+          )}
+          {!ownKey && !stored.apiKey && (
+            <button type="button" className="link-btn" onClick={() => setOwnKey(true)}>Use my own AI key instead</button>
+          )}
+        </div>
+        {(ownKey || stored.apiKey) && (<>
         <div className="grow">
           <label>Provider</label>
           <select value={cfg.provider} onChange={(e) => setCfg({ ...cfg, provider: e.target.value, model: '' })}>
@@ -215,19 +239,11 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
             </>
           )}
           <button className="btn-primary" onClick={save}>{saved ? '✓ Saved' : 'Save'}</button>
-          <div className="key-status">
-            {stored.apiKey ? <>Stored on this phone: <b>{mask(stored.apiKey)}</b> · {stored.provider}</> : <>No key stored on this phone yet.</>}
-          </div>
-          <button className="btn-secondary" disabled={!stored.apiKey || testing} onClick={runTest}>
-            {testing ? 'Checking…' : 'Check the key works'}
-          </button>
-          {test && (
-            <div className={test.ok ? 'key-ok' : 'key-bad'}>
-              {test.ok ? '✓ ' : '✕ '}{test.message}
-              {test.raw && test.raw !== test.message && <div className="raw">{test.raw}</div>}
-            </div>
+          {stored.apiKey && (
+            <button type="button" className="btn-quiet" onClick={() => { const c = { provider: 'anthropic', apiKey: '', model: '' }; setCfg(c); saveAIConfig(c); setStored(getAIConfig()); setOwnKey(false); setTest(null); onConfigSaved(); }}>Stop using my key — use ReCall’s</button>
           )}
         </div>
+        </>)}
       </div>
 
       <p className="note-quiet left support">For support · ID <code className="uid">{user ? user.uid : '…'}</code>{legacy !== null && legacy !== 0 ? <> · legacy docs left {legacy}</> : null}{last ? <> · sign-in {last.stage}{last.error ? ` (${last.error})` : ''} {new Date(last.at).toLocaleTimeString()}</> : null}</p>

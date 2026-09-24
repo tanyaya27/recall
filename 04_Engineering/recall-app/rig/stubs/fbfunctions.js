@@ -43,7 +43,28 @@ const IMPL = {
     return { moved: snaps.length + 1 };
   },
   async setAiKey({ key }) { const uid = me(); __raw.set('recall_secrets', uid, { aiKey: key, updatedAt: Date.now() }); return { ok: true }; },
-  async ai() { err('failed-precondition', 'The owner has not set an AI key.'); },
+  // MVP step 1 (2026-09-24): as functions/index.js — clamp the body, count the call against the
+  // caller's daily limit (window.__rig.aiLimit, default 150), then forward. The forward goes to the
+  // real Anthropic URL so the rig's page.route() fake answers it, exactly as for a direct call.
+  async ai({ body, ownerUid }) {
+    const uid = me();
+    const msgs = (body && body.messages) || [];
+    if (msgs.length !== 1 || msgs[0].role !== 'user' || !Array.isArray(msgs[0].content)) err('invalid-argument', 'one user message');
+    if (msgs[0].content.filter((c) => c.type === 'image').length > 8) err('invalid-argument', 'too many images');
+    const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const own = __raw.get('recall_secrets', ownerUid || uid);
+    if (!own) {
+      const u = __raw.get('recall_usage', `${uid}_${day}`) || { calls: 0 };
+      const cap = (window.__rig && window.__rig.aiLimit) || 150;
+      if (u.calls >= cap) err('resource-exhausted', 'daily-limit');
+      __raw.set('recall_usage', `${uid}_${day}`, { uid, day, calls: u.calls + 1 });
+    }
+    window.__rig.aiCalls = (window.__rig.aiCalls || 0) + 1; window.__rig.lastAiOwner = ownerUid || null; window.__rig.lastAiCaller = uid;
+    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': 'rig-service' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: Math.min(body.max_tokens || 500, 700), messages: msgs }) });
+    if (!r.ok) err('internal', `AI ${r.status}`);
+    return r.json();
+  },
 };
 export const getFunctions = () => ({ __rig: true });
 export const httpsCallable = (fns, name) => async (data) => { if (!IMPL[name]) err('not-found', name); return { data: await IMPL[name](data || {}) }; };

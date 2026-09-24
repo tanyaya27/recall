@@ -1,9 +1,62 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-23.
+*Done* when closed. Updated 2026-09-24.
 
-## NEXT SESSION — home screen rethink (Ravi 09-23)
+## NOW — scenarios, setup and logging speed (Ravi 09-24)
+
+- [x] 09-24: Ravi on H1: "100% cosmetic … quite useless". The layouts become candidate Settings styles, parked.
+  The real work is who it's for (dozens of scenarios), a setup that configures the tool, the support network,
+  and logging that is nearly effortless. Analysis: `design/BOARD_2026-09-24_scenarios-and-logging.md`.
+- [x] 09-24 **Tanya ruled: a general memory app for anyone; the logging clock starts at the phone** (DECISIONS 09-24).
+- [x] 09-24 **MVP sequence approved** (PLAN_2026-09-24_generic-mvp.md §3): 1) #1 #2 #5 no key · neutral · no setup card;
+  2) #6 #9 #10 capture without questions · label text · log without a photo; 3) #7 #8 nested places · many things per photo;
+  4) #3 #4 native app, then App Store privacy/account requirements; 5) #11–13 when outside testers arrive.
+- [ ] **Plan for the next 4 weeks:** `design/PLAN_2026-09-24_next-steps.md` (step 1 now; capture renders + step 2 in week 2;
+  step 3 in week 3; native + App Store from week 4).
+- [ ] **Ravi, this week:** the garage photo session (~75 shots, table in next-steps §3, with the true answers written down);
+  the invite test (15 min); attach real billing + budget alert BEFORE step 1 ships (AI moves onto ReCall's key);
+  enrol in the Apple Developer Program.
+- [ ] **Ruler sizing (Ravi 09-24):** length likely (~⅛ in); gauge (#8 vs #10, ~0.6 mm) not reliable from a photo alone.
+  Recommended: a printed ReCall sizing card (markers + scales + labelled holes). Test C in week 3. Photos are stored at
+  900 px (`img.js`), so measuring must use the full capture. Add to the prioritizer (trades scenario, performance).
+- [x] **Step 1 (#1 #2 #5) BUILT 09-24 — `20260924a`, on the Mac, NOT pushed.** AI goes through the `ai` Cloud Function with
+  ReCall's own key (secret `ANTHROPIC_KEY`), or the owner's stored key; the function clamps model/size (Haiku, ≤700 tokens,
+  one message, ≤8 images) and limits 150 calls/person/day and 3000/day for the project (params `AI_DAILY_PER_PERSON`,
+  `AI_DAILY_TOTAL`). Prompts neutral (no "memory loss"). No setup card on a fresh phone. Settings → *AI*: "Nothing to set up",
+  *Check it works*, own key folded away. Rig: audit 98/98, audit_roles 42/42; functions on the real emulators 11/11
+  (`rules-test/run_ai_test.sh`). Screenshots: `design/mockups/S1_first_run_options.png`, `S1_settings_ai.png`.
+- [x] 09-24 Ravi/Tanya: first-run line **C**, Settings → AI card OK. Built into `20260924b` (both stamps bumped; rig 98/98 + 42/42).
+- [ ] **Naming + Apple Developer sign-up — its own session:** `06_Handoffs/PROMPT_2026-09-24_naming-and-apple.md`
+  (findings so far: `06_Handoffs/NAMING_2026-09-24_findings.md`). To run it on another machine, the repo must be pushed first.
+- [ ] **Deploy step 1, IN THIS ORDER** (the function must be live before the web build):
+  1. Real billing + a budget alert on `recall-d9886` (Firebase console → Billing). Also set a monthly spend limit in the
+     Anthropic console on the key below — a second brake.
+  2. A new Anthropic API key just for the ReCall service (console.anthropic.com → API keys, name it "ReCall service").
+  3. `cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall/04_Engineering/firebase"`
+     `firebase use recall-d9886` · `firebase functions:secrets:set ANTHROPIC_KEY` (paste the key; say yes if it offers to
+     enable Secret Manager) · `firebase deploy --only functions:ai`
+  4. `cd "/Users/rangadi/Documents/Claude/Projects/Tanya - College Application/ReCall"` · `find .git -name "*.lock" -delete`
+     · `git add -A && git commit -m "MVP step 1 (20260924b): AI through ReCall's service, neutral prompts, no setup card, first-run line C; naming + Apple session prompt"` · `git push`
+  5. Phone check: open the site in a **Safari private tab** (no key there) → Log item → the photo gets a name. Settings → AI →
+     *Check it works* → ✓ Working — through ReCall's service. Phones that already have a key keep using it; *Stop using my key*
+     switches them to the service.
+- [ ] Follow-up (#4): **App Check** — today anyone with the URL can sign in anonymously and use up to 150 calls/day each; the
+  3000/day project breaker bounds the total. App Check (App Attest in the native app, reCAPTCHA on the web) closes that.
+- [ ] **Fast capture (#6/#8):** brainstorm `design/BOARD_2026-09-24_fast-capture-brainstorm.md`. Next: render its three
+  camera options (§7) + the label-position spike (Gemini boxes / Apple subject lift / Claude) on 20 real drawer photos.
+- [ ] #4 order matters: strip the rules' legacy clauses only AFTER the invite test (Dad → Can help → Ravi), or Ravi's
+  phone loses access to the old data.
+- [ ] Re-run the Kano analysis for the general user (Maya), alongside the MVP.
+- [ ] Spikes: 20 real drawer/shelf photos → "one photo, many things" accuracy; label text on a screw box, seed packet, bill.
+- [ ] Tanya to go through the scenarios note §10 after the MVP call.
+- [x] (superseded) **Needs Tanya (§0):** broaden ReCall from memory aid to "the household's memory", with memory loss as the
+  hardest case? The Kano work covers only the memory-loss premise, so reopen it deliberately if yes.
+- [ ] **Rulings for Ravi (§10):** dimensions + model additions (movable places, `kind` + `details`); logging
+  targets (and so native wrapper next?); setup questions vs evidence; lead scenario; Together vs appointments
+  first; draw the three sets in §9; run the two spikes (label reading, Capacitor launch-to-shutter).
+
+## PARKED — home screen rethink (Ravi 09-23)
 
 - [ ] **Home screen: a complete rethink**, UX and artistic — "not a great opening screen". Six
   mockups from the real stylesheet, product board + a senior mobile graphic designer persona
@@ -13,6 +66,18 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   one I can see, or one I can help with. Today: own grid = day line only; a helper's grid =
   *X's ReCall ▾* + role in small grey. Every one of the six home mockups must answer it at a
   glance, and the thing card / photo card / camera must carry it too.
+
+- [x] 09-23: approach note written (`design/BOARD_2026-09-23_home-screen_approach.md`); rig rebuilt,
+  93/93 + 41/41 on `20260921b`; today's home rendered (`design/mockups/H0_today.png`).
+- [x] 09-23: go-ahead given (Commons photos; draw both own-titles; six as listed; "accommodate the pipeline").
+- [x] 09-23: six concepts drawn — `design/BOARD_2026-09-23_home-screen.md`, `design/mockups/H1_montage.png`,
+  `H1_A_album` · `H1_B_index` · `H1_C_note` · `H1_D_prints` · `H1_E_two-doors` · `H1_F_ask-first`, `H1_own_title.png`.
+  Generator: `04_Engineering/recall-app/rig/gen_h1.py` + `render_h1.js` + `compose_h1.py` (photos in `rig/mock/img/`, CREDITS.md).
+- [ ] **Rulings for Ravi (BOARD §10):** (1) which concept or combination; (2) colour = role or = person;
+  (3) her own title: her name or *My ReCall*; (4) Settings off Home into the menu; (5) one more pass with his own photos?
+- [ ] After the pick: rendered pass of the winner (+ carry-through screens) → then code, both cache stamps, audit.js +
+  audit_roles.js (+ new perspective checks), screenshots before the phone.
+- [ ] If C or D wins: settle the wordmark's type direction first (identity brief step 4). If E wins: native wrapper first.
 
 ## Multi-user — where it stands (09-23)
 

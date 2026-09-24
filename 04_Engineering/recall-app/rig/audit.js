@@ -44,13 +44,31 @@ async function main() {
 
   // ---------- A. Boot without a key ----------
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen'); await page.evaluate(() => { localStorage.removeItem('rig-store'); localStorage.removeItem('rig-uid'); localStorage.removeItem('rig-rules'); }); await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen');
-  check('A1 no key → One-time setup card on Home', await count('.card.setup') === 1);
-  check('A2 no key → footer buttons disabled', await page.locator('.footer .btn-primary:disabled, .footer .btn-primary.disabled').count() === 2);
-  await page.click('.card.setup .btn-primary'); await page.waitForSelector('.settings');
-  check('A3 Set up → Settings, Version card first', (await text('.settings .group-title')) === 'VERSION' || (await text('.settings .group-title')).toLowerCase() === 'version');
-  await page.evaluate(() => localStorage.setItem('recall-ai-config', JSON.stringify({ provider: 'anthropic', apiKey: 'sk-rig', model: '' })));
+  // MVP step 1 (2026-09-24): a fresh phone with NO key works — AI goes through ReCall's service.
+  check('A1 no key → no setup card on Home', await count('.card.setup') === 0);
+  check('A2 no key → Log item and Find item enabled', await page.locator('.footer .btn-primary:disabled, .footer .btn-primary.disabled').count() === 0);
+  check('A3 no key → the first-run line', /Photograph something|Take a photo/.test(await text('.card .empty')));
+  await page.click('.tiny'); await page.waitForSelector('.settings');
+  check('A4 Settings: AI says nothing to set up; own-key form folded away', /Nothing to set up/.test(await page.locator('.settings').innerText()) && await count('.settings input[type=password]') === 0);
+  const before = await page.evaluate(() => window.__rig.aiCalls || 0);
+  await page.click('.settings .btn-secondary:has-text("Check it works")'); await page.waitForSelector('.key-ok, .key-bad', { timeout: 8000 });
+  check('A5 Check it works → through ReCall\'s service (the ai function was called)', await count('.key-ok') === 1 && /ReCall/.test(await text('.key-ok')) && (await page.evaluate(() => window.__rig.aiCalls || 0)) === before + 1);
+  await page.evaluate(() => { window.__rig.aiLimit = 1; });
+  await page.click('.settings .btn-secondary:has-text("Check it works")'); await page.waitForSelector('.key-bad', { timeout: 8000 });
+  check('A6 over the daily limit → says so in plain words', /today's share/.test(await text('.key-bad')));
+  await page.evaluate(() => { window.__rig.aiLimit = 0; });
+  await page.click('.link-btn:has-text("Use my own AI key")');
+  check('A7 Use my own AI key → the form appears', await count('.settings input[type=password]') === 1);
+  await page.fill('.settings input[type=password]', 'sk-rig-own'); await page.click('.settings .btn-primary:has-text("Save")');
+  let direct = false; const onReq = (r) => { if (/api\.anthropic\.com/.test(r.url()) && r.headers()['x-api-key'] === 'sk-rig-own') direct = true; }; page.on('request', onReq);
+  const svcBefore = await page.evaluate(() => window.__rig.aiCalls || 0);
+  await page.click('.settings .btn-secondary:has-text("Check it works")'); await page.waitForTimeout(1500);
+  check('A8 own key → calls go straight from the phone, not through the service', direct && (await page.evaluate(() => window.__rig.aiCalls || 0)) === svcBefore);
+  page.off('request', onReq);
+  await page.click('.btn-quiet:has-text("Stop using my key")');
+  check('A9 Stop using my key → back to ReCall\'s service', /Nothing to set up/.test(await page.locator('.settings').innerText()));
+  await page.evaluate(() => { window.__rig.aiLimit = 150; });
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen');
-  check('A4 with key → empty board prompt', /Photograph something/.test(await text('.card .empty')));
 
   // ---------- Seed: one NEW-format item, one OLD-format item (as on Ravi's phone) ----------
   const now = Date.now(), H = 3600000, D = 86400000;

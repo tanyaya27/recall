@@ -11,7 +11,7 @@ const server = http.createServer((q, s) => { const f = path.join(root, q.url.spl
   let first = true;
   const boot = async (uid, { anon = false, whose = null, url = '' } = {}) => {
     if (first) { await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen'); first = false; }
-    await page.evaluate(([u, a, w]) => { localStorage.setItem('rig-uid', u); localStorage.setItem('rig-anon', a ? '1' : '0'); localStorage.setItem('recall-ai-config', JSON.stringify({ provider: 'anthropic', apiKey: 'sk-rig', model: '' })); const p = JSON.parse(localStorage.getItem('recall-prefs') || '{}'); p.whose = w; localStorage.setItem('recall-prefs', JSON.stringify(p)); }, [uid, anon, whose]);
+    await page.evaluate(([u, a, w]) => { localStorage.setItem('rig-uid', u); localStorage.setItem('rig-anon', a ? '1' : '0'); localStorage.setItem('recall-ai-config', JSON.stringify({ provider: 'anthropic', apiKey: '', model: '' })); const p = JSON.parse(localStorage.getItem('recall-prefs') || '{}'); p.whose = w; localStorage.setItem('recall-prefs', JSON.stringify(p)); }, [uid, anon, whose]);
     await page.goto(`http://localhost:${PORT}/${url}`); await page.waitForSelector('.screen'); await page.waitForTimeout(700);
   };
   const shot = (name) => page.screenshot({ path: path.join(__dirname, 'shots', `p2_${name}.png`) });

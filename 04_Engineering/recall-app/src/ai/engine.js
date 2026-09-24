@@ -37,7 +37,10 @@ export class AIEngine {
     if (!this.provider) throw new Error(`Unknown AI provider: ${cfg.provider}`);
   }
 
-  get ready() { return !!this.cfg.apiKey; }
+  // MVP step 1 (2026-09-24): Anthropic works with no key at all — through ReCall's service.
+  // Only a provider that has no service behind it (Gemini) still needs a key on the phone.
+  get usesService() { return this.cfg.provider === 'anthropic' && !this.cfg.apiKey; }
+  get ready() { return this.usesService || !!this.cfg.apiKey; }
 
   // Can this device reach the AI service AT ALL?
   //
@@ -48,6 +51,7 @@ export class AIEngine {
   // Distinguishing those two cases is the whole ballgame, and it can only be done here,
   // on the device that is actually failing.
   async probeReach() {
+    if (this.usesService) return { reached: true, raw: 'through ReCall\'s service' }; // the service call itself is the test
     try {
       await this.provider.textJSON({ ...this.cfg, apiKey: 'sk-ant-probe-not-a-real-key' }, 'hi', { sensitivity: 'none' });
       return { reached: true, raw: 'unexpected success' };
@@ -62,13 +66,17 @@ export class AIEngine {
   // Without this, a bad key, a dead network and an empty quota all look identical from
   // the phone — the app simply appears not to try.
   async testKey() {
-    if (!this.cfg.apiKey) return { ok: false, message: 'No key entered yet.' };
+    if (!this.ready) return { ok: false, message: 'No key entered yet.' };
     try {
       await this.provider.textJSON(this.cfg, 'Reply with ONLY this JSON: {"ok":true}', { sensitivity: 'none' });
-      return { ok: true, message: `Working — ${this.provider.label}${this.cfg.model ? ` (${this.cfg.model})` : ''}.` };
+      return { ok: true, message: this.usesService ? 'Working — through ReCall\'s service.' : `Working — ${this.provider.label}${this.cfg.model ? ` (${this.cfg.model})` : ''}.` };
     } catch (err) {
       const raw = String(err && err.message ? err.message : err);
       let hint = 'The request failed — see the details below.';
+      if (/daily-limit/.test(raw)) hint = 'This phone has used today\'s share of ReCall\'s AI. It starts again tomorrow.';
+      else if (/service-limit/.test(raw)) hint = 'ReCall\'s AI is busy today. Try again tomorrow.';
+      else if (/unauthenticated/.test(raw)) hint = 'ReCall has not finished signing in on this phone yet. Try again in a moment.';
+      else
       if (/not_found_error|model:/i.test(raw)) hint = 'Your key works, but that Model name is not a real model. Clear the Model box to use the default.';
       else if (/401|invalid.*api.*key|authentication/i.test(raw)) hint = 'That key was rejected. Check you copied all of it.';
       else if (/429|rate.?limit/i.test(raw)) hint = 'Too many requests just now — wait a moment and try again.';
@@ -109,7 +117,7 @@ export class AIEngine {
       : 'Nothing is saved yet.';
 
     const prompt =
-`You are helping someone with memory loss log where their belongings are.
+`You are helping someone log where their belongings are, so they can find them later.
 ${photos.length > 1 ? `They took ${photos.length} photos of the SAME thing moments apart. A close-up shows WHAT it is; a wider shot shows WHERE it is. Name the one thing they are photographing — the subject in front — never something that merely appears in the background of a wider shot.\n` : ''}${hintName ? `They say this photo should show their: ${hintName}.\n` : ''}${catalogLine}
 ${placesLine}
 
@@ -134,8 +142,8 @@ Answer three separate things. Do not blend them.
    a table or a floor almost never reveals which room of the house it is in. If you
    cannot actually tell, set "placeCertain": false and offer your best ranked guesses,
    preferring the household's existing places above. Never invent a room you cannot see.
-   Getting this wrong sends a confused person to the wrong room, which is much worse
-   than saying you are unsure.
+   Getting this wrong sends the person to the wrong room, which is much worse than
+   saying you are unsure.
 
 Reply with ONLY a JSON object, no other text:
 {"name": "<short everyday name, 1-3 words>",
@@ -174,7 +182,7 @@ Reply with ONLY a JSON object, no other text:
     const segments = photos.flatMap((ph, i) => [{ text: photos.length > 1 ? `NEW PHOTO ${i + 1} of ${photos.length}:` : 'NEW PHOTO:' }, { image: ph }]);
     candidates.forEach((c, i) => { segments.push({ text: `SAVED THING ${i + 1} — "${c.name || 'unnamed'}":` }); segments.push({ image: c.thumb }); });
     segments.push({ text:
-`Someone with memory loss just took the NEW PHOTO${photos.length > 1 ? 'S' : ''} of one of their belongings${subject ? ` — their "${subject}"` : ''}. They may have
+`Someone just took the NEW PHOTO${photos.length > 1 ? 'S' : ''} of one of their belongings${subject ? ` — their "${subject}"` : ''}. They may have
 photographed this same thing before and forgotten. Above are ${candidates.length} things already
 saved, each with its saved photo and name.
 
@@ -205,7 +213,7 @@ Reply with ONLY a JSON object, no other text:
     const segments = [{ text: `SAVED THING — "${item.name || 'unnamed'}":` }, { image: item.thumb },
       ...photos.flatMap((ph, i) => [{ text: `NEW PHOTO ${i + 1} of ${photos.length}:` }, { image: ph }])];
     segments.push({ text:
-`Someone with memory loss is adding the NEW PHOTO${photos.length > 1 ? 'S' : ''} to the saved thing above. Does the new
+`Someone is adding the NEW PHOTO${photos.length > 1 ? 'S' : ''} to the saved thing above. Does the new
 photo show that same thing — the same object, any angle, distance, lighting or place? Or is it
 a different thing altogether (a coffee cup added to a folder)?
 
@@ -232,7 +240,7 @@ Reply with ONLY a JSON object, no other text:
     };
     const spec = specs[routine.type] || specs.generic;
     const prompt =
-`You are checking a photo taken by someone with memory loss, in answer to the app's request: "${routine.name} — ${routine.instruction}".
+`You are checking a photo someone took in answer to the app's request: "${routine.name} — ${routine.instruction}".
 Expected subject: ${spec.subject}.
 ${spec.question}
 Be strict: if you cannot clearly see enough to answer, say "unknown". Never guess.
@@ -254,7 +262,7 @@ Reply with ONLY a JSON object, no other text:
       `${i}: ${it.name} — ${it.location} — ${it.description || ''} (last seen ${new Date(it.lastSeenAt).toLocaleString()})`
     ).join('\n');
     const prompt =
-`You help someone with memory loss find their belongings. Be warm, brief, never judgmental.
+`You help someone find their belongings. Be brief, plain and never judgmental.
 Their saved items (index: name — location — notes):
 ${catalog}
 

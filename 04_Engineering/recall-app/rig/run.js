@@ -26,7 +26,7 @@ async function main() {
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
   });
   await ctx.addInitScript(() => {
-    localStorage.setItem('recall-ai-config', JSON.stringify({ provider: 'anthropic', apiKey: 'sk-rig', model: '' }));
+    localStorage.setItem('recall-ai-config', JSON.stringify({ provider: 'anthropic', apiKey: '', model: '' }));
   });
   // Fake AI: every Anthropic call returns the canned tag after a short delay.
   await ctx.route('https://api.anthropic.com/**', async (route) => {

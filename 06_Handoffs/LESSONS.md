@@ -300,3 +300,10 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   (a comment will do) and deploy with `--force`.
 - **Legacy adoption runs on whichever phone opens the new build first** — that phone's person
   owns the old data. Decide who that should be before shipping a migration like it.
+
+- **2026-09-24 — a well-specified brief can still ask the wrong question; test the premise before
+  executing it.** The home-screen round delivered exactly what the prompt asked for (six layouts,
+  boards, montage) and Ravi called it "100% cosmetic … useless". The premise underneath it (one kind
+  of user, one kind of thing, a grid) had never been checked against the scenarios the product has
+  to serve. Before drawing a screen, ask: who uses it, what they log, how often, and how fast logging
+  has to be. The layout falls out of those answers. See `design/BOARD_2026-09-24_scenarios-and-logging.md`.

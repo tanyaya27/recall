@@ -17,7 +17,7 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   let first = true;
   const boot = async (uid, { anon = false, whose = null, url = '' } = {}) => {
     if (first) { await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen'); first = false; }
-    await page.evaluate(([u, a, w]) => { localStorage.setItem('rig-uid', u); localStorage.setItem('rig-anon', a ? '1' : '0'); localStorage.setItem('recall-ai-config', JSON.stringify({ provider: 'anthropic', apiKey: 'sk-rig', model: '' })); const p = JSON.parse(localStorage.getItem('recall-prefs') || '{}'); p.whose = w; localStorage.setItem('recall-prefs', JSON.stringify(p)); }, [uid, anon, whose]);
+    await page.evaluate(([u, a, w]) => { localStorage.setItem('rig-uid', u); localStorage.setItem('rig-anon', a ? '1' : '0'); localStorage.setItem('recall-ai-config', JSON.stringify({ provider: 'anthropic', apiKey: '', model: '' })); const p = JSON.parse(localStorage.getItem('recall-prefs') || '{}'); p.whose = w; localStorage.setItem('recall-prefs', JSON.stringify(p)); }, [uid, anon, whose]);
     await page.goto(`http://localhost:${PORT}/${url}`); await page.waitForSelector('.screen'); await page.waitForTimeout(600);
   };
   const count = (sel) => page.locator(sel).count();
@@ -105,6 +105,7 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   await page.goBack(); await page.waitForSelector('.board');
   await page.click('.footer .btn-primary.whose'); await shoot(); await page.waitForSelector('.photo-card'); await page.waitForTimeout(1500);
   check('R6 photo card header says in Margaret\'s ReCall', /in Margaret’s ReCall/.test(await text('.header .title')));
+  check('R6b the naming call went through ReCall\'s service FOR Margaret, called by Robert (no key on his phone)', await page.evaluate(() => window.__rig.lastAiOwner === 'margaret' && window.__rig.lastAiCaller === 'robert'));
   await page.click('text=Not sure'); await page.waitForTimeout(700);
   const logged = (await dump()).filter((d) => d.kind === 'item' && d.by === 'robert');
   check('R7 editor logs INTO her ReCall: owner = margaret, by = robert', logged.length === 1 && logged[0].owner === 'margaret' && logged[0].private === false, JSON.stringify(logged.map((l) => [l.owner, l.by])));

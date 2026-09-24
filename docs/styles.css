@@ -593,3 +593,6 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .actbar.two { grid-template-columns: repeat(2, 1fr); }
 .support { font-size: 0.8125rem; margin: 1.5rem 0 0 0.75rem; }
 .support .uid { font-size: inherit; }
+
+/* First run, option C (MVP step 1, 2026-09-24): a bold line, then how to get it back. */
+.empty.first-run b:first-child { display: block; color: var(--ink); font-size: 1.3125rem; margin-bottom: 0.375rem; line-height: 1.3; }
