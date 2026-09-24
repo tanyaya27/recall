@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressPhoto, shrink } from '../lib/img.js';
-import { addItem, nameItem, resnapItem, absorbInto, findMatch, knownLocations, noteAlias, logEvent, placeThumb } from '../lib/db.js';
+import { addItem, nameItem, resnapItem, absorbInto, findMatch, knownLocations, noteAlias, logEvent, placeThumb, updateItem } from '../lib/db.js';
 import { getPrefs, savePrefs } from '../lib/prefs.js';
 import { matchThings } from '../lib/speech.js';
 import EditableText from './EditableText.jsx';
@@ -128,7 +128,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
         finish({ saved: true, place, itemId: savedId });
         return;
       }
-      await nameItem(savedId, { name: nameOverride || tag.name, description: tag.description, restingOn: tag.restingOn,
+      await nameItem(savedId, { name: nameOverride || tag.name, description: tag.description, restingOn: tag.restingOn, details: tag.details,
         aliases: nameOverride && tag.name !== nameOverride ? [tag.name] : [] });
       if (match) { finished.current = false; setPendingMerge(true); }
       else finish({ saved: true, place, itemId: savedId });
@@ -213,11 +213,12 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
       if (match) {
         await resnapItem(match, common);
         if (tag && tag.name) noteAlias(match, tag.name); // what the AI called it this time
+        if (tag && tag.details && !match.details) updateItem(match.id, { details: tag.details }); // the label, if it had none
         itemId = match.id;
         logEvent('merge', { itemId: match.id, result: 'confirmed', savedBy: how, via: nameMatch ? (tag.sameAs ? 'sameAs' : 'name') : 'visual' });
         logEvent('capture', { initiatedBy: 'self', itemId: match.id, itemName: match.name, savedBy: how, merged: true, shots: shots.length });
       } else {
-        itemId = await addItem({ ...common, name, description: (tag && tag.description) || '',
+        itemId = await addItem({ ...common, name, description: (tag && tag.description) || '', details: (tag && tag.details) || '',
           aliases: tag && tag.name && nameOverride && tag.name !== nameOverride ? [tag.name] : [] });
         if (tag === null) logEvent('naming_failed', { itemId });
         logEvent('capture', { initiatedBy: 'self', itemId, itemName: name || null, savedBy: how, shots: shots.length,
@@ -228,12 +229,12 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     }
 
     // Name or identity still pending: save now, finish later (D3).
-    const id = await addItem({ ...common, name: tag ? (nameOverride || tag.name) : '', description: (tag && tag.description) || '', naming: tag === undefined });
+    const id = await addItem({ ...common, name: tag ? (nameOverride || tag.name) : '', description: (tag && tag.description) || '', details: (tag && tag.details) || '', naming: tag === undefined });
     logEvent('capture', { initiatedBy: 'self', itemId: id, itemName: tag ? tag.name : null, savedBy: how, beforeName: tag === undefined, beforeIdentity: true,
       shots: shots.length, usedChip: chips.includes(chosen), mode: 'one', next: !!next });
     if (next) { // don't wait here: the name is finished in the background, and the camera opens again
       finished.current = true;
-      if (tagPromise.current) tagPromise.current.then((t) => nameItem(id, t ? { name: nameOverride || t.name, description: t.description, restingOn: t.restingOn } : {}));
+      if (tagPromise.current) tagPromise.current.then((t) => nameItem(id, t ? { name: nameOverride || t.name, description: t.description, restingOn: t.restingOn, details: t.details } : {}));
       finish({ saved: true, place: chosen, itemId: id });
       return;
     }
@@ -244,7 +245,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   // Leaving while the name is still on its way: make sure the flag gets cleared anyway.
   function leave(reason) {
     if (savedId && tag === undefined && tagPromise.current) {
-      tagPromise.current.then((t) => nameItem(savedId, t ? { name: t.name, description: t.description, restingOn: t.restingOn } : {}));
+      tagPromise.current.then((t) => nameItem(savedId, t ? { name: t.name, description: t.description, restingOn: t.restingOn, details: t.details } : {}));
     }
     if (pendingMerge && match) logEvent('merge', { itemId: match.id, result: 'unseen' });
     logEvent('capture_leave', { reason, savedId: savedId || null });

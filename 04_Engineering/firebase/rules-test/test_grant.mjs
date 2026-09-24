@@ -31,6 +31,7 @@ await step('addSnapToLog: updateDoc item photoCount', updateDoc(doc(col, 'itemA'
 await step('changeLocation: update item location/history', updateDoc(doc(col, 'itemA'), { location: 'Desk', lastSeenAt: 4, updatedAt: 4, logId: 'log_4' }));
 await step('rename', updateDoc(doc(col, 'itemA'), { name: 'Car keys', updatedAt: 5 }));
 await step('Several mode: helper sets the place + where it came from (placeSource, 09-24)', updateDoc(doc(col, 'itemA'), { location: 'Hall table', needsPlace: false, placeSource: 'session', updatedAt: 6 }));
+await step('MVP #9/#10: helper writes what the label says + written flag', updateDoc(doc(col, 'itemA'), { details: '#8 stainless', written: false, updatedAt: 7 }));
 await step('helper sets an unknown field (must DENY)', updateDoc(doc(col, 'itemA'), { valueUSD: 100 }));
 await step('addItem into dad\'s ReCall', addDoc(col, { kind: 'item', owner: DAD, by: ME, private: false, roles: {}, sharedWith: [], name: 'New', lastSeenAt: 5 }));
 await step('addPlace into dad\'s ReCall', addDoc(col, { kind: 'place', owner: DAD, by: ME, name: 'Desk', order: 1 }));

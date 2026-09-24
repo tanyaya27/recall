@@ -3,7 +3,7 @@ import { useHold } from '../lib/hold.js';
 import { me } from '../lib/auth.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
-import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon, SwitchIcon } from './Icons.jsx';
+import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon, SwitchIcon, NoteIcon } from './Icons.jsx';
 
 // Home — THE BOARD. Board decision 2026-09-05, Rules 1–3.
 //
@@ -83,7 +83,7 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
                     answerAgeMin: Math.round((Date.now() - it.lastSeenAt) / 60000), matched: 1 });
                   onOpenThing(it, !it.location && canLog); // no place yet → open with the place field ready (round 7)
                 })}>
-                <img src={it.thumb} alt={it.name || ''} />
+                {it.thumb ? <img src={it.thumb} alt={it.name || ''} /> : <span className="tile-written" aria-label="Written down, no photo"><NoteIcon /></span>}
                 {isPrivate(it) && <span className="tile-lock" aria-label="Private"><LockIcon /></span>}
                 {/* No place: the label block flips to reverse colours and says so (Ravi 09-16 —
                     the corner pin badge of 09-15 was "pure crap"). Words plus the flipped block,

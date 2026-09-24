@@ -270,15 +270,18 @@ export const ROLE_BLURB = { viewer: 'Sees your things and where they are. Cannot
 // `naming: true` (D3) means the photo was saved before the AI named it. The name is
 // patched in by nameItem(); if naming fails the flag is cleared and the thing stays
 // unnamed — a legitimate state. Nothing on the board ever asks her to name it.
-export async function addItem({ name = '', location = '', description = '', photo, thumb, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '' }) {
+// A thing may have NO photo (MVP #10, 09-24): written down, not photographed. Then photo/thumb are
+// null, there is no cover snap and photoCount is 0; the first photo added later becomes the cover.
+export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '' }) {
   const now = Date.now();
   const logId = `log_${now}`;
   const ref = await addDoc(col, {
     kind: 'item', ...ownership(owner), name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
     needsPlace: !location, naming, placeSource: location ? (placeSource || 'chosen') : '',
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
-    history: [{ location, at: now }], logId, photoCount: 1 + extras.length,
+    history: [{ location, at: now }], logId, photoCount: photo ? 1 + extras.length : 0, details: details || '', written: !photo,
   });
+  if (!photo) return ref.id;
   await addDoc(col, { kind: 'snap', owner, by: me(), itemId: ref.id, logId, photo, thumb, location, at: now });
   await writeExtras(ref.id, logId, extras, location, now, by, owner);
   return ref.id;
@@ -309,8 +312,9 @@ export async function noteAlias(item, aiName) {
   if (aliases !== (item.aliases || [])) await updateDoc(doc(col, item.id), { aliases });
 }
 
-export async function nameItem(id, { name = '', description = '', restingOn = '', aliases } = {}) {
+export async function nameItem(id, { name = '', description = '', restingOn = '', aliases, details = '' } = {}) {
   const patch = { naming: false };
+  if (details) patch.details = details; // what the label says (MVP #9, 09-24)
   if (name) patch.name = name;
   if (aliases && aliases.length) patch.aliases = aliases;
   if (description) patch.description = description;
@@ -380,6 +384,12 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
 export const PLACE_SOURCES = ['chosen', 'session', 'usual', 'guess'];
 export const LOG_MAX = 6; // cover + up to 5 more (Ravi 09-15: "only 2 in one go" was 4 - cover - 1)
 export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
+  if (!item.photo) { // a written-down thing's first photo becomes its cover (MVP #10, 09-24)
+    const now = Date.now(); const logId = `log_${now}`;
+    await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location: item.location || '', at: now });
+    await updateDoc(doc(col, item.id), { photo, thumb, thumbV: THUMB_V, photoCount: 1, logId, written: false, lastSeenAt: now, updatedAt: now });
+    return true;
+  }
   const count = item.photoCount || 1;
   if (count >= LOG_MAX) return false;
   // Things logged before 2026-09-14 have no logId (audit D2: Add photo silently did nothing

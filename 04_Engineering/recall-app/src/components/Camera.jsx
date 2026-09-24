@@ -20,7 +20,7 @@ export const MODE_LABEL = { one: 'One thing', several: 'Several', all: 'Everythi
 // shutter press goes straight to onShot(file) (the caller saves it) and the camera stays open;
 // `overlay` is drawn over the viewfinder (the Several strip) and `savedCount` enables Done.
 export default function Camera({ max = MAX_SHOTS, title = 'Log item', onDone, onCancel,
-  modes = null, mode = 'one', onMode, onShot, overlay = null, savedCount = 0, topChip = null }) {
+  modes = null, mode = 'one', onMode, onShot, overlay = null, savedCount = 0, topChip = null, onWrite = null }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [shots, setShots] = useState([]);       // [{ file, url }]
@@ -122,7 +122,10 @@ export default function Camera({ max = MAX_SHOTS, title = 'Log item', onDone, on
       </div>}
 
       <div className="camera-bar">
-        <div className="camera-slot" />
+        {/* Type it (MVP #10): write the thing down instead — no photo. Only before a photo is taken. */}
+        {onWrite && !several && !shots.length
+          ? <button type="button" className="camera-write" onClick={onWrite}>Type it</button>
+          : <div className="camera-slot" />}
         <button type="button" className="shutter" aria-label="Take a photo" disabled={state !== 'live' || (!several && shots.length >= max)} onClick={snap}><span /></button>
         <button type="button" className="camera-done" disabled={several ? !savedCount : !shots.length} onClick={done}>{!several && shots.length ? `Done (${shots.length})` : 'Done'}</button>
       </div>

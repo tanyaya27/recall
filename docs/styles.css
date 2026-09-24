@@ -647,3 +647,19 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .sw:disabled { opacity: 0.5; }
 .guesses .next-row { margin: 0.125rem 0 0.25rem; }
 .or-else { color: var(--ink-soft); font-size: min(1rem, 4.3vw); font-weight: 600; margin: 0.375rem 0 0; }
+
+/* ---- MVP #9/#10 (2026-09-24): what the label says; things written down with no photo ---------- */
+.camera-write { justify-self: start; background: rgba(255,255,255,0.14); color: #fff; font-size: min(1.0625rem, 4.5vw); font-weight: 700; padding: 0.6rem 1rem; min-height: 3rem; border-radius: 1.5rem; white-space: nowrap; }
+.tile-written { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 1 / 1; background: var(--accent-soft); color: var(--accent); font-size: 3rem; }
+.thing-mini .tile-written { font-size: 1.5rem; height: 100%; }
+.rv-cell .tile-written { font-size: 2rem; }
+.written-panel { display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border-radius: 0.75rem; background: var(--accent-soft); color: var(--accent); }
+.written-panel > svg { width: 2.25rem; height: 2.25rem; flex: none; }
+.written-panel b { display: block; color: var(--ink); font-size: min(1.125rem, 4.8vw); }
+.written-panel small { display: block; color: var(--ink-soft); font-size: min(0.9375rem, 4vw); margin-top: 0.125rem; }
+.label-line { display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 0.625rem; padding: 0.5rem 0.625rem; border-radius: 0.625rem; background: var(--bg); font-size: min(1rem, 4.3vw); line-height: 1.35; color: var(--ink); overflow-wrap: anywhere; }
+.label-line svg { width: 1.15em; height: 1.15em; flex: none; margin-top: 0.15em; color: var(--accent); }
+.note-card .place-input { margin-top: 0.25rem; }
+.note-card .guesses .place-input { margin-top: 0; }
+.note-card .note-private { margin-top: 0.75rem; border-top: 1px solid var(--line); }
+.note-card .btn-primary { gap: 0.4rem; }

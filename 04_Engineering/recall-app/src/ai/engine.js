@@ -145,6 +145,13 @@ Answer three separate things. Do not blend them.
    Getting this wrong sends the person to the wrong room, which is much worse than
    saying you are unsure.
 
+4. WHAT IT SAYS. Copy any words or numbers printed ON the thing, its label, its packet or the
+   paper itself that identify it: brand, model, size, spec, count, serial number, plant variety;
+   for a bill or letter, who it is from, the amount and the due date. Copy exactly, shortest
+   useful form, separated by " · " (e.g. "#8 × 1-1/4 in · stainless · pan head · 100 ct",
+   "Tulip 'Queen of Night'", "Puget Sound Energy · $84.12 · due Oct 9"). Never guess text you
+   cannot read. "" if there is none. At most 200 characters.
+
 Reply with ONLY a JSON object, no other text:
 {"name": "<short everyday name, 1-3 words>",
  "sameAs": "<the EXACT saved name this photo shows, from the list above, or \"\" if it is not one of them>",
@@ -152,7 +159,8 @@ Reply with ONLY a JSON object, no other text:
  "restingOn": "<what it is sitting on/in, as seen, or \\"\\">",
  "placeCertain": <true only if the room is genuinely identifiable from the photo>,
  "placeGuesses": ["<most likely place first, up to 3, prefer the household's existing places>"],
- "description": "<one short sentence a family member would find useful>"}`;
+ "description": "<one short sentence a family member would find useful>",
+ "details": "<the words and numbers printed on it, copied exactly, or \"\">"}`;
 
     const text = photos.length > 1 && this.provider.visionJSONMulti
       ? await this.provider.visionJSONMulti(this.cfg, [...photos.flatMap((ph, i) => [{ text: `PHOTO ${i + 1} of ${photos.length}:` }, { image: ph }]), { text: prompt }], { sensitivity })
@@ -168,6 +176,7 @@ Reply with ONLY a JSON object, no other text:
       placeCertain: out.placeCertain === true,
       placeGuesses: list(out.placeGuesses).slice(0, 3),
       description: clean(out.description),
+      details: clean(out.details).slice(0, 200),
     };
   }
 
@@ -259,7 +268,7 @@ Reply with ONLY a JSON object, no other text:
 
   async answerQuery(question, items, { sensitivity = 'personal' } = {}) {
     const catalog = items.map((it, i) =>
-      `${i}: ${it.name} — ${it.location} — ${it.description || ''} (last seen ${new Date(it.lastSeenAt).toLocaleString()})`
+      `${i}: ${it.name} — ${it.location} — ${it.description || ''}${it.details ? ` — label: ${it.details}` : ''} (last seen ${new Date(it.lastSeenAt).toLocaleString()})`
     ).join('\n');
     const prompt =
 `You help someone find their belongings. Be brief, plain and never judgmental.

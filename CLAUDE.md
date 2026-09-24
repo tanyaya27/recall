@@ -69,7 +69,8 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-24 (later) — Step 2 part 1 built as `20260924c` (NOT pushed): capture modes One thing · Several (DECISIONS 09-24); deploy rules before pushing (OPEN_ITEMS).** Audits: `rig/audit.js`, `audit_roles.js`, `audit_modes.js`.
+> **2026-09-24 (latest) — Step 2 complete as `20260924d` (NOT pushed): + label text (#9) and Write it down (#10). `20260924c` (capture modes) is LIVE.**
+> **2026-09-24 (later) — Step 2 part 1 built as `20260924c`: capture modes One thing · Several (DECISIONS 09-24); deploy rules before pushing (OPEN_ITEMS).** Audits: `rig/audit.js`, `audit_roles.js`, `audit_modes.js`.
 >
 > **2026-09-24 — ReCall is now a general memory app (Tanya, DECISIONS 09-24). MVP step 1 built as `20260924b` (on the Mac, NOT pushed):** AI through the `ai` function with ReCall's key and daily limits; neutral prompts; no setup card; first-run line option C. Deploy order + phone check in OPEN_ITEMS. Plans: `06_Handoffs/design/PLAN_2026-09-24_generic-mvp.md`, `PLAN_2026-09-24_next-steps.md`. **Two sessions run in parallel from here:** (1) MVP work (next: fast-capture renders → step 2); (2) naming + Apple Developer sign-up — prompt `06_Handoffs/PROMPT_2026-09-24_naming-and-apple.md`, findings `06_Handoffs/NAMING_2026-09-24_findings.md`. **Naming session done (09-24):** shortlist Wherly · Thingspot · Wherewell · Hither · *ReCall: Where I Put It* in `06_Handoffs/design/BOARD_2026-09-24_naming.md`; who enrolls with Apple in `06_Handoffs/APPLE.md`. Both await Tanya/Ravi (OPEN_ITEMS, top). Session log: `06_Handoffs/sessions/2026-09-23-home-rethink-to-generic-mvp.md`.
 >

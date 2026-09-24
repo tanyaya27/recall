@@ -9,7 +9,7 @@ import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
 import PlacePicker from './PlacePicker.jsx';
 import TidySheet from './TidySheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, PeopleIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, PeopleIcon, NoteIcon, TagIcon } from './Icons.jsx';
 
 // The thing card — the answer. Redesigned 2026-09-16 with Ravi over seven rendered passes
 // (design/DESIGN_2026-09-16_things-places-sightings.md §2, §13):
@@ -186,7 +186,11 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         </div>
       </div>
       <div className="card thing">
-        <div className="photo-wrap">
+        {/* Written down, no photo (MVP #10): say so plainly; Add photo in the bar makes the first photo the cover. */}
+        {!item.photo && (
+          <div className="written-panel"><NoteIcon /><div><b>Written down, no photo yet</b><small>{photoStamp(item.lastSeenAt)}{canEdit ? ' · Add photo below if you like' : ''}</small></div></div>
+        )}
+        {item.photo && <div className="photo-wrap">
           <div className={'strip' + (pages.length > 1 ? '' : ' one')} ref={stripRef} onScroll={onScroll}>
             {pages.map((p) => {
               const was = !here(p.location) && p.location;
@@ -202,8 +206,10 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
               );
             })}
           </div>
-        </div>
-        {pages.length > 1 && (
+        </div>}
+        {/* What the label says (MVP #9): read off the photo by the AI, searchable in Find item. */}
+        {item.details && <div className="label-line"><TagIcon /><span>{item.details}</span></div>}
+        {item.photo && pages.length > 1 && (
           <div className="dotsrow">
             <div className="dots" aria-label={`Photo ${index + 1} of ${pages.length}`}>
               {pages.map((p, i) => <button type="button" key={p.id} className={'dot' + (i === index ? ' on' : '')} onClick={() => slideTo(i)} aria-label={`Photo ${i + 1}`} />)}
@@ -224,11 +230,11 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             <button type="button" role="switch" aria-checked={isPrivate(item)} className={'sw' + (isPrivate(item) ? ' on' : '')} aria-label="Keep this private"
               onClick={async () => { const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'switch' }); onToast && onToast(VISIBILITY_TOAST[to]); }} />
           </div>}
-          <div className="sw-row">
+          {item.photo && <div className="sw-row">
             <span className="lab"><ClockIcon /> Show times on photos</span>
             <button type="button" role="switch" aria-checked={showTimes} className={'sw' + (showTimes ? ' on' : '')} aria-label="Show times on photos"
               onClick={() => { const v = !showTimes; setShowTimes(v); savePrefs({ ...getPrefs(), showTimes: v }); logEvent('show_times', { on: v }); }} />
-          </div>
+          </div>}
           {earlierCount > 0 && (
             <div className="sw-row">
               <span className="lab amber"><PinWasIcon /> Show earlier places <small>{earlierCount}</small></span>

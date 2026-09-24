@@ -6,6 +6,7 @@ import { me } from './lib/auth.js';
 import { getPrefs, savePrefs, openingMode } from './lib/prefs.js';
 import SeveralCamera from './components/SeveralCamera.jsx';
 import SessionReview from './components/SessionReview.jsx';
+import NoteCard from './components/NoteCard.jsx';
 import PeopleScreen from './components/People.jsx';
 import JoinScreen, { pendingJoin, parkJoin, clearJoin } from './components/Join.jsx';
 import { THUMB_V, thumbFromPhoto, compressPhoto, compressPlacePhoto } from './lib/img.js';
@@ -342,6 +343,10 @@ export default function App() {
         />
       );
       break;
+    case 'write':
+      screen = <NoteCard key={route.key} items={items} places={places} owner={whose || undefined} presetPlace={presetPlace} onBack={back}
+        onDone={(r) => { say(`Saved · ${r.name}${r.place ? ` · ${r.place}` : ''}`); notePlace(r.place); home(); }} />;
+      break;
     case 'review':
       screen = <SessionReview things={route.things} items={items} onOpen={(item) => go('thing', { item })} onFinish={() => { logEvent('capture_review', { things: route.things.length }); home(); }} />;
       break;
@@ -399,7 +404,8 @@ export default function App() {
       )}
       {camera && !(camera.for === 'log' && camera.mode === 'several') && (
         <Camera title={camera.title || 'Log item'} max={camera.max || 4} onDone={cameraDone} onCancel={() => setCamera(null)}
-          modes={camera.for === 'log' ? getPrefs().captureModes : null} mode={camera.mode || 'one'} onMode={switchMode} />
+          modes={camera.for === 'log' ? getPrefs().captureModes : null} mode={camera.mode || 'one'} onMode={switchMode}
+          onWrite={camera.for === 'log' ? () => { setCamera(null); logEvent('capture_write_open', {}); go('write', { key: Date.now() }); } : null} />
       )}
       {modePick && (
         <Choice title="Log item as…" options={[

@@ -70,11 +70,11 @@ export default function SeveralCamera({ engine, items = [], places = [], owner, 
     }
     const match = findMatch(items.filter((it) => !mine.current.has(it.id) && !it.deleted), tag);
     if (match) { // ask in the strip; never merge silently
-      await nameItem(id, { name: tag.name, description: tag.description, restingOn: tag.restingOn });
-      patch(key, { status: 'ask', name: tag.name, match, shot, restingOn: tag.restingOn });
+      await nameItem(id, { name: tag.name, description: tag.description, restingOn: tag.restingOn, details: tag.details });
+      patch(key, { status: 'ask', name: tag.name, match, shot, restingOn: tag.restingOn, details: tag.details });
       return;
     }
-    await nameItem(id, { name: tag.name, description: tag.description, restingOn: tag.restingOn });
+    await nameItem(id, { name: tag.name, description: tag.description, restingOn: tag.restingOn, details: tag.details });
     const cur = entriesRef.current.find((e) => e.key === key);
     if (cur && !cur.place && tag.placeCertain && tag.placeGuesses && tag.placeGuesses[0]) {
       await changeLocation(live(id), cap(tag.placeGuesses[0]), 'guess');

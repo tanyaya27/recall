@@ -49,7 +49,7 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   4) #3 #4 native app, then App Store privacy/account requirements; 5) #11–13 when outside testers arrive.
 - [ ] **Plan for the next 4 weeks:** `design/PLAN_2026-09-24_next-steps.md` (step 1 now; capture renders + step 2 in week 2;
   step 3 in week 3; native + App Store from week 4).
-- [ ] **Ravi, this week:** the garage photo session (~75 shots, table in next-steps §3, with the true answers written down);
+- [ ] **Ravi, still open (09-24):** Apple Developer sign-up in progress (naming session). NOT yet done: the garage photo session (~75 shots, table in next-steps §3, with the true answers written down);
   the invite test (15 min); attach real billing + budget alert BEFORE step 1 ships (AI moves onto ReCall's key);
   enrol in the Apple Developer Program.
 - [ ] **Ruler sizing (Ravi 09-24):** length likely (~⅛ in); gauge (#8 vs #10, ~0.6 mm) not reliable from a photo alone.
@@ -91,10 +91,33 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   save; rules: editors may write it. Tests: audit 98/98 · audit_roles 42/42 · **audit_modes 25/25** · rules engine (test,
   test_grant incl. the new placeSource checks, test_p2) all as expected. Screenshots: `design/mockups/S2_modes_built.jpg`.
 - [ ] **Ravi: look at `S2_modes_built.jpg`** before this goes to the phone.
-- [ ] **Deploy 20260924c — ORDER MATTERS:** (a) step 1's deploy first if not done (billing → key → `functions:secrets:set
+- [x] 09-24 **DEPLOYED:** rules (placeSource) · `ai` function with ReCall's key (secret `ANTHROPIC_KEY` v2, Anthropic key
+  "ReCall service" on Ravster's account, Default workspace) and limits 150/person/day · 3000/day (`functions/.env.recall-d9886`
+  — commit it) · web `20260924c` pushed (`56d6225`). v1 of the secret was a mis-paste (the deploy command text) — destroy it:
+  `firebase functions:secrets:destroy ANTHROPIC_KEY@1`.
+- [x] 09-24 **Phone check passed:** Ravi's phone switched to ReCall's service (Stop using my key) → Check it works → "Working —
+  through ReCall's service". The function uses the real key (v1 of the secret is a dead value the CLI still calls "in use";
+  harmless, leave it — don't `-f`). Dad's phone still uses its own key: switch it the same way when convenient.
+- [ ] (remaining phone checks)
+  Log item → the photo gets a name; the mode row; Several + a chosen place carries to the next photo; hold Log item.
+- [ ] **The Anthropic key expires in October 2027** (Ravi 09-24). A scheduled task reminds Ravi on 2027-09-24 (push + email, trig_01DyKpevUkVik28gKmPahfRv); rotate before it lapses (`firebase functions:secrets:set
+  ANTHROPIC_KEY`, then `firebase deploy --only functions:ai`). Ask Claude for a reminder.
+- [ ] Later: a separate "ReCall" workspace in the Anthropic console with its own monthly spend limit (before outside testers).
+- [ ] Later: identity federation (the function on Google Cloud gets short-lived Anthropic tokens; no stored key).
+- [ ] Later: `firebase-functions` is outdated (deploy warning); upgrade with care (breaking changes) and re-run run_ai_test.sh.
+- [x] (done) **Deploy 20260924c — ORDER MATTERS:** (a) step 1's deploy first if not done (billing → key → `functions:secrets:set
   ANTHROPIC_KEY` → `deploy --only functions:ai`); (b) `firebase deploy --only firestore:rules` (adds `placeSource` for helpers;
   without it a helper's Several/One-thing save is refused); (c) then commit + push.
-- [ ] Step 2 part 2: #9 label text (`details`, searchable) and #10 logging without a photo. Not in Several yet: the AI "looks"
+- [x] **Step 2 part 2 BUILT 09-24 — `20260924d`, on the Mac, NOT pushed:** **#9** the AI copies what's printed on the thing
+  (label, packet, bill, stamp) into `details` (≤200 chars); shown on the thing card as a tag line; searched by Find item at the
+  description tier (quotes ignored: 'Queen of Night' matches). One thing and Several both save it. **#10** camera → *Type it* →
+  *Write it down*: What is it? · Where is it? (usual places, or typed) · Keep this private · Save (or Save without a place);
+  the place used a moment ago is chosen. No photo: `written: true`, photoCount 0, no snap; a note tile on Home; the card says
+  "Written down, no photo yet"; the first Add photo becomes the cover. Rules: editors may write `details`, `written`.
+  Tests: audit 98/98 · roles 42/42 · modes 25/25 · **audit_label 15/15** · rules engine as expected. Screenshots:
+  `design/mockups/S2b_label_write_built.jpg`. **Deploy: rules first, then push** (commands in the chat 09-24).
+- [ ] Noticed (not new): at Largest the thing card's switch labels ("Keep this private") wrap to two lines.
+- [ ] Step 2 leftovers: #9/#10 Step 2 part 2 was: #9 label text (`details`, searchable) and #10 logging without a photo. Not in Several yet: the AI "looks"
   check (tier 3) for duplicates — Several asks only on a name match; the one-time "Taking several?" suggestion; Largest review.
 - [x] 09-24 RULED (board's recommendations) — **Capture MODES** — `design/BOARD_2026-09-24_capture-modes.md`, `mockups/C2_modes.jpg`.
   One camera, three modes (One thing · Several · Everything), switched under the viewfinder or by holding Log item; Settings →

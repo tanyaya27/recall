@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, removePlacePhoto, placeNamed, placeThumb, allPlaces, changeLocation, logEvent, PLACE_PHOTOS } from '../lib/db.js';
 import { compressPlacePhoto } from '../lib/img.js';
-import { CameraIcon, ChevronIcon, PencilIcon, TrashIcon } from './Icons.jsx';
+import { CameraIcon, ChevronIcon, PencilIcon, TrashIcon, NoteIcon } from './Icons.jsx';
 import { timeAgo } from '../lib/format.js';
 import { getPrefs, savePrefs, THEMES, SIZES } from '../lib/prefs.js';
 import Header from './Header.jsx';
@@ -144,7 +144,7 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
         <div className="field-label">{things.length ? 'Things here now' : 'Nothing here now'}</div>
         {things.length > 0 && (
           <div className="things-here">
-            {things.map((it) => <button type="button" className="thing-mini" key={it.id} onClick={() => onOpenThing(it)}><img src={it.thumb} alt={it.name || ''} /></button>)}
+            {things.map((it) => <button type="button" className="thing-mini" key={it.id} onClick={() => onOpenThing(it)}>{it.thumb ? <img src={it.thumb} alt={it.name || ''} /> : <span className="tile-written" aria-label={it.name || ''}><NoteIcon /></span>}</button>)}
           </div>
         )}
 

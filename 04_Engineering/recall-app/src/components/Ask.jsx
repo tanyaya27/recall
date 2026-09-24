@@ -3,6 +3,7 @@ import { logEvent } from '../lib/db.js';
 import { cap } from '../lib/format.js';
 import { useDictation, matchThings, IS_IOS } from '../lib/speech.js';
 import Header from './Header.jsx';
+import { NoteIcon } from './Icons.jsx';
 
 // Find item (was Where is my…; board addendum 2026-09-14 — the ellipsis read as a cut-off
 // label). The field prompt below keeps *Where is my…* because the box completes it.
@@ -90,7 +91,7 @@ export default function Ask({ engine, items, onResult, onPhoto, onBack }) {
           <div className="board live">
             {live.slice(0, 8).map((it) => (
               <button key={it.id} type="button" className="tile" onClick={() => pick(it)}>
-                <img src={it.thumb} alt={it.name || ''} />
+                {it.thumb ? <img src={it.thumb} alt={it.name || ''} /> : <span className="tile-written" aria-label="Written down, no photo"><NoteIcon /></span>}
                 <div className="tile-label">
                   {cap(it.name) || ' '}
                   {it.location && <span className="tile-sub place">{it.location}</span>}
