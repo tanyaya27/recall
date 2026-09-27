@@ -6,6 +6,35 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-24 — Ravi enrolls in the Apple Developer Program as an individual; Tanya is credited; the name is paused (Tanya)
+
+**Decision (Tanya):**
+- Ravi enrolls **as an individual**, so the App Store seller is his legal name. Tanya is credited as the creator in
+  the listing, on the website and in the app's About screen.
+- The sign-up and the name are separate sessions (09-26): the Apple sign-up continues in the naming-and-Apple
+  session; the name moves to `PROMPT_2026-09-26_naming.md`.
+- **The rename is paused**: "I and my dad need more time". The shortlist stays open in
+  `design/BOARD_2026-09-24_naming.md` §5: Wherly · Thingspot · Wherewell · Hither · *ReCall: Where I Put It*.
+
+**Why:** the fastest route to the native app (MVP step 4) and Sign in with Apple. Apple requires the account holder
+to be of legal age, and its route for a minor is a parent's account shared with them. It can move to an LLC later,
+either through Apple's individual-to-organization request (founder + D-U-N-S) or by an app transfer after the first
+App Store release (`APPLE.md` §2).
+
+**Consequences:**
+- The bundle ID must not contain Ravi's personal name or the app's name. The proposal is
+  `com.<neutral-owner>.recall`, to be confirmed with Ravi, so it survives both the rename and a move to an LLC.
+- Tanya gets App Store Connect access only; an individual account has no developer "team". Xcode signing uses
+  Ravi's account.
+- No App Store name is reserved until the name is picked.
+
+**Objections recorded:**
+- Maya: an LLC from the start would avoid a later migration, which can take weeks.
+- Sam: the Team ID and apps are not documented as surviving a conversion; ask Apple before relying on it.
+- Noor: every week without a name delays the icon and wordmark (identity brief, step 4).
+
+---
+
 ## 2026-09-24 — Things that look private start private (Ravi)
 
 **Decision:** if what's typed ("password", a PIN, account or medical words) or what's photographed (a password list, a bank or ID
@@ -1140,3 +1169,63 @@ native app** — until then it is shown greyed under the private note and on Wri
 **Built the same day:** private by default + refusing secrets (build 20260924e; audit_private 37/37).
 Also fixed a race found by the new audit: saving while "Checking it isn't already saved…" was running
 could leave the photo card stuck (the check was cancelled when the just-saved thing appeared in the list).
+
+## 2026-09-25 — Containers: the relationship is a first-class edge (Ravi)
+
+Option B (the container's photo under the answer) was chosen, and the model behind it was widened:
+- **Things, places and containers are nodes; "is in" is an edge, a first-class record of its own** (not a
+  name match, not a field on the thing). A container is simply a thing that has things in it: the blue tin is
+  both a thing (it moves, you look for it) and a place (things go in it). Fixed places (crawl space, top shelf)
+  stay places.
+- **Contents stay off Home**; the person can promote any one of them back to Home.
+- **Home follows context:** tapping a container on Home shows what's in it, on Home itself.
+- **Log first, place later:** a thing may be logged before anyone knows where it goes; putting it away
+  afterwards must be very, very fast.
+Approach walked through in chat 09-25; rendered options before any build (house rule).
+
+## 2026-09-26 — North star: the fewest taps, across five stages (Ravi)
+
+Success = the smallest number of screen taps to finish an operation, judged across five stages:
+**adoption** (logging super easy and fast), **experience** (find extremely simple and fast), **daily use**
+(the app turns a chaotic world into an organized one, automatically), **value** (can't live without it;
+worth a subscription) and **network growth** (invitees contribute, then adopt for themselves).
+Logging has three scenarios: **S1** item + place now (one picture, maybe one shot); **S2** catalogue now,
+place later (organizing over minutes to days); **S3** link place to place (box → cabinet → room), after
+the fact or inferred from photos — the way in for businesses and power users.
+The 09-25 screens are to be redesigned against this; design questions before implementation.
+Answer: `design/ARCH_2026-09-26_capture-to-answer.md` (evidence → resolver → beliefs → views; Q1–Q8 open).
+Added the same day (Ravi): **the more she can do on one screen (the camera) the better — never at the cost
+of clutter or confusion**; **voice is welcome only where it never makes her stumble** in the steps or the
+operation. Design answer: ARCH §3b (three things on the camera at rest; hold-the-shutter to speak; the
+stumble test for every voice feature). Q9 added.
+
+## 2026-09-26 (evening) — Rulings on the architecture questions (Ravi)
+
+- **Item and place on the web:** the camera asks for the item, then, without leaving the camera, for the
+  place, with a short guide ("Now the place · step back"). Two-lens capture waits for native.
+- **Q1** camera-first (native: from the widget/Action button; web: the camera opens first). Agreed.
+- **Q2 No silent saves.** The Save button names the place ("Save · Hall table"); one tap confirms. A mistake
+  1 time in 10 is enough annoyance to rule out saving without asking.
+- **Q4 ReCall never moves things on its own.** Tidy up is a separate flow, started from a "You have things to
+  tidy up" prompt; stale photos must not drive it (design: suggestions show their age, expire after 3 days,
+  and drop when newer evidence exists).
+- **Q5** native after **one more big web push and one real user's feedback**; build the foundations native
+  needs first; be selective about what forces the cutover.
+- **Q6** box labels: agreed (after native). **Q7** sharing "where is" by text: wait for a user to ask, or
+  survey at launch. **Q8** free vs paid: not yet. **Q9** hold-to-speak: maybe (prototype; stumble test).
+- Open: Q3 (camera works out one/several/everything, re-explained), Home inside a box A/B, Tidy up prompt
+  (card vs pop-up), which user tests the web push.
+
+## 2026-09-26 (night) — Q3, Experimentation, the test user; containers built (Ravi)
+
+- **Q3:** every photo is **one thing — the most dominant**. A later feature, **Detect other items**, puts
+  labels on (or lists) the other things in the photo; she taps the ones to add to this log.
+- **Home inside a box:** "can't tell until I see it" — **build both (A Back + banner, B trail) and switch
+  between them in Settings → Experimentation**, a section cleared out once decided. Watch phone real estate:
+  no bulges in the flow, no excessive wrapping (iPad has room; the phone does not).
+- **The real user tests on their own iPhone** → first run must work from nothing (sign-in, Add to Home
+  Screen, AI through ReCall's service).
+- **Built (20260926a):** edges as records (`kind:'edge'`, lib/graph.js pure module, every place save writes
+  one; typed names link to a thing only on an exact name; no circles); Home inside a box or place (A and B);
+  promote ("Show on Home too"); Put in (+Undo); Log here; the card's box row with its photo; Find says
+  "In the wooden box". Rules for edges proven on the real engine (21/21). Nothing moves without her tap.

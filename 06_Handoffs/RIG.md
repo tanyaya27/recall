@@ -85,3 +85,14 @@ question, review), last-used, hold Log item, One thing's chosen place + Next ite
 Run it with the other two before every hand-off. The real rules engine: from `04_Engineering/firebase`,
 `firebase emulators:exec --config firebase.test.json --only firestore --project recall-test "RULES=firestore.rules node rules-test/test.mjs && RULES=firestore.rules node rules-test/test_grant.mjs && node rules-test/test_p2.mjs"`;
 the functions: `./rules-test/run_ai_test.sh`.
+
+## Containers / graph (2026-09-26)
+
+- `audit_graph.js` — Ravi's chain (card → wooden box → memorabilia box → crawl space) seeded with edges; Home inside
+  a box A and B (via `prefs.exp.homeInside`), promote, Put in + Undo, Log here, moving a box, typed "in the wooden box",
+  a helper with the rules on, Largest. Screenshots `shots/graph-*.png`.
+- `tests/graph.test.js` — the pure module (`src/lib/graph.js`): `esbuild tests/graph.test.js --bundle --platform=node
+  --format=esm --outfile=tests/graph.test.mjs && node tests/graph.test.mjs`.
+- Real rules engine: `04_Engineering/firebase/rules-test/test_edges.mjs` (run with the other suites under
+  `firebase emulators:exec --config firebase.test.json --only firestore`).
+- Settings → Experimentation: `EXPERIMENTS` in `src/lib/prefs.js`; delete an entry (and its losing branch) once decided.

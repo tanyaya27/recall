@@ -3,40 +3,52 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-24.
 
-## NOW — the name and the Apple Developer Program (naming session 09-24)
+## NOW — Apple Developer sign-up (its own session from 09-26; Ravi as an individual, Tanya 09-24)
 
-- [x] 09-24 Naming board: criteria (7 from the brief + 4 added; Devin wants ≤ 9 letters, Priyanka a broker-free
-  domain; both recorded as splits), 19 candidates, every one checked (USPTO live marks, App Store, RDAP domains,
-  Play via web search, web). 35 more screened out. `design/BOARD_2026-09-24_naming.md`.
-- [ ] **Tanya + Ravi: pick the name** (board §5): Wherly · Thingspot · Wherewell · Hither · *ReCall: Where I Put It*.
-  The board leans Wherly, with Thingspot as the safe plain alternative. Before picking (Devin): say each once to
-  three people and have them write it down; render the finalists under an icon on a home screen.
-- [ ] Ravi, 2 min: type each finalist into the **Google Play** app (Play blocks automated search; only web-indexed
-  Play results were checked).
-- [ ] A native Spanish speaker and a Hindi speaker glance at the finalists (Claude's check found nothing rude).
-- [ ] **Attorney clearance search** on the pick before committing (board §7). Nothing filed, bought or reserved.
-- [ ] After the pick: register the domain(s) (costs money → Ravi's OK), then write the DECISIONS entry.
-- [ ] **Tanya + Ravi: who enrolls in the Apple Developer Program?** `APPLE.md` §1: Ravi as an individual ·
-  Tanya (only if she's 18+; under 18, Apple's route is a parent's account shared with her) ·
-  Nova Camino Ventures LLC · a new entity. Decides the App Store seller name and who signs Apple's agreements.
-- [ ] If the LLC route: **start the D-U-N-S lookup this week** (developer.apple.com/enroll/duns-lookup; up to 7
-  business days) and check the LLC has a working website + a work email on its domain.
-- [ ] **Waiting on Apple** after sign-up (Ravi pays and accepts the agreements himself): record the Team ID in
-  `APPLE.md` §4 → reserve the App Store name (definitive availability test) → bundle ID `com.<seller>.<appname>`
-  (confirm with Ravi; it can never change after the first upload) → Sign in with Apple Services ID + key into the
-  Firebase console (firebase/README step 2; the `.p8` never enters the repo). `APPLE_SIGNIN` in `People.jsx` stays
-  false until the MVP session turns it on.
-- [ ] Then **MVP step 4 is unblocked**: Capacitor wrap → TestFlight (needs the Team ID, bundle ID, reserved name).
-- [ ] **If the name changes — for the MVP session (no app code changed in the naming session).** User-visible
-  "ReCall" is in: `docs/index.html` (`<title>`, `apple-mobile-web-app-title`), `docs/manifest.webmanifest`
-  (`name`, `short_name`), and strings in `src/App.jsx` (8), `components/Board.jsx` (9), `People.jsx` (6),
-  `Settings.jsx` (5), `PhotoCard.jsx` (2), `MenuScreens.jsx`, `ThingCard.jsx`, `Join.jsx` (1 each),
-  `ai/engine.js` (7) and `ai/providers/anthropic.js` (4) (prompts), `lib/db.js` (10), `lib/firebase.js` (2),
-  `lib/auth.js`, `lib/prefs.js` (1 each), `firebase/functions/index.js` (5); invite links/emails; the app icon label;
-  the identity brief (`03_Design/ReCall_Identity_Design_Prompt.md`); README/CLAUDE.md. Counts are lines containing
-  "ReCall" — some are comments; Devin reviews every visible string. **Do NOT rename identifiers:** Firestore
-  collections (`recall_items`, `recall_events`, `recall_grants`, `recall_invites`, `recall_users`, `recall_usage`,
-  `recall_secrets`), localStorage keys (`recall-*`), the Firebase project `recall-d9886`, the GitHub repo/Pages URL.
+- [x] 09-24 **Tanya: Ravi enrolls as an individual; Tanya is credited** (DECISIONS 09-24). Details, and moving to an LLC
+  later: `APPLE.md`. The naming-and-Apple session continues as the Apple session only (09-26).
+- [ ] **Ravi: enroll** (Apple Developer app on the iPhone, or developer.apple.com/programs/enroll). You'll need an Apple
+  Account with two-factor on, your legal name as on your ID, and a street address. Ravi pays the $99/yr and accepts the
+  agreements himself.
+- [ ] **Waiting on Apple** (a day or two, sometimes longer), then:
+  1. Team ID → `APPLE.md` §4.
+  2. Bundle ID `com.<neutral-owner>.recall` (confirm the exact string with Ravi; it's permanent).
+  3. Sign in with Apple: App ID → Services ID → key → Firebase console (`.p8` never in the repo).
+  4. Add Tanya in App Store Connect.
+  - `APPLE_SIGNIN` in `People.jsx` stays false until the MVP session turns it on.
+- [ ] Then **MVP step 4 is unblocked** (Capacitor → TestFlight), except the App Store Connect app record, which needs a name.
+- [ ] Later, if wanted: move to Nova Camino Ventures LLC. Either Apple's individual → organization request (founder +
+  D-U-N-S; ask whether the Team ID and apps carry over), or an app transfer after the first App Store release.
+
+## PARKED — the name (Tanya/Ravi 09-24: "we need more time") → its own session: `PROMPT_2026-09-26_naming.md`
+
+- [x] 09-24 Naming board: criteria (7 from the brief + 4 added; splits recorded), 19 candidates, every one checked (USPTO live
+  marks, App Store, RDAP domains, Play via web search, web), 35 more screened out. `design/BOARD_2026-09-24_naming.md`.
+- [ ] **Tanya + Ravi: pick when ready** (board §5): Wherly · Thingspot · Wherewell · Hither · *ReCall: Where I Put It*.
+  The board leans Wherly, with Thingspot as the safe plain alternative. Before picking (Devin): say each once to three
+  people and have them write it down; render the finalists under an icon on a home screen.
+- [x] 09-26 **Rechecked** (script + Google Play in Ravi's Chrome + web): Wherly, Thingspot, Hither unchanged; **Wherewell
+  worse** (the sound-alike *WearWell: Daily Outfit Planner* is now live on Play). `design/BOARD_2026-09-26_naming_clerk.md` §3.
+- [x] 09-26 **Ravi's "clerk" idea checked** (MyClerk + 18 variants + 16 adjacent roles): MyClerk, Clerkly, Clerky, Clerkwell
+  out; CLERK is registered twice in cl. 42. Clerk finalists: **Clerkit · Heyclerk · Clerkspot · Thingclerk** (all four domains
+  free for Thingclerk). Same file §1–4; raw results `05_Research/naming/name_checks_2026-09-26.json`.
+- [ ] **Tanya + Ravi:** does any clerk name join Wherly/Thingspot on the shortlist?
+- [ ] Before picking: a native Spanish and a Hindi speaker glance at the finalists (Hindi: *clerk* = the low-ranked office
+  clerk); Devin's two tests on the combined finalists.
+- [ ] After picking: **attorney clearance search** (board §7), then the domain(s) with Ravi's OK (they cost money),
+  the DECISIONS entry, and reserving the name in App Store Connect.
+- [ ] **If the name changes, the list of places it appears is for the MVP session** (no app code changed in the naming
+  session). User-visible "ReCall" is in:
+  - `docs/index.html` (`<title>`, `apple-mobile-web-app-title`) and `docs/manifest.webmanifest` (`name`, `short_name`).
+  - Strings in `src/App.jsx` (8), `components/Board.jsx` (9), `People.jsx` (6), `Settings.jsx` (5), `PhotoCard.jsx` (2),
+    and `MenuScreens.jsx`, `ThingCard.jsx`, `Join.jsx` (1 each).
+  - The AI prompts in `ai/engine.js` (7) and `ai/providers/anthropic.js` (4).
+  - `lib/db.js` (10), `lib/firebase.js` (2), `lib/auth.js` and `lib/prefs.js` (1 each), and
+    `firebase/functions/index.js` (5).
+  - Invite links and emails, the icon label, the identity brief, README and CLAUDE.md.
+  - Counts are lines containing "ReCall", and some are comments; Devin reviews every visible string.
+  - **Do NOT rename identifiers:** Firestore collections (`recall_*`), localStorage keys (`recall-*`), the Firebase
+    project `recall-d9886`, or the repo / Pages URL.
 
 ## NOW — scenarios, setup and logging speed (Ravi 09-24)
 
@@ -119,12 +131,27 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 - [x] **BUILT 09-24 (20260924e): things that look private start private.** A typed name like "password", or a photo of a password,
   bank/ID card or medical/health paper (HIPAA-type), is saved *Only me* by default, and the person is told at or right after the
   photo, with one tap to share it instead. Owner only (a helper can't make things private; they get told instead). Build in step 3.
+- [ ] **CONTAINERS BUILT 09-26 (20260926a) — RAVI: look at `mockups/S6_containers_built.jpg`, then deploy the RULES
+  first, then push** (commands in chat). Phone check: Settings → Experimentation → try **Back + banner** and **Trail**;
+  pick a winner (then I delete the loser and, when empty, the section). Audits: graph 34/34 · edges on the real engine
+  21/21 · graph logic 14/14 · main 98 · roles 42 · modes 25 · label 15 · private 37.
+  Existing things have no links yet: they show as before until moved or put in a box (no migration).
+- [ ] **Web push, next:** the camera — item → place on the camera ("Now the place · step back"), **the Save button names
+  the place**, every photo = the dominant thing, then **Detect other items** (labels/list, tap to add); then Tidy up
+  (its own flow; card vs pop-up to go into Experimentation); then Find. Then the test user on their own iPhone (first run
+  from nothing), then native. Hold-to-speak: prototype only (Q9 maybe).
 - [ ] **Step 3: RULED 09-24** (DECISIONS "Step 3 rulings"). Done in the rig: **private by default + refusing
   secrets** — build `20260924e`, audits private 37/37 · main 98/98 · roles 42/42 · modes 25/25 · label 15/15;
   screenshots `mockups/S3b_private_built.jpg`. **Ravi: look at the screenshots, then push; phone check:** Log item →
   photo a closed notebook → the card says *Kept private: this looks like passwords* → Done → the tile has a lock;
   photo an open page of passwords → *This photo won't be kept*; Write it down "PIN 4821" → Save greyed.
-  Next: **places inside places, the natural way** (no tree; a container is a thing; Find answers as a sentence),
+  **LIVE c86fcce.** Places inside places: **B chosen 09-25, and widened** (DECISIONS 09-25: edges as first-class records;
+  contents off Home + promote; Home follows the container tapped; log first, put away later, very fast). Approach walked
+  through in chat; **DRAWN 09-25 — RULINGS NEEDED:** Home inside a box **A (Back + banner; board) or B (trail)**; put away
+  **P-A + P-B now, drag later (board)?** — `design/BOARD_2026-09-25_containers-graph.md`, `mockups/S5_home_inside.jpg`, `S5_put_away.jpg`.
+  Fixed places open on Home too (Ravi: agreed). Prototype — `design/BOARD_2026-09-24_nesting-natural.md`, `mockups/S4_nesting_options.jpg`.
+  Logic in `src/lib/nest.js` (rig only until the ruling; tests `rig/tests/nest.test.js` 14/14). No data or rule change.
+  Then: **places inside places** as ruled,
   then **Everything in view** (one tile per sweep). Known gap: a helper who saves a readable-secret photo BEFORE
   the name arrives can only soft-delete its snap (rules) — the owner's app should purge it; rare.
 - [ ] **"On this phone only" — RULED: waits for the native app** (shown greyed now, "coming soon")., a third level beyond Only me: the thing never leaves the device,

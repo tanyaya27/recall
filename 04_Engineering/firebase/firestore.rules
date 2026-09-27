@@ -19,6 +19,13 @@ service cloud.firestore {
     function consistent(d) {
       return d.sharedWith.toSet() == d.roles.keys().toSet() && (!d.private || d.roles.size() == 0);
     }
+    // Edges (2026-09-26): "is in" is a record of its own. It belongs to its thing's owner, mirrors the
+    // thing's privacy, and may be made by anyone who can edit the thing (a helper only for a shared one).
+    function edgeCreateOk(d) {
+      let it = get(/databases/$(database)/documents/recall_items/$(d.from)).data;
+      return it.owner == d.owner && consistent(d)
+        && (d.owner == me() || (canEdit(it) && d.private == false));
+    }
     function item(s) { return get(/databases/$(database)/documents/recall_items/$(s.itemId)).data; }
     function editorKeys() {
       return ['name', 'aliases', 'location', 'history', 'photo', 'thumb', 'thumbV', 'restingOn', 'description',
@@ -36,11 +43,16 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.by == me() && (
         request.resource.data.kind == 'snap'
           ? canEdit(item(request.resource.data))
+          : request.resource.data.kind == 'edge'
+            ? edgeCreateOk(request.resource.data)
           : request.resource.data.kind == 'place'
             ? (request.resource.data.owner == me() || grantRole(request.resource.data.owner) == 'editor')
             : ((request.resource.data.owner == me() || grantRole(request.resource.data.owner) == 'editor') && consistent(request.resource.data)));
       allow update: if signedIn() && (
         legacy(resource.data) && request.resource.data.owner == me()                               // adoption
+        || (resource.data.kind == 'edge' && resource.data.owner != me()                             // a helper may only close an edge
+            && canEdit(get(/databases/$(database)/documents/recall_items/$(resource.data.from)).data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until', 'closedBy']))
         || (resource.data.kind == 'snap'
             ? (item(resource.data).owner == me()
                || (canEdit(item(resource.data)) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted', 'deletedAt'])))

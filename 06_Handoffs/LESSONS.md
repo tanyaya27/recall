@@ -322,3 +322,10 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   hold the membership; Apple's route is a parent's account shared with them. The seller name on the App Store
   is the account holder's legal name (or the organization's). Apps can only be transferred after one App Store
   release. Details and sources: `06_Handoffs/APPLE.md`.
+
+- **2026-09-26 · A grid of `overflow:hidden` tiles inside a height-limited flex child squashes its rows** (an
+  overflow-hidden item has no min-content height), so the names under the photos vanished in the Put in sheet.
+  Give such grids `grid-auto-rows: max-content; align-content: start`. The audit now asserts every label shows.
+- **2026-09-26 · Put new-record writes behind a try/catch when the old field still carries the truth.** An edge
+  that fails to write (old rules, a role edge case) must never block the move itself; the place text copy is saved
+  first and the failure is logged (`edge_failed`).

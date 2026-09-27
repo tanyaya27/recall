@@ -24,9 +24,9 @@ import { PinIcon, CheckIcon, PlusIcon, ChevronDownIcon, LockIcon } from './Icons
 // silently (LESSONS 09-05). The ＋ on the thumbnail makes the next photo another angle of it.
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-export default function SeveralCamera({ engine, items = [], places = [], owner, title, modes, onMode, onClose }) {
+export default function SeveralCamera({ engine, items = [], places = [], owner, title, modes, onMode, onClose, initialPlace = '' }) {
   const [entries, setEntries] = useState([]);      // newest last: { key, id, thumb, name, status, place, source, choices, match, angles }
-  const [session, setSession] = useState(null);    // the place for the next shots, once one is chosen
+  const [session, setSession] = useState(initialPlace ? { name: initialPlace } : null); // the place for the next shots ("Log here" starts with it)
   const [angleFor, setAngleFor] = useState(null);  // entry key: the next photo is another angle of it
   const [picking, setPicking] = useState(null);    // entry key whose place is being chosen, or 'session'
   const sessionRef = useRef(null); sessionRef.current = session;

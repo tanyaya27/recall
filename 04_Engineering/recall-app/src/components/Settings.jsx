@@ -3,7 +3,7 @@ import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.
 import Header from './Header.jsx';
 import { currentUser, isAnonymous, signIn, lastSignIn } from '../lib/auth.js';
 import { legacyCount, logEvent } from '../lib/db.js';
-import { getPrefs, savePrefs, CAPTURE_MODES } from '../lib/prefs.js';
+import { getPrefs, savePrefs, CAPTURE_MODES, EXPERIMENTS } from '../lib/prefs.js';
 import { APPLE_SIGNIN } from './People.jsx';
 
 // Settings — reduced to what setup needs. Board decision 2026-09-05, screen 6; platform
@@ -52,6 +52,7 @@ export function takeReturnRoute() {
 export default function Settings({ onBack, onConfigSaved, justReloaded = false }) {
   // Multi-user Phase 1: the developer's view of identity — who this phone is, whether the
   // pre-09-19 docs have been adopted (the rules can flip only at 0), and the sign-in upgrade.
+  const [expNow, setExpNow] = useState(() => getPrefs().exp);
   const [legacy, setLegacy] = useState(null);
   useEffect(() => { let on = true; legacyCount().then((n) => { if (on) setLegacy(n); }).catch(() => { if (on) setLegacy('?'); }); return () => { on = false; }; }, []);
   const user = currentUser();
@@ -278,6 +279,25 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
         </div>
         </>)}
       </div>
+
+      {/* Experimentation (Ravi 09-26): try options on the real phone, then decide. Cleared out once decided. */}
+      {EXPERIMENTS.length > 0 && (<>
+        <div className="group-title">Experimentation</div>
+        <div className="group">
+          {EXPERIMENTS.map((x) => (
+            <div className="grow" key={x.id}>
+              <label>{x.label}</label>
+              <p className="note-quiet left" style={{ margin: '0 0 0.5rem' }}>{x.blurb}</p>
+              <div className="seg wrap">
+                {x.options.map(([id, lab]) => (
+                  <button key={id} type="button" className={expNow[x.id] === id ? 'on' : ''}
+                    onClick={() => { const p = getPrefs(); const next = { ...p, exp: { ...p.exp, [x.id]: id } }; savePrefs(next); setExpNow(next.exp); logEvent('experiment', { id: x.id, option: id }); }}>{lab}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </>)}
 
       <p className="note-quiet left support">For support · ID <code className="uid">{user ? user.uid : '…'}</code>{legacy !== null && legacy !== 0 ? <> · legacy docs left {legacy}</> : null}{last ? <> · sign-in {last.stage}{last.error ? ` (${last.error})` : ''} {new Date(last.at).toLocaleTimeString()}</> : null}</p>
     </div>

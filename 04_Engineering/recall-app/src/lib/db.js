@@ -75,11 +75,9 @@ export async function moveToTop(item, items) {
 //   2. head noun — the AI's name and exactly ONE item's name/alias share their last word
 //      ("glasses" ↔ "reading glasses"); a wrong soft match costs one tap on the card.
 // Names are normalised: lowercase, "your/the/my" dropped, trailing s dropped.
-const DROP = new Set(['your', 'the', 'my', 'a', 'an', 'her', 'his', 'our']);
-export function normName(name) {
-  return (name || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-    .filter((w) => w && !DROP.has(w)).map((w) => w.replace(/s$/, '')).join(' ');
-}
+import { normName } from './names.js';
+import { setGraph, graph, openEdge, destOf, wouldLoop } from './graph.js';
+export { normName };
 function namesOf(it) { return [it.name, ...(it.aliases || [])].map(normName).filter(Boolean); }
 export function findByName(items, name) {
   const n = normName(name);
@@ -134,11 +132,12 @@ export function watchAll(cb) {
   const emit = () => {
     const seen = new Map();
     parts.forEach((docs, key) => docs.forEach((d) => { if (!seen.has(d.id)) seen.set(d.id, d); if (key.startsWith('g:')) seen.get(d.id).grantRole = grants.find((g) => g.grantor === d.owner)?.role || null; }));
-    const out = { items: [], routines: [], checks: [], removed: [], places: [], grants, people, invites, grantsReady };
+    const out = { items: [], routines: [], checks: [], removed: [], places: [], edges: [], grants, people, invites, grantsReady };
     seen.forEach((data) => {
       if (data.kind === 'place') out.places.push(data);
       else if (data.kind === 'routine') out.routines.push(data);
       else if (data.kind === 'check') out.checks.push(data);
+      else if (data.kind === 'edge') out.edges.push(data);
       else if (data.kind !== 'item') return;
       else if (data.deleted) out.removed.push(data);
       else out.items.push(data);
@@ -148,13 +147,14 @@ export function watchAll(cb) {
     out.routines.sort((a, b) => (a.order || 0) - (b.order || 0));
     out.checks.sort((a, b) => (b.at || 0) - (a.at || 0));
     out.places.sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
+    setGraph(out.items, out.edges); // the pure graph module reads the same snapshot (lib/graph.js)
     cb(out);
   };
   const listen = (key, q) => {
     if (unsubs.has(key)) return;
     unsubs.set(key, onSnapshot(q, (snap) => { parts.set(key, snap.docs.map((d) => ({ id: d.id, ...d.data() }))); emit(); }, (err) => console.error('watchAll', key, err)));
   };
-  const KINDS = ['item', 'routine', 'check', 'place'];
+  const KINDS = ['item', 'routine', 'check', 'place', 'edge'];
   listen('mine', query(col, where('owner', '==', uid), where('kind', 'in', KINDS)));
   listen('shared', query(col, where('sharedWith', 'array-contains', uid), where('kind', 'in', KINDS))); // the kind filter is what makes the rule provable for a list (real engine, 2026-09-21)
   listen('legacy', query(col, where('household', '==', HOUSEHOLD), where('kind', 'in', KINDS)));
@@ -285,6 +285,7 @@ export async function addItem({ name = '', location = '', description = '', phot
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }], logId, photoCount: photo ? 1 + extras.length : 0, details: details || '', written: !photo,
   });
+  if (location) await recordMove({ id: ref.id, owner, private: keep }, location, placeSource || 'chosen');
   if (!photo) return ref.id;
   await addDoc(col, { kind: 'snap', owner, by: me(), itemId: ref.id, logId, photo, thumb, location, at: now });
   await writeExtras(ref.id, logId, extras, location, now, by, owner);
@@ -331,7 +332,7 @@ export async function nameItem(id, { name = '', description = '', restingOn = ''
 // Since 2026-09-16 (design §5, ruling 6) a move also writes a SIGHTING: the cover photo, at
 // the new place, now — so the new stay has a photo and the history never has a row without
 // one. Adding the place to a thing that had none is not a move: no sighting is written.
-export async function changeLocation(item, location, placeSource = 'chosen') {
+export async function changeLocation(item, location, placeSource = 'chosen', dest = null) {
   const now = Date.now();
   const history = [...(item.history || []), { location, at: now }].slice(-100);
   const moved = !!item.location && !!location && item.location.toLowerCase() !== location.toLowerCase();
@@ -342,6 +343,7 @@ export async function changeLocation(item, location, placeSource = 'chosen') {
     Object.assign(patch, { logId, photoCount: 1 });
   }
   await updateDoc(doc(col, item.id), patch);
+  await recordMove(item, location, placeSource, dest);
 }
 
 // Private = shared with no one (Only me), on every device of the owner. Making a thing private
@@ -353,6 +355,7 @@ export async function setVisibility(item, visibility) {
   if (priv) Object.assign(patch, { roles: {}, sharedWith: [] });
   if (!item.owner) Object.assign(patch, { owner: me(), by: item.by || me(), roles: {}, sharedWith: [] }); // legacy doc adopted on the way
   await updateDoc(doc(col, item.id), patch);
+  await syncEdgePrivacy(item.id, priv);
 }
 export function isPrivate(it) { return it.private === true || it.visibility === 'private'; }
 export function isMine(it) { return it.owner === me(); }
@@ -381,6 +384,7 @@ export async function applyVerdict(id, v, owner = me()) {
   if (mineNow) { Object.assign(patch, { private: true, roles: {}, sharedWith: [], privateAuto: v.why || 'looks private' }); done.push('private'); }
   else done.push('helper');
   await updateItem(id, patch);
+  if (mineNow) await syncEdgePrivacy(id, true);
   if (v.secret) await dropSnapsOf(id, mineNow);
   return done;
 }
@@ -389,7 +393,50 @@ async function dropSnapsOf(itemId, mineNow) {
   await Promise.all(snap.docs.map((d) => (mineNow ? deleteDoc(doc(col, d.id)) : updateDoc(doc(col, d.id), { deleted: true, deletedAt: Date.now() }))));
 }
 
-// Re-snap: fresh photo + location; the old photo is kept as a snap
+// ---------- edges (DECISIONS 2026-09-25/26; lib/graph.js has the model) ----------
+// Every place write goes through here: close the thing's open "in" edge, open a new one. The words
+// decide the destination (graph.destOf): an exact name of another thing makes it a container;
+// anything else is a place by name. Nothing is inferred behind her back — this runs only on a save
+// she made. `how`: chosen · session · usual · guess · put · typed. Returns the new edge's id or null.
+export async function recordMove(item, location, how = 'chosen', dest = null) {
+  try { return await writeMove(item, location, how, dest); } catch (err) { console.error('recordMove', err); logEvent('edge_failed', { itemId: item && item.id, code: err.code || '' }); return null; } // the place copy already saved; the edge never blocks a move
+}
+async function writeMove(item, location, how, dest) {
+  if (!item || !item.id) return null;
+  const now = Date.now();
+  const cur = openEdge(item.id);
+  const to = dest || (location ? destOf(location, graph().byId.get(item.id) || item) : null);
+  const same = cur && to && cur.to && cur.to.t === to.t && (to.t === 'thing' ? cur.to.id === to.id : (cur.to.name || '').toLowerCase() === (to.name || '').toLowerCase());
+  if (same) return cur.id;
+  if (cur) await updateDoc(doc(col, cur.id), { until: now, closedBy: me() });
+  if (!to) return null;
+  const owner = item.owner || me();
+  const ref = await addDoc(col, { kind: 'edge', rel: 'in', from: item.id, to, since: now, until: null, how,
+    owner, by: me(), private: !!item.private && owner === me(), roles: {}, sharedWith: [] });
+  return ref.id;
+}
+// Put things into a container (Put in, 09-25 P-B; the fallback put-away). One save per batch.
+// Refuses a circle. Returns how many went in.
+export async function putInto(things, container, how = 'put') {
+  if (!container) return 0;
+  let n = 0;
+  for (const t of things) {
+    if (!t || t.id === container.id || wouldLoop(t, container)) continue;
+    await changeLocation(t, container.name ? container.name.charAt(0).toUpperCase() + container.name.slice(1) : 'In a box', 'chosen', { t: 'thing', id: container.id, name: container.name || '' });
+    n += 1;
+  }
+  logEvent('put_into', { container: container.id, things: n, how });
+  return n;
+}
+// A thing's edges follow its privacy, so a private thing never shows up in a box's count for a helper.
+async function syncEdgePrivacy(itemId, priv) {
+  const mine = graph().edges.filter((e) => e.from === itemId && e.owner === me() && !!e.private !== !!priv);
+  for (const e of mine) await updateDoc(doc(col, e.id), { private: !!priv });
+}
+// Promote a thing inside a box back onto Home (Ravi 09-25). Owner-only, like pinning.
+export async function setPromoted(item, on) { await updateItem(item.id, { promoted: !!on }); logEvent('promote', { itemId: item.id, on: !!on }); }
+
+
 export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [], placeSource = 'chosen' }) {
   const now = Date.now();
   const logId = `log_${now}`;
@@ -400,6 +447,7 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
   });
   await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location, at: now });
   await writeExtras(item.id, logId, extras, location, now, by, item.owner || me());
+  await recordMove(item, location, placeSource);
 }
 
 // 2026-09-14 (Ravi): one log can hold several photos — a close-up and a wide shot. A later

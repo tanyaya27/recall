@@ -3,6 +3,7 @@ import { hasSecret } from '../lib/sensitive.js';
 import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { photoStamp, cap } from '../lib/format.js';
+import { placeWords, contentsOf, holderOf } from '../lib/graph.js';
 import { getPrefs, savePrefs } from '../lib/prefs.js';
 import EditableText from './EditableText.jsx';
 import { own } from './PhotoCard.jsx';
@@ -10,7 +11,7 @@ import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
 import PlacePicker from './PlacePicker.jsx';
 import TidySheet from './TidySheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, PeopleIcon, NoteIcon, TagIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, ChevronIcon, PeopleIcon, NoteIcon, TagIcon } from './Icons.jsx';
 
 // The thing card — the answer. Redesigned 2026-09-16 with Ravi over seven rendered passes
 // (design/DESIGN_2026-09-16_things-places-sightings.md §2, §13):
@@ -35,7 +36,7 @@ import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWas
 // the two switches, *Shared by Margaret*; no trash, no bar, no hold sheet — a card with nothing
 // to do. With *Show who added each photo* on, the stamp ends with the adder's first name
 // whenever someone other than the owner added it.
-export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, openFix = false, showAddedBy = true, peopleCount = 0 }) {
+export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, openFix = false, showAddedBy = true, peopleCount = 0, onOpen = () => {} }) {
   const role = roleOn(item) || 'viewer';          // owner | editor | viewer
   const isOwner = role === 'owner', canEdit = role !== 'viewer';
   const [, bump] = useState(0);
@@ -171,6 +172,12 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   }
 
   const label = item.name ? `your ${own(item.name)}` : 'this';
+  // Places inside places, the natural way (09-24): the thing it's in, and what's in it — computed.
+  const nest = placeWords(item);
+  const inside = contentsOf(item);
+  const holder = nest ? nest.chain[0] : null;
+  const holderWords = holder ? placeWords(holder) : null;
+  const holderAt = holder ? (holderWords ? `${holderWords.lead} · ${holderWords.where}` : holder.location || 'No place yet') : '';
 
   return (
     <div className={'screen' + (canEdit ? ' with-footer' : '')}>
@@ -182,7 +189,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         </div>
         <div className="row2">
           <PinIcon />
-          {item.location ? <b>{item.location}</b> : <b className="soft">No place assigned</b>}
+          {nest ? <b>{nest.lead}</b> : item.location ? <b>{item.location}</b> : <b className="soft">No place assigned</b>}
           {item.restingOn && <span> · {item.restingOn}</span>}
         </div>
       </div>
@@ -209,6 +216,28 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
           </div>
         </div>}
         {/* What the label says (MVP #9): read off the photo by the AI, searchable in Find item. */}
+        {/* The box it's in, with its own photo — "which tin?" answered by looking (09-24, B). */}
+        {nest && (
+          <button type="button" className="nest-row" onClick={() => onOpen(holder)}>
+            {holder.thumb ? <img src={holder.thumb} alt="" /> : <span className="nest-none"><NoteIcon /></span>}
+            <span className="nest-txt"><b>{cap(holder.name)}</b><small>{holderAt} · seen {photoStamp(holder.lastSeenAt).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}</small></span>
+            <ChevronIcon />
+          </button>
+        )}
+        {/* What's in it: the things whose place names this one. */}
+        {inside.length > 0 && (
+          <div className="inside">
+            <div className="inside-h">In it <small>· {inside.length} thing{inside.length === 1 ? '' : 's'}</small></div>
+            <div className="minis">
+              {inside.slice(0, 8).map((x) => (
+                <button type="button" key={x.id} onClick={() => onOpen(x)}>
+                  {x.thumb ? <img src={x.thumb} alt="" /> : <span className="mini-none"><NoteIcon /></span>}
+                  <span>{cap(x.name) || 'No name yet'}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {item.details && <div className="label-line"><TagIcon /><span>{item.details}</span></div>}
         {item.photo && pages.length > 1 && (
           <div className="dotsrow">

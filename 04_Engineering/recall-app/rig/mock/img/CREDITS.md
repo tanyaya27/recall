@@ -13,3 +13,7 @@ Openly licensed photos from Wikimedia Commons, used only in design mockups. Not 
 - **diary.jpg** — File:Leather notebook (Unsplash).jpg · Kelly Jean kellyjean · CC0 · https://commons.wikimedia.org/wiki/File:Leather_notebook_(Unsplash).jpg
 - **drawer.jpg** — File:Maine Cabin Junk Drawer.jpg · Hportfacts5 · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Maine_Cabin_Junk_Drawer.jpg
 - **tooldrawer.jpg** — File:5S Tools drawer.jpg · Tasma3197 · CC BY-SA 3.0 · https://commons.wikimedia.org/wiki/File:5S_Tools_drawer.jpg
+- **tin.jpg** — File:2025.11.22 Flea Market Izmailovo Moscow Blue Tin from Kazan Tatarstan 03.jpg · Tess Mattew · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:2025.11.22_Flea_Market_Izmailovo_Moscow_Blue_Tin_from_Kazan_Tatarstan_03.jpg
+- **box.jpg** — File:An Overview of Moving Companies and Their Use of Moving Boxes.jpg · brownpau · CC BY 2.0 · https://commons.wikimedia.org/wiki/File:An_Overview_of_Moving_Companies_and_Their_Use_of_Moving_Boxes.jpg
+- **card.jpg** — File:HonusWagnerCard.jpg (1909 T206 card) · Public domain · https://commons.wikimedia.org/wiki/File:HonusWagnerCard.jpg
+- **smallbox.jpg** — File:Box, sewing (and contents) (AM 2017.43.10).jpg · Duffy, Lionel Vernon · CC BY 4.0 · https://commons.wikimedia.org/wiki/File:Box,_sewing_(and_contents)_(AM_2017.43.10).jpg

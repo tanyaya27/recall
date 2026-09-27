@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { LOG_MAX, isPrivate } from '../lib/db.js';
-import { CameraIcon, PencilIcon, TrashIcon, LockIcon, UnlockIcon } from './Icons.jsx';
+import { CameraIcon, PencilIcon, TrashIcon, LockIcon, UnlockIcon, StarIcon, BoxIcon } from './Icons.jsx';
 
 // The item's actions, from press-and-hold on its tile (Ravi, 2026-09-14 round 3). Same
 // in-app sheet as confirms: big rows, the thing's name on top, Cancel last and largest so an
 // accidental hold costs one obvious tap. Every action here is also reachable on the thing
 // card — this is a shortcut, not the only path (Devin's condition).
-export default function ItemSheet({ item, role = 'owner', onAdd, onChangePlace, onRename, onMoveToTop, onRemove, onRemovePhoto, onPrivate, onCancel }) {
+export default function ItemSheet({ item, role = 'owner', onAdd, onChangePlace, onRename, onMoveToTop, onRemove, onRemovePhoto, onPrivate, onCancel, onPromote = null, promoted = false, onOpenCard = null }) {
   if (role === 'viewer') return null; // Can see: nothing to do on a hold (MU2·5)
   const cancelRef = useRef(null);
   useEffect(() => { cancelRef.current && cancelRef.current.focus(); }, []);
@@ -15,6 +15,9 @@ export default function ItemSheet({ item, role = 'owner', onAdd, onChangePlace, 
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet item-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-title" id="sheet-title">{label.charAt(0).toUpperCase() + label.slice(1)}</div>
+        {/* Containers (09-26): a thing inside a box can be shown on Home too; a box's own card is one tap. */}
+        {onPromote && <button className="sheet-row" onClick={onPromote}><StarIcon /> {promoted ? 'Take it off Home' : 'Show on Home too'}</button>}
+        {onOpenCard && <button className="sheet-row" onClick={onOpenCard}><BoxIcon /> Open its card</button>}
         {(item.photoCount || 1) < LOG_MAX && (
           <button className="sheet-row" onClick={onAdd}><CameraIcon /> Add a photo</button>
         )}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { placeWords } from '../lib/graph.js';
 import { logEvent } from '../lib/db.js';
 import { cap } from '../lib/format.js';
 import { useDictation, matchThings, IS_IOS } from '../lib/speech.js';
@@ -49,7 +50,9 @@ export default function Ask({ engine, items, onResult, onPhoto, onBack }) {
     setAsking(true); setNoMatch(false); setFailed(false);
     const t0 = Date.now();
     try {
-      const result = await engine.answerQuery(question, items, { sensitivity: 'personal' });
+      // The AI hears where a thing really is: "in the blue tin — Blue tin: Top shelf, bedroom wardrobe" (09-24).
+      const told = items.map((it) => { const w = placeWords(it); return w ? { ...it, location: `${w.lead.toLowerCase()} — ${w.where || 'no place yet'}` } : it; });
+      const result = await engine.answerQuery(question, told, { sensitivity: 'personal' });
       const top = result.matches[0];
       logEvent('lookup', {
         entryMode: entryMode.current, question, matched: result.matches.length, via: 'ai',
@@ -94,7 +97,7 @@ export default function Ask({ engine, items, onResult, onPhoto, onBack }) {
                 {it.thumb ? <img src={it.thumb} alt={it.name || ''} /> : <span className="tile-written" aria-label="Written down, no photo"><NoteIcon /></span>}
                 <div className="tile-label">
                   {cap(it.name) || ' '}
-                  {it.location && <span className="tile-sub place">{it.location}</span>}
+                  {it.location && <span className="tile-sub place">{(placeWords(it) || {}).lead || it.location}</span>}
                 </div>
               </button>
             ))}

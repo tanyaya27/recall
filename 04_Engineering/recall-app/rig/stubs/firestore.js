@@ -66,6 +66,7 @@ function checkCreate(colName, data, me) {
   if (colName === 'recall_users') return;
   if (colName !== 'recall_items') return;
   if (data.kind === 'snap') { const it = itemOf(data); if (!it || !canEdit(it, me) || data.by !== me) deny('snap: not an editor of its item'); return; }
+  if (data.kind === 'edge') { const it = S('recall_items').get(data.from); if (!it) deny('edge: no such thing'); if (it.owner !== data.owner) deny('edge: owner must be the thing\'s owner'); if (!(data.owner === me || (canEdit(it, me) && data.private === false))) deny('edge: not an editor of its thing'); if (!consistent(data)) deny('edge: inconsistent'); if (data.by !== me) deny('edge: by must be me'); return; }
   if (data.kind === 'place') { if (data.owner !== me && grantRole(data.owner, me) !== 'editor') deny('place: not owner/editor'); return; }
   if (!(data.owner === me || grantRole(data.owner, me) === 'editor')) deny('create: not owner/editor');
   if (!consistent(data)) deny('create: roles/sharedWith/private inconsistent');
@@ -77,6 +78,7 @@ function checkUpdate(colName, cur, next, patch, me) {
   if (colName === 'recall_invites') deny('functions only');
   if (colName !== 'recall_items') return;
   if (cur.kind === 'snap') { const it = itemOf(cur); if (!it) deny('snap: orphan'); if (it.owner === me) return; if (canEdit(it, me) && Object.keys(patch).every((k) => ['deleted', 'deletedAt'].includes(k))) return; deny('snap: editor may only soft-delete'); }
+  if (cur.kind === 'edge' && cur.owner !== me) { const it = S('recall_items').get(cur.from); if (it && canEdit(it, me) && Object.keys(patch).every((k) => ['until', 'closedBy'].includes(k))) return; deny('edge: an editor may only close it'); }
   if (cur.owner === me) { if (next.owner !== me) deny('transfer is a callable'); if (!consistent(next)) deny('update: inconsistent'); return; }
   if (canEdit(cur, me) && Object.keys(patch).every((k) => EDITOR_KEYS.has(k))) return;
   deny(`update: ${Object.keys(patch).join(',')} not allowed for this role`);

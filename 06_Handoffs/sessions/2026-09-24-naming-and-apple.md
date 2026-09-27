@@ -30,10 +30,22 @@ Prompt: `06_Handoffs/PROMPT_2026-09-24_naming-and-apple.md`. It ran alongside th
 - The link to the Mac dropped several times, and Chrome (Claude in Chrome) wasn't reachable, so Google Play
   couldn't be searched in the browser. Play results come only from web search; OPEN_ITEMS has the manual check.
 
+## Tanya's rulings at the end (DECISIONS 09-24)
+
+- **The name is paused**: "I and my dad need more time". The shortlist stays open (OPEN_ITEMS, PARKED).
+- **Ravi enrolls as an individual, and Tanya is credited.**
+- **09-26 (Tanya): the two jobs split.** From here this session is only the Apple Developer sign-up; the name moves to
+  its own session, `PROMPT_2026-09-26_naming.md`.
+- The move to an LLC later is documented in `APPLE.md` §2: Apple's own individual-to-organization request, or an
+  app transfer after the first release. So the bundle ID must be neutral (`com.<neutral-owner>.recall`, to be
+  confirmed with Ravi).
+
 ## Half-finished / next
 
-1. Tanya and Ravi pick the name and decide who enrolls (OPEN_ITEMS, top section).
-2. Then: an attorney's clearance search, domain(s) with Ravi's OK, and the DECISIONS entry for the name.
-3. Then: the Apple sign-up (Claude can guide it in Chrome; Ravi pays and accepts himself), then the Team ID,
-   name reservation, bundle ID and Sign in with Apple, as in `APPLE.md` §3.
-4. If the name changes, the list of places it appears is in OPEN_ITEMS, for the MVP session.
+1. Ravi enrolls (this session, from 09-26). Then: Team ID, bundle ID, Sign in with Apple, and Tanya added in App Store
+   Connect (`APPLE.md` §3).
+2. The name, in its own session (`PROMPT_2026-09-26_naming.md`), when Tanya and Ravi are ready: Google Play by hand, native-speaker glance, rerun the check script,
+   attorney clearance, then domains with Ravi's OK.
+3. If the name changes, the list of places it appears is in OPEN_ITEMS, for the MVP session.
+4. **A stale `.git/index.lock` was left on the Mac**: a `git status` run from the session's shell couldn't remove
+   its lock. Ravi's usual first command, `find .git -name "*.lock" -delete`, clears it.

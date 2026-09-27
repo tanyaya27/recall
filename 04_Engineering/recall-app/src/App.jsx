@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
 import { watchUser, finishSignIn } from './lib/auth.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, wantNames, watchNames, firstName, possessive, roleOn } from './lib/db.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, wantNames, watchNames, firstName, possessive, roleOn, putInto, changeLocation, setPromoted } from './lib/db.js';
 import { me } from './lib/auth.js';
 import { getPrefs, savePrefs, openingMode } from './lib/prefs.js';
 import SeveralCamera from './components/SeveralCamera.jsx';
@@ -18,6 +18,8 @@ import ThingCard from './components/ThingCard.jsx';
 import Ask from './components/Ask.jsx';
 import Settings, { takeReturnRoute, noteInstalled } from './components/Settings.jsx';
 import Toast from './components/Toast.jsx';
+import PutInSheet from './components/PutInSheet.jsx';
+import { holderOf, contentsOf } from './lib/graph.js';
 import ItemSheet from './components/ItemSheet.jsx';
 import Camera, { MAX_SHOTS, MODE_LABEL } from './components/Camera.jsx';
 import { MenuDrawer, LookScreen, LocationsScreen, PlaceScreen, NewPlaceScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
@@ -77,6 +79,8 @@ export default function App() {
   const [modePick, setModePick] = useState(false); // hold Log item → "Log item as…" (capture modes, 09-24)
   // The place used a moment ago: One thing mode offers it already chosen, for ten minutes.
   const [lastPlace, setLastPlace] = useState(null); // { name, at }
+  const [putIn, setPutIn] = useState(null);         // the box things are being put into (PutInSheet)
+  const [here, setHere] = useState('');            // "Log here" from inside a box or place: its name
   const notePlace = (name) => { if (name) setLastPlace({ name, at: Date.now() }); };
   const presetPlace = lastPlace && Date.now() - lastPlace.at < 10 * 60 * 1000 ? lastPlace.name : '';
   const [moreFiles, setMoreFiles] = useState(null); // shots handed to the open photo card
@@ -225,6 +229,15 @@ export default function App() {
   const home = () => { if (depth.current > 0) history.go(-depth.current); else setRoute(HOME); };
 
   const say = (text, undo) => setToast({ text, undo, key: Date.now() });
+  const openInside = (st) => go('inside', { scope: st.t === 'thing' ? { t: 'thing', id: st.thing.id } : { t: 'place', name: st.name } });
+  // Put things into a box: one save for all, Undo puts each back where it was (edges close/reopen).
+  const doPutIn = async (box, list) => {
+    setPutIn(null);
+    const before = list.map((t) => ({ t, loc: t.location || '' }));
+    const n = await putInto(list, box);
+    const nm = (box.name || 'box').replace(/^(my|the)\s+/i, '');
+    say(`Put ${n} in the ${nm}`, async () => { for (const b of before) await changeLocation({ ...(items.find((x) => x.id === b.t.id) || b.t) }, b.loc, 'chosen'); logEvent('put_into_undo', { container: box.id, things: n }); });
+  };
   // Private by default, when the verdict came after the save (Ravi 09-24): she is told right after
   // the photo stage, with one tap to share it instead. Returns true if a notice was shown.
   const privacyNotice = (n) => {
@@ -319,11 +332,12 @@ export default function App() {
           resnapOf={route.resnapOf ? live(route.resnapOf) : null}
           onMore={(max) => setCamera({ for: 'more', max })}
           pendingFiles={moreFiles} onPendingTaken={() => setMoreFiles(null)}
-          presetPlace={route.resnapOf ? '' : presetPlace}
+          presetPlace={route.resnapOf ? '' : (here || presetPlace)}
           onNext={route.resnapOf ? null : () => {}}
           onNotice={privacyNotice}
           onDone={(result) => {
             if (result && result.saved) { if (!privacyNotice(result.notice)) say(result.place ? `Saved · ${result.place}` : 'Saved'); notePlace(result.place); }
+            if (here && !(result && result.next)) { setHere(''); back(); return; } // Log here: back to the box
             home();
             if (result && result.next) openLog('one'); // One thing mode: Next item goes straight back to the camera
           }}
@@ -333,7 +347,7 @@ export default function App() {
       break;
     case 'thing':
       screen = (
-        <ThingCard places={places} showAddedBy={getPrefs().showAddedBy !== false} peopleCount={people.length}
+        <ThingCard key={route.item.id} places={places} showAddedBy={getPrefs().showAddedBy !== false} peopleCount={people.length}
           item={live(route.item)} items={items} openFix={!!route.fix}
           onBack={back}
           onAdd={() => setCamera({ for: 'add', itemId: route.item.id, max: Math.min(MAX_SHOTS, LOG_MAX - (live(route.item).photoCount || 1)), title: 'Add photos' })}
@@ -342,6 +356,7 @@ export default function App() {
             home();
           }}
           onToast={say}
+          onOpen={(it) => go('thing', { item: it })}
         />
       );
       break;
@@ -385,6 +400,23 @@ export default function App() {
     case 'deleted': screen = <DeletedScreen removed={removed} onBack={back} />; break;
     case 'research': screen = <ResearchScreen onBack={back} />;
       break;
+    case 'inside': {
+      // Home inside a box or a place (Ravi 09-25/26). The box is read live; if it has gone, back to Home.
+      const sc = route.scope || {};
+      const box = sc.t === 'thing' ? items.find((x) => x.id === sc.id) : null;
+      if (sc.t === 'thing' && !box) { screen = null; setTimeout(home, 0); break; }
+      screen = (
+        <Board key={`in:${sc.id || sc.name}`}
+          items={items} ready={engine.ready} whose={whose} role={role} removed={false}
+          scope={box ? { t: 'thing', thing: box } : { t: 'place', name: sc.name }} look={getPrefs().exp.homeInside}
+          onOpenThing={(item, fix) => go('thing', { item, fix: !!fix })}
+          onOpenInside={openInside} onOpenCard={(t) => go('thing', { item: t })} onBack={back} onHome={home}
+          onPutIn={(c) => setPutIn(c)} onLogHere={(name) => { setHere(name); openLog(); }}
+          onAsk={() => go('ask')} onHold={(item) => { if (roleOn(item) !== 'viewer') setSheet(item); }}
+        />
+      );
+      break;
+    }
     case 'menu':
     default:
       screen = (
@@ -399,6 +431,7 @@ export default function App() {
           onHold={(item) => { if (roleOn(item) !== 'viewer') setSheet(item); }}
           onSwitch={() => { if (grants.length || whose) setSwitching(true); }}
           onStartOwn={() => { setWhose(null); logEvent('start_own', {}); }}
+          onOpenInside={openInside} look={getPrefs().exp.homeInside}
         />
       );
   }
@@ -412,7 +445,7 @@ export default function App() {
       <MenuDrawer open={route.view === 'menu'} onClose={back} onPick={(id) => go(id)} />
       {camera && camera.for === 'log' && camera.mode === 'several' && (
         <SeveralCamera engine={engine} items={items} places={places} owner={whose || undefined} title={camera.title || 'Log item'}
-          modes={getPrefs().captureModes} onMode={switchMode} onClose={severalDone} />
+          modes={getPrefs().captureModes} onMode={switchMode} onClose={(r) => { setHere(''); severalDone(r); }} initialPlace={here} />
       )}
       {camera && !(camera.for === 'log' && camera.mode === 'several') && (
         <Camera title={camera.title || 'Log item'} max={camera.max || 4} onDone={cameraDone} onCancel={() => setCamera(null)}
@@ -440,6 +473,9 @@ export default function App() {
           onMoveToTop={async () => { setSheet(null); await moveToTop(sheet, items); logEvent('move_to_top', { itemId: sheet.id, via: 'sheet' }); say('Moved to the top'); }}
           onPrivate={roleOn(live(sheet)) === 'owner' ? async () => { const it = live(sheet); setSheet(null); const to = isPrivate(it) ? 'household' : 'private'; await setVisibility(it, to); logEvent('visibility', { itemId: it.id, to, via: 'tile_sheet' }); say(VISIBILITY_TOAST[to]); } : null}
           onRemove={roleOn(live(sheet)) === 'owner' ? () => { setSheet(null); setRemoving(sheet); } : null}
+          onPromote={roleOn(live(sheet)) === 'owner' && holderOf(live(sheet)) ? async () => { const it = live(sheet); setSheet(null); await setPromoted(it, !it.promoted); say(it.promoted ? 'Off Home · still in its box' : 'On Home too'); } : null}
+          promoted={!!live(sheet).promoted}
+          onOpenCard={contentsOf(live(sheet)).length ? () => { const it = live(sheet); setSheet(null); go('thing', { item: it }); } : null}
           onCancel={() => setSheet(null)} />
       )}
       {mismatch && (
@@ -460,6 +496,7 @@ export default function App() {
           onKeep={() => setRemoving(null)}
           onAction={() => { const it = removing; setRemoving(null); removeItem(it); }} />
       )}
+      {putIn && <PutInSheet container={items.find((x) => x.id === putIn.id) || putIn} items={items} onCancel={() => setPutIn(null)} onDone={(list) => doPutIn(putIn, list)} />}
       <Toast toast={toast} onDone={() => setToast(null)} />
     </>
   );

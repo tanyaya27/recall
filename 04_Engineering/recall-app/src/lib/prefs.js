@@ -39,6 +39,20 @@ export function openingMode(p = getPrefs()) {
   return p.captureModes.includes(want) ? want : p.captureModes[0];
 }
 
+// Experimentation (Ravi 09-26): options Ravi switches between on his own phone before deciding.
+// Each entry is deleted — with its losing option — the day it is decided; when the list is empty the
+// Settings section disappears on its own.
+export const EXPERIMENTS = [
+  { id: 'homeInside', label: 'Inside a box on Home', blurb: 'How Home shows where you are after tapping a box or a place',
+    options: [['a', 'Back + banner'], ['b', 'Trail']], def: 'a' },
+];
+function expOf(e) {
+  const out = {};
+  EXPERIMENTS.forEach((x) => { const v = e && e[x.id]; out[x.id] = x.options.some(([id]) => id === v) ? v : x.def; });
+  return out;
+}
+export const exp = (id) => getPrefs().exp[id];
+
 export function getPrefs() {
   try {
     const p = JSON.parse(localStorage.getItem(KEY)) || {};
@@ -48,8 +62,9 @@ export function getPrefs() {
       showTimes: p.showTimes !== false, // times on photos (thing card, 09-16), on by default
       showAddedBy: p.showAddedBy !== false, // who added each photo, on the stamp (Phase 2, split 4: on by default)
       whose: typeof p.whose === 'string' ? p.whose : null, // which ReCall this phone is looking at: null = mine, else the owner's uid
+      exp: expOf(p.exp), // Settings → Experimentation (Ravi 09-26)
       ...captureOf(p) };
-  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null, showTimes: true, showAddedBy: true, whose: null, ...captureOf({}) }; }
+  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null, showTimes: true, showAddedBy: true, whose: null, exp: expOf({}), ...captureOf({}) }; }
 }
 
 export function savePrefs(p) {
