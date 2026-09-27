@@ -275,7 +275,7 @@ export const ROLE_BLURB = { viewer: 'Sees your things and where they are. Cannot
 // `private` (09-24): a thing that looks private starts private — only the owner may start one so
 // (a helper's is refused by the rules' own logic: they could never see it again). `privateAuto`
 // keeps the reason ReCall gave ("looks like passwords"); '' when she chose it herself.
-export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '' }) {
+export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '', dest = null }) {
   location = placeText(location, null);
   const now = Date.now();
   const logId = `log_${now}`;
@@ -286,7 +286,7 @@ export async function addItem({ name = '', location = '', description = '', phot
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }], logId, photoCount: photo ? 1 + extras.length : 0, details: details || '', written: !photo,
   });
-  if (location) await recordMove({ id: ref.id, owner, private: keep }, location, placeSource || 'chosen');
+  if (location) await recordMove({ id: ref.id, owner, private: keep }, location, placeSource || 'chosen', dest);
   if (!photo) return ref.id;
   await addDoc(col, { kind: 'snap', owner, by: me(), itemId: ref.id, logId, photo, thumb, location, at: now });
   await writeExtras(ref.id, logId, extras, location, now, by, owner);
@@ -425,6 +425,16 @@ async function writeMove(item, location, how, dest) {
     owner, by: me(), private: !!item.private && owner === me(), roles: {}, sharedWith: [] });
   return ref.id;
 }
+// "What is it in?" → a box not logged yet (Ravi 09-27: "I need the option to create it … right at the top").
+// It is made as a written thing with no place (so it shows under "Not put away" until it has one), and the
+// caller links the item to it by id — never by a name that could match something else.
+export async function newContainer(name, owner = me()) {
+  const n = (name || '').trim();
+  if (!n) return null;
+  const id = await addItem({ name: n, owner, placeSource: '' });
+  logEvent('container_new', { itemId: id });
+  return { id, name: n };
+}
 // Put things into a container (Put in, 09-25 P-B; the fallback put-away). One save per batch.
 // Refuses a circle. Returns how many went in.
 export async function putInto(things, container, how = 'put') {
@@ -447,7 +457,7 @@ async function syncEdgePrivacy(itemId, priv) {
 export async function setPromoted(item, on) { await updateItem(item.id, { promoted: !!on }); logEvent('promote', { itemId: item.id, on: !!on }); }
 
 
-export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [], placeSource = 'chosen' }) {
+export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [], placeSource = 'chosen', dest = null }) {
   location = placeText(location, item);
   const now = Date.now();
   const logId = `log_${now}`;
@@ -458,7 +468,7 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
   });
   await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location, at: now });
   await writeExtras(item.id, logId, extras, location, now, by, item.owner || me());
-  await recordMove(item, location, placeSource);
+  await recordMove(item, location, placeSource, dest);
 }
 
 // 2026-09-14 (Ravi): one log can hold several photos — a close-up and a wide shot. A later

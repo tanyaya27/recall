@@ -320,7 +320,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
 
       {picking && (
         <PlacePicker current={item.location} item={item} items={items} places={places} onCancel={() => setPicking(false)}
-          onPick={async (v) => { setPicking(false); if (hasSecret(v)) { logEvent('privacy_secret_blocked', { field: 'location', via: 'card' }); onToast && onToast('Not saved · take the PIN or password out'); return; } const name = v.charAt(0).toUpperCase() + v.slice(1); await changeLocation(item, name); logEvent('correction', { itemId: item.id, field: 'location', via: 'picker' }); onToast && onToast(`Now at ${name}`); }} />
+          onPick={async (v, dest = null) => { setPicking(false); if (hasSecret(v)) { logEvent('privacy_secret_blocked', { field: 'location', via: 'card' }); onToast && onToast('Not saved · take the PIN or password out'); return; } const name = v.charAt(0).toUpperCase() + v.slice(1); await changeLocation(item, name, 'chosen', dest); logEvent('correction', { itemId: item.id, field: 'location', via: 'picker' }); onToast && onToast(`Now at ${name}`); }} />
       )}
       {tidying && (
         <TidySheet name={item.name ? own(item.name) : 'this thing'} dupCount={dupCount} earlierPlaces={earlierCount} earlierPhotos={earlierPhotos}

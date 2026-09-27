@@ -222,7 +222,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   const cover = shots[0] || {};
   const extras = shots.slice(1);
 
-  async function save(raw, how, next = false) {
+  async function save(raw, how, next = false, dest = null) {
     if (busy || savedId) return;
     const chosen = cap(raw.trim());
     nextRef.current = !!next;
@@ -230,13 +230,13 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     setPlace(chosen);
     const by = 'self';
     const placeSource = how === 'preset' ? presetSource : 'chosen';
-    const common = { photo: cover.photo, thumb: cover.thumb, location: chosen, by, restingOn, extras, placeSource, ...(owner ? { owner } : {}) }; // Phase 2: a helper logs INTO the owner's ReCall
+    const common = { photo: cover.photo, thumb: cover.thumb, location: chosen, by, restingOn, extras, placeSource, dest, ...(owner ? { owner } : {}) }; // Phase 2: a helper logs INTO the owner's ReCall
     if (dropPhoto) Object.assign(common, { photo: null, thumb: null, extras: [] }); // a readable secret: words only
     const privacy = startPrivate ? { private: true, privateAuto: v.why } : {};
     if (v && (v.private || v.secret)) logEvent('privacy_default', { secret: dropPhoto, madePrivate: startPrivate, sharedInstead: shareAnyway, helper: !mine, why: v.why, mode: 'one' });
 
     if (resnapOf) {
-      if (dropPhoto) await changeLocation(resnapOf, chosen, placeSource); else
+      if (dropPhoto) await changeLocation(resnapOf, chosen, placeSource, dest); else
       await resnapItem(resnapOf, common);
       if (tag && tag.name) noteAlias(resnapOf, tag.name);
       logEvent('capture', { initiatedBy: 'resnap', itemId: resnapOf.id, itemName: resnapOf.name, savedBy: how, shots: shots.length,
@@ -248,7 +248,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
     if (identityKnown) {
       let itemId;
       if (match) {
-        if (dropPhoto) await changeLocation(match, chosen, placeSource); else
+        if (dropPhoto) await changeLocation(match, chosen, placeSource, dest); else
         await resnapItem(match, common);
         if (tag && tag.name) noteAlias(match, tag.name); // what the AI called it this time
         if (tag && tag.details && !match.details) updateItem(match.id, { details: tag.details }); // the label, if it had none
@@ -374,6 +374,13 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
           <div className="ask-place">
             <div className="ask-q">Where is it?</div>
             <div className={'guesses' + (view === 'big' ? ' big' : '')}>
+              {/* Two parallel paths, always at the top (Ravi 09-27): in something (a box — logged or new), or no place yet. */}
+              {!preset && !typing && !resnapOf && (
+                <div className="path-row">
+                  <button type="button" className="path in" disabled={busy || typedSecret} onClick={() => { setInPick(true); logEvent('in_thing_open', { from: 'photo_card' }); }}><BoxIcon /><span>In something</span></button>
+                  <button type="button" className="path later" disabled={busy || typedSecret} onClick={() => save('', 'not_sure')}><PinIcon /><span>No place yet</span></button>
+                </div>
+              )}
               {view === 'big' && (
                 <div className="pgrid">
                   {options.map((g) => { const t = pic(g); return (
@@ -395,6 +402,12 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
                       <button type="button" className="btn-primary alt" disabled={busy || typedSecret} onClick={() => save(preset, 'preset')}><CheckIcon /><span>Done</span></button>
                     </div>
                   )}
+                  {!typing && !resnapOf && (
+                <div className="path-row">
+                  <button type="button" className="path in" disabled={busy || typedSecret} onClick={() => { setInPick(true); logEvent('in_thing_open', { from: 'photo_card' }); }}><BoxIcon /><span>In something</span></button>
+                  <button type="button" className="path later" disabled={busy || typedSecret} onClick={() => save('', 'not_sure')}><PinIcon /><span>No place yet</span></button>
+                </div>
+              )}
                   <div className="or-else">Somewhere else?</div>
                 </>
               )}
@@ -409,18 +422,13 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
                 </button>); })}
               {/* Boxes already in use, by photo (09-27): one tap puts it IN the box — no exact name to type. */}
               {view !== 'big' && boxes.map((b) => (
-                <button key={b.id} type="button" className="guess withpic inbox" disabled={busy || typedSecret} onClick={() => save(cap(b.name), 'chip')}>
+                <button key={b.id} type="button" className="guess withpic inbox" disabled={busy || typedSecret} onClick={() => save(cap(b.name), 'chip', false, { t: 'thing', id: b.id, name: b.name })}>
                   {b.thumb ? <img className="guess-pic" src={b.thumb} alt="" /> : <span className="guess-pic none"><BoxIcon /></span>}
                   <span>{inPhrase(b)}</span>
                 </button>))}
               {!typing && (
                 <button type="button" className="guess other" disabled={busy || typedSecret} onClick={() => { setDraft(''); setTyping(true); }}>Somewhere else</button>
               )}
-              {!typing && !resnapOf && (
-                <button type="button" className="guess other" disabled={busy || typedSecret} onClick={() => { setInPick(true); logEvent('in_thing_open', { from: 'photo_card' }); }}>In something…</button>
-              )}
-              {/* Log now, put away later (09-27, Ravi: "no facility to catalog without providing a place"). */}
-              {!resnapOf && <button type="button" className="guess quiet" disabled={busy || typedSecret} onClick={() => save('', 'not_sure')}>No place yet · put it away later</button>}
               {options.length > 0 && (
                 <div className="view-links">
                   {['names', 'small', 'big'].filter((v) => v !== view).map((v) => (
@@ -439,13 +447,13 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
                 />
                 <button type="button" className="btn-secondary" disabled={!draft.trim() || busy || typedSecret} onClick={() => save(draft.trim(), 'typed')}>Use this</button>
                 {thingMatches(draft, null).map((x) => (
-                  <button key={x.id} type="button" className="guess withpic inbox" disabled={busy || typedSecret} onClick={() => save(cap(x.name), 'chip')}>
+                  <button key={x.id} type="button" className="guess withpic inbox" disabled={busy || typedSecret} onClick={() => save(cap(x.name), 'chip', false, { t: 'thing', id: x.id, name: x.name })}>
                     {x.thumb ? <img className="guess-pic" src={x.thumb} alt="" /> : <span className="guess-pic none"><BoxIcon /></span>}
                     <span>{inPhrase(x)}</span>
                   </button>))}
               </div>
             )}
-            {inPick && <InThingSheet onCancel={() => setInPick(false)} onPick={(x) => { setInPick(false); save(cap(x.name), 'chip'); }} />}
+            {inPick && <InThingSheet owner={owner} onCancel={() => setInPick(false)} onPick={(x) => { setInPick(false); save(cap(x.name), 'chip', false, { t: 'thing', id: x.id, name: x.name }); }} />}
           </div>
         )}
 

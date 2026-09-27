@@ -771,3 +771,16 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .notput svg { width: 1.15em; height: 1.15em; }
 .putin-btn { display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 0.75rem; }
 .putin-btn svg { width: 1.2em; height: 1.2em; }
+/* Where is it? — two parallel paths at the top (Ravi 09-27): in something (a box, logged or new) · no place yet */
+.path-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.25rem 0 0.5rem; }
+.path-row .path { white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 3.25rem; padding: 0.5rem 0.625rem; border-radius: 0.875rem;
+  border: 2px solid var(--accent); background: var(--card); color: var(--accent); font: inherit; font-weight: 700; font-size: min(1.0625rem, 4.5vw); text-align: center; }
+.path-row .path svg { width: 1.2em; height: 1.2em; flex: none; }
+.path-row .path.later { border-color: var(--line); color: var(--ink-soft); }
+.path-row .path.later.on { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
+.path-row:only-child, .place-sheet .path-row { grid-template-columns: 1fr; }
+.it-new { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 3.25rem; margin: 0 0 0.75rem; padding: 0.5rem 0.875rem; border-radius: 0.875rem; border: 2px dashed var(--accent);
+  background: var(--accent-soft); color: var(--accent); font: inherit; font-weight: 600; font-size: min(1.0625rem, 4.5vw); text-align: left; }
+.it-new b { font-weight: 800; }
+.it-new svg { width: 1.3em; height: 1.3em; flex: none; }
+.it-new:disabled { opacity: 0.55; border-style: solid; }

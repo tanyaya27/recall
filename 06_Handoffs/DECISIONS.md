@@ -1240,3 +1240,9 @@ stumble test for every voice feature). Q9 added.
 - **"No place yet · put it away later" is always one tap** on the photo card (even when a place is pre-chosen) and on
   Write it down. Home shows **"Not put away · N"**; tapping it: where are they going (boxes by photo, places, typed) →
   tap each thing → one save ("Put 2 at Hall table") with Undo.
+
+**Same day, second pass (Ravi, from the phone: "very poor"):** "In something" was at the bottom and could only
+pick a thing already logged. Now **"In something" and "No place yet" are two parallel paths at the top** of Where is
+it? (photo card, Write it down; "In something" first in Edit → Where it is), on screen without scrolling. And
+**"What is it in?" can make the box right there**: the search's first row is "New: <what you typed>" — it makes the
+box (a thing with no place yet, so it waits under Not put away) and puts this thing in it, linked by id. (20260927b)

@@ -133,7 +133,9 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   photo, with one tap to share it instead. Owner only (a helper can't make things private; they get told instead). Build in step 3.
 - [ ] **CONTAINERS LIVE 09-26 (20260926a, pushed 22e3cb2; edge rules deployed first).** Ravi: phone check, then pick
   A or B.
-- [ ] **FIXES 09-27 (20260927a, in the folder, NOT pushed yet):** a box by its photo wherever a place is asked + In something…;
+- [ ] **FIX 2 09-27 (20260927b, in the folder, NOT pushed yet):** "In something" + "No place yet" at the top; "New: <typed>" makes
+  the box in "What is it in?". `mockups/S8_in_something_top.jpg`. Audits: graph 58 · main 98 · roles 42 · modes 25 · label 15 · private 37.
+- [ ] **FIXES 09-27 (20260927a) LIVE — pushed 3dcc073; Ravi: phone check + A or B.** a box by its photo wherever a place is asked + In something…;
   "Put things in it" on box-like cards; "No place yet" always one tap; Home "Not put away · N" → where → tap each.
   `mockups/S7_inbox_fixes.jpg`. Audits: graph 55 · main 98 · roles 42 · modes 25 · label 15 · private 37 · logic 14. No rule change. Phone check: Settings → Experimentation → try **Back + banner** and **Trail**;
   pick a winner (then I delete the loser and, when empty, the section). Audits: graph 34/34 · edges on the real engine

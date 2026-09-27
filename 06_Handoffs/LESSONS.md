@@ -329,3 +329,7 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-26 · Put new-record writes behind a try/catch when the old field still carries the truth.** An edge
   that fails to write (old rules, a role edge case) must never block the move itself; the place text copy is saved
   first and the failure is logged (`edge_failed`).
+- **2026-09-27 · A new path that lives at the bottom of a list does not exist.** "In something…" shipped as the last
+  chip; on the phone it was below the fold and Ravi called it very poor. Parallel choices go at the top, and the
+  audit now asserts the path row is on screen under the question. Also: a picker that can only pick what exists is
+  half a feature — offer "New: <typed>" as the first row.

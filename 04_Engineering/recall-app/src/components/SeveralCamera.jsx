@@ -106,11 +106,11 @@ export default function SeveralCamera({ engine, items = [], places = [], owner, 
   }
 
   // She tapped a place in the strip (or chose one in the picker): this thing goes there, and so do the next ones.
-  async function choosePlace(key, name) {
+  async function choosePlace(key, name, dest = null) {
     const e = entriesRef.current.find((x) => x.key === key);
     setPicking(null);
     if (!e || !e.id || !name) return;
-    await changeLocation(live(e.id), name, 'chosen');
+    await changeLocation(live(e.id), name, 'chosen', dest);
     patch(key, { place: name, source: 'chosen', choices: null });
     setSession({ name });
     logEvent('capture_place', { mode: 'several', itemId: e.id, place: name, fromChips: !!e.choices });
@@ -199,7 +199,7 @@ export default function SeveralCamera({ engine, items = [], places = [], owner, 
       {picking && (
         <div className="camera-sheet">
           <PlacePicker current={picking === 'session' ? (session && session.name) : ''} items={items} places={places}
-            onPick={(n) => { if (picking === 'session') { setSession({ name: n }); setPicking(null); logEvent('capture_place', { mode: 'several', session: n }); } else choosePlace(picking, n); }}
+            onPick={(n, d) => { if (picking === 'session') { setSession({ name: n }); setPicking(null); logEvent('capture_place', { mode: 'several', session: n }); } else choosePlace(picking, n, d); }}
             onCancel={() => setPicking(null)} />
         </div>
       )}
