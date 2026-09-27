@@ -1,164 +1,105 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { hasSecret } from '../lib/sensitive.js';
-import { updateItem, renameItem, changeLocation, loadSnaps, removeSnap, softDeleteItem, moveToTop, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames } from '../lib/db.js';
+import { renameItem, loadSnaps, removeSnap, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { photoStamp, cap } from '../lib/format.js';
-import { placeWords, contentsOf, holderOf } from '../lib/graph.js';
-import { getPrefs, savePrefs } from '../lib/prefs.js';
-import EditableText from './EditableText.jsx';
+import { contentsOf, chainOf, outerPlace, inPhrase, isContainer } from '../lib/graph.js';
+import { getPrefs } from '../lib/prefs.js';
 import { own } from './PhotoCard.jsx';
 import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
-import PlacePicker from './PlacePicker.jsx';
 import TidySheet from './TidySheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, ChevronIcon, PeopleIcon, NoteIcon, TagIcon, BoxIcon } from './Icons.jsx';
+import PrivNote from './PrivNote.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, PeopleIcon, NoteIcon, TagIcon, BoxIcon, PlusIcon } from './Icons.jsx';
 
-// The thing card — the answer. Redesigned 2026-09-16 with Ravi over seven rendered passes
-// (design/DESIGN_2026-09-16_things-places-sightings.md §2, §13):
+// ONE PAGE PER THING (Ravi 09-27, BOARD_2026-09-27_every-path.md §2; mockups/S11_fix_pages.jpg). Every tile — Home,
+// In it, Find, Not put away — opens this page. It replaces the 09-16 card's Edit mode and bottom bar, and the 09-25
+// "inside a box" view (a box's page shows what is in it; each opens its own page; Back returns).
 //
-//   Title   — chevron Back · the thing's name (never wraps) · lock icon if private;
-//             line 2, tight: pin · CURRENT place · context. The current place lives up here
-//             so an older photo can never sit under it in big type.
-//   Roll    — every SIGHTING of the thing (a photo at a place at a time), newest first,
-//             filtered to the current STAY (the run of newest sightings at the current place)
-//             unless *Show earlier places* is on. On each photo: the time, bottom-left, at a
-//             fixed 13 px; the trash, top-right, fixed 36 px — nothing on a photo scales with
-//             the text setting. Under a photo from another place: that place, amber, dashed pin.
-//   Switches — Keep this private · Show times on photos · Show earlier places (n): a list,
-//             label left, switch right. The third row is absent when there is nothing earlier.
-//   Bar     — the three operations: Add photo · Edit · Remove.
+//   Head    — chevron Back · the name (never wraps) · lock if private.
+//   Photos  — every sighting at the current place, newest first (all of them with Show earlier places on); time
+//             bottom-left (Settings → Show times on photos), trash top-right. What the AI saw goes UNDER the photo
+//             ("In the photo: a cream knitted blanket"), never where the place goes (#22).
+//   Where it is — the chain as photos (the tin, the closet shelf) and the words; Move it. Or, amber, No place yet
+//             with Put it somewhere. Both open the camera with this thing already there, level 1 chosen.
+//   In it   — only on a container (Ravi 09-27: "putting things in a pencil … is nonsensical"): what is in it, then
+//             Put things in · Log something in.
+//   The list — It holds things · Add a photo · Rename · Keep this private · Show earlier places · Remove old photos
+//             · Remove. Nothing else: no Edit, no Move to the top, no second Done (#25, #26, #28).
 //
-// "Earlier photos" as a mode is gone; a stay is derived from the sightings, never stored.
-//
-// Multi-user Phase 2 (2026-09-21 — MU2·4, MU2·5): the card follows the person's ROLE on the
-// thing. Owner: everything. Can help: no *Keep this private*, no *Remove*; *Shared by Margaret*
-// in the list; bar is Add photo · Edit; trash and Remove old photos stay. Can see: photo, place,
-// the two switches, *Shared by Margaret*; no trash, no bar, no hold sheet — a card with nothing
-// to do. With *Show who added each photo* on, the stamp ends with the adder's first name
-// whenever someone other than the owner added it.
-// A thing whose name says it holds things shows "Put things in it" on its card; any other thing has it in
-// Edit and in the hold sheet, so the card stays short (Ravi: no bulges in the flow).
-const HOLDS = /\b(box|boxes|tin|bag|bin|case|drawer|basket|folder|envelope|jar|chest|crate|trunk|pouch|suitcase|tote|cabinet|safe|carton|container|organi[sz]er|caddy|kit|tray|file|binder|backpack|purse|wallet)\b/i;
-const holdsThings = (name) => HOLDS.test(name || '');
-
-export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, openFix = false, showAddedBy = true, peopleCount = 0, onOpen = () => {}, onPutIn = null }) {
+// Roles (MU2·4/5) as before: Can help sees no Keep private and no Remove; Can see gets the photos, where it is and
+// what is in it, and nothing to do.
+export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, showAddedBy = true, peopleCount = 0,
+  onOpen = () => {}, onPutIn = () => {}, onMove = () => {}, onLogInto = () => {} }) {
   const role = roleOn(item) || 'viewer';          // owner | editor | viewer
   const isOwner = role === 'owner', canEdit = role !== 'viewer';
   const [, bump] = useState(0);
   useEffect(() => { if (item) wantNames([item.owner, item.by]); return watchNames(() => bump((n) => n + 1)); }, [item?.id, item?.owner]); // eslint-disable-line
-  const [picking, setPicking] = useState(false);   // Edit → Where it is → the place list
   const [tidying, setTidying] = useState(false);
   const [sheet, setSheet] = useState(false);       // press-and-hold on the photo
-  const [snaps, setSnaps] = useState(null);      // every live snap, newest first; null = not loaded
-  const [index, setIndex] = useState(0);         // centred page in the strip
-  const [fixing, setFixing] = useState(openFix);
-  const [showTimes, setShowTimes] = useState(() => getPrefs().showTimes !== false);      // per phone
-  const [showEarlier, setShowEarlier] = useState(false);                                  // per visit
-  const [confirming, setConfirming] = useState(null); // 'item' | { snap }
+  const [snaps, setSnaps] = useState(null);        // every live snap, newest first; null = not loaded
+  const [index, setIndex] = useState(0);           // centred page in the strip
+  const [showEarlier, setShowEarlier] = useState(false); // per visit
+  const [confirming, setConfirming] = useState(null); // 'item' | { snap } | 'holds'
+  const [renaming, setRenaming] = useState(null);  // the draft name
   const stripRef = useRef(null);
-  // The action row never wraps (Ravi): when a label cannot fit on one line at the current
-  // text size, the whole row becomes icons only — the words stay in the accessible name.
-  const actRef = useRef(null);
-  const probeRef = useRef(null);
-  const [iconsOnly, setIconsOnly] = useState(false);
-  useLayoutEffect(() => {
-    const el = actRef.current, pr = probeRef.current; if (!el || !pr) return undefined;
-    const measure = () => {
-      // Measure the words in an offscreen probe (same font), never the visible buttons —
-      // toggling their class to measure them re-fires the observer (Footer.jsx's lesson).
-      const labels = Array.from(el.querySelectorAll('.act span')).map((sp) => sp.textContent);
-      while (pr.children.length > labels.length) pr.removeChild(pr.lastChild);
-      labels.forEach((t, i) => { let c = pr.children[i]; if (!c) { c = document.createElement('span'); pr.appendChild(c); } if (c.textContent !== t) c.textContent = t; });
-      const acts = Array.from(el.querySelectorAll('.act'));
-      if (!acts.length) return;
-      const room = acts[0].clientWidth - 8; // horizontal padding of .act (0.25rem each side)
-      if (room < 20) return;
-      const fits = Array.from(pr.children).every((c) => c.getBoundingClientRect().width <= room);
-      setIconsOnly(!fits);
-    };
-    measure();
-    const ro = new ResizeObserver(measure); ro.observe(el); ro.observe(pr); ro.observe(document.documentElement);
-    return () => ro.disconnect();
-  }, [item?.id, fixing, item?.visibility]);
+  const showTimes = getPrefs().showTimes !== false; // Settings → Taking photos (09-27: it's for the whole app, #27)
   const hold = useHold(() => { logEvent('photo_hold', { itemId: item && item.id }); setSheet(true); });
 
-  useEffect(() => { setSnaps(null); setIndex(0); setFixing(openFix && canEdit); setShowEarlier(false); }, [item?.id]); // eslint-disable-line
-
-  // The current log's extra photos are the only reason to read snaps up front.
-  const wantsSnaps = !!item; // always: the roll needs the log's extras and the Earlier button needs the count (09-16)
-  // Re-read when the photo count changes (a photo was just added — audit D9: the new photo
-  // never appeared until the card was reopened) or after snaps were reset to null.
+  useEffect(() => { setSnaps(null); setIndex(0); setShowEarlier(false); setRenaming(null); }, [item?.id]); // eslint-disable-line
   useEffect(() => {
-    if (!item || snaps !== null || !wantsSnaps) return;
+    if (!item || snaps !== null) return;
     let alive = true;
-    loadSnaps(item.id).then((all) => { if (alive) { setSnaps(all); wantNames(all.map((s) => s.by)); } }); // the adders' names, for the stamps
+    loadSnaps(item.id).then((all) => { if (alive) { setSnaps(all); wantNames(all.map((s) => s.by)); } });
     return () => { alive = false; };
-  }, [item?.id, wantsSnaps, snaps]); // eslint-disable-line
+  }, [item?.id, snaps]); // eslint-disable-line
   const photoCount = item ? (item.photoCount || 1) : 0;
   useEffect(() => { setSnaps(null); }, [photoCount, item?.logId]); // a move writes a sighting and a new logId (09-16)
 
   if (!item) return null;
 
   const cover = { id: 'cover', photo: item.photo, thumb: item.thumb, location: item.location, at: item.lastSeenAt, cover: true, by: item.by || null };
-  // The adder's name goes on the stamp when the ReCall has more than one person in it and the
-  // adder is not the owner (split 4: on by default; the owner's own photos stay unlabelled).
   const shared = !isOwner || peopleCount > 0;
   const adder = (p) => (showAddedBy && shared && p.by && p.by !== item.owner ? firstName(p.by) : '');
   const live = (snaps || []);
   const here = (loc) => (loc || '').toLowerCase() === (item.location || '').toLowerCase();
-  // Every sighting, newest first. The cover is a sighting too; since 09-14 it also exists as a
-  // snap doc, so drop that duplicate. Older items (no snaps) have the cover only.
-  const coverSnap = live.find((s) => s.photo === item.photo) || null; // the cover's own snap doc carries who took it
+  const coverSnap = live.find((s) => s.photo === item.photo) || null;
   const sightings = [...live.filter((s) => s.photo !== item.photo), { ...cover, by: coverSnap ? coverSnap.by || null : cover.by, at: Math.max(cover.at || 0, ...live.filter((s) => s.photo === item.photo).map((s) => s.at || 0)) }]
     .sort((a, b) => (b.at || 0) - (a.at || 0));
-  // The current stay: the run of newest sightings at the current place.
   let stayLen = 0; while (stayLen < sightings.length && here(sightings[stayLen].location)) stayLen += 1;
-  if (stayLen === 0) stayLen = 1; // a thing whose newest photo predates a place change: show at least the newest
+  if (stayLen === 0) stayLen = 1;
   const stay = sightings.slice(0, stayLen);
   const earlierPhotos = sightings.length - stayLen;
-  // The count on the switch is the number of earlier PLACES, not photos (Ravi 09-16).
   const earlierCount = new Set(sightings.slice(stayLen).map((s) => (s.location || '').toLowerCase())).size;
   const pages = showEarlier ? sightings : stay;
   const page = pages[Math.min(index, pages.length - 1)] || cover;
   const stayFull = stay.length >= LOG_MAX;
   const dupCount = (() => { const seen = new Set(); let n = 0; sightings.forEach((s) => { const k = (s.location || '').toLowerCase(); if (seen.has(k)) n += 1; else seen.add(k); }); return n; })();
 
-  // A page is 86% of the strip plus the gap — measure it from the first two pages rather than
-  // assuming the strip's width (the dots pointed at the wrong page before 09-16).
   function pageStep(el) { const a = el.children[0], b = el.children[1]; return a && b ? b.offsetLeft - a.offsetLeft : el.clientWidth; }
   function onScroll() {
     const el = stripRef.current; if (!el) return;
     const i = Math.max(0, Math.min(pages.length - 1, Math.round(el.scrollLeft / pageStep(el))));
     if (i !== index) setIndex(i);
   }
-  function slideTo(i) {
-    setIndex(i);
-    const el = stripRef.current; if (el) el.scrollTo({ left: i * pageStep(el), behavior: 'smooth' });
-  }
+  function slideTo(i) { setIndex(i); const el = stripRef.current; if (el) el.scrollTo({ left: i * pageStep(el), behavior: 'smooth' }); }
 
-  // Know what else there is before offering to remove: the sheet differs for the last photo.
   async function askRemove(p) {
     let all = snaps;
     if (all === null) { all = await loadSnaps(item.id); setSnaps(all); }
     setConfirming({ snap: p, last: all.length <= 1 });
   }
-
   async function removePhoto(snap) {
     setConfirming(null);
     const all = snaps || [];
     const target = snap.cover ? (all.find((s) => s.photo === item.photo) || null) : snap;
-    if (!target) { // cover with no snap doc (pre-2026-09-05 data): nothing else to fall back to
-      setConfirming('item'); return;
-    }
+    if (!target) { setConfirming('item'); return; }
     const { undo } = await removeSnap(item, target, all);
     setSnaps(all.filter((s) => s.id !== target.id));
     setIndex(0);
     logEvent('photo_removed', { itemId: item.id, snapId: target.id, wasCover: !!snap.cover });
     onToast && onToast('Photo removed', async () => { await undo(); setSnaps(null); logEvent('photo_restored', { itemId: item.id, snapId: target.id }); });
   }
-
-  // Tidy up: soft-delete a set of sightings with one Undo. 'newest' keeps the newest photo at
-  // each place; 'earlier' removes every sighting outside the current stay.
   async function tidy(kind) {
     setTidying(false);
     let all = snaps; if (all === null) { all = await loadSnaps(item.id); setSnaps(all); }
@@ -175,33 +116,44 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
     logEvent('tidy', { itemId: item.id, kind, removed: targets.length });
     onToast && onToast(`Deleted · ${targets.length} old photo${targets.length === 1 ? '' : 's'}`, async () => { for (const u of undos.reverse()) await u(); setSnaps(null); logEvent('tidy_undone', { itemId: item.id, kind }); });
   }
+  async function togglePrivate(via) {
+    const to = isPrivate(item) ? 'household' : 'private';
+    await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via });
+    onToast && onToast(VISIBILITY_TOAST[to]);
+  }
+  function saveName() {
+    const v = (renaming || '').trim();
+    if (!v || hasSecret(v)) return;
+    setRenaming(null);
+    if (v !== item.name) { renameItem(item, v); logEvent('correction', { itemId: item.id, field: 'name', via: 'page' }); }
+  }
 
   const label = item.name ? `your ${own(item.name)}` : 'this';
-  // Places inside places, the natural way (09-24): the thing it's in, and what's in it — computed.
-  const nest = placeWords(item);
+  const short = own(item.name) || 'it';
+  // Where it is: the boxes it is in (outward), then the place at the end.
+  const chain = chainOf(item);
+  const outer = outerPlace(item);
+  const placePic = (n) => { const p = placeNamed(n, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; };
+  const hasPlace = chain.length > 0 || !!item.location;
+  const whereB = chain.length ? inPhrase(chain[0]) : item.location;
+  const whereS = chain.length ? [chain.slice(1, 2).map((c) => inPhrase(c).replace(/^In /, 'in ')).join(''), outer].filter(Boolean).join(' · ') || 'Where the box is: not said yet'
+    : `seen ${photoStamp(item.lastSeenAt).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}`;
+  const container = isContainer(item);
   const inside = contentsOf(item);
-  const holder = nest ? nest.chain[0] : null;
-  const holderWords = holder ? placeWords(holder) : null;
-  const holderAt = holder ? (holderWords ? `${holderWords.lead} · ${holderWords.where}` : holder.location || 'No place yet') : '';
 
   return (
-    <div className={'screen' + (canEdit ? ' with-footer' : '')}>
+    <div className="screen thing-page">
       <div className="thing-head">
         <div className="row1">
           <button type="button" className="chev" aria-label="Back" onClick={onBack}><ChevronLeftIcon /></button>
           <div className="name">{cap(item.name) || 'This thing'}</div>
           {isPrivate(item) && <span className="lk" aria-label="Private"><LockIcon /></span>}
         </div>
-        <div className="row2">
-          <PinIcon />
-          {nest ? <b>{nest.lead}</b> : item.location ? <b>{item.location}</b> : <b className="soft">No place assigned</b>}
-          {item.restingOn && <span> · {item.restingOn}</span>}
-        </div>
       </div>
+
       <div className="card thing">
-        {/* Written down, no photo (MVP #10): say so plainly; Add photo in the bar makes the first photo the cover. */}
         {!item.photo && (
-          <div className="written-panel"><NoteIcon /><div><b>Written down, no photo yet</b><small>{photoStamp(item.lastSeenAt)}{canEdit ? ' · Add photo below if you like' : ''}</small></div></div>
+          <div className="written-panel"><NoteIcon /><div><b>No photo of it yet</b><small>{photoStamp(item.lastSeenAt)}</small></div></div>
         )}
         {item.photo && <div className="photo-wrap">
           <div className={'strip' + (pages.length > 1 ? '' : ' one')} ref={stripRef} onScroll={onScroll}>
@@ -214,40 +166,12 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
                     {showTimes && <span className="stamp">{photoStamp(p.at)}{adder(p) ? ` · ${adder(p)}` : ''}</span>}
                     {canEdit && <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(p)}><TrashIcon /></button>}
                   </div>
-                  {was ? <div className="was"><PinWasIcon /><span>{p.location}</span></div> : <div className="was empty" aria-hidden="true" />}
+                  {was ? <div className="was"><PinWasIcon /><span>{p.location}</span></div> : null}
                 </div>
               );
             })}
           </div>
         </div>}
-        {/* What the label says (MVP #9): read off the photo by the AI, searchable in Find item. */}
-        {/* The box it's in, with its own photo — "which tin?" answered by looking (09-24, B). */}
-        {nest && (
-          <button type="button" className="nest-row" onClick={() => onOpen(holder)}>
-            {holder.thumb ? <img src={holder.thumb} alt="" /> : <span className="nest-none"><NoteIcon /></span>}
-            <span className="nest-txt"><b>{cap(holder.name)}</b><small>{holderAt} · seen {photoStamp(holder.lastSeenAt).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}</small></span>
-            <ChevronIcon />
-          </button>
-        )}
-        {/* What's in it: the things whose place names this one. */}
-        {inside.length > 0 && (
-          <div className="inside">
-            <div className="inside-h">In it <small>· {inside.length} thing{inside.length === 1 ? '' : 's'}</small></div>
-            <div className="minis">
-              {inside.slice(0, 8).map((x) => (
-                <button type="button" key={x.id} onClick={() => onOpen(x)}>
-                  {x.thumb ? <img src={x.thumb} alt="" /> : <span className="mini-none"><NoteIcon /></span>}
-                  <span>{cap(x.name) || 'No name yet'}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {/* Any thing can hold things (09-27): an empty box's card is where you start putting things in. */}
-        {canEdit && onPutIn && (inside.length > 0 || holdsThings(item.name)) && (
-          <button type="button" className="btn-secondary putin-btn" onClick={() => { logEvent('put_in_open', { from: 'card', itemId: item.id }); onPutIn(item); }}><BoxIcon /> Put things in it</button>
-        )}
-        {item.details && <div className="label-line"><TagIcon /><span>{item.details}</span></div>}
         {item.photo && pages.length > 1 && (
           <div className="dotsrow">
             <div className="dots" aria-label={`Photo ${index + 1} of ${pages.length}`}>
@@ -256,131 +180,141 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             <span className="cnt">{Math.min(index, pages.length - 1) + 1} of {pages.length}</span>
           </div>
         )}
-
-        {/* The three states of the card, each a switch (Ravi 09-16). */}
-        <div className="switches">
-          {!isOwner && (
-            <div className="sw-row">
-              <span className="lab"><PeopleIcon /> Shared by {firstName(item.owner) || 'someone'}</span>
-            </div>
-          )}
-          {isOwner && <div className="sw-row">
-            <span className="lab"><LockIcon /> Keep this private</span>
-            <button type="button" role="switch" aria-checked={isPrivate(item)} className={'sw' + (isPrivate(item) ? ' on' : '')} aria-label="Keep this private"
-              onClick={async () => { const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'switch' }); onToast && onToast(VISIBILITY_TOAST[to]); }} />
-          </div>}
-          {item.photo && <div className="sw-row">
-            <span className="lab"><ClockIcon /> Show times on photos</span>
-            <button type="button" role="switch" aria-checked={showTimes} className={'sw' + (showTimes ? ' on' : '')} aria-label="Show times on photos"
-              onClick={() => { const v = !showTimes; setShowTimes(v); savePrefs({ ...getPrefs(), showTimes: v }); logEvent('show_times', { on: v }); }} />
-          </div>}
-          {earlierCount > 0 && (
-            <div className="sw-row">
-              <span className="lab amber"><PinWasIcon /> Show earlier places <small>{earlierCount}</small></span>
-              <button type="button" role="switch" aria-checked={showEarlier} className={'sw' + (showEarlier ? ' on' : '')} aria-label="Show earlier places"
-                onClick={() => { const v = !showEarlier; setShowEarlier(v); setIndex(0); const el = stripRef.current; if (el) el.scrollTo({ left: 0 }); logEvent('show_earlier', { itemId: item.id, on: v, places: earlierCount, photos: earlierPhotos }); }} />
-            </div>
-          )}
-        </div>
+        {item.restingOn && <div className="seen-line">In the photo: {item.restingOn}</div>}
+        {item.details && <div className="label-line"><TagIcon /><span>{item.details}</span></div>}
       </div>
 
-      {/* The actions live in a fixed bar at the bottom, like Home's Log item · Find item
-          (Ravi 09-16: the row sat at a different height on every card). Same padding,
-          same gradient, same button height as the Home footer. */}
-      {canEdit && (
-        <div className="footer actfoot">
-          <div className={'actbar ' + (isOwner ? 'three' : 'two') + (iconsOnly ? ' icons' : '')} ref={actRef}>
-            <button type="button" className="act primary" aria-label="Add photo" disabled={stayFull} onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /><span>Add photo</span></button>
-            <button type="button" className={'act' + (fixing ? ' on' : '')} aria-label={fixing ? 'Done' : 'Edit'} aria-pressed={fixing} onClick={() => setFixing((f) => !f)}><PencilIcon /><span>{fixing ? 'Done' : 'Edit'}</span></button>
-            {isOwner && <button type="button" className="act amber" aria-label="Remove item" onClick={() => setConfirming('item')}><TrashIcon /><span>Remove</span></button>}
-            <div className="act-probe" ref={probeRef} aria-hidden="true" />
+      {/* Where it is (#16, #22, #24): the chain as photos and the words; one way to change it, the camera. */}
+      <section className="tp-blk" aria-labelledby="tp-where">
+        <h2 id="tp-where">Where it is</h2>
+        <div className={'tp-wh' + (hasPlace ? '' : ' none')}>
+          {hasPlace ? (
+            <div className="ch" aria-hidden="true">
+              {chain.slice(0, 3).map((c, i) => (
+                <span key={c.id} className="st">{i > 0 && <span className="in">in</span>}
+                  {c.thumb ? <img src={c.thumb} alt="" /> : <span className="no"><BoxIcon /></span>}</span>))}
+              {outer && <span className="st">{chain.length > 0 && <span className="in">at</span>}{placePic(outer) ? <img src={placePic(outer)} alt="" /> : <span className="no"><PinIcon /></span>}</span>}
+            </div>
+          ) : <span className="no-pin"><PinIcon /></span>}
+          <div className="tx">
+            <b>{hasPlace ? whereB : 'No place yet'}</b>
+            <small>{hasPlace ? whereS : 'Put it away so you can find it'}</small>
           </div>
         </div>
+        {canEdit && (hasPlace
+          ? <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page' }); onMove(item); }}><PinIcon /><span>Move it</span></button>
+          : <button type="button" className="btn-secondary amber tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page', first: true }); onMove(item); }}><PinIcon /><span>Put it somewhere</span></button>)}
+      </section>
+
+      {/* In it: only on a container (#12, Ravi 09-27). Each opens its own page; Back returns here. */}
+      {container && (
+        <section className="tp-blk" aria-labelledby="tp-in">
+          <h2 id="tp-in">In the {short} · {inside.length}</h2>
+          {inside.length === 0 ? <p className="tp-empty">Nothing in it yet.</p> : (
+            <div className="tp-grid">
+              {inside.slice(0, 12).map((x) => (
+                <button type="button" key={x.id} onClick={() => onOpen(x)}>
+                  {x.thumb ? <img src={x.thumb} alt="" /> : <span className="no"><NoteIcon /></span>}
+                  <span>{cap(x.name) || 'No name yet'}</span>
+                </button>))}
+            </div>)}
+          {inside.length > 12 && <p className="tp-empty">and {inside.length - 12} more · Find item finds them</p>}
+          {canEdit && <div className="tp-two">
+            <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('put_in_open', { from: 'page', itemId: item.id }); onPutIn(item); }}><PlusIcon /><span>Put things in</span></button>
+            <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('log_into_open', { itemId: item.id }); onLogInto(item); }}><CameraIcon /><span>Log something in</span></button>
+          </div>}
+        </section>
       )}
-      <div className="card thing edit-card" hidden={!fixing}>
-        {fixing && (
-          <div className="fix">
-            <EditableText label="What it is" value={item.name} emptyLabel="Name it"
-              onSave={(v) => { if (hasSecret(v)) { logEvent('privacy_secret_blocked', { field: 'name', via: 'card' }); onToast && onToast('Not saved · take the PIN or password out'); return; } renameItem(item, v); logEvent('correction', { itemId: item.id, field: 'name' }); }} />
-            <div className="field-label">Where it is</div>
-            <button type="button" className={'field-value' + (item.location ? '' : ' empty')} aria-label={`Where it is: ${item.location || 'Add the place'}. Change`} onClick={() => setPicking(true)}>
-              <span className="field-text">{item.location || 'Add the place'}</span><PencilIcon />
-            </button>
-            {(earlierPhotos > 0 || sightings.length > stay.length || dupCount > 0) && (
-              <button type="button" className="btn-secondary amber tidy-btn" onClick={() => setTidying(true)}><TrashIcon /> Remove old photos…</button>
-            )}
-            <div className="fix-row">
-              <button className="btn-quiet" onClick={async () => { await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id }); setFixing(false); }}>Move to the top</button>
-              {onPutIn && !(inside.length > 0 || holdsThings(item.name)) && <button className="btn-quiet" onClick={() => { setFixing(false); logEvent('put_in_open', { from: 'edit', itemId: item.id }); onPutIn(item); }}>Put things in it</button>}
-              <button className="btn-quiet" onClick={() => setFixing(false)}>Done</button>
-            </div>
+
+      {/* One short list (#25–#28). */}
+      <section className="tp-blk tp-rows" aria-label="More">
+        {!isOwner && <div className="sw-row"><span className="lab"><PeopleIcon /> Shared by {firstName(item.owner) || 'someone'}</span></div>}
+        {canEdit && (
+          <div className="sw-row">
+            <span className="lab"><BoxIcon /> It holds things</span>
+            <button type="button" role="switch" aria-checked={container} className={'sw' + (container ? ' on' : '')} aria-label="It holds things"
+              onClick={async () => {
+                if (container && inside.length) { setConfirming('holds'); return; }
+                const ok = await setHolds(item, !container);
+                if (ok && !container) onToast && onToast(`The ${short} holds things now`);
+              }} />
           </div>
         )}
-      </div>
+        {canEdit && (
+          <button type="button" className="tp-row" disabled={stayFull} onClick={() => { setSnaps(null); onAdd(); }}>
+            <CameraIcon /><span>{stayFull ? `Add a photo · ${LOG_MAX} here already` : 'Add a photo'}</span></button>
+        )}
+        {canEdit && <button type="button" className="tp-row" onClick={() => setRenaming(item.name || '')}><PencilIcon /><span>Rename</span></button>}
+        {isOwner && (
+          <div className="sw-row">
+            <span className="lab"><LockIcon /> Keep this private</span>
+            <button type="button" role="switch" aria-checked={isPrivate(item)} className={'sw' + (isPrivate(item) ? ' on' : '')} aria-label="Keep this private" onClick={() => togglePrivate('switch')} />
+          </div>
+        )}
+        {earlierCount > 0 && (
+          <div className="sw-row">
+            <span className="lab amber"><PinWasIcon /> Show earlier places <small>{earlierCount}</small></span>
+            <button type="button" role="switch" aria-checked={showEarlier} className={'sw' + (showEarlier ? ' on' : '')} aria-label="Show earlier places"
+              onClick={() => { const v = !showEarlier; setShowEarlier(v); setIndex(0); const el = stripRef.current; if (el) el.scrollTo({ left: 0 }); logEvent('show_earlier', { itemId: item.id, on: v, places: earlierCount, photos: earlierPhotos }); }} />
+          </div>
+        )}
+        {canEdit && (earlierPhotos > 0 || dupCount > 0) && (
+          <button type="button" className="tp-row amber" onClick={() => setTidying(true)}><TrashIcon /><span>Remove old photos…</span></button>
+        )}
+        {isOwner && <button type="button" className="tp-row red" onClick={() => setConfirming('item')}><TrashIcon /><span>Remove</span></button>}
+      </section>
 
-      {picking && (
-        <PlacePicker current={item.location} item={item} items={items} places={places} onCancel={() => setPicking(false)}
-          onPick={async (v, dest = null) => { setPicking(false); if (hasSecret(v)) { logEvent('privacy_secret_blocked', { field: 'location', via: 'card' }); onToast && onToast('Not saved · take the PIN or password out'); return; } const name = v.charAt(0).toUpperCase() + v.slice(1); await changeLocation(item, name, 'chosen', dest); logEvent('correction', { itemId: item.id, field: 'location', via: 'picker' }); onToast && onToast(`Now at ${name}`); }} />
+      {renaming !== null && (
+        <div className="sheet-back" onClick={() => setRenaming(null)} role="presentation">
+          <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="tp-rn" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-title" id="tp-rn">What is it?</div>
+            <input className="place-input" autoFocus value={renaming} onChange={(e) => setRenaming(e.target.value)} enterKeyHint="done"
+              onKeyDown={(e) => { if (e.key === 'Enter') saveName(); }} aria-label="Its name" />
+            {hasSecret(renaming) && <PrivNote typedSecret />}
+            <button type="button" className="btn-primary" disabled={!renaming.trim() || hasSecret(renaming)} onClick={saveName}>Save</button>
+            <button type="button" className="btn-quiet" onClick={() => setRenaming(null)}>Cancel</button>
+          </div>
+        </div>
       )}
       {tidying && (
         <TidySheet name={item.name ? own(item.name) : 'this thing'} dupCount={dupCount} earlierPlaces={earlierCount} earlierPhotos={earlierPhotos}
-          onCancel={() => setTidying(false)}
-          onKeepNewest={() => tidy('newest')} onForgetEarlier={() => tidy('earlier')} />
+          onCancel={() => setTidying(false)} onKeepNewest={() => tidy('newest')} onForgetEarlier={() => tidy('earlier')} />
       )}
       {sheet && (
-        <ItemSheet item={item} role={role}
+        <ItemSheet item={item} role={role} container={container} placed={hasPlace}
           onAdd={() => { setSheet(false); setSnaps(null); onAdd(); }}
-          onChangePlace={() => { setSheet(false); setFixing(true); }}
-          onRename={() => { setSheet(false); setFixing(true); }}
-          onMoveToTop={async () => { setSheet(false); await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id, via: 'photo_sheet' }); onToast && onToast('Moved to the top'); }}
+          onMove={() => { setSheet(false); onMove(item); }}
+          onPutIn={container ? () => { setSheet(false); onPutIn(item); } : null}
           onRemovePhoto={() => { setSheet(false); askRemove(page); }}
-          onPrivate={isOwner ? async () => { setSheet(false); const to = isPrivate(item) ? 'household' : 'private'; await setVisibility(item, to); logEvent('visibility', { itemId: item.id, to, via: 'sheet' }); onToast && onToast(VISIBILITY_TOAST[to]); } : null}
+          onPrivate={isOwner ? () => { setSheet(false); togglePrivate('sheet'); } : null}
           onRemove={isOwner ? () => { setSheet(false); setConfirming('item'); } : null}
           onCancel={() => setSheet(false)} />
       )}
-      {confirming && confirming !== 'item' && (
+      {confirming === 'holds' && (
+        <Confirm title={`The ${short} has ${inside.length} thing${inside.length === 1 ? '' : 's'} in it.`}
+          body={`Move ${inside.length === 1 ? 'it' : 'them'} somewhere else first: open ${inside.length === 1 ? 'it' : 'each one'} and tap Move it.`}
+          keepLabel="OK" actionLabel="OK" onKeep={() => setConfirming(null)} onAction={() => setConfirming(null)} />
+      )}
+      {confirming && confirming.snap && (
         confirming.last ? (isOwner ? (
-          <Confirm
-            title={`This is the only photo of ${label}. Remove the item?`}
-            image={confirming.snap.photo}
+          <Confirm title={`This is the only photo of ${label}. Remove the item?`} image={confirming.snap.photo}
             body="It goes to Settings → Recently removed, where it can be put back."
-            keepLabel="Keep it" actionLabel="Remove item"
-            onKeep={() => setConfirming(null)}
-            onAction={async () => {
-              setConfirming(null);
-              await softDeleteItem(item);
-              logEvent('item_removed', { itemId: item.id, itemName: item.name || null, via: 'last_photo' });
-              onRemoved(item);
-            }}
-          />
+            keepLabel="Keep it" actionLabel="Remove item" onKeep={() => setConfirming(null)}
+            onAction={async () => { setConfirming(null); await softDeleteItem(item); logEvent('item_removed', { itemId: item.id, itemName: item.name || null, via: 'last_photo' }); onRemoved(item); }} />
         ) : (
           <Confirm title={`This is the only photo of ${label}.`} image={confirming.snap.photo} body={`Only ${firstName(item.owner) || 'the owner'} can remove the thing itself.`} keepLabel="OK" actionLabel="Keep it" onKeep={() => setConfirming(null)} onAction={() => setConfirming(null)} />
         )) : (
-          <Confirm
-            title="Remove this photo?"
-            image={confirming.snap.photo}
+          <Confirm title="Remove this photo?" image={confirming.snap.photo}
             body={confirming.snap.cover ? 'The next photo becomes the one on the tile.' : 'The other photos stay.'}
-            keepLabel="Keep it" actionLabel="Remove"
-            onKeep={() => setConfirming(null)}
-            onAction={() => removePhoto(confirming.snap)}
-          />
+            keepLabel="Keep it" actionLabel="Remove" onKeep={() => setConfirming(null)} onAction={() => removePhoto(confirming.snap)} />
         )
       )}
       {confirming === 'item' && (
-        <Confirm
-          title={`Remove ${label} from My items?`}
-          body="It goes to Settings → Recently removed, where it can be put back."
-          keepLabel="Keep it" actionLabel="Remove"
-          onKeep={() => setConfirming(null)}
-          onAction={async () => {
-            setConfirming(null);
-            await softDeleteItem(item);
-            logEvent('item_removed', { itemId: item.id, itemName: item.name || null });
-            onRemoved(item);
-          }}
-        />
+        <Confirm title={`Remove ${label} from My items?`}
+          body={inside.length ? `Move the ${inside.length === 1 ? 'thing' : `${inside.length} things`} in it first, or ${inside.length === 1 ? 'it loses its' : 'they lose their'} place. It goes to Settings → Recently removed, where it can be put back.` : 'It goes to Settings → Recently removed, where it can be put back.'}
+          keepLabel="Keep it" actionLabel="Remove" onKeep={() => setConfirming(null)}
+          onAction={async () => { setConfirming(null); await softDeleteItem(item); logEvent('item_removed', { itemId: item.id, itemName: item.name || null }); onRemoved(item); }} />
       )}
-
     </div>
   );
 }

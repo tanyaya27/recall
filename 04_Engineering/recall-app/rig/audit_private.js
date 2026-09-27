@@ -110,7 +110,7 @@ async function main() {
   await page.click('.pn-link:has-text("Take it closed")'); await page.waitForTimeout(300);
   check('X3a Take it closed → back to step 1 on the same camera', /Photograph the thing/.test(await text('.lc-prompt')));
   await page.click('.lc-shutter'); await page.waitForTimeout(1200);
-  check('X3 …a new photo, named again, now "Kept private" (photo kept)', /Kept private/.test(await text('.privnote')) && await count('.privnote.stop') === 0 && await count('.lc-s .lc-ph img') === 1);
+  check('X3 …a new photo, named again, now "Kept private" (photo kept)', /Kept private/.test(await text('.privnote')) && await count('.privnote.stop') === 0 && await count('.lv-s .lv-sq img') === 1);
   await saveAt('Desk'); await page.waitForTimeout(400);
   const dc = await byName('recovery sheet');
   check('X4 …saved with its photo, private', dc && !!dc.photo && dc.private === true);
@@ -185,8 +185,9 @@ async function main() {
   // ---- 8b. the thing card's Edit refuses a typed secret too
   await boot('margaret'); await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   await page.click('.tile:has-text("Bobby pins")'); await page.waitForSelector('.card.thing');
-  await page.click('.act:has-text("Edit")'); await page.waitForTimeout(200); await page.click('.fix .field-value >> nth=0'); await page.fill('.fix input.edit-inline', 'PIN 4821'); await page.press('.fix input.edit-inline', 'Enter'); await page.waitForTimeout(300);
-  check('C1 Edit → rename to "PIN 4821" is refused: name unchanged, toast says why', (await byName('bobby pins')) && /take the PIN or password out/.test(await text('.toast')));
+  await page.click('.tp-row:has-text("Rename")'); await page.waitForSelector('.sheet .place-input'); await page.fill('.sheet .place-input', 'PIN 4821'); await page.press('.sheet .place-input', 'Enter'); await page.waitForTimeout(300);
+  check('C1 Rename to "PIN 4821" is refused: Save is off, the note says why, the name is unchanged', (await byName('bobby pins')) && await count('.sheet .btn-primary:disabled') === 1 && await count('.sheet .privnote') === 1);
+  await page.click('.sheet .btn-quiet'); await page.waitForTimeout(150);
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
 
   // ---- 9. Largest

@@ -213,6 +213,14 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
               </button>))}
           </div>
         </div>
+        {/* Moved here from every thing's page (09-27, #27): it was always a setting for the whole app. */}
+        <div className="grow">
+          <div className="sw-row">
+            <span className="lab">Show times on photos</span>
+            <button type="button" role="switch" aria-checked={cap.showTimes} className={'sw' + (cap.showTimes ? ' on' : '')} aria-label="Show times on photos"
+              onClick={() => setCapture({ showTimes: !cap.showTimes })} />
+          </div>
+        </div>
       </div>
 
       <div className="group-title">AI</div>

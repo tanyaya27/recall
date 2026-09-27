@@ -42,10 +42,8 @@ export function openingMode(p = getPrefs()) {
 // Experimentation (Ravi 09-26): options Ravi switches between on his own phone before deciding.
 // Each entry is deleted — with its losing option — the day it is decided; when the list is empty the
 // Settings section disappears on its own.
-export const EXPERIMENTS = [
-  { id: 'homeInside', label: 'Inside a box on Home', blurb: 'How Home shows where you are after tapping a box or a place',
-    options: [['a', 'Back + banner'], ['b', 'Trail']], def: 'a' },
-];
+// 09-27: 'homeInside' (A Back + banner / B Trail) retired with the inside view itself — every tile opens its page.
+export const EXPERIMENTS = [];
 function expOf(e) {
   const out = {};
   EXPERIMENTS.forEach((x) => { const v = e && e[x.id]; out[x.id] = x.options.some(([id]) => id === v) ? v : x.def; });

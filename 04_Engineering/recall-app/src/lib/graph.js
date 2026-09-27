@@ -50,7 +50,8 @@ export function chainOf(item, g = G, max = 6) {
 export function wouldLoop(item, dest, g = G) {
   if (!item || !dest) return false;
   if (dest.id === item.id) return true;
-  return chainOf(dest, g).some((c) => c.id === item.id);
+  const d = g.byId.get(dest.id) || dest; // a {t, id, name} reference or the thing itself
+  return chainOf(d, g).some((c) => c.id === item.id);
 }
 
 // What a thing holds: things whose open edge points at it, newest first.
@@ -118,11 +119,18 @@ export function destOf(text, item = null, g = G) {
   return { t: 'place', name: raw };
 }
 
-// Boxes she already uses (things that hold something), most recently used first — offered as places.
+// A container is a thing that HOLDS THINGS (Ravi 09-27: "putting things in a pencil … is nonsensical"): she said
+// so ("It holds things" on its page), or she photographed it as where something goes and it moves (a tin, a
+// box, a bag), or — for things from before the mark — something is in it. A pencil is never offered as a place.
+export function isContainer(x, g = G) {
+  if (!x || x.deleted) return false;
+  if (x.holds === true) return true;
+  return contentsOf(x, g).length > 0; // something is in it: it holds things, whatever the mark says (so it can be emptied)
+}
+// Containers, most recently used first (the newest thing put in them, else their own last sighting).
 export function containers(g = G, limit = 3) {
-  return g.items.filter((x) => !x.deleted && x.name && contentsOf(x, g).length > 0)
-    .sort((a, b) => Math.max(...contentsOf(b, g).map((c) => c.lastSeenAt || 0)) - Math.max(...contentsOf(a, g).map((c) => c.lastSeenAt || 0)))
-    .slice(0, limit);
+  const used = (x) => Math.max(x.lastSeenAt || 0, ...contentsOf(x, g).map((c) => c.lastSeenAt || 0));
+  return g.items.filter((x) => x.name && isContainer(x, g)).sort((a, b) => used(b) - used(a)).slice(0, limit);
 }
 // Things whose name contains every typed word (for "In something…" and typed places). Never the thing
 // itself or anything it would make a circle with.

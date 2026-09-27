@@ -90,12 +90,13 @@ async function main() {
   await page.waitForTimeout(500);
   check('B1 board shows 3 tiles', await count('.tile') === 3);
   check('B2 old item thumb rebuilt (thumbV set)', await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i2').thumbV === 2));
-  check('B3 no-place tile: flipped label block says "No place assigned"', await page.locator('.tile').nth(2).locator('.tile-label.noplace').count() === 1 && (await page.locator('.tile').nth(2).innerText()).includes('No place assigned'));
+  check('B3 no-place tile: flipped label block says "No place yet"', await page.locator('.tile').nth(2).locator('.tile-label.noplace').count() === 1 && (await page.locator('.tile').nth(2).innerText()).includes('No place yet'));
+  check('B4 build 2: line 2 of a placed tile is where it is', /Kitchen counter/.test(await page.locator('.tile').nth(0).locator('.tile-sub.place').innerText().catch(() => '')));
 
   // ---------- D. Thing card: OLD item — Add photo ----------
   await page.click('.tile >> nth=1'); await page.waitForSelector('.card.thing');
   check('D1 old item opens; one photo, no dots', await count('.dots') === 0);
-  await page.click('.act.primary'); await shoot(1); await page.waitForTimeout(900); await shot('d-old-add');
+  await page.click('.tp-row:has-text("Add a photo")'); await shoot(1); await page.waitForTimeout(900); await shot('d-old-add');
   const i2 = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i2'));
   check('D2 old item: Add photo actually saved a snap', await page.evaluate(() => window.__rig.dump().filter((d) => d.kind === 'snap' && d.itemId === 'i2').length) === 2, `photoCount=${i2.photoCount} logId=${i2.logId}`);
   check('D3 old item: thing card now shows the strip with 2 pages', await count('.dots .dot') === 2);
@@ -106,24 +107,23 @@ async function main() {
   await page.click('.tile >> nth=0'); await page.waitForSelector('.card.thing');
   check('D5 new item: 2 dots (cover + extra)', await count('.dots .dot') === 2);
   {
-    const mids = await page.evaluate(() => { const mid = (el) => { const r = el.getBoundingClientRect(); return (r.top + r.bottom) / 2; }; const r2 = document.querySelector('.thing-head .row2'); const rows = Array.from(document.querySelectorAll('.sw-row')).map((r) => Math.abs(mid(r.querySelector('svg')) - mid(r.querySelector('.lab'))) + Math.abs(mid(r.querySelector('.sw')) - mid(r.querySelector('.lab')))); return { row2: Math.abs(mid(r2.querySelector('svg')) - mid(r2.querySelector('b'))), rows: Math.max(...rows), title: Math.abs(mid(document.querySelector('.thing-head .chev')) - mid(document.querySelector('.thing-head .name'))) }; });
-    check('D5a icons, text and numbers share a centre line (title, place line, switch rows)', mids.row2 < 1.5 && mids.rows < 1.5 && mids.title < 1.5, JSON.stringify(mids));
+    const mids = await page.evaluate(() => { const mid = (el) => { const r = el.getBoundingClientRect(); return (r.top + r.bottom) / 2; }; const rows = Array.from(document.querySelectorAll('.sw-row')).map((r) => Math.abs(mid(r.querySelector('svg')) - mid(r.querySelector('.lab'))) + Math.abs(mid(r.querySelector('.sw')) - mid(r.querySelector('.lab')))); const rw = Array.from(document.querySelectorAll('.tp-row')).map((r) => Math.abs(mid(r.querySelector('svg')) - mid(r.querySelector('span')))); return { rows: Math.max(...rows, ...rw), title: Math.abs(mid(document.querySelector('.thing-head .chev')) - mid(document.querySelector('.thing-head .name'))) }; });
+    check('D5a icons, text and numbers share a centre line (title, the list rows and switches)', mids.rows < 1.5 && mids.title < 1.5, JSON.stringify(mids));
   }
-  check('D6 title: name, lock absent, current place on line 2', /Reading glasses/.test(await text('.thing-head .name')) && /Kitchen counter/.test(await text('.thing-head .row2')) && await count('.thing-head .lk') === 0);
+  check('D6 title: name, lock absent; Where it is says the place; Move it', /Reading glasses/.test(await text('.thing-head .name')) && /Kitchen counter/.test(await text('.tp-wh b')) && await count('.thing-head .lk') === 0 && await count('.tp-btn:has-text("Move it")') === 1);
+  check('D6b build 2: no bottom bar, no Edit, no Move to the top, no Put things in on a thing that holds nothing', await count('.actbar') === 0 && await count('.act') === 0 && !/Move to the top|Put things in|Edit/.test(await text('.thing-page')));
   check('D6a Show earlier places row present, count = 1 earlier place', await count('.sw-row') === 3 && /Show earlier places\s*1/.test(await text('.sw-row >> nth=2')));
   await page.click('.sw-row >> nth=2 >> .sw'); await page.waitForTimeout(400);
-  check('D7 earlier on → 3 photos; the Bedside one carries its place under it, title unchanged', await count('.dots .dot') === 3 && (await page.locator('.was:not(.empty)').allInnerTexts()).join('|').includes('Bedside table') && /Kitchen counter/.test(await text('.thing-head .row2')));
+  check('D7 earlier on → 3 photos; the Bedside one carries its place under it, title unchanged', await count('.dots .dot') === 3 && (await page.locator('.was:not(.empty)').allInnerTexts()).join('|').includes('Bedside table') && /Kitchen counter/.test(await text('.tp-wh b')));
   await page.click('.sw-row >> nth=2 >> .sw'); await page.waitForTimeout(300);
   check('D8 earlier off → back to the current stay (2)', await count('.dots .dot') === 2);
-  await page.click('.act.primary'); await shoot(1); await page.waitForTimeout(900);
+  await page.click('.tp-row:has-text("Add a photo")'); await shoot(1); await page.waitForTimeout(900);
   check('D9 new item: Add photo → 3 dots', await count('.dots .dot') === 3);
   const stamps = await page.locator('.stamp').allInnerTexts();
   check('D9a every photo carries its own time, newest first (the one just added is Today)', stamps.length === 3 && /^Today/.test(stamps[0]) && stamps[0] !== stamps[2], stamps.join(' | '));
   const stampPx = await page.evaluate(() => getComputedStyle(document.querySelector('.stamp')).fontSize);
   check('D9b the time label is a fixed 13 px', stampPx === '13px', stampPx);
-  await page.click('.sw-row >> nth=1 >> .sw'); await page.waitForTimeout(200);
-  check('D9c Show times off → no labels', await count('.stamp') === 0);
-  await page.click('.sw-row >> nth=1 >> .sw'); await page.waitForTimeout(200);
+  check('D9c build 2: Show times on photos is not on the page (it is in Settings, #27)', await count('.thing-page .sw[aria-label="Show times on photos"]') === 0);
   // remove the extra (page 3)
   await page.click('.dot >> nth=2'); await page.waitForTimeout(400); await page.click('.photo-trash'); await page.waitForSelector('.sheet');
   check('D10 remove-photo sheet (not the item sheet)', /Remove this photo/.test(await text('.sheet-title')));
@@ -132,48 +132,49 @@ async function main() {
   await page.click('.toast-undo'); await page.waitForTimeout(600);
   check('D12 Undo restores → 3 dots', await count('.dots .dot') === 3);
   // Fix: rename → alias kept
-  await page.click('.act:has-text("Edit")'); await page.waitForTimeout(300); await page.click('.fix .field-value >> nth=0'); await page.fill('.fix input.edit-inline', 'spectacles'); await page.press('.fix input.edit-inline', 'Enter'); await page.waitForTimeout(400);
+  await page.click('.tp-row:has-text("Rename")'); await page.waitForSelector('.sheet .place-input'); await page.fill('.sheet .place-input', 'spectacles'); await page.click('.sheet .btn-primary'); await page.waitForTimeout(400);
   const i1 = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D13 rename keeps old name as alias', i1.name === 'spectacles' && (i1.aliases || []).includes('reading glasses'), JSON.stringify(i1.aliases));
   check('D14 header shows new name', /Spectacles/.test(await text('.thing-head .name')));
   // Edit the place → history grows, seen now
-  await page.click('.fix .field-value >> nth=1'); await page.waitForSelector('.place-sheet');
-  check('D15p Where it is → the place list with pictures (household places, current one excluded)', await count('.place-sheet .guess.withpic') >= 2 && !/Kitchen counter/.test(await text('.place-sheet .guesses')));
-  await page.click('.place-sheet .guess.other:has-text("Somewhere else")'); await page.fill('.place-sheet .place-input', 'sofa'); await page.press('.place-sheet .place-input', 'Enter'); await page.waitForTimeout(500);
+  await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
+  check('D15m Move it → the camera, the thing already there, level 1 chosen (amber ring)', await count('.lv-sq') >= 2 && await page.locator('.lv-sq.sel').getAttribute('aria-label').then((a) => /^Level 1/.test(a || '')) && /245, 185, 66|F5B942/i.test(await page.evaluate(() => getComputedStyle(document.querySelector('.lc-shutter')).borderTopColor)));
+  await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
+  check('D15p ••• → every place and box, with search; no thing that holds nothing', await count('.where-list .wl-search input') === 1 && await count('.where-list .wl-row') >= 1 && !/Boxes and containers/i.test(await text('.where-list')) && await count('.where-list .wl-g') === 1);
+  await page.fill('.wl-search input', 'sofa'); await page.click('.wl-new.typed'); await page.waitForTimeout(300); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(500);
   const i1b = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D15a edit place → history entry + lastSeenAt now', i1b.location === 'Sofa' && i1b.history.length === 3 && Date.now() - i1b.lastSeenAt < 5000);
-  check('D15b title says Sofa; the move wrote a sighting (1 photo at Sofa); earlier counts 2 PLACES', /Sofa/.test(await text('.thing-head .row2')) && await count('.strip-page') === 1 && /Show earlier places\s*2/.test(await text('.sw-row >> nth=2')));
+  check('D15b Where it is says Sofa; the move wrote a sighting (1 photo at Sofa); earlier counts 2 PLACES', /Sofa/.test(await text('.tp-wh b')) && await count('.strip-page') === 1 && /Show earlier places\s*2/.test(await text('.sw-row >> nth=2')));
   // Tidy up: forget earlier → the 3 older photos go, one Undo brings them back
-  await page.click('.tidy-btn'); await page.waitForSelector('.sheet');
+  await page.click('.tp-row:has-text("Remove old photos")'); await page.waitForSelector('.sheet');
   check('D15c Tidy sheet: counts are right (2 earlier places · 3 photos)', /deletes 3 photos from 2 earlier places/.test(await text('.sheet')));
   await page.click('.sheet-row.tidy.amber'); await page.waitForTimeout(600);
   check('D15d forget earlier → no earlier row, toast with Undo', await count('.sw-row') === 2 && await count('.toast-undo') === 1);
   await page.click('.toast-undo'); await page.waitForTimeout(800);
   check('D15e Undo → earlier places back (2)', /Show earlier places\s*2/.test(await text('.sw-row >> nth=2')));
-  await page.click('.fix-row button:has-text("Done")'); await page.waitForTimeout(200);
-  check('D15 Edit panel closes; actbar reads Edit again', await page.locator('.fix').count() === 0 && /Edit/.test(await text('.actbar')));
+  check('D15 build 2: no Edit panel, no Done, no second Done', await count('.fix') === 0 && !/\bDone\b/.test(await text('.thing-page')));
   // Press-and-hold on the photo → the item sheet with Remove this photo
   const pb = await page.locator('.card.thing img').first().boundingBox();
   await page.mouse.move(pb.x + 60, pb.y + 60); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
-  check('D16 hold on the photo → item sheet, with Remove this photo', await count('.item-sheet') === 1 && /Remove this photo/.test(await text('.item-sheet')));
+  check('D16 hold on the photo → item sheet, with Remove this photo; trimmed (#28)', await count('.item-sheet') === 1 && /Remove this photo/.test(await text('.item-sheet')) && !/Change the place|Rename|Move to the top|Put things in/.test(await text('.item-sheet')));
   await page.click('.item-sheet .btn-primary.alt'); await page.waitForTimeout(200);
   // Add a photo that is a different thing → guard
   like = { same: false, seen: 'coffee cup' };
-  await page.click('.act.primary'); await shoot(1); await page.waitForTimeout(900);
+  await page.click('.tp-row:has-text("Add a photo")'); await shoot(1); await page.waitForTimeout(900);
   check('D18 mismatched photo → question, not saved', await count('.item-sheet') === 1 && /coffee cup/.test(await text('.sheet-title')) && await count('.strip-page') === 1);
   await page.click('text=Don\'t add it'); await page.waitForTimeout(200);
   check('D18b Don\'t add → nothing added', await count('.strip-page') === 1 && await count('.item-sheet') === 0);
   like = null;
   // Private: Edit → toggle → lock on the tile; a private thing of ANOTHER phone never shows
-  await page.click('.sw-row >> nth=0 >> .sw'); await page.waitForTimeout(300);
+  await page.click('.sw[aria-label="Keep this private"]'); await page.waitForTimeout(300);
   check('D20 Keep this private switch → private; lock appears in the title; toast', await count('.thing-head .lk') === 1 && (await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1').private)) === true && /Now private/.test(await text('.toast')));
   await back(); await page.waitForSelector('.board');
   check('D21 private tile shows a lock on this phone', await count('.tile-lock') === 1);
   await page.evaluate(() => window.__rig.seed([{ id: 'ix', kind: 'item', household: 'default', name: 'other phone secret', visibility: 'private', owner: 'dev_other', location: 'Drawer', thumb: '', photo: '', order: 1, createdAt: 1, lastSeenAt: 1, history: [] }]));
   await page.waitForTimeout(300);
   check('D22 another phone\'s private thing is not on this board', await count('.tile') === 3 && !/other phone secret/.test(await text('.board')));
-  await page.click('.tile >> nth=0'); await page.waitForSelector('.card.thing'); await page.click('.sw-row >> nth=0 >> .sw'); await page.waitForTimeout(300);
-  check('D19 bar: Add photo · Edit · Remove (three operations); switch back → shared, lock gone', /Add photo/.test(await text('.actbar')) && /Remove/.test(await text('.actbar')) && !/Shared|Private/.test(await text('.actbar')) && await count('.thing-head .lk') === 0);
+  await page.click('.tile >> nth=0'); await page.waitForSelector('.card.thing'); await page.click('.sw[aria-label="Keep this private"]'); await page.waitForTimeout(300);
+  check('D19 the list: Add a photo · Rename · Remove; switch back → shared, lock gone', await count('.tp-row:has-text("Add a photo")') === 1 && await count('.tp-row:has-text("Rename")') === 1 && await count('.tp-row.red:has-text("Remove")') === 1 && await count('.thing-head .lk') === 0);
   await back(); await page.waitForSelector('.board');
 
   // ---------- C. Log item paths (the camera, 09-27: what, then where — LogCamera) ----------
@@ -185,9 +186,9 @@ async function main() {
   check('C2 one photo → the card names it (capitalised); Save and + Next beside the shutter', /Blue mug/.test(await text('.lc-name')) && await count('.lc-k.sv') === 1 && await count('.lc-k.sn') === 1);
   await page.click('.lc-name'); await page.fill('.sheet .place-input', 'coffee mug'); await page.click('.sheet .btn-primary'); await page.waitForTimeout(200);
   check('C3 tap the name → rename', /Coffee mug/.test(await text('.lc-name')));
-  await page.click('.lc-chip.more'); await page.waitForSelector('.place-sheet');
-  check('C4 ••• → the place list (the fallback, behind More)', await count('.place-sheet .guess') >= 1);
-  await page.click('.place-sheet .guess.other:has-text("Somewhere else")'); await page.fill('.place-sheet .place-input', 'the shelf'); await page.click('.place-sheet .typing .btn-primary'); await page.waitForTimeout(300);
+  await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
+  check('C4 ••• → every place and box (WhereList), with New place or box: photograph it', await count('.where-list .wl-row') >= 1 && await count('.where-list .wl-new') === 1);
+  await page.fill('.wl-search input', 'the shelf'); await page.click('.wl-new.typed'); await page.waitForTimeout(300);
   check('C4a the typed place is the sentence above Save (Save stays one word)', /the shelf/i.test(await text('.lc-say')) && (await text('.lc-k.sv')).trim() === 'Save');
   await page.click('.lc-k.sv'); await page.waitForSelector('.board', { timeout: 5000 }); await page.waitForTimeout(500);
   const mug = await page.evaluate(() => window.__rig.dump().find((d) => d.kind === 'item' && d.name === 'coffee mug'));
@@ -239,9 +240,10 @@ async function main() {
   await page.click('.item-sheet .btn-primary.alt'); await page.waitForTimeout(200);
   check('E2 Cancel closes the sheet', await count('.item-sheet') === 0);
   await page.mouse.move(t0.x + 40, t0.y + 40); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
-  await page.click('text=Change the place'); await page.waitForSelector('.card.thing');
-  check('E3 Change the place → thing card with Fix open', await count('.fix') === 1);
-  await back();
+  check('E2a build 2: the hold sheet is trimmed (#28)', !/Change the place|Rename|Move to the top/.test(await text('.item-sheet')));
+  await page.click('.item-sheet button:has-text("Move it"), .item-sheet button:has-text("Put it somewhere")'); await page.waitForSelector('.lc');
+  check('E3 Move it → the camera with the thing there, asking where', /Where (is|are) the/.test(await text('.lc-prompt')));
+  await page.click('.lc-x'); await page.waitForTimeout(300);
   await page.mouse.move(t0.x + 40, t0.y + 40); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
   await page.click('text=Remove from my items'); await page.waitForSelector('.sheet');
   check('E4 Remove → confirm sheet', /Remove your/.test(await text('.sheet-title')));

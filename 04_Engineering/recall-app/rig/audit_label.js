@@ -94,10 +94,10 @@ async function main() {
   check('W4 the board shows it as a written tile (no broken image)', await count('.tile .tile-written') === 1 && await page.evaluate(() => [...document.querySelectorAll('.tile img')].every((i) => i.getAttribute('src'))));
   await shot('4-board-written');
   await page.click('.tile:has-text("Bank locker key")'); await page.waitForSelector('.card.thing'); await page.waitForTimeout(400);
-  check('W5 its card says "Written down, no photo yet", no photo strip, no Show times switch', /Written down, no photo yet/.test(await text('.written-panel')) && await count('.card.thing .photo-full') === 0 && await count('.sw-row:has-text("Show times")') === 0);
+  check('W5 its page says "No photo of it yet" (#23), no photo strip, no Show times switch', /No photo of it yet/.test(await text('.written-panel')) && await count('.card.thing .photo-full') === 0 && await count('.sw-row:has-text("Show times")') === 0);
   await shot('5-card-written');
   // Add photo: the first photo becomes the cover
-  await page.click('.act:has-text("Add photo")'); await page.waitForSelector('.camera'); await page.waitForTimeout(400);
+  await page.click('.tp-row:has-text("Add a photo")'); await page.waitForSelector('.camera'); await page.waitForTimeout(400);
   await page.click('.shutter'); await page.waitForTimeout(300); await page.click('.camera-done'); await page.waitForTimeout(1500);
   const key2 = (await items()).find((d) => d.name === 'bank locker key');
   check('W6 Add photo on a written thing → that photo becomes its cover (photoCount 1)', key2 && !!key2.photo && key2.photoCount === 1 && key2.written === false, JSON.stringify(key2 && [!!key2.photo, key2.photoCount]));

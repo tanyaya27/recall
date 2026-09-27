@@ -76,7 +76,7 @@ export async function moveToTop(item, items) {
 //      ("glasses" ↔ "reading glasses"); a wrong soft match costs one tap on the card.
 // Names are normalised: lowercase, "your/the/my" dropped, trailing s dropped.
 import { normName } from './names.js';
-import { setGraph, graph, openEdge, destOf, wouldLoop } from './graph.js';
+import { setGraph, graph, openEdge, destOf, wouldLoop, contentsOf } from './graph.js';
 export { normName };
 function namesOf(it) { return [it.name, ...(it.aliases || [])].map(normName).filter(Boolean); }
 export function findByName(items, name, { strict = false } = {}) {
@@ -197,6 +197,27 @@ export async function adoptLegacy(limitN = 40) {
 // checks, so a grant holder's listener (owner == X && private == false) never sees them. The
 // owner's phone repairs its own docs as they arrive; nothing repeats (the write comes back
 // with the flag set). Returns how many it patched.
+// Ravi, 09-27: "Fix the pencil item so that it doesn't hold a cabinet!" Bug #8/#12 put his filing cabinet INSIDE his
+// pencil. One repair, on the owner's phone: the cabinet's open edge to the pencil is closed and the cabinet goes back to
+// "No place yet" (it waits under Not put away; Move it gives it its real place). Only that exact record — a thing whose
+// name has "cabinet" in it, owned by this person, in the thing called "pencil". Nothing else is touched; the pencil's own
+// place is left as it is. Safe to run again: once the edge is closed there is nothing to find. Returns what it fixed.
+export async function repairPencilCabinet() {
+  const g = graph(); const mine = me();
+  if (!g.edges.length) return null; // the edges have not arrived yet: try again on the next snapshot
+  const fixed = [];
+  for (const e of g.open.values()) {
+    if (!e || !e.to || e.to.t !== 'thing') continue;
+    const from = g.byId.get(e.from); const to = g.byId.get(e.to.id);
+    if (!from || !to || from.deleted || (from.owner || mine) !== mine) continue;
+    if (normName(to.name) !== 'pencil' || !/cabinet/i.test(from.name || '')) continue;
+    await changeLocation(from, '', 'chosen', null); // closes the open edge; no new one; location '' and needsPlace
+    fixed.push(from.id);
+  }
+  if (fixed.length) logEvent('repair_pencil_cabinet', { n: fixed.length });
+  return fixed;
+}
+
 export async function repairPrivateFlags(data) {
   const uid = me(); if (!uid) return 0;
   const todo = [...(data.places || []), ...(data.routines || []), ...(data.checks || [])].filter((d) => d.owner === uid && d.private === undefined);
@@ -279,7 +300,7 @@ export const ROLE_BLURB = { viewer: 'Sees your things and where they are. Cannot
 // `private` (09-24): a thing that looks private starts private — only the owner may start one so
 // (a helper's is refused by the rules' own logic: they could never see it again). `privateAuto`
 // keeps the reason ReCall gave ("looks like passwords"); '' when she chose it herself.
-export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '', dest = null }) {
+export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '', dest = null, holds = undefined }) {
   location = placeText(location, null);
   const now = Date.now();
   const logId = `log_${now}`;
@@ -289,6 +310,7 @@ export async function addItem({ name = '', location = '', description = '', phot
     needsPlace: !location, naming, placeSource: location ? (placeSource || 'chosen') : '',
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }], logId, photoCount: photo ? 1 + extras.length : 0, details: details || '', written: !photo,
+    ...(holds === undefined ? {} : { holds: !!holds }),
   });
   if (location) await recordMove({ id: ref.id, owner, private: keep }, location, placeSource || 'chosen', dest);
   if (!photo) return ref.id;
@@ -338,6 +360,9 @@ export async function nameItem(id, { name = '', description = '', restingOn = ''
 // the new place, now — so the new stay has a photo and the history never has a row without
 // one. Adding the place to a thing that had none is not a move: no sighting is written.
 export async function changeLocation(item, location, placeSource = 'chosen', dest = null) {
+  // Never a loop (bug #8, 09-27: the pencil went into the cabinet that was inside the pencil). Refused here, where every move passes.
+  const to = dest || (location ? destOf(location, graph().byId.get(item.id) || item) : null);
+  if (to && to.t === 'thing' && wouldLoop(item, to)) { logEvent('loop_refused', { itemId: item.id, to: to.id }); return false; }
   if (!dest) location = placeText(location, item);
   const now = Date.now();
   const history = [...(item.history || []), { location, at: now }].slice(-100);
@@ -350,6 +375,7 @@ export async function changeLocation(item, location, placeSource = 'chosen', des
   }
   await updateDoc(doc(col, item.id), patch);
   await recordMove(item, location, placeSource, dest);
+  return true;
 }
 
 // Private = shared with no one (Only me), on every device of the owner. Making a thing private
@@ -420,6 +446,7 @@ async function writeMove(item, location, how, dest) {
   const now = Date.now();
   const cur = openEdge(item.id);
   const to = dest || (location ? destOf(location, graph().byId.get(item.id) || item) : null);
+  if (to && to.t === 'thing' && wouldLoop(item, to)) { logEvent('loop_refused', { itemId: item.id, to: to.id, at: 'edge' }); return null; }
   const same = cur && to && cur.to && cur.to.t === to.t && (to.t === 'thing' ? cur.to.id === to.id : (cur.to.name || '').toLowerCase() === (to.name || '').toLowerCase());
   if (same) return cur.id;
   if (cur) await updateDoc(doc(col, cur.id), { until: now, closedBy: me() });
@@ -477,20 +504,27 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
       here = { text: l.known.name, dest: { t: 'place', name: l.known.name } };
     } else if (l.moves) {
       const name = l.name || 'A box';
-      const id = await addItem({ name, photo: l.photo, thumb: l.thumb, owner, location: outer ? outer.text : '', dest: outer ? outer.dest : null, placeSource: 'chosen' });
+      const id = await addItem({ name, photo: l.photo, thumb: l.thumb, extras: l.extras || [], owner, location: outer ? outer.text : '', dest: outer ? outer.dest : null, placeSource: 'chosen', holds: true });
       made.items.push(id);
       logEvent('container_new', { itemId: id, via: 'camera' });
       here = { text: capName(name), dest: { t: 'thing', id, name } };
     } else {
       const name = capName(l.name || 'A place');
       const known = placeNamed(name, places);
-      const id = await addPlace(name, places, l.placePhoto ? [l.placePhoto] : [], owner, outer && outer.placeId ? outer.placeId : null);
+      const id = await addPlace(name, places, l.placePhotos || (l.placePhoto ? [l.placePhoto] : []), owner, outer && outer.placeId ? outer.placeId : null);
       if (!known && id) made.places.push(id);
       here = { text: name, dest: { t: 'place', name }, placeId: id };
     }
     outer = here;
   }
   return { first: outer, made };
+}
+// "It holds things" (Ravi 09-27). It can't be switched off while something is in it.
+export async function setHolds(item, on) {
+  if (!on && contentsOf(item).length) return false;
+  await updateItem(item.id, { holds: !!on });
+  logEvent('holds', { itemId: item.id, on: !!on });
+  return true;
 }
 // Undo a camera save (the Home card): the thing goes (or, if it was already logged, goes back where it
 // was), and every box and place made in the same save goes with it. Owner only — a helper can't delete.
@@ -796,3 +830,7 @@ export async function exportEvents() {
   const snap = await getDocs(query(eventsCol, orderBy('at', 'asc')));
   return snap.docs.map((d) => d.data());
 }
+
+// The rig (never the app): audits call the write functions directly to prove the loop guard at write time.
+// __RIG__ is defined only by rig/build.sh; in the app this line does nothing.
+if (typeof __RIG__ !== 'undefined' && typeof window !== 'undefined') window.__rigdb = { changeLocation, putInto, setHolds };

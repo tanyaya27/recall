@@ -1264,3 +1264,45 @@ pick a thing already logged. Now **"In something" and "No place yet" are two par
 it? (photo card, Write it down; "In something" first in Edit → Where it is), on screen without scrolling. And
 **"What is it in?" can make the box right there**: the search's first row is "New: <what you typed>" — it makes the
 box (a thing with no place yet, so it waits under Not put away) and puts this thing in it, linked by id. (20260927b)
+
+## 2026-09-27 (late) — Build 2: levels by intent, one page per thing, only containers hold things (Ravi, on BOARD_2026-09-27_every-path.md)
+
+Ravi, after the phone test of build 1: "The 'in' photo capture should be with intent"; "Putting things in a pencil or a
+cetaphil cream bottle is nonsensical"; "Wasn't 'Type it instead' supposed to be inside the camera area? … Can you proceed
+with implementation?"; then "Fix the pencil item so that it doesn't hold a cabinet!"
+
+- **The camera photographs the level you choose.** Level 0 is the thing (white); levels 1–10 are where, one colour each
+  (amber, blue, coral, violet, green, pink, teal, lime, orange, sand). The chosen square is outlined in its colour and the
+  **shutter's outer ring is the same colour**. After the first photo the thing stays chosen (more photos are more photos of
+  it); **＋** picks the next level. A chip fills the chosen level. Tap the chosen level's photo: half-screen, **swipe through
+  that level's photos only**, Remove this photo, tap outside to close. Colour is never the only signal: the prompt says it
+  in words ("Spoon · 2 photos", "Where it goes").
+- **"Type it instead" sits on the photo** (bottom centre of the viewfinder) before the first photo.
+- **The camera is always dark**, whatever the theme: its card is dark glass with white words; sheets over it are dark too.
+- **One page per thing — reverses 09-25 "Home follows the box".** Every tile (Home, In it, Find, Not put away) opens that
+  thing's page. The inside-a-box view and its A/B experiment are retired; Settings → Experimentation is empty and hidden.
+  The page: photos; "In the photo: …" under them; **Where it is** (the chain as photos, Move it — or amber No place yet,
+  Put it somewhere); **In it** only on a container (Put things in · Log something in); one list: It holds things · Add a
+  photo · Rename · Keep this private · Show earlier places · Remove old photos… · Remove. No bottom bar, no Edit mode, no
+  Move to the top. Show times on photos moved to Settings → Taking photos.
+- **One way to say where: the camera.** Move it / Put it somewhere open the camera with the thing already there and level 1
+  chosen. ••• is one list everywhere (camera and Write it down): search, "New place or box: photograph it", every place and
+  every container — never the thing itself, never anything that would make a loop.
+- **Only containers hold things** (Ravi's refinement). A thing holds things when she says so ("It holds things" on its
+  page), when it was photographed as a where that moves (a tin, a box), or — old data — when something is in it. Places
+  always hold things. "Put things in" appears only on a container's page and hold sheet; where-lists offer only places and
+  containers. The switch can't be turned off while something is inside. Helpers (Can help) may set it: `holds` joins the
+  editor keys in the rules (proven on the real engine: test_holds 7/7, test_edges 21/21, the other suites unchanged).
+- **No loops, refused where every move is written** (`changeLocation`, `writeMove`, `putInto`), not only in the lists.
+- **Not put away is a list of things**; each opens its page. Putting several away at once comes later, on the camera.
+- **The hold sheet is trimmed:** Move it (or Put it somewhere) · Put things in (containers only) · Add a photo · Show on
+  Home too (inside a box) · Make private · Remove. "Change the place", "Rename" and "Move to the top" are gone.
+- **Buttons keep one fixed verb** (the 09-27 rule): on a container, "Put things in" and "Log something in" under the
+  heading "In the tin · N", full width, rather than "Put things into the filing cabinet" in a button.
+- **Ravi's pencil is repaired once, on his phone** (he asked, superseding "he can use Move it"): the filing cabinet's open
+  edge into the pencil is closed and the cabinet goes back to No place yet (it waits under Not put away). Only that record
+  (a thing named with "cabinet", his, in the thing called "pencil"); the pencil's own place is left as it is.
+- **Home keeps things inside a box off the grid** (09-25, unchanged): reach them from the box's page or Find. Line 2 of
+  every tile is where it is; "N inside" only on a container. The day line is a button only when there is another
+  ReCall to switch to.
+

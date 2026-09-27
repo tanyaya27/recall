@@ -345,4 +345,21 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-27 · Rewrite an audit's steps when the flow changes, but keep what each check protects.** The Log item checks moved
   from the photo card to the camera one by one (name, rename, place, cancel, identity tiers, save-before-name); only checks of
   retired features (the mode row, Several, place views) were dropped, and each drop is written in the audit.
+- **2026-09-27 · Test in the person's theme, with the person's data, before shipping.** Build 1 passed 41 checks in the light
+  theme with tidy data; on Ravi's phone (dark theme) the card was white text on white, and his real data held a pencil containing
+  a filing cabinet. A crawl that taps every button on every screen (`rig/crawl_s11.js`) in his theme found 29 issues, three of
+  them writing bad data. Every build is now crawled in Dusk AND Linen, with messy data, before screenshots go to Ravi.
+- **2026-09-27 · Words that point both ways are dangerous.** "Put things in" on the pencil's page was read as "put the pencil
+  in", and did the reverse. Only offer the direction the person is standing in: from a thing's page, "where is THIS".
+- **2026-09-27 · When the app cannot know the person's intent, give her a control, not a guess.** Build 1 guessed that every
+  photo after the first was the next "where", so a second close-up of a spoon became a place called "Desk surface". Build 2
+  makes the target visible (the outlined square, the shutter ring in its colour) and the next level one tap (＋). One tap of
+  intent costs less than one wrong record.
+- **2026-09-27 · Old data can keep a retired rule alive.** "Only containers hold things" still showed the pencil as a
+  container, because the filing cabinet was in it — the rule has to (never hide what is inside), so the fix is to repair
+  the record, not to bend the rule. Name the record, repair only it, make the repair safe to run twice, and prove it in the
+  walk (R0: nothing else moved; R6: a reload does not repeat it).
+- **2026-09-27 · Prove a write-time guard with a direct write, not only the UI.** Once the lists stop offering a loop, the UI
+  can no longer test the guard behind them. The rig exposes the write functions to the audit (`window.__rigdb`, defined only
+  when `__RIG__` is), and L2 calls them directly.
 

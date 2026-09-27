@@ -1,3 +1,6 @@
+// RETIRED 09-27: the capture modes (One thing · Several, the mode row) went with Q3 in build 1 (20260927c);
+// the camera is LogCamera now, audited in audit.js C, audit_graph.js I/K and walk_s10.js. Kept for its history.
+if (require.main === module) { console.log('audit_modes: retired 09-27 (capture modes removed in build 1)'); process.exit(0); }
 // Capture modes audit (MVP step 2, 2026-09-24): One thing · Several, the mode row, Settings →
 // Taking photos, hold Log item, the Several strip (save at shutter, place sources, ＋ angle,
 // the same-thing question), the review, and One thing's chosen place + Next item.

@@ -5,7 +5,7 @@ import { me } from '../lib/auth.js';
 import { CheckIcon, LockIcon, SaveIcon } from './Icons.jsx';
 import { privateWhy, hasSecret } from '../lib/sensitive.js';
 import PrivNote, { PhoneOnly } from './PrivNote.jsx';
-import InThingSheet from './InThingSheet.jsx';
+import WhereList from './WhereList.jsx';
 import { containers, inPhrase } from '../lib/graph.js';
 import { BoxIcon, PinIcon } from './Icons.jsx';
 
@@ -55,7 +55,7 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
         <div className="ask-q">Where is it?</div>
         {/* Two parallel paths at the top (Ravi 09-27): in something (a box — logged or new), or no place yet. */}
         <div className="path-row">
-          <button type="button" className="path in" onClick={() => setInPick(true)}><BoxIcon /><span>In something</span></button>
+          <button type="button" className="path in" onClick={() => setInPick(true)}><BoxIcon /><span>Pick a place or box</span></button>
           <button type="button" className={'path later' + (!place && !typing ? ' on' : '')} onClick={() => { setPlace(''); setDest(null); setTyping(false); }}><PinIcon /><span>No place yet</span></button>
         </div>
         <div className="guesses">
@@ -94,7 +94,10 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
         <div className="lc-say note-say"><PinIcon /><span className="tx"><b>{place.trim() ? cap(place.trim()) : 'No place yet'}</b><span className="soft">{place.trim() ? (dest && dest.t === 'thing' ? 'in that box' : '') : 'You can put it away later'}</span></span></div>
         <button type="button" className="btn-primary" disabled={!ready} onClick={save}><SaveIcon /><span>Save</span></button>
       </div>
-      {inPick && <InThingSheet owner={owner} onCancel={() => setInPick(false)} onPick={(x) => { setInPick(false); setPlace(cap(x.name)); setDest({ t: 'thing', id: x.id, name: x.name }); setTyping(false); }} />}
+      {/* The one list of "where" (09-27): every place and every box, with search; never a pencil. */}
+      {inPick && <WhereList items={items} places={places} title={`Where is ${name.trim() ? 'the ' + name.trim().toLowerCase().replace(/^(my|the|our)\s+/, '') : 'it'}?`}
+        onCancel={() => setInPick(false)}
+        onPick={(k) => { setInPick(false); setTyping(false); if (k.t === 'thing') { setPlace(cap(k.item.name)); setDest({ t: 'thing', id: k.item.id, name: k.item.name }); } else { setPlace(cap(k.name)); setDest(null); } }} />}
     </div>
   );
 }

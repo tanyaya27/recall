@@ -1,54 +1,64 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressPhoto, compressPlacePhoto, shrink } from '../lib/img.js';
-import { addItem, nameItem, resnapItem, changeLocation, findMatch, knownLocations, placeThumb, noteAlias, logEvent,
+import { addItem, nameItem, resnapItem, changeLocation, findMatch, knownLocations, placeNamed, noteAlias, logEvent,
   applyVerdict, saveChain } from '../lib/db.js';
 import { verdictOf, hasSecret } from '../lib/sensitive.js';
 import { normName } from '../lib/names.js';
 import { me } from '../lib/auth.js';
-import { containers, holderOf, chainOf, openEdge, inPhrase, graph } from '../lib/graph.js';
+import { containers, holderOf, chainOf, openEdge, inPhrase, graph, wouldLoop, isContainer } from '../lib/graph.js';
 import { matchThings } from '../lib/speech.js';
-import PlacePicker from './PlacePicker.jsx';
+import WhereList from './WhereList.jsx';
 import PrivNote from './PrivNote.jsx';
 import Choice from './Choice.jsx';
 import Confirm from './Confirm.jsx';
-import { CameraIcon, CloseIcon, PinIcon, LockIcon, PencilIcon, SaveIcon, PinAskIcon, BoxIcon } from './Icons.jsx';
+import { CameraIcon, CloseIcon, PinIcon, LockIcon, PencilIcon, SaveIcon, PinAskIcon, BoxIcon, PlusIcon, TrashIcon } from './Icons.jsx';
 
-// The camera answers "what" AND "where" (Ravi 09-27; board walk BOARD_2026-09-27_walkthrough.md; DECISIONS 09-27).
+// The camera photographs the LEVEL you choose (Ravi 09-27, BOARD_2026-09-27_every-path.md; mockups S11_fix_camera.jpg).
 //
-//   Step 1  photograph the thing (one thing per photo, Q3). "Type it instead" sits above the shutter.
-//   Step 2+ she steps back and photographs what it is in, then where THAT is: each shot adds a photo to a
-//           chain (key → blue tin → linen closet shelf). Known places and boxes are chips, for when she
-//           doesn't want to shoot. The AI names each photo, says whether it moves (a box) or is fixed (a
-//           place), and whether it is one already saved — which is ASKED, never assumed.
-//   Always  Cancel alone top-left (throws the photos away). "💾 + Next" | shutter | "💾 Save" in one row,
-//           27 px clear of the shutter; the shutter takes taps in a 100 px circle. One verb per button:
-//           what Save does is the two-line sentence right above the row.
+//   Level 0 is the thing; level 1 is what it is in (or where it is); level 2 is where THAT is; up to 10.
+//   Each level has its own colour (the thing is white). The chosen level's square is outlined in its colour and the
+//   shutter's outer ring takes the same colour: every photo goes there, nothing is guessed. After the first photo the
+//   thing stays chosen (more photos of it); ＋ in the next colour picks the next level. A place chip fills the chosen
+//   level (or level 1 while the thing is chosen). Tap a chosen level's photo: half-screen, swipe through THAT level's
+//   photos only, Remove this photo. Tap anywhere to close.
+//   Cancel alone top-left · "Type it instead" inside the picture (before the first photo) · "💾 + Next" | shutter | "💾 Save"
+//   with the two-line sentence above. A dark see-through card: never white on white (09-27 phone test, dark theme).
 //
-// Two looks, one set of parts (Settings → Taking photos): 'b' Answer card (default) and 'a' Photo clear.
-// Every overlay on the viewfinder is slightly see-through.
+//   moveItem: "Put it somewhere" / "Move it" from a thing's page — level 0 is that thing (already photographed), level 1
+//   is chosen; Save moves it. preset: "Log something into the tin" — level 1 is that box.
+export const LEVEL_COLOURS = ['#FFFFFF', '#F5B942', '#4DB6F5', '#F2766B', '#A98BF7', '#5BD08D', '#F57EC0', '#3FD0C9', '#C5E35A', '#F79A45', '#E3C9A0'];
+const MAX_LEVELS = 10;
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const own = (s) => (s || '').toLowerCase().replace(/^(my|the|our)\s+/, '');
+// "Where is the spoon?" / "Where are the car keys?" — a name that reads as plural gets "are".
+const many = (s) => /[^su]s$/.test(own(s)) || /\b(glasses|scissors|pants|jeans|trousers|pliers|tongs)$/.test(own(s));
+const whereQ = (s) => (own(s) ? `Where ${many(s) ? 'are' : 'is'} the ${own(s)}?` : 'Where is it?');
 let KEY = 0;
+const emptyLevel = () => ({ key: ++KEY, photos: [], known: null, name: '', moves: false, status: 'empty', ask: null });
 
-export default function LogCamera({ engine, items = [], places = [], owner = undefined, ownerName = '', look = 'b', preset = null,
+export default function LogCamera({ engine, items = [], places = [], owner = undefined, ownerName = '', look = 'b', preset = null, moveItem = null,
   onSaved, onCancel, onWrite, onNotice = () => {} }) {
   const videoRef = useRef(null); const streamRef = useRef(null);
-  const [cam, setCam] = useState('starting'); // starting | live | failed
+  const [cam, setCam] = useState('starting');
   const [flash, setFlash] = useState(false);
-  const [thing, setThing] = useState(null);  // { photo, thumb, tag: undefined|null|{}, match, matchSure, answer: null|'yes'|'no' }
-  const [chain, setChain] = useState([]);    // links, outward (see db.saveChain); a link from a photo: { key, file, photo, thumb, status, name, moves, known, ask }
+  // level 0: the thing — { photos: [{photo, thumb, file}], tag, match, answer } ; levels 1..: where
+  const [thing, setThing] = useState(() => (moveItem ? { photos: [], fixed: moveItem, tag: null, match: null, answer: null } : { photos: [], tag: undefined, match: null, answer: null }));
+  const [levels, setLevels] = useState(() => (moveItem ? [emptyLevel()] : preset ? [{ ...emptyLevel(), known: preset, status: 'known' }] : []));
+  const [sel, setSel] = useState(moveItem ? 1 : 0);
   const [nameOverride, setNameOverride] = useState('');
   const [shareAnyway, setShareAnyway] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [sheet, setSheet] = useState(null);  // 'more' | 'change' | 'rename' | 'cancel' | { ask: match } | { preview: {...} }
+  const [sheet, setSheet] = useState(null);  // 'more' | 'change' | 'rename' | 'cancel' | { ask } | { preview: level index }
+  const [pvIndex, setPvIndex] = useState(0);
   const [draft, setDraft] = useState('');
-  const [lastWhere, setLastWhere] = useState(preset); // "just used": the where of the thing saved a moment ago (+ Next), or Log here
+  const [lastWhere, setLastWhere] = useState(null); // + Next: the where of the thing saved a moment ago
   const tagP = useRef(null);
   const mounted = useRef(true);
   const openedAt = useRef(Date.now());
+  const levelsRef = useRef(levels); levelsRef.current = levels;
   const mine = !owner || owner === me();
+  const started = moveItem || thing.photos.length > 0;
 
-  // ---- the stream (as Camera.jsx; the phone's own camera if it can't start)
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -75,40 +85,48 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     shot(new File([blob], `recall-${Date.now()}.jpg`, { type: 'image/jpeg' }));
   }
 
-  // ---- the household's places and boxes (chips, and what a "where" photo is compared with)
+  // ---- places and containers (only those: never a pencil)
+  const self = moveItem || (thing.match && thing.answer === 'yes' ? thing.match : null);
+  const okBox = (b) => !self || (b.id !== self.id && !wouldLoop(self, b));
   const others = items.filter((it) => !it.deleted && !((it.createdAt || 0) >= openedAt.current));
-  const boxes = containers(graph(), 12).filter((b) => !thing || !thing.match || b.id !== thing.match.id);
+  const boxes = containers(graph(), 12).filter(okBox);
   const placeNames = knownLocations(items, 12, places);
-  const chips = [...boxes.slice(0, 2).map((b) => ({ key: 'b' + b.id, label: cap(b.name), thumb: b.thumb, known: { t: 'thing', item: b } })),
-    ...placeNames.slice(0, 4).map((n) => { const t = placeThumb(n, places, []); return { key: 'p' + n, label: n, thumb: t && t.own ? t.src : null, known: { t: 'place', name: n } }; })]
-    .slice(0, 4);
+  const placePic = (n) => { const p = placeNamed(n, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; };
+  // The chips: the most recent place and the most recent box, then the next of each (only two fit beside •••).
+  const pc = placeNames.slice(0, 4).map((n) => ({ key: 'p' + n, label: n, thumb: placePic(n), known: { t: 'place', name: n } }));
+  const bc = boxes.slice(0, 4).map((b) => ({ key: 'b' + b.id, label: cap(b.name), thumb: b.thumb, known: { t: 'thing', item: b } }));
+  const chips = []; for (let i = 0; i < 4; i++) { if (pc[i]) chips.push(pc[i]); if (bc[i]) chips.push(bc[i]); }
 
-  // ---- a photo: the thing (step 1), or a "where" (every photo after it)
+  // ---- a photo goes to the chosen level
   async function shot(file) {
     const s = await compressPhoto(file);
     if (!mounted.current) return;
-    if (!thing) { startThing(s); return; }
-    const key = ++KEY;
-    const link = { key, file, photo: s.photo, thumb: s.thumb, status: 'naming', name: '', moves: false, known: null, ask: null };
-    setChain((c) => [...c, link]);
-    logEvent('camera_where_shot', { depth: chain.length + 1 });
-    nameWhere(link, s.photo);
+    if (sel === 0 && !moveItem) {
+      const first = thing.photos.length === 0;
+      setThing((t) => ({ ...t, photos: [...t.photos, { ...s, file }] }));
+      logEvent('camera_thing_shot', { n: thing.photos.length + 1 });
+      if (first) nameThing(s);
+      return;
+    }
+    const i = sel - 1;
+    const cur = levelsRef.current[i] || emptyLevel();
+    const firstOfLevel = cur.photos.length === 0 || !!cur.known;
+    const next = { ...cur, photos: [...(cur.known ? [] : cur.photos), { ...s, file }], known: null, ...(firstOfLevel ? { status: 'naming', name: '', ask: null, no: false, yes: false } : {}) };
+    setLevels((ls) => { const c = [...ls]; while (c.length <= i) c.push(emptyLevel()); c[i] = next; return c; });
+    logEvent('camera_where_shot', { level: sel, n: next.photos.length });
+    if (firstOfLevel) nameWhere(next.key, s.photo);
   }
 
-  function startThing(s) {
-    setThing({ photo: s.photo, thumb: s.thumb, tag: undefined, match: null, answer: null });
-    logEvent('camera_thing_shot', {});
+  function nameThing(s) {
     const chipNames = knownLocations(items, 8, places);
     tagP.current = engine.tagPhoto([s.photo], { knownPlaces: chipNames, catalog: items.filter((it) => it.name).map((it) => ({ name: it.name, aliases: it.aliases || [] })), sensitivity: 'personal' })
       .then((r) => r, (err) => { console.error(err); return null; });
     tagP.current.then(async (tag) => {
       if (!mounted.current) return;
-      setThing((t) => (t && t.photo === s.photo ? { ...t, tag } : t));
+      setThing((t) => ({ ...t, tag }));
       if (!tag) return;
-      // Identity: an exact name, or the AI's own "same as" (bug #10: never a shared word) …
       const byName = findMatch(others, tag);
-      if (byName) { setThing((t) => (t && t.photo === s.photo ? { ...t, match: byName } : t)); return; }
-      // … else the AI LOOKS at the likeliest candidates. Only a sure answer is offered, and it is asked.
+      if (byName) { setThing((t) => ({ ...t, match: byName })); return; }
       const byWords = matchThings(others, [tag.name, ...(tag.alternatives || [])].join(' '));
       const recent = [...others].sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
       const cands = []; [...byWords, ...recent].forEach((it) => { if (cands.length < 6 && !cands.includes(it) && it.thumb) cands.push(it); });
@@ -118,13 +136,12 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         const r = await engine.sameThing([s.photo], cands.map((c, i) => ({ name: c.name, thumb: small[i] })), { subject: tag.name, sensitivity: 'personal' });
         const hit = r.index >= 0 && r.sure ? cands[r.index] : null;
         logEvent('identity_check', { candidates: cands.length, hit: hit ? hit.id : null, via: 'camera' });
-        if (hit && mounted.current) setThing((t) => (t && t.photo === s.photo ? { ...t, match: hit } : t));
+        if (hit && mounted.current) setThing((t) => ({ ...t, match: hit }));
       } catch (err) { console.error(err); }
     });
   }
 
-  // What is in this "where" photo? Its name, box or place, and is it one already saved (asked, never assumed).
-  async function nameWhere(link, photo) {
+  async function nameWhere(key, photo) {
     const cands = [...boxes.filter((b) => b.thumb).slice(0, 4).map((b) => ({ c: { name: b.name, thumb: b.thumb }, known: { t: 'thing', item: b } })),
       ...places.filter((p) => p.photos && p.photos.length).slice(0, 2).map((p) => ({ c: { name: p.name, thumb: p.photos[0].thumb }, known: { t: 'place', name: p.name } }))].slice(0, 6);
     let r = null;
@@ -135,83 +152,113 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (!mounted.current) return;
     const hit = r && r.index >= 0 && r.sure ? cands[r.index].known : null;
     logEvent('camera_where_named', { named: !!(r && r.name), moves: !!(r && r.moves), known: !!hit });
-    setChain((c) => c.map((l) => (l.key !== link.key ? l : { ...l, status: r ? 'named' : 'failed', name: (r && r.name) || '', moves: !!(r && r.moves), ask: hit })));
+    setLevels((ls) => ls.map((l) => (l.key !== key ? l : { ...l, status: r ? 'named' : 'failed', name: (r && r.name) || '', moves: !!(r && r.moves), ask: hit })));
   }
 
   // ---- what the screen says
-  const tag = thing && thing.tag;
-  const name = nameOverride || (thing && thing.match && thing.answer !== 'no' ? thing.match.name : (tag && tag.name) || '');
+  const tag = thing.tag;
+  const match = moveItem ? null : (thing.match && thing.answer !== 'no' ? thing.match : null);
+  const name = moveItem ? cap(moveItem.name) : nameOverride || (match ? match.name : (tag && tag.name) || '');
   function nameNow() { return name; }
-  const match = thing && thing.match && thing.answer !== 'no' ? thing.match : null;
-  const v = !thing || (tag === undefined && !nameOverride) ? null : verdictOf(tag || null, nameOverride);
+  const v = moveItem || !thing.photos.length || (tag === undefined && !nameOverride) ? null : verdictOf(tag || null, nameOverride);
   const dropPhoto = !!(v && v.secret);
   const startPrivate = !!(v && v.private && mine && !shareAnyway && !match);
-  // Where it goes when she has shot none: Log here, or where it usually lives, or the AI sees a known place.
-  const guess = tag && tag.placeCertain && tag.placeGuesses && tag.placeGuesses[0] && placeNames.some((n) => n.toLowerCase() === tag.placeGuesses[0].toLowerCase())
+  const WHY = { 'in the photo': 'The photo shows where it is.', 'usual place': 'Where it usually lives.', 'just used': 'Where the last thing went.' };
+  const guess = !moveItem && tag && tag.placeCertain && tag.placeGuesses && tag.placeGuesses[0] && placeNames.some((n) => n.toLowerCase() === tag.placeGuesses[0].toLowerCase())
     ? { known: { t: 'place', name: placeNames.find((n) => n.toLowerCase() === tag.placeGuesses[0].toLowerCase()) }, why: 'in the photo' } : null;
   const usual = match ? (() => { const h = holderOf(match); return h ? { known: { t: 'thing', item: h }, why: 'usual place' } : match.location ? { known: { t: 'place', name: match.location }, why: 'usual place' } : null; })() : null;
-  const suggestion = lastWhere ? { known: lastWhere, why: preset && lastWhere === preset ? 'here' : 'just used' } : usual || guess;
-  const links = chain.length ? chain : suggestion ? [{ key: 'sugg', known: suggestion.known, why: suggestion.why }] : [];
+  const suggestion = lastWhere ? { known: lastWhere, why: 'just used' } : usual || guess;
+  const filled = (l) => !!l && (l.photos.length > 0 || !!l.known);
+  const real = levels.filter(filled);
+  // What will be saved: the filled levels, or (none filled) the suggestion.
+  const links = real.length ? real : suggestion && !moveItem ? [{ key: 'sugg', photos: [], known: suggestion.known, why: suggestion.why }] : [];
   const lastLink = links[links.length - 1];
-  // The chain is complete when it ends at a place (known, or a new fixed one), or at a box that already has a place.
-  const done = !!lastLink && ((lastLink.known && (lastLink.known.t === 'place' || !!(lastLink.known.item && (lastLink.known.item.location || holderOf(lastLink.known.item)))))
-    || (lastLink.ask && !lastLink.no && lastLink.status === 'named')
-    || (!lastLink.known && lastLink.status !== 'naming' && !lastLink.moves && !!lastLink.name));
+  const known = (l) => (l.known ? l.known : l.ask && !l.no ? l.ask : null);
+  const linkName = (l) => { const k = known(l); return k ? (k.t === 'thing' ? cap(k.item.name) : k.name) : l.status === 'naming' ? 'Naming…' : cap(l.name) || (l.moves ? 'A box' : 'A place'); };
+  const linkThumb = (l) => (l.photos && l.photos.length ? l.photos[0].thumb : (() => { const k = known(l); return !k ? null : k.t === 'thing' ? k.item.thumb : placePic(k.name); })());
+  const isBox = (l) => { const k = known(l); return k ? k.t === 'thing' : l.moves; };
 
-  const linkName = (l) => (l.known ? (l.known.t === 'thing' ? cap(l.known.item.name) : l.known.name) : l.ask && !l.no ? (l.ask.t === 'thing' ? cap(l.ask.item.name) : l.ask.name) : l.status === 'naming' ? 'Naming…' : cap(l.name) || (l.moves ? 'A box' : 'A place'));
-  const linkThumb = (l) => (l.thumb ? l.thumb : l.known && l.known.t === 'thing' ? l.known.item.thumb : l.known ? (placeThumb(l.known.name, places, []) || {}).src || null : null);
-  const isBox = (l) => (l.known ? l.known.t === 'thing' : l.ask && !l.no ? l.ask.t === 'thing' : l.moves);
-  // The sentence: line 1 where it goes, line 2 where THAT is. Never inside a button.
   function sentence() {
-    if (!links.length) return { l1: 'No place yet', l2: thing ? 'You can put it away later' : '', none: true };
+    if (!links.length) return { l1: 'No place yet', l2: started ? 'Tap ＋ to add where it is' : '', none: true };
     const first = links[0];
     const n1 = linkName(first);
     const l1 = first.status === 'naming' ? 'Naming the place…' : isBox(first) ? inPhrase({ name: n1 }) : n1;
     const rest = links.slice(1).map(linkName);
-    const lastKnownThing = lastLink.known && lastLink.known.t === 'thing' ? lastLink.known.item : lastLink.ask && !lastLink.no && lastLink.ask.t === 'thing' ? lastLink.ask.item : null;
-    if (lastKnownThing) { const outer = chainOf(lastKnownThing).map((c) => cap(c.name)); rest.push(...outer); const tail = chainOf(lastKnownThing); const loc = (tail.length ? tail[tail.length - 1] : lastKnownThing).location; if (loc && !outer.includes(loc)) rest.push(loc); }
-    return { l1, l2: rest.length ? rest.join(' · ') : (first.why || ''), none: false };
+    const lk = known(lastLink);
+    if (lk && lk.t === 'thing') { const outer = chainOf(lk.item); rest.push(...outer.map((c) => cap(c.name))); const tail = outer.length ? outer[outer.length - 1] : lk.item; if (tail.location && !rest.includes(tail.location)) rest.push(tail.location); }
+    return { l1, l2: rest.length ? rest.join(' · ') : (first.why ? WHY[first.why] || first.why : ''), none: false };
   }
   const say = sentence();
 
-  // ---- the chips and the change sheet
-  function pickKnown(known) {
-    logEvent('camera_where_chip', { t: known.t, depth: chain.length + 1 });
-    setChain((c) => [...c, { key: ++KEY, known }]);
+  // ---- levels: pick, add, fill from a chip
+  const lastFilled = levels.length === 0 || filled(levels[levels.length - 1]);
+  const canAdd = started && lastFilled && levels.length < MAX_LEVELS && !busy;
+  function addLevel() {
+    if (!canAdd) return;
+    setLevels((ls) => [...ls, emptyLevel()]); setSel(levels.length + 1);
+    logEvent('camera_level_add', { level: levels.length + 1 });
   }
-  function changeWhere(how) {
-    setSheet(null);
-    if (how === 'again') { setChain([]); setLastWhere(null); logEvent('camera_where_change', { how }); }
-    if (how === 'list') setSheet('more');
-    if (how === 'none') { setChain([]); setLastWhere(null); logEvent('camera_where_change', { how }); }
+  function tapLevel(i) {
+    if (i === 0 && moveItem) { if (moveItem.photo || moveItem.thumb) { setSheet({ preview: 0 }); setPvIndex(0); } return; }
+    if (i !== sel) { setSel(i); return; }
+    const photos = i === 0 ? thing.photos : (levels[i - 1] || {}).photos || [];
+    if (photos.length || (i > 0 && known(levels[i - 1] || {}))) { setSheet({ preview: i }); setPvIndex(photos.length ? photos.length - 1 : 0); }
+  }
+  function pickKnown(k) {
+    const i = sel === 0 ? Math.max(0, levels.findIndex((l) => !filled(l))) : sel - 1;
+    const target = sel === 0 && levels.findIndex((l) => !filled(l)) === -1 ? levels.length : i;
+    if (k.t === 'thing' && self && (k.item.id === self.id || wouldLoop(self, k.item))) return;
+    setLevels((ls) => { const c = [...ls]; while (c.length <= target) c.push(emptyLevel()); c[target] = { ...c[target], photos: [], known: k, status: 'known', ask: null }; return c; });
+    setSel(target + 1);
+    logEvent('camera_where_chip', { t: k.t, level: target + 1 });
+  }
+  function removePhoto(li, pi) {
+    if (li === 0) {
+      setThing((t) => { const photos = t.photos.filter((_, j) => j !== pi); return photos.length ? { ...t, photos } : { photos: [], tag: undefined, match: null, answer: null }; });
+      if (thing.photos.length === 1) { setLevels([]); setSel(0); setSheet(null); tagP.current = null; }
+    } else {
+      setLevels((ls) => ls.map((l, j) => (j !== li - 1 ? l : { ...l, photos: l.photos.filter((_, k) => k !== pi), ...(l.photos.length === 1 ? { status: 'empty', name: '', ask: null } : {}) })));
+    }
+    setPvIndex((x) => Math.max(0, x - 1));
+    logEvent('camera_photo_removed', { level: li });
+    const left = li === 0 ? thing.photos.length - 1 : ((levels[li - 1] || {}).photos || []).length - 1;
+    if (left <= 0) setSheet(null);
   }
 
   // ---- saving
-  async function save(next, answer = thing && thing.answer) {
-    if (busy || !thing) return;
-    if (thing.match && !answer) { setSheet({ ask: thing.match, next }); return; } // never merge silently
-    const match = thing.match && answer === 'yes' ? thing.match : null;
-    const name = nameOverride || (match ? match.name : (tag && tag.name) || '');
+  async function save(next, answer = thing.answer) {
+    if (busy || !started) return;
+    if (!moveItem && thing.match && !answer) { setSheet({ ask: thing.match, next }); return; }
+    const match = !moveItem && thing.match && answer === 'yes' ? thing.match : null;
+    const name = moveItem ? moveItem.name : nameOverride || (match ? match.name : (tag && tag.name) || '');
     const startPrivate = !!(v && v.private && mine && !shareAnyway && !match);
     setBusy(true);
     try {
-      // Names of the "where" photos: wait a little for any still on their way.
-      const waitNames = chain.filter((l) => !l.known && l.status === 'naming').length;
-      let cur = chain;
-      if (waitNames) {
-        const t0 = Date.now();
-        while (Date.now() - t0 < 12000) { await new Promise((r) => setTimeout(r, 250)); cur = await new Promise((res) => setChain((c) => { res(c); return c; })); if (!cur.some((l) => !l.known && l.status === 'naming')) break; }
-      }
+      let cur = levelsRef.current;
+      const t0 = Date.now();
+      while (cur.some((l) => l.photos.length && !l.known && l.status === 'naming') && Date.now() - t0 < 12000) { await new Promise((r) => setTimeout(r, 250)); cur = levelsRef.current; }
+      const use = cur.filter(filled).length ? cur.filter(filled) : links;
       const resolved = [];
-      for (const l of (cur.length ? cur : links)) {
-        if (l.known) resolved.push({ known: l.known });
-        else if (l.ask && !l.no) resolved.push({ known: l.ask });
-        else resolved.push({ photo: l.photo, thumb: l.thumb, placePhoto: l.moves ? null : await compressPlacePhoto(l.file), name: l.name, moves: l.moves });
+      for (const l of use) {
+        const k = known(l);
+        if (k) resolved.push({ known: k });
+        else resolved.push({ photo: l.photos[0].photo, thumb: l.photos[0].thumb, extras: l.photos.slice(1).map((p) => ({ photo: p.photo, thumb: p.thumb })),
+          placePhotos: l.moves ? null : await Promise.all(l.photos.slice(0, 3).map((p) => compressPlacePhoto(p.file))), name: l.name, moves: l.moves });
       }
       const { first, made } = await saveChain(resolved, { owner: owner || me(), places });
       const location = first ? first.text : '';
       const dest = first ? first.dest : null;
-      const common = { photo: dropPhoto ? null : thing.photo, thumb: dropPhoto ? null : thing.thumb, location, dest, restingOn: (tag && tag.restingOn) || '', placeSource: 'chosen', ...(owner ? { owner } : {}) };
+      const thumbs = [moveItem ? moveItem.thumb : dropPhoto ? null : thing.photos[0].thumb, ...use.map(linkThumb)];
+      if (moveItem) {
+        const prev = { location: moveItem.location || '', dest: openEdge(moveItem.id) ? openEdge(moveItem.id).to : null };
+        const ok = location ? await changeLocation(moveItem, location, 'chosen', dest) : true;
+        logEvent('camera_move', { itemId: moveItem.id, ok, depth: resolved.length });
+        onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2: say.none ? '' : say.l2, none: say.none, moved: true, refused: ok === false,
+          undo: mine ? { itemId: moveItem.id, isNew: false, prev, made } : null });
+        return;
+      }
+      const cover = thing.photos[0]; const extras = thing.photos.slice(1).map((p) => ({ photo: p.photo, thumb: p.thumb }));
+      const common = { photo: dropPhoto ? null : cover.photo, thumb: dropPhoto ? null : cover.thumb, extras: dropPhoto ? [] : extras, location, dest, restingOn: (tag && tag.restingOn) || '', placeSource: 'chosen', ...(owner ? { owner } : {}) };
       let itemId; let isNew = false; let prev = null;
       if (match) {
         prev = { location: match.location || '', dest: openEdge(match.id) ? openEdge(match.id).to : null };
@@ -225,87 +272,99 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           aliases: tag && tag.name && nameOverride && normName(tag.name) !== normName(nameOverride) ? [tag.name] : [],
           naming: tag === undefined, ...(startPrivate ? { private: true, privateAuto: v.why } : {}) });
         if (tag === undefined && tagP.current) {
-          const known = !!v;
+          const knew = !!v;
           tagP.current.then(async (t) => {
             await nameItem(itemId, t ? { name: nameOverride || t.name, description: t.description, restingOn: t.restingOn, details: t.details, aliases: nameOverride && t.name && normName(t.name) !== normName(nameOverride) ? [t.name] : [] } : {});
-            if (known || !t) return;
+            if (knew || !t) return;
             const late = verdictOf(t, nameOverride); const done2 = await applyVerdict(itemId, late, owner || me());
             if (done2.length) onNotice({ itemId, done: done2, why: late.why });
           });
         }
       }
-      logEvent('capture', { initiatedBy: 'camera', itemId, merged: !!match, depth: resolved.length, made: made.items.length + made.places.length, next: !!next, look, beforeName: tag === undefined });
-      const card = { itemId, where: location, name: cap(name) || 'Saved', lock: startPrivate || (match && match.private),
-        thumbs: [dropPhoto ? null : thing.thumb, ...(cur.length ? cur : links).map(linkThumb)], l1: say.l1, l2: say.none ? '' : say.l2, none: say.none,
+      logEvent('capture', { initiatedBy: 'camera', itemId, merged: !!match, depth: resolved.length, photos: thing.photos.length, made: made.items.length + made.places.length, next: !!next, look, beforeName: tag === undefined });
+      const card = { itemId, where: location, name: cap(name) || 'Saved', lock: startPrivate || (match && match.private), thumbs, l1: say.l1, l2: say.none ? '' : say.l2, none: say.none,
         undo: mine ? { itemId, isNew, prev, made } : null };
       if (next) {
         onSaved({ ...card, next: true });
-        setThing(null); setChain([]); setNameOverride(''); setShareAnyway(false); openedAt.current = Date.now();
-        const firstThumb = resolved.length ? (resolved[0].thumb || (resolved[0].known ? linkThumb({ known: resolved[0].known }) : null)) : null;
-        setLastWhere(dest ? (dest.t === 'thing' ? { t: 'thing', item: { id: dest.id, name: dest.name, thumb: firstThumb, ...(graph().byId.get(dest.id) || {}) } } : dest) : null);
+        setThing({ photos: [], tag: undefined, match: null, answer: null }); setLevels([]); setSel(0); setNameOverride(''); setShareAnyway(false); openedAt.current = Date.now(); tagP.current = null;
+        setLastWhere(dest ? (dest.t === 'thing' ? { t: 'thing', item: { ...(graph().byId.get(dest.id) || {}), id: dest.id, name: dest.name, thumb: thumbs[1] || (graph().byId.get(dest.id) || {}).thumb } } : dest) : null);
         setBusy(false);
         return;
       }
       onSaved(card);
-    } catch (err) {
-      console.error('camera save', err); setBusy(false);
-    }
+    } catch (err) { console.error('camera save', err); setBusy(false); }
   }
-
-  function tryCancel() {
-    if (thing) setSheet('cancel'); else onCancel();
-  }
+  function tryCancel() { if (thing.photos.length || real.some((l) => l.photos.length)) setSheet('cancel'); else onCancel(); }
 
   // ---- drawing
-  const thumbsRow = thing ? [{ key: 'thing', thumb: thing.thumb, lock: startPrivate, nm: cap(name) || 'Naming…' }, ...links.map((l) => ({ key: l.key, thumb: linkThumb(l), nm: linkName(l), box: isBox(l), link: l }))] : [];
-  const showWait = thing && !done;
-  const WHY = { 'in the photo': 'The photo shows where it is.', 'usual place': 'That is where it usually lives.', 'just used': 'Where the last thing went.', here: 'You are logging into this.' };
-  const prompt = !thing ? { n: '1', b: 'Photograph the thing', s: 'One thing per photo.' }
-    : !chain.length && suggestion ? { n: '2', b: `${linkName(links[0])}?`, s: `${WHY[suggestion.why] || ''} Save, or photograph where it is.`.trim() }
-    : !links.length ? { n: '2', b: 'Now where it goes', s: 'Step back: photograph what it is in, or where it is.' }
-    : !done ? { n: String(links.length + 2), b: `And where is ${isBox(lastLink) ? 'that' : 'it'}?`, s: 'Step back again, or Save.' }
-    : { n: '✓', b: 'Got it', s: 'Step back again if it is inside something.' };
-  const askLink = links.find((l) => l.ask && !l.no && !l.yes && l.status === 'named');
-  // Private by default, told right here (DECISIONS 09-24): the same note as before, "On this phone only" greyed.
-  function retake() { logEvent('privacy_retake', { via: 'camera' }); setThing(null); setChain([]); setNameOverride(''); setShareAnyway(false); tagP.current = null; }
-  const privLine = thing ? (
+  const colour = LEVEL_COLOURS[Math.min(sel, LEVEL_COLOURS.length - 1)];
+  const lvName = (i) => (i === 0 ? (cap(name) || 'the thing') : linkName(levels[i - 1] || links[i - 1] || {}));
+  const selLevel = sel > 0 ? levels[sel - 1] : null;
+  const prompt = !started ? { b: 'Photograph the thing', s: 'Take as many photos of it as you like.' }
+    : sel === 0 ? { b: `${cap(name) || 'The thing'} · ${thing.photos.length} photo${thing.photos.length === 1 ? '' : 's'}`, s: 'Another photo of it, or tap ＋ to photograph where it goes.' }
+    : !filled(selLevel) ? (moveItem && sel === 1 ? { b: whereQ(name), s: 'Photograph the place or what it is in. Or tap one.' }
+      : sel === 1 ? { b: 'Where it goes', s: `Photograph what ${own(name) ? 'the ' + own(name) : 'it'} is in, or where it is. Or tap a place.` }
+      : { b: whereQ(lvName(sel - 1)), s: 'Photograph what it is in, or where it is. Or tap a place.' })
+    : { b: `${isBox(selLevel) ? inPhrase({ name: linkName(selLevel) }) : linkName(selLevel)}${selLevel.photos.length ? ` · ${selLevel.photos.length} photo${selLevel.photos.length === 1 ? '' : 's'}` : ''}`, s: `Another photo of it, or tap ＋ for where ${isBox(selLevel) ? 'the ' + own(linkName(selLevel)) : 'that'} is.` };
+  const askLevel = levels.find((l) => l.ask && !l.no && !l.yes && l.status === 'named');
+  function retake() { logEvent('privacy_retake', { via: 'camera' }); setThing({ photos: [], tag: undefined, match: null, answer: null }); setLevels([]); setSel(0); setNameOverride(''); setShareAnyway(false); tagP.current = null; }
+  const privLine = started && !moveItem ? (
     <PrivNote v={v} mine={mine} ownerName={ownerName} isNew={!match} shared={shareAnyway}
       onShare={(x) => { setShareAnyway(x); logEvent('privacy_share', { to: x ? 'shared' : 'private', mode: 'camera' }); }}
       onRetake={retake} onDontSave={() => { logEvent('capture_leave', { reason: 'helper_private', via: 'camera' }); onCancel(); }} />) : null;
-  const identity = thing && thing.match && !thing.answer ? (
+  const identity = !moveItem && thing.match && !thing.answer ? (
     <div className="lc-ask" role="group" aria-label="Is this the same thing?">
       <b>Your {own(thing.match.name)}?</b>
       <div><button type="button" onClick={() => setThing((t) => ({ ...t, answer: 'yes' }))}>Yes</button>
         <button type="button" className="o" onClick={() => setThing((t) => ({ ...t, answer: 'no' }))}>No, a new thing</button></div>
     </div>) : null;
-  const whereAsk = askLink ? (
+  const whereAsk = askLevel ? (
     <div className="lc-ask" role="group" aria-label="Is this the one you have?">
-      <b>Your {own(askLink.ask.t === 'thing' ? askLink.ask.item.name : askLink.ask.name)}?</b>
-      <div><button type="button" onClick={() => setChain((c) => c.map((l) => (l.key === askLink.key ? { ...l, yes: true } : l)))}>Yes</button>
-        <button type="button" className="o" onClick={() => setChain((c) => c.map((l) => (l.key === askLink.key ? { ...l, no: true } : l)))}>No, a new one</button></div>
+      <b>Your {own(askLevel.ask.t === 'thing' ? askLevel.ask.item.name : askLevel.ask.name)}?</b>
+      <div><button type="button" onClick={() => setLevels((ls) => ls.map((l) => (l.key === askLevel.key ? { ...l, yes: true } : l)))}>Yes</button>
+        <button type="button" className="o" onClick={() => setLevels((ls) => ls.map((l) => (l.key === askLevel.key ? { ...l, no: true } : l)))}>No, a new one</button></div>
     </div>) : null;
 
-  const thumbEls = (big) => thumbsRow.map((t, i) => (
-    <div className={big ? 'lc-t' : 'lc-s'} key={t.key}>
-      {i > 0 && <span className="lc-in">in</span>}
-      <div className="lc-tile">
-        <button type="button" className={'lc-ph' + (t.thumb ? '' : ' none')} aria-label={`See ${t.nm}`} onClick={() => t.thumb && setSheet({ preview: t })}>
-          {t.thumb ? <img src={t.thumb} alt="" /> : t.box ? <BoxIcon /> : <PinIcon />}
-          {t.lock && <span className="lc-lk"><LockIcon /></span>}
-        </button>
-        {big && <div className="lc-nm">{t.nm}</div>}
-      </div>
-    </div>));
-  const waitEl = (big) => showWait ? (
-    <div className={big ? 'lc-t' : 'lc-s'} key="wait"><span className="lc-in">in</span>
-      <div className="lc-tile"><div className="lc-ph wait" aria-hidden="true"><PinAskIcon /></div>{big && <div className="lc-nm">Where?</div>}</div></div>) : null;
+  // The level squares: the thing (0), each where level, then ＋ in the next colour.
+  const squares = [];
+  if (started) {
+    const t0 = moveItem ? moveItem.thumb : thing.photos[0] && thing.photos[0].thumb;
+    squares.push({ i: 0, thumb: t0, n: moveItem ? 0 : thing.photos.length, lock: startPrivate, nm: cap(name) || 'Naming…' });
+    const shown = real.length || levels.length ? levels : links; // before any level exists, the suggestion stands in level 1
+    shown.forEach((l, j) => squares.push({ i: j + 1, thumb: linkThumb(l), n: l.photos ? l.photos.length : 0, empty: !filled(l), box: isBox(l), nm: filled(l) ? linkName(l) : 'Where?', sugg: l.key === 'sugg' }));
+  }
+  const sq = (s, big) => {
+    const c = LEVEL_COLOURS[Math.min(s.i, LEVEL_COLOURS.length - 1)]; const on = s.i === sel && !s.sugg;
+    return (
+      <div className={big ? 'lv-t' : 'lv-s'} key={'l' + s.i}>
+        {s.i > 0 && <span className="lc-in">in</span>}
+        <div className="lv-tile">
+          <button type="button" className={'lv-sq' + (on ? ' sel' : '') + (s.empty ? ' empty' : '')} style={on || s.empty ? { borderColor: c, color: c } : undefined}
+            aria-label={s.i === 0 ? `The thing: ${s.nm}` : `Level ${s.i}: ${s.nm}`} aria-pressed={on} onClick={() => (s.sugg ? pickKnown(links[0].known) : tapLevel(s.i))}>
+            {s.thumb ? <img src={s.thumb} alt="" /> : s.empty ? <PinAskIcon /> : s.box ? <BoxIcon /> : <PinIcon />}
+            {s.n > 1 && <span className="lv-n">{s.n}</span>}
+            {s.lock && <span className="lc-lk"><LockIcon /></span>}
+          </button>
+          {big && <div className="lc-nm">{s.nm}</div>}
+        </div>
+      </div>);
+  };
+  const plus = (big) => (canAdd ? (
+    <div className={big ? 'lv-t' : 'lv-s'} key="plus"><span className="lc-in">in</span>
+      <div className="lv-tile"><button type="button" className="lv-sq empty plus" style={{ borderColor: LEVEL_COLOURS[Math.min(levels.length + 1, LEVEL_COLOURS.length - 1)], color: LEVEL_COLOURS[Math.min(levels.length + 1, LEVEL_COLOURS.length - 1)] }}
+        aria-label="Add where it is: the next level" onClick={addLevel}><PlusIcon /></button>{big && <div className="lc-nm">Where?</div>}</div></div>) : null);
+  const many = squares.length + (canAdd ? 1 : 0);
 
-  const sentenceEl = thing ? (
+  const sentenceEl = started ? (
     <div className="lc-say">
       <PinIcon />
       <span className="tx"><b>{say.l1}</b>{say.l2 && <span className="soft">{say.l2}</span>}</span>
-      {links.length > 0 && <button type="button" className="lc-chg" aria-label="Change where it goes" onClick={() => setSheet('change')}><PencilIcon /></button>}
+      {links.length > 0 && !moveItem && <button type="button" className="lc-chg" aria-label="Change where it goes" onClick={() => setSheet('change')}><PencilIcon /></button>}
     </div>) : null;
+  const showChips = started && (sel > 0 || !real.length) && chips.length > 0;
+  const pv = sheet && sheet.preview !== undefined ? sheet.preview : null;
+  const pvPhotos = (pv === null ? [] : pv === 0 ? (moveItem ? [{ photo: moveItem.photo || moveItem.thumb }] : thing.photos) : (() => { const l = levels[pv - 1] || {}; return l.photos && l.photos.length ? l.photos : (known(l) ? [{ photo: linkThumb(l) }] : []); })())
+    .filter((p) => p && p.photo); // a thing or box with no photo has nothing to show
 
   return (
     <div className={'lc lc-' + look} role="dialog" aria-modal="true" aria-label="Log item">
@@ -321,50 +380,62 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           <div className="camera-msg"><p>The camera could not start on this phone.</p>
             <label className="btn-primary file"><CameraIcon /> Use the phone's camera
               <input type="file" accept="image/*" capture="environment" onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) shot(f); }} /></label></div>)}
-        <div className="lc-prompt"><span className="n">{prompt.n}</span><div><b>{prompt.b}</b><small>{prompt.s}</small></div></div>
-        {look === 'a' && thing && (<>
-          <div className={'lc-chain' + (thumbsRow.length + (showWait ? 1 : 0) > 3 ? ' more' : '')}>{thumbEls(true)}{waitEl(true)}</div>
-          {(identity || whereAsk || (v && (v.private || v.secret))) && <div className="lc-float">{identity || whereAsk}{privLine}</div>}
+        <div className="lc-prompt"><span className="dot" style={{ borderColor: colour }} aria-hidden="true" /><div><b>{prompt.b}</b><small>{prompt.s}</small></div></div>
+        {/* Type it instead: inside the picture, before the first photo (Ravi 09-27). */}
+        {!started && onWrite && <div className="lc-typeit"><button type="button" onClick={onWrite}><PencilIcon />Type it instead</button></div>}
+        {look === 'a' && started && (<>
+          <div className={'lv-chain' + (many > 3 ? ' more' : '')}>{squares.map((s) => sq(s, true))}{plus(true)}</div>
+          {(privLine || identity || whereAsk) && <div className="lc-float">{identity || whereAsk}{privLine}</div>}
         </>)}
-        {look === 'b' && thing && (
+        {look === 'b' && started && (
           <div className="lc-card">
-            <div className={'lc-strip' + (thumbsRow.length + (showWait ? 1 : 0) > 5 ? ' more' : '')}>{thumbEls(false)}{waitEl(false)}</div>
-            <button type="button" className="lc-name" onClick={() => { setDraft(name); setSheet('rename'); }}>{cap(name) || 'Naming…'}{startPrivate && <LockIcon />}</button>
+            <div className={'lv-strip' + (many > 5 ? ' more' : '')}>{squares.map((s) => sq(s, false))}{plus(false)}</div>
+            <button type="button" className="lc-name" disabled={!!moveItem} onClick={() => { setDraft(name); setSheet('rename'); }}>{cap(name) || 'Naming…'}{startPrivate && <LockIcon />}</button>
             {identity || whereAsk}
             {privLine}
             {sentenceEl}
           </div>)}
       </div>
       <div className="lc-bot">
-        {!thing && onWrite && <div className="lc-typeit"><button type="button" onClick={onWrite}><PencilIcon />Type it instead</button></div>}
-        {thing && (!done || !chain.length) && chips.length > 0 && (
+        {showChips && (
           <div className="lc-chips" aria-label="Or tap a place">
-            {chips.filter((c) => !links.some((l) => l.known && ((l.known.t === 'thing' && c.known.t === 'thing' && l.known.item.id === c.known.item.id) || (l.known.t === 'place' && c.known.t === 'place' && l.known.name === c.known.name)))).slice(0, 2).map((c) => (
-              <button key={c.key} type="button" className="lc-chip" onClick={() => pickKnown(c.known)}>
+            <span className="lc-cdot" style={{ background: sel > 0 ? colour : LEVEL_COLOURS[1] }} aria-hidden="true" />
+            {chips.filter((c) => !real.some((l) => l.known && ((l.known.t === 'thing' && c.known.t === 'thing' && l.known.item.id === c.known.item.id) || (l.known.t === 'place' && c.known.t === 'place' && l.known.name === c.known.name)))).slice(0, 2).map((c) => (
+              <button key={c.key} type="button" className={'lc-chip' + (c.known.t === 'thing' ? ' box' : '')} onClick={() => pickKnown(c.known)}>
                 {c.thumb ? <img src={c.thumb} alt="" /> : <span className="ic">{c.known.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}<span>{c.label}</span></button>))}
-            <button type="button" className="lc-chip more" aria-label="More places" onClick={() => setSheet('more')}><span className="ic">•••</span></button>
+            <button type="button" className="lc-chip more" aria-label="Every place and box" onClick={() => setSheet('more')}><span className="ic">•••</span></button>
           </div>)}
         {look === 'a' && sentenceEl}
         <div className="lc-row">
-          {thing ? <button type="button" className="lc-k sn" disabled={busy} onClick={() => save(true)} aria-label="Save and log the next thing"><SaveIcon /><span className="plus">+</span>Next</button> : <span />}
-          <button type="button" className="lc-shutter" aria-label="Take a photo" disabled={cam !== 'live' || busy} onClick={snap}><span /></button>
-          {thing ? <button type="button" className="lc-k sv" disabled={busy} onClick={() => save(false)}><SaveIcon />{busy ? 'Saving…' : 'Save'}</button> : <span />}
+          {started && !moveItem ? <button type="button" className="lc-k sn" disabled={busy} onClick={() => save(true)} aria-label="Save and log the next thing"><SaveIcon /><span className="plus">+</span>Next</button> : <span />}
+          <button type="button" className="lc-shutter" style={{ borderColor: colour }} aria-label="Take a photo" disabled={cam !== 'live' || busy} onClick={snap}><span /></button>
+          {started ? <button type="button" className="lc-k sv" disabled={busy || (moveItem && !real.length)} onClick={() => save(false)}><SaveIcon />{busy ? 'Saving…' : 'Save'}</button> : <span />}
         </div>
       </div>
 
-      {sheet && sheet.preview && (
-        <div className="lc-pv" role="dialog" aria-label={sheet.preview.nm} onClick={() => setSheet(null)}>
-          <div className="box"><img src={sheet.preview.link && sheet.preview.link.photo ? sheet.preview.link.photo : sheet.preview.key === 'thing' ? thing.photo : sheet.preview.thumb} alt="" />
-            <b>{sheet.preview.nm}</b></div>
-          <div className="hint">Tap anywhere to close</div>
+      {pv !== null && pvPhotos.length > 0 && (
+        <div className="lc-pv" role="dialog" aria-label={lvName(pv)} onClick={() => setSheet(null)}>
+          <div className="box" style={{ borderColor: LEVEL_COLOURS[Math.min(pv, LEVEL_COLOURS.length - 1)] }} onClick={(e) => e.stopPropagation()}>
+            <div className="pv-strip" onScroll={(e) => { const el = e.currentTarget; const i = Math.round(el.scrollLeft / el.clientWidth); if (i !== pvIndex) setPvIndex(i); }}
+              ref={(el) => { if (el && el.dataset.init !== String(pv)) { el.dataset.init = String(pv); el.scrollLeft = pvIndex * el.clientWidth; } }}>
+              {pvPhotos.map((p, j) => <img key={j} src={p.photo} alt="" />)}
+            </div>
+            {pvPhotos.length > 1 && <div className="pv-dots">{pvPhotos.map((_, j) => <i key={j} className={j === pvIndex ? 'on' : ''} />)}</div>}
+            <b>{lvName(pv)}{pvPhotos.length > 1 ? ` · photo ${pvIndex + 1} of ${pvPhotos.length}` : ''}</b>
+            {pvPhotos.length > 1 && <small>Swipe for the other photos of {pv === 0 ? 'it' : 'this level'}</small>}
+            {!(pv === 0 && moveItem) && ((pv === 0 ? thing.photos : (levels[pv - 1] || {}).photos || []).length > 0) && (
+              <button type="button" className="pv-rm" onClick={() => removePhoto(pv, pvIndex)}><TrashIcon />Remove this photo</button>)}
+          </div>
+          <div className="hint">Tap anywhere else to close</div>
         </div>)}
       {sheet === 'change' && <Choice title="Where it goes" options={[
-        { label: 'Photograph it again', onClick: () => changeWhere('again') },
-        { label: 'Pick from the list', onClick: () => changeWhere('list') },
-        { label: 'No place yet', onClick: () => changeWhere('none') },
+        { label: 'Photograph it again', onClick: () => { setSheet(null); setLevels([]); setLastWhere(null); setSel(1); setLevels([emptyLevel()]); logEvent('camera_where_change', { how: 'again' }); } },
+        { label: 'Pick from every place and box', onClick: () => setSheet('more') },
+        { label: 'No place yet', onClick: () => { setSheet(null); setLevels([]); setLastWhere(null); setSel(0); logEvent('camera_where_change', { how: 'none' }); } },
         { label: 'Cancel', onClick: () => setSheet(null) }]} onCancel={() => setSheet(null)} />}
-      {sheet === 'more' && <PlacePicker current="" items={items} places={places} item={match}
-        onCancel={() => setSheet(null)} onPick={(n, dest) => { setSheet(null); pickKnown(dest && dest.t === 'thing' ? { t: 'thing', item: graph().byId.get(dest.id) || { id: dest.id, name: dest.name } } : { t: 'place', name: cap(n.trim()) }); }} />}
+      {sheet === 'more' && <WhereList item={self} items={items} places={places} title={whereQ(name)}
+        onCancel={() => setSheet(null)} onPick={(k) => { setSheet(null); pickKnown(k); }}
+        onPhotograph={() => { setSheet(null); if (sel === 0 || filled(selLevel)) addLevel(); }} />}
       {sheet === 'rename' && (
         <div className="sheet-back" onClick={() => setSheet(null)} role="presentation">
           <div className="sheet" role="dialog" aria-labelledby="lc-rn" onClick={(e) => e.stopPropagation()}>

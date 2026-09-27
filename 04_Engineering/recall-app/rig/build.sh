@@ -2,7 +2,7 @@
 set -e
 cd /home/claude/rig
 mkdir -p out
-./node_modules/.bin/esbuild src/main.jsx --bundle --format=esm --jsx=automatic --define:__BUILD__="'2026-09-14T12:00:00Z'" \
+./node_modules/.bin/esbuild src/main.jsx --bundle --format=esm --jsx=automatic --define:__BUILD__="'2026-09-14T12:00:00Z'" --define:__RIG__=true \
   --alias:firebase/firestore=./stubs/firestore.js --alias:firebase/app=./stubs/fbapp.js --alias:firebase/auth=./stubs/fbauth.js --alias:firebase/functions=./stubs/fbfunctions.js \
   --outfile=out/app.js --log-level=warning
 cp styles.css out/styles.css

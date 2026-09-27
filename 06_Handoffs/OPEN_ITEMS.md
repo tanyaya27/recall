@@ -1,7 +1,7 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-27.
+*Done* when closed. Updated 2026-09-27 (late).
 
 ## NOW — Apple Developer sign-up (its own session from 09-26; Ravi as an individual, Tanya 09-24)
 
@@ -133,7 +133,32 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   photo, with one tap to share it instead. Owner only (a helper can't make things private; they get told instead). Build in step 3.
 - [ ] **CONTAINERS LIVE 09-26 (20260926a, pushed 22e3cb2; edge rules deployed first).** Ravi: phone check, then pick
   A or B.
-- [ ] **BUILD 1 (20260927c) BUILT, on the Mac, NOT pushed — Ravi: look at `design/mockups/S10_1..4.jpg`, then push.** The camera
+- [ ] **09-27 Ravi: "The word 'log' doesn't make sense anymore."** Replace "Log item", "Log something in" and "+ Next"'s
+  sense of logging with a better word — Ravi to decide after checking build 2 on the phone (options to be drawn, not guessed).
+- [ ] **BUILD 2 (20260927d) — rules DEPLOYED 09-27 (Ravi). Next: push, then the phone check.** Everything in
+  `design/BOARD_2026-09-27_every-path.md`, as ruled (DECISIONS 09-27 late): camera levels by intent (colours, shutter ring,
+  ＋, per-level swipe preview, Type it instead on the photo, dark glass card, pin aligned); one page per thing (inside view
+  and its experiment retired); only containers hold things (`holds`, It holds things switch); one way to say where (the
+  camera + one ••• list, also in Write it down); Not put away = a list; hold sheet trimmed; loop guard at write; Show times
+  → Settings. **Your pencil: the filing cabinet is taken out of it once, when the app opens** (it then waits under Not put
+  away; Put it somewhere gives it its place).
+  Tests: walk_s12 56/56 in Dusk and in Linen · main 100 · graph 66 · roles 44 · private 34 · label 14 · graph unit 19 ·
+  nest 14 · rules engine: test_holds 7/7, test_edges 21/21, the other suites unchanged. Crawl of every screen and every tap
+  in Dusk and Linen: `mockups/S12_crawl_dusk.pdf`, `S12_crawl_linen.pdf`; the walks: `S12_camera.jpg`, `S12_pages.jpg`.
+  **Rules change (`holds` in editorKeys): deploy the rules BEFORE the push.** Retired, not deleted: PlacePicker,
+  InThingSheet, WhereSheet (no longer used); `walk_s10.js` (build 1's walk; `walk_s12.js` replaces it).
+  Next: put several away at once on the camera; the Find trail; PhotoCard's remaining uses.
+- [x] **09-27 EVERY PATH — Ravi: rulings 1–6** (`design/BOARD_2026-09-27_every-path.md`). Ravi's phone test of build 1 found serious
+  errors. Crawl (`rig/crawl_s11.js`): 28 screens, 206 taps, his dark theme, his data shape → 29 numbered issues
+  (`mockups/S11_evidence.jpg`, `S11_crawl_every_screen.pdf`, `S11_map_now.jpg`). Data bugs live now: #8 a loop can be saved
+  (pencil in cabinet in pencil), #12 "Put things in" on every thing (how the cabinet got inside the pencil), #14. Fix drawn
+  (`S11_fix_camera.jpg`, `S11_fix_pages.jpg`, `S11_map_new.jpg`): camera levels by intent, one colour per level, shutter ring
+  matches; tap a level's photo → half-screen, swipe through THAT level's photos only; dark glass card; one page per thing
+  (every tile opens it; reverses 09-25 "Home follows the box"); one way to say where (the camera, from Put it somewhere / Move
+  it); "Put things in" gone; no bottom bars; loop guard at write. Rulings: 1 levels · 2 one page per thing (reversal) ·
+  3 only a container holds things (Ravi: "It holds things" switch / photographed as a where that moves; Put things in only on containers; where-lists offer only places + containers; rules change) · 4 the page · 5 safe fix build now (loop guard, card, pin, remove Put things in) · 6 repair his
+  pencil/cabinet or Move it himself. No code changed.
+- [ ] **BUILD 1 (20260927c) LIVE — pushed a0c5d7b 09-27. Ravi: phone check (Log item → shoot the thing → step back → Save; try A in Settings → Taking photos).** The camera
   answers "where": step back and photograph what it's in, then where that is (a chain of photos); the AI names each and says box
   or place, recognises a saved box/place and ASKS; Save / + Next beside the shutter (floppy icon, 27 px gap); the sentence above;
   Cancel alone top-left; B (Answer card) default, A in Settings → Taking photos; Home card with the saved chain + Undo (owner);
