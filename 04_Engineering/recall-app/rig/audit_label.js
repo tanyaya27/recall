@@ -56,23 +56,18 @@ async function main() {
 
   // ---- #9: what the label says (One thing)
   aiNext = tagOf('screws', { details: '#8 × 1-1/4 in · stainless · pan head · 100 ct' });
-  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.waitForTimeout(400);
-  await page.click('.shutter'); await page.waitForTimeout(300); await page.click('.camera-done'); await page.waitForSelector('.photo-card'); await page.waitForTimeout(1500);
-  await page.click('.guess:has-text("Desk")'); await page.waitForSelector('.board'); await page.waitForTimeout(500);
+  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
+  await page.click('.lc-shutter'); await page.waitForTimeout(1500);
+  await page.click('.lc-chip:has-text("Desk")'); await page.click('.lc-k.sv'); await page.waitForSelector('.board'); await page.waitForTimeout(500);
   const screws = (await items()).find((d) => d.name === 'screws');
   check('L1 One thing: the label text is saved on the thing', screws && /stainless/.test(screws.details || ''), JSON.stringify(screws && screws.details));
   await page.click('.tile:has-text("Screws")'); await page.waitForSelector('.card.thing'); await page.waitForTimeout(500);
   check('L2 the thing card shows what the label says', /#8 × 1-1\/4 in · stainless/.test(await text('.label-line')));
   await shot('1-card-label');
   await page.goBack(); await page.waitForSelector('.board');
-  // ---- #9: Several saves it too
-  await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('recall-prefs') || '{}'); p.lastMode = 'several'; localStorage.setItem('recall-prefs', JSON.stringify(p)); });
-  aiNext = tagOf('seed packet', { details: "Tulip 'Queen of Night'" });
-  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.waitForTimeout(400);
-  await page.click('.shutter'); await waitStrip(/Seed packet/); await page.waitForTimeout(400);
-  const seeds = (await items()).find((d) => d.name === 'seed packet');
-  check('L3 Several: the label text is saved too', seeds && /Queen of Night/.test(seeds.details || ''), JSON.stringify(seeds && seeds.details));
-  await page.click('.camera-done'); await page.waitForTimeout(500);
+  // ---- #9: Several retired with Q3 (one thing per photo); its label check went with it. The seed packet is seeded instead.
+  await page.evaluate((s) => window.__rig.seed(s), [{ id: 'sp', kind: 'item', owner: ME, by: ME, name: 'seed packet', location: 'Desk', details: "Tulip 'Queen of Night'", ...pG, thumbV: 2, photoCount: 1, order: Date.now(), createdAt: Date.now(), lastSeenAt: Date.now(), history: [], private: false, roles: {}, sharedWith: [] }]);
+  await page.waitForTimeout(300);
   // ---- #9: Find item searches the label
   await page.click('.footer .btn-primary.alt'); await page.waitForSelector('.ask');
   await page.fill('.ask input', 'stainless'); await page.waitForTimeout(500);
@@ -84,9 +79,9 @@ async function main() {
 
   // ---- #10: write it down, no photo
   await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('recall-prefs') || '{}'); p.lastMode = 'one'; localStorage.setItem('recall-prefs', JSON.stringify(p)); });
-  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.waitForTimeout(300);
-  check('W1 the camera offers Type it (before a photo)', await count('.camera-write') === 1);
-  await page.click('.camera-write'); await page.waitForSelector('.note-card');
+  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(300);
+  check('W1 the camera offers Type it instead (before a photo), above the shutter', await count('.lc-typeit button') === 1);
+  await page.click('.lc-typeit button'); await page.waitForSelector('.note-card');
   check('W2 Type it → Write it down: What is it? · Where is it? · Keep this private · Save (disabled until a name)', /What is it\?/.test(await page.locator('.note-card').innerText()) && await page.locator('.note-card .btn-primary').isDisabled());
   await page.fill('#note-what', 'bank locker key');
   await page.click('.note-card .guess.other:has-text("Somewhere else")'); await page.fill('.note-card .guesses .place-input', 'blue tin, top of the wardrobe');
@@ -108,8 +103,8 @@ async function main() {
   check('W6 Add photo on a written thing → that photo becomes its cover (photoCount 1)', key2 && !!key2.photo && key2.photoCount === 1 && key2.written === false, JSON.stringify(key2 && [!!key2.photo, key2.photoCount]));
   await page.goBack(); await page.waitForSelector('.board');
   // Save without a place; the place used a moment ago is offered
-  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.waitForTimeout(300);
-  await page.click('.camera-write'); await page.waitForSelector('.note-card');
+  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(300);
+  await page.click('.lc-typeit button'); await page.waitForSelector('.note-card');
   check('W7 the place used a moment ago is already chosen', /Blue tin/.test(await page.locator('.note-card').innerText()) || await count('.note-card .guess.pre') === 1);
   await page.fill('#note-what', 'spare fuse');
   await page.fill('.note-card .guesses .place-input', '').catch(() => {});
@@ -122,10 +117,10 @@ async function main() {
   // Largest
   await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('recall-prefs') || '{}'); p.size = 'largest'; localStorage.setItem('recall-prefs', JSON.stringify(p)); });
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
-  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.waitForTimeout(300);
-  const one = await page.locator('.camera-write').evaluate((b) => { const r = document.createRange(); r.selectNodeContents(b); return r.getClientRects().length === 1 && b.scrollWidth <= b.clientWidth + 1; });
-  check('W9 Largest: Type it is one line, not cut off', one);
-  await page.click('.camera-write'); await page.waitForSelector('.note-card'); await shot('6-write-largest');
+  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(300);
+  const one = await page.locator('.lc-typeit button').evaluate((b) => { const lh = parseFloat(getComputedStyle(b).fontSize) * 1.6; const t = [...b.childNodes].find((n) => n.nodeType === 3); const r = document.createRange(); r.selectNodeContents(t); return r.getBoundingClientRect().height < lh && b.scrollWidth <= b.clientWidth + 1 && b.getBoundingClientRect().right <= innerWidth; }); // the icon + one line of words
+  check('W9 Largest: Type it instead is one line, not cut off', one);
+  await page.click('.lc-typeit button'); await page.waitForSelector('.note-card'); await shot('6-write-largest');
   await page.goBack(); await page.waitForSelector('.board');
   await page.click('.tile:has-text("Screws")'); await page.waitForSelector('.card.thing'); await page.waitForTimeout(400); await shot('7-card-label-largest');
 

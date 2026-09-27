@@ -3,7 +3,7 @@ import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.
 import Header from './Header.jsx';
 import { currentUser, isAnonymous, signIn, lastSignIn } from '../lib/auth.js';
 import { legacyCount, logEvent } from '../lib/db.js';
-import { getPrefs, savePrefs, CAPTURE_MODES, EXPERIMENTS } from '../lib/prefs.js';
+import { getPrefs, savePrefs, CAMERA_LOOKS, EXPERIMENTS } from '../lib/prefs.js';
 import { APPLE_SIGNIN } from './People.jsx';
 
 // Settings — reduced to what setup needs. Board decision 2026-09-05, screen 6; platform
@@ -198,31 +198,20 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
           is optional and folded away; with one stored, calls go straight from this phone. */}
       {/* Capture modes (DECISIONS 2026-09-24): where the camera opens, and which modes it offers.
           With one mode on, the camera shows no choice at all. */}
+      {/* The camera (Ravi 09-27): two looks of the same camera; B is the default. The capture modes went
+          with Q3 (one thing per photo). */}
       <div className="group-title">Taking photos</div>
       <div className="group">
         <div className="grow">
-          <label>The camera opens in</label>
-          <div className="seg wrap">
-            {[['last', 'Last used'], ...CAPTURE_MODES.map((m) => [m.id, m.label])].map(([id, label]) => (
-              <button key={id} type="button" className={cap.captureOpen === id ? 'on' : ''} disabled={id !== 'last' && !cap.captureModes.includes(id)}
-                onClick={() => setCapture({ captureOpen: id })}>{label}</button>
-            ))}
+          <label>The camera</label>
+          <div className="lookpick">
+            {CAMERA_LOOKS.map((l) => (
+              <button key={l.id} type="button" className={'lookopt' + (cap.cameraLook === l.id ? ' on' : '')} aria-pressed={cap.cameraLook === l.id}
+                onClick={() => setCapture({ cameraLook: l.id })}>
+                <span className={'mini mini-' + l.id} aria-hidden="true"><i className="p1" /><i className="p2" /><i className="p3" /><i className="card" /><i className="row" /></span>
+                <b>{l.label}</b><small>{l.blurb}</small>
+              </button>))}
           </div>
-        </div>
-        <div className="grow">
-          <label>Show these in the camera</label>
-          {CAPTURE_MODES.map((m) => {
-            const on = cap.captureModes.includes(m.id);
-            const only = on && cap.captureModes.length === 1;
-            return (
-              <div className="optrow" key={m.id}>
-                <span className="lab"><b>{m.label}</b><small>{m.blurb}</small></span>
-                <button type="button" className={'sw' + (on ? ' on' : '')} role="switch" aria-checked={on} aria-label={m.label} disabled={only}
-                  onClick={() => setCapture({ captureModes: on ? cap.captureModes.filter((x) => x !== m.id) : CAPTURE_MODES.map((x) => x.id).filter((x) => x === m.id || cap.captureModes.includes(x)) })} />
-              </div>
-            );
-          })}
-          <p className="note-quiet left">With only one switched on, the camera shows no choice at all.</p>
         </div>
       </div>
 

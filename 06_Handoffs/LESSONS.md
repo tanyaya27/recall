@@ -333,3 +333,16 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   chip; on the phone it was below the fold and Ravi called it very poor. Parallel choices go at the top, and the
   audit now asserts the path row is on screen under the question. Also: a picker that can only pick what exists is
   half a feature — offer "New: <typed>" as the first row.
+- **2026-09-27 · Walk the whole flow on screen, with a real photo, before shipping a fix to one step of it.** Two quick fixes
+  answered the words of Ravi's complaints (a path at the top; a "New:" row) and each added a screen; neither checked the
+  sequence around it, and neither built the camera ruling (09-26 Q1) that already solved it. The walk (`rig/walk_s9.js`:
+  every step screenshotted, taps counted, keyboard marked, real photos in the viewfinder via a canvas getUserMedia) found 31
+  issues in an hour, including a shared number that moved the wrong thing. A fix that adds a screen and removes none is a
+  warning sign; count taps before and after.
+- **2026-09-27 · A callback that fires after its screen closed reads the state of the moment it was made.** The late privacy
+  verdict (named after Save) used the camera's `privacyNotice`, which still thought the camera was open, so the notice went to a
+  toast instead of the Home card. Anything a promise calls later reads live state through a ref (`savedRef`, `logRef`).
+- **2026-09-27 · Rewrite an audit's steps when the flow changes, but keep what each check protects.** The Log item checks moved
+  from the photo card to the camera one by one (name, rename, place, cancel, identity tiers, save-before-name); only checks of
+  retired features (the mode row, Several, place views) were dropped, and each drop is written in the audit.
+

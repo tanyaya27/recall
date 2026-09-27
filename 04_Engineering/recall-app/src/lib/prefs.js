@@ -52,6 +52,11 @@ function expOf(e) {
   return out;
 }
 export const exp = (id) => getPrefs().exp[id];
+// The camera's two looks (Ravi 09-27: both pickable; B the default). Same parts, arranged differently.
+export const CAMERA_LOOKS = [
+  { id: 'b', label: 'Answer card', blurb: 'Everything about the thing in one card' },
+  { id: 'a', label: 'Photo clear', blurb: 'Big photos on the picture, Save below' },
+];
 
 export function getPrefs() {
   try {
@@ -63,8 +68,9 @@ export function getPrefs() {
       showAddedBy: p.showAddedBy !== false, // who added each photo, on the stamp (Phase 2, split 4: on by default)
       whose: typeof p.whose === 'string' ? p.whose : null, // which ReCall this phone is looking at: null = mine, else the owner's uid
       exp: expOf(p.exp), // Settings → Experimentation (Ravi 09-26)
+      cameraLook: p.cameraLook === 'a' ? 'a' : 'b', // the camera (09-27): 'b' Answer card (default) · 'a' Photo clear
       ...captureOf(p) };
-  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null, showTimes: true, showAddedBy: true, whose: null, exp: expOf({}), ...captureOf({}) }; }
+  } catch { return { theme: 'linen', size: 'normal', density: 'normal', placeView: null, showTimes: true, showAddedBy: true, whose: null, exp: expOf({}), cameraLook: 'b', ...captureOf({}) }; }
 }
 
 export function savePrefs(p) {

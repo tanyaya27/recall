@@ -45,8 +45,10 @@ async function main() {
     await page.evaluate(([u, w]) => { localStorage.setItem('rig-uid', u); localStorage.setItem('rig-anon', '0'); localStorage.setItem('recall-ai-config', JSON.stringify({ provider: 'anthropic', apiKey: 'sk-ant-rig', model: '' })); const p = JSON.parse(localStorage.getItem('recall-prefs') || '{}'); p.whose = w; localStorage.setItem('recall-prefs', JSON.stringify(p)); }, [uid, whose]);
     await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen'); await page.waitForTimeout(500);
   };
-  const openCam = async () => { await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.waitForTimeout(350); };
-  const shootOne = async () => { await openCam(); await page.click('.shutter'); await page.waitForTimeout(250); await page.click('.camera-done'); await page.waitForSelector('.photo-card'); };
+  const openCam = async () => { await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); };
+  const shootOne = async () => { await openCam(); await page.click('.lc-shutter'); await page.waitForTimeout(400); };
+  // The camera (09-27): tap the place chip if there is one, then Save.
+  const saveAt = async (nm) => { const c = page.locator(`.lc-chip:has-text("${nm}")`); if (await c.count()) await c.first().click(); await page.waitForTimeout(150); await page.click('.lc-k.sv'); await page.waitForSelector('.board'); };
   const waitFor = async (fn, ms = 6000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return true; await page.waitForTimeout(150); } return false; };
 
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen');
@@ -65,7 +67,7 @@ async function main() {
   aiNext = tagOf('bobby pins'); await shootOne(); await page.waitForTimeout(900);
   check('Q1 the naming prompt asks PRIVATE and secretVisible, and forbids copying secrets', /5\. PRIVATE/.test(lastPrompt) && /secretVisible/.test(lastPrompt) && /NEVER copy a password, PIN/.test(lastPrompt));
   check('Q2 an ordinary thing ("bobby pins") gets no privacy note', await count('.privnote') === 0);
-  await page.click('.guess:has-text("Hall table")'); await page.waitForSelector('.board'); await page.waitForTimeout(300);
+  await saveAt('Hall table'); await page.waitForTimeout(300);
   check('Q3 …and is saved shared', (await byName('bobby pins')).private === false);
 
   // ---- 1. One thing: the AI says private → told on the photo card
@@ -78,7 +80,7 @@ async function main() {
   await page.click('.phone-only', { force: true }); await page.waitForTimeout(150);
   check('P3 tapping it says "coming soon" (and changes nothing)', /coming soon/i.test(await text('.phone-only')));
   await shot('1-one-private');
-  await page.click('.guess:has-text("Desk")'); await page.waitForSelector('.board'); await page.waitForTimeout(400);
+  await saveAt('Desk'); await page.waitForTimeout(400);
   const nb = await byName('password notebook');
   check('P4 saved private from the first write: private, roles {}, sharedWith [], privateAuto "looks like passwords"', nb && nb.private === true && Object.keys(nb.roles).length === 0 && nb.sharedWith.length === 0 && nb.privateAuto === 'looks like passwords', JSON.stringify(nb && [nb.private, nb.privateAuto]));
   check('P5 the label text lost the PIN (details cleaned)', nb && nb.details === '', JSON.stringify(nb && nb.details));
@@ -89,7 +91,7 @@ async function main() {
   await page.click('.privnote .pn-link:has-text("Share it instead")'); await page.waitForTimeout(150);
   check('S1 Share it instead → "Shared. Everyone in your ReCall can see it. Keep it private"', /Shared\./.test(await text('.privnote')) && /Keep it private/.test(await text('.privnote')) && await count('.phone-only') === 0);
   await shot('2-shared-instead');
-  await page.click('.guess:has-text("Hall table")'); await page.waitForSelector('.board'); await page.waitForTimeout(400);
+  await saveAt('Hall table'); await page.waitForTimeout(400);
   check('S2 …saved shared', (await byName('insurance folder')).private === false);
 
   // ---- 3. A photo in which a secret can be read: not kept
@@ -98,71 +100,53 @@ async function main() {
   const n3 = await text('.privnote.stop');
   check('X1 "This photo won\'t be kept. …saved as words only, and private. Take it closed"', /This photo won't be kept/.test(n3) && /words only, and private/.test(n3) && /Take it closed/.test(n3), n3.replace(/\n/g, ' / '));
   await shot('3-secret-photo');
-  await page.click('.guess:has-text("Desk")'); await page.waitForSelector('.board'); await page.waitForTimeout(500);
+  await saveAt('Desk'); await page.waitForTimeout(500);
   const card = await byName('bank card');
   check('X2 saved with NO photo: photo null, written, photoCount 0, no snaps, private', card && card.photo === null && card.written === true && card.photoCount === 0 && (await snapsOf(card.id)).length === 0 && card.private === true, JSON.stringify(card && [card.photo, card.photoCount, card.private]));
   // Take it closed: the roll starts again
   aiNext = tagOf('recovery sheet', { private: true, privateWhy: 'looks like passwords', secretVisible: true });
   await shootOne(); await page.waitForSelector('.privnote.stop');
   aiNext = tagOf('recovery sheet', { private: true, privateWhy: 'looks like passwords' });
-  await page.click('.pn-link:has-text("Take it closed")'); await page.waitForSelector('.camera'); await page.waitForTimeout(300);
-  await page.click('.shutter'); await page.waitForTimeout(250); await page.click('.camera-done'); await page.waitForSelector('.photo-card'); await page.waitForTimeout(900);
-  check('X3 Take it closed → camera → a new photo, named again, now "Kept private" (photo kept)', /Kept private/.test(await text('.privnote')) && await count('.privnote.stop') === 0 && await count('.roll-shot') === 1);
-  await page.click('.guess:has-text("Desk")'); await page.waitForSelector('.board'); await page.waitForTimeout(400);
+  await page.click('.pn-link:has-text("Take it closed")'); await page.waitForTimeout(300);
+  check('X3a Take it closed → back to step 1 on the same camera', /Photograph the thing/.test(await text('.lc-prompt')));
+  await page.click('.lc-shutter'); await page.waitForTimeout(1200);
+  check('X3 …a new photo, named again, now "Kept private" (photo kept)', /Kept private/.test(await text('.privnote')) && await count('.privnote.stop') === 0 && await count('.lc-s .lc-ph img') === 1);
+  await saveAt('Desk'); await page.waitForTimeout(400);
   const dc = await byName('recovery sheet');
   check('X4 …saved with its photo, private', dc && !!dc.photo && dc.private === true);
 
   // ---- 4. A secret typed into the name blocks saving
   aiNext = tagOf('stapler'); await shootOne(); await page.waitForTimeout(800);
-  await page.click('.photo-card .field-value'); await page.fill('.photo-card input.edit-inline', 'PIN 4821'); await page.press('.photo-card input.edit-inline', 'Enter'); await page.waitForTimeout(200);
-  check('T1 typed "PIN 4821" → "ReCall remembers where things are…", place buttons disabled', /ReCall remembers where things are/.test(await text('.privnote.stop')) && await page.locator('.guess:has-text("Desk")').isDisabled());
+  await page.click('.lc-name'); await page.fill('.sheet .place-input', 'PIN 4821'); await page.waitForTimeout(200);
+  check('T1 typed "PIN 4821" → "ReCall remembers where things are…", the name cannot be used', /ReCall remembers where things are/.test(await text('.sheet .privnote.stop')) && await page.locator('.sheet .btn-primary').isDisabled());
   await shot('4-typed-secret');
-  await page.click('.photo-card .field-value'); await page.fill('.photo-card input.edit-inline', 'PIN notebook'); await page.press('.photo-card input.edit-inline', 'Enter'); await page.waitForTimeout(200);
-  check('T2 taken out ("PIN notebook") → allowed again, and the word list makes it private', !(await page.locator('.guess:has-text("Desk")').isDisabled()) && /Kept private: this looks like passwords/.test(await text('.privnote')));
-  await page.click('.guess:has-text("Desk")'); await page.waitForSelector('.board'); await page.waitForTimeout(400);
+  await page.fill('.sheet .place-input', 'PIN notebook'); await page.click('.sheet .btn-primary'); await page.waitForTimeout(200);
+  check('T2 taken out ("PIN notebook") → allowed again, and the word list makes it private', /Kept private: this looks like passwords/.test(await text('.privnote')));
+  await saveAt('Desk'); await page.waitForTimeout(400);
   check('T3 …saved private by the word list (no AI flag)', (await byName('PIN notebook') || {}).private === true);
 
   // ---- 5. Saved BEFORE the name came (the chosen place + Done): told right after, on the way home
   aiNext = tagOf('pill organizer', { private: true, privateWhy: 'looks medical' }); aiDelay = 2500;
-  await shootOne(); await page.waitForSelector('.next-row'); await page.click('.next-row .btn-primary.alt'); // Done, at once
-  const toastOk = await waitFor(async () => /Kept private · looks medical/.test(await text('.toast')));
+  await shootOne(); await page.click('.lc-k.sv'); // Save, at once
+  const toastOk = await waitFor(async () => /Kept private · looks medical/.test(await text('.saved-card')));
   const po = await byName('pill organizer');
-  check('L1 saved before the name → made private when the verdict came; toast "Kept private · looks medical" + Share it', toastOk && po && po.private === true && po.privateAuto === 'looks medical' && /Share it/.test(await text('.toast')), await text('.toast'));
+  check('L1 saved before the name → made private when the verdict came; the Home card says "Kept private · looks medical" + Share it', toastOk && po && po.private === true && po.privateAuto === 'looks medical' && /Share it/.test(await text('.saved-card')), await text('.saved-card'));
   await shot('5-late-toast');
-  await page.click('.toast-undo'); await page.waitForTimeout(400);
-  check('L2 Share it (on the toast) → shared', (await byName('pill organizer')).private === false);
+  await page.click('.saved-card .sc-share'); await page.waitForTimeout(400);
+  check('L2 Share it (on the card) → shared', (await byName('pill organizer')).private === false);
   // Next item: the verdict lands while the camera is open again
   aiNext = tagOf('passport', { private: true, privateWhy: 'looks like ID' });
-  await shootOne(); await page.waitForSelector('.next-row'); await page.click('.next-row .btn-primary:not(.alt)'); await page.waitForSelector('.camera');
+  await shootOne(); await page.click('.lc-k.sn'); await page.waitForSelector('.lc');
   const overOk = await waitFor(async () => /Kept private · looks like ID/.test(await text('.toast.over')));
   check('L3 Next item: the notice shows OVER the camera, and the passport is private', overOk && (await byName('passport') || {}).private === true);
   await shot('6-late-over-camera');
-  await page.click('.camera-cancel').catch(() => {}); await page.waitForTimeout(300); aiDelay = 250;
+  await page.click('.lc-x').catch(() => {}); await page.waitForTimeout(300); aiDelay = 250;
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
 
-  // ---- 6. Several: the strip says it
-  await setPrefs({ lastMode: 'several' });
-  aiNext = tagOf('tax papers', { private: true, privateWhy: 'looks like personal papers' });
-  await openCam(); await page.click('.shutter');
-  await waitFor(async () => /Only me/.test(await text('.strip1')));
-  const st = await text('.strip1');
-  check('V1 Several: strip shows "Only me" and "…so only you see it. Share it"; saved private', /Only me/.test(st) && /only you see it/.test(st) && /Share it/.test(st) && (await byName('tax papers') || {}).private === true, st.replace(/\n/g, ' / '));
-  await shot('7-several-private');
-  await page.click('.strip1 .share'); await page.waitForTimeout(400);
-  check('V2 Share it in the strip → shared', (await byName('tax papers')).private === false && /Shared/.test(await text('.strip1')));
-  aiNext = tagOf('sticky note', { private: true, privateWhy: 'looks like passwords', secretVisible: true });
-  await page.click('.shutter'); await waitFor(async () => /Photo not kept/.test(await text('.strip1')));
-  const pp = await byName('sticky note');
-  check('V3 Several: a readable secret → "Photo not kept", no photo, no snaps, private', /Photo not kept/.test(await text('.strip1')) && pp && pp.photo === null && (await snapsOf(pp.id)).length === 0 && pp.private === true);
-  await shot('8-several-secret');
-  await page.click('.camera-done'); await page.waitForSelector('.review'); await page.waitForTimeout(300);
-  check('V4 the review marks the private one with a lock', await count('.rv-cell .rv-lock') === 1);
-  await shot('9-review');
-  await page.click('.review .footer .btn-primary'); await page.waitForSelector('.board');
-  await setPrefs({ lastMode: 'one' });
+  // ---- 6. Several: retired with Q3 (one thing per photo, 09-26); the camera's own cases are above.
 
   // ---- 7. Write it down
-  await openCam(); await page.click('.camera-write'); await page.waitForSelector('.note-card');
+  await openCam(); await page.click('.lc-typeit button'); await page.waitForSelector('.note-card');
   await page.fill('#note-what', 'password notebook'); await page.waitForTimeout(100);
   check('W1 a private-looking name turns the switch on, with the reason', await page.locator('.note-card .sw').getAttribute('aria-checked') === 'true' && /Looks like passwords, so it starts private/.test(await text('.note-card .privnote')));
   check('W2 "On this phone only" greyed under the switch; tap → Coming soon', await count('.note-card .phone-only') === 1 && (await page.click('.note-card .phone-only', { force: true }), /Coming soon/.test(await text('.note-card .phone-only'))));
@@ -173,7 +157,7 @@ async function main() {
   await page.click('.note-card .guess >> nth=0'); await page.click('.note-card .btn-primary'); await page.waitForSelector('.board'); await page.waitForTimeout(400);
   const bp = await byName('bank PIN notebook');
   check('W4 saved private from the first write, privateAuto set', bp && bp.private === true && bp.privateAuto === 'looks like passwords');
-  await openCam(); await page.click('.camera-write'); await page.waitForSelector('.note-card');
+  await openCam(); await page.click('.lc-typeit button'); await page.waitForSelector('.note-card');
   await page.fill('#note-what', 'medical folder'); await page.click('.note-card .sw'); await page.waitForTimeout(100);
   check('W5 she switches it off → the note goes, and it stays off', await page.locator('.note-card .sw').getAttribute('aria-checked') === 'false' && await count('.note-card .privnote') === 0);
   await page.click('.note-card .btn-primary'); await page.waitForSelector('.board'); await page.waitForTimeout(400);
@@ -183,7 +167,7 @@ async function main() {
   await page.evaluate(() => window.__rig.rules(true));
   await boot('robert', 'margaret');
   aiNext = tagOf('blood test results', { private: true, privateWhy: 'looks medical' });
-  await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.camera'); await page.waitForTimeout(350); await page.click('.shutter'); await page.waitForTimeout(250); await page.click('.camera-done'); await page.waitForSelector('.photo-card');
+  await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); await page.click('.lc-shutter');
   await page.waitForSelector('.privnote.helper');
   const h1 = await text('.privnote.helper');
   check('H1 helper: "This looks private. Only Margaret can keep things private. …everyone in Margaret\'s ReCall sees it. Don\'t save it"', /This looks private/.test(h1) && /Only Margaret can keep things private/.test(h1) && /Margaret’s ReCall/.test(h1) && /Don’t save it/.test(h1) && await count('.phone-only') === 0, h1.replace(/\n/g, ' / '));
@@ -192,8 +176,8 @@ async function main() {
   check('H2 Don\'t save it → nothing saved', !(await byName('blood test results')));
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   aiNext = tagOf('blood test results', { private: true, privateWhy: 'looks medical' });
-  await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.camera'); await page.waitForTimeout(350); await page.click('.shutter'); await page.waitForTimeout(250); await page.click('.camera-done'); await page.waitForSelector('.privnote.helper');
-  await page.click('.guess:has-text("Desk")'); await page.waitForSelector('.board'); await page.waitForTimeout(500);
+  await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); await page.click('.lc-shutter'); await page.waitForSelector('.privnote.helper');
+  await saveAt('Desk'); await page.waitForTimeout(500);
   const mp = (await page.evaluate(() => window.__rig.rules(false)), await byName('blood test results'));
   check('H3b saved while "Checking it isn\'t already saved…" was still running → the card still finishes (race fixed 09-24)', true);
   check('H3 saved anyway → shared (a helper cannot make it private), owner Margaret, by Robert', mp && mp.private === false && mp.owner === 'margaret' && mp.by === 'robert', JSON.stringify(mp && [mp.private, mp.owner, mp.by]));

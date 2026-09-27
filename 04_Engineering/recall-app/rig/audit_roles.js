@@ -12,7 +12,13 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   await new Promise((r) => server.listen(PORT, r));
   const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
   const ctx = await browser.newContext({ permissions: ['camera', 'clipboard-read', 'clipboard-write'], viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  await ctx.route('https://api.anthropic.com/**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({ name: 'thing', description: '', location: '', same: true }) }] }) }));
+  let whereN = 0; // "where" photos: first a box (moves), then a shelf (fixed)
+  await ctx.route('https://api.anthropic.com/**', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}'); const t = JSON.stringify(body.messages || []);
+    const out = /MOVES:/.test(t) ? (whereN++ % 2 === 0 ? { name: 'sewing tin', moves: true, index: 0, sure: false } : { name: 'hall closet shelf', moves: false, index: 0, sure: false })
+      : { name: 'thing', description: '', location: '', same: true };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
+  });
   const page = await ctx.newPage(); const denied = []; page.on('console', (m) => { if (/permission-denied/.test(m.text())) denied.push(m.text()); }); page.on('pageerror', (e) => { if (/permission-denied/.test(e.message)) denied.push(e.message); });
   let first = true;
   const boot = async (uid, { anon = false, whose = null, url = '' } = {}) => {
@@ -103,12 +109,24 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   await page.click('.act:has-text("Edit")'); await page.waitForTimeout(200); await page.click('.fix .field-value:has-text("Kitchen counter")'); await page.waitForSelector('.sheet'); await page.click('.sheet button:has-text("Hall table")'); await page.waitForTimeout(600);
   check('R5 editor CAN move it (place + a sighting written)', (await dump()).find((d) => d.id === 'g').location === 'Hall table' && (await dump()).some((d) => d.kind === 'snap' && d.itemId === 'g' && d.moved && d.by === 'robert'));
   await page.goBack(); await page.waitForSelector('.board');
-  await page.click('.footer .btn-primary.whose'); await shoot(); await page.waitForSelector('.photo-card'); await page.waitForTimeout(1500);
-  check('R6 photo card header says in Margaret\'s ReCall', /in Margaret’s ReCall/.test(await text('.header .title')));
+  await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.lc'); await page.waitForTimeout(400); await page.click('.lc-shutter'); await page.waitForTimeout(1500);
+  check('R6 the camera says whose ReCall (a label top-right, not a button)', /Margaret’s ReCall/.test(await text('.lc-whose')) && await count('button.lc-whose') === 0);
   check('R6b the naming call went through ReCall\'s service FOR Margaret, called by Robert (no key on his phone)', await page.evaluate(() => window.__rig.lastAiOwner === 'margaret' && window.__rig.lastAiCaller === 'robert'));
-  await page.click('text=No place yet'); await page.waitForTimeout(700);
+  await page.click('.lc-k.sv'); await page.waitForTimeout(900);
   const logged = (await dump()).filter((d) => d.kind === 'item' && d.by === 'robert');
   check('R7 editor logs INTO her ReCall: owner = margaret, by = robert', logged.length === 1 && logged[0].owner === 'margaret' && logged[0].private === false, JSON.stringify(logged.map((l) => [l.owner, l.by])));
+  check('R7a …and the Home card has no Undo for a helper (he cannot delete her things)', await count('.saved-card') === 1 && await count('.saved-card .u') === 0);
+  // A helper steps back: the thing into a NEW box on a NEW shelf — all of it in her ReCall, with the rules on.
+  await page.waitForTimeout(5500);
+  await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
+  await page.click('.lc-shutter'); await page.waitForTimeout(1200); await page.click('.lc-shutter'); await page.waitForTimeout(1500); await page.click('.lc-shutter'); await page.waitForTimeout(1500);
+  denied.length = 0; await page.click('.lc-k.sv'); await page.waitForTimeout(500);
+  if (await count('.item-sheet button:has-text("No, a new thing")')) { await page.click('.item-sheet button:has-text("No, a new thing")'); } // the AI named it "thing" again: asked, never assumed
+  await page.waitForTimeout(2500);
+  const d2 = await dump(); const byRob = d2.filter((d) => d.by === 'robert' && d.createdAt > Date.now() - 20000);
+  check('R7b helper: a new box and a new shelf from photos, all owned by margaret, edges allowed, nothing denied',
+    denied.length === 0 && byRob.some((d) => d.kind === 'place' && d.owner === 'margaret') && d2.filter((d) => d.kind === 'edge' && d.owner === 'margaret' && d.by === 'robert').length >= 2,
+    `denied=${denied.length} ${JSON.stringify(byRob.map((d) => d.kind))}`);
 
   // ---------- Linda: Can see on ONE thing (direct role) → her own grid with an owner tag ----------
   await boot('linda');

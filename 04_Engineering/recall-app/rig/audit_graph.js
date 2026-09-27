@@ -15,6 +15,7 @@ const results = []; const errors = [];
 const check = (name, ok, note = '') => { results.push({ name, ok: !!ok, note }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${note ? ' — ' + note : ''}`); };
 const img = (f) => 'data:image/jpeg;base64,' + fs.readFileSync(path.join(__dirname, 'mock/img', f)).toString('base64');
 
+let whereNext = null; // the camera's "where" photo answer (09-27)
 async function main() {
   await new Promise((r) => server.listen(PORT, r));
   const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
@@ -22,7 +23,8 @@ async function main() {
   await ctx.route('https://api.anthropic.com/**', async (route) => {
     const body = JSON.parse(route.request().postData() || '{}'); const content = body.messages?.[0]?.content || [];
     const images = content.filter((b) => b.type === 'image').length; const isSame = content.some((b) => b.type === 'text' && /NEW PHOTO/.test(b.text));
-    const text = JSON.stringify(isSame ? { index: -1, sure: false } : images ? { name: 'bottle cap', sameAs: '', alternatives: [], restingOn: '', placeCertain: false, placeGuesses: [], description: '', details: '', private: false, secretVisible: false } : { matches: [], message: '' });
+    const isWhere = content.some((b) => b.type === 'text' && /MOVES:/.test(b.text));
+    const text = JSON.stringify(isWhere ? (whereNext || { name: 'shelf', moves: false, index: 0, sure: false }) : isSame ? { index: -1, sure: false } : images ? { name: 'bottle cap', sameAs: '', alternatives: [], restingOn: '', placeCertain: false, placeGuesses: [], description: '', details: '', private: false, secretVisible: false } : { matches: [], message: '' });
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
   });
   const page = await ctx.newPage();
@@ -99,7 +101,7 @@ async function main() {
   const pa = await page.locator('.putin-grid .tile-label').allInnerTexts();
   check('J6 then only the things not put away are offered', pa.length === 2 && pa.every((x) => /Coffee can|Blue binders/.test(x)), pa.join(' | '));
   await page.click('.putin-grid .tile:has-text("Coffee can")'); await page.click('.putin-grid .tile:has-text("Blue binders")');
-  check('J7 the button says it: "Put 2 at Hall table"', /Put 2 at Hall table/.test(await text('.putin-foot .btn-primary')));
+  check('J7 one verb on the button ("Put away"); the sentence above says "2 things · at Hall table" (ruled 09-27)', (await text('.putin-foot .btn-primary')).trim() === 'Put away' && /2 things/.test(await text('.putin-foot .lc-say')) && /at Hall table/.test(await text('.putin-foot .lc-say')));
   await shot('0c-pick');
   await page.click('.putin-foot .btn-primary'); await page.waitForTimeout(700);
   check('J8 saved: both at the Hall table (place links), and the chip is gone', (await byName('coffee can')).location === 'Hall table' && (await openTo('b'))[0].to.name === 'Hall table' && await count('.notput') === 0);
@@ -147,7 +149,7 @@ async function main() {
   check('G13 Put in: things not put away come first; the boxes this one is in are never offered (no circles)', /Coffee can|Blue binders/.test(cand[0] || '') && !cand.some((x) => /Memorabilia box/.test(x)) && !cand.some((x) => /Baseball card|Ticket stubs/.test(x)), cand.slice(0, 5).join(' | '));
   check('G13b every thing offered shows its name (rows never squash)', await page.evaluate(() => [...document.querySelectorAll('.putin-grid .tile')].every((t) => { const l = t.querySelector('.tile-label').getBoundingClientRect(); const r = t.getBoundingClientRect(); return l.height > 10 && l.bottom <= r.bottom + 1; })));
   await page.click('.putin-grid .tile:has-text("Coffee can")'); await page.click('.putin-grid .tile:has-text("Blue binders")');
-  check('G14 the button says what will happen: "Put 2 in the wooden box"', /Put 2 in the wooden box/.test(await text('.putin-foot .btn-primary')));
+  check('G14 one verb on the button ("Put in"); the sentence says "2 things · into the wooden box"', (await text('.putin-foot .btn-primary')).trim() === 'Put in' && /2 things/.test(await text('.putin-foot .lc-say')) && /into the wooden box/.test(await text('.putin-foot .lc-say')));
   await shot('6-putin');
   await page.click('.putin-foot .btn-primary'); await page.waitForTimeout(600);
   const cc = await openTo('u'), bb = await openTo('b');
@@ -157,13 +159,13 @@ async function main() {
   await page.click('.toast-undo'); await page.waitForTimeout(700);
   const cc2 = await openTo('u');
   check('G17 Undo: back where they were (no open edge to the box; not put away again)', !cc2.some((e) => e.to && e.to.id === 'w') && !(await byName('coffee can')).location, JSON.stringify(cc2));
-  // ---- Log here: a new thing lands in the box
-  await page.click('.footer .btn-primary:has-text("Log here")'); await page.waitForSelector('.camera'); await page.waitForTimeout(400);
-  await page.click('.shutter'); await page.waitForTimeout(250); await page.click('.camera-done'); await page.waitForSelector('.photo-card'); await page.waitForTimeout(900);
-  check('G18 Log here: the photo card already has the wooden box chosen', /Wooden box/.test(await text('.guess.pre')));
-  await page.click('.next-row .btn-primary.alt'); await page.waitForTimeout(1200);
+  // ---- Log here: a new thing lands in the box (the camera, 09-27)
+  await page.click('.footer .btn-primary:has-text("Log here")'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
+  await page.click('.lc-shutter'); await page.waitForTimeout(1200);
+  check('G18 Log here: the camera already says "In the wooden box"', /In the wooden box/.test(await text('.lc-say')), await text('.lc-say'));
+  await page.click('.lc-k.sv'); await page.waitForTimeout(1500);
   const stub = await byName('bottle cap'); const se = stub ? await openTo(stub.id) : [];
-  check('G19 …Done: the new thing is in the wooden box (an edge to it), and we are back inside the box', se.length === 1 && se[0].to.t === 'thing' && se[0].to.id === 'w' && /Wooden box/.test(await text('.ctx-head .t')), JSON.stringify(se.map((e) => e.to)));
+  check('G19 …Save: the new thing is in the wooden box (an edge to it), and we are back inside the box', se.length === 1 && se[0].to.t === 'thing' && se[0].to.id === 'w' && /Wooden box/.test(await text('.ctx-head .t')), JSON.stringify(se.map((e) => e.to)));
   // ---- moving the big box moves everything in it (no writes to what's inside)
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   const before = JSON.stringify((await items()).find((d) => d.id === 'c'));
@@ -188,31 +190,29 @@ async function main() {
   check('G23 typed "in the wooden box" → an edge to the wooden box (not a place called that); the text copy says "Wooden box"', ge.length === 1 && ge[0].to.t === 'thing' && ge[0].to.id === 'w' && (await byName('reading glasses')).location === 'Wooden box', JSON.stringify(ge.map((e) => e.to)));
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   // ---- 09-27 (Ravi: "item in place in place is not working"; "no facility to catalog without a place")
-  const shootOne = async () => { await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.waitForTimeout(350); await page.click('.shutter'); await page.waitForTimeout(250); await page.click('.camera-done'); await page.waitForSelector('.photo-card'); await page.waitForTimeout(900); };
-  await setPrefs({ lastMode: 'one' }); await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
-  await shootOne();
-  check('I1 photo card: a box already in use is offered by its photo ("In the memorabilia box"), never twice', await count('.photo-card .guess.inbox:has-text("In the memorabilia box")') === 1 && await count('.photo-card .guess:has-text("wooden box")') <= 1);
-  check('I2 photo card: "In something…" and "No place yet" are two parallel paths at the TOP (on screen without scrolling, under Where is it?)', await count('.photo-card .path-row .path.in') === 1 && await count('.photo-card .path-row .path.later') === 1 &&
-    await page.evaluate(() => { const r = document.querySelector('.photo-card .path-row').getBoundingClientRect(); const q = document.querySelector('.photo-card .ask-q').getBoundingClientRect(); return r.bottom <= window.innerHeight && r.top - q.bottom < 260; }));
-  await shot('13-photo-inbox');
-  await page.click('.photo-card .path.in'); await page.waitForSelector('.putin-sheet');
-  check('I3 "In something…": the search and "Something not logged yet" at the top, then boxes by photo', /Wooden box|Memorabilia box/.test(await text('.putin-grid .tile-label')) && await count('.it-search input') === 1 && await count('.it-new') === 1);
-  await page.fill('.it-search input', 'memorab'); await page.waitForTimeout(200);
-  await shot('14-in-something');
-  await page.click('.putin-grid .tile:has-text("Memorabilia box")'); await page.waitForTimeout(1500);
-  let bc = (await items()).find((d) => d.name === 'bottle cap' && d.location === 'Memorabilia box');
-  let bce = bc ? await openTo(bc.id) : [];
-  check('I4 …picked the memorabilia box by photo → saved IN it (an edge to the thing)', bce.length === 1 && bce[0].to.t === 'thing' && bce[0].to.id === 'm', JSON.stringify(bce.map((e) => e.to)));
+  // The fake AI calls every photo "bottle cap", so from the second one on it is ASKED "Your bottle cap?" — as it must be. Answer no.
+  const shootOne = async () => { await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); await page.click('.lc-shutter'); await page.waitForTimeout(1200);
+    if (await count('.lc-ask button:has-text("No, a new thing")')) { await page.click('.lc-ask button:has-text("No, a new thing")'); await page.waitForTimeout(200); } };
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   await shootOne();
-  const hadPreset = await count('.photo-card .guess.pre');
-  await page.click('.photo-card .path.later'); await page.waitForTimeout(1500);
+  check('I1 the camera: a box already in use is a chip with its photo, never twice', await count('.lc-chip:has-text("Memorabilia box") img') === 1 && await count('.lc-chip:has-text("Memorabilia box")') === 1);
+  check('I2 the camera: "No place yet" is the sentence until a place is given; Save is always one word, beside the shutter', /No place yet/.test(await text('.lc-say')) && (await text('.lc-k.sv')).trim() === 'Save');
+  await shot('13-camera-chips');
+  await page.click('.lc-chip:has-text("Memorabilia box")'); await page.waitForTimeout(300);
+  check('I3 tap the box chip: "In the memorabilia box" (and where the box is) above Save', /In the memorabilia box/.test(await text('.lc-say')), await text('.lc-say'));
+  await page.click('.lc-k.sv'); await page.waitForTimeout(1500);
+  let bc = (await items()).find((d) => d.name === 'bottle cap' && d.location === 'Memorabilia box');
+  let bce = bc ? await openTo(bc.id) : [];
+  check('I4 …saved IN the memorabilia box (an edge to the thing)', bce.length === 1 && bce[0].to.t === 'thing' && bce[0].to.id === 'm', JSON.stringify(bce.map((e) => e.to)));
+  await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
+  await shootOne();
+  await page.click('.lc-k.sv'); await page.waitForTimeout(1500);
   const np = (await items()).filter((d) => d.name === 'bottle cap' && !d.location);
-  check('I5 "No place yet" saves with no place and no link, even when a place was pre-chosen', np.length === 1 && (await openTo(np[0].id)).length === 0, `preset shown: ${hadPreset}`);
+  check('I5 Save with nothing given saves with no place and no link', np.length === 1 && (await openTo(np[0].id)).length === 0);
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   check('I6 …and it shows on Home as "No place assigned"', /No place assigned/.test(await text('.tile:has-text("Bottle cap") .tile-label')) || (await page.locator('.tile-label.noplace').allInnerTexts()).some((x) => /Bottle cap/.test(x)));
   // Write it down: In something… and No place yet
-  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.click('.camera-write'); await page.waitForSelector('.note-card');
+  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.click('.lc-typeit button'); await page.waitForSelector('.note-card');
   await page.fill('#note-what', 'spare fuse');
   check('I7 Write it down: "In something…" and "No place yet" at the top, and a box by photo', await count('.note-card .guess.inbox') >= 1 && await count('.note-card .path.in') === 1 && await count('.note-card .path.later') === 1);
   await page.click('.note-card .guess.inbox >> nth=0'); await page.waitForTimeout(100);
@@ -232,20 +232,20 @@ async function main() {
   const ke2 = await openTo('k');
   check('I10 …picked the wooden box → the car keys are in it', ke2.length === 1 && ke2[0].to.id === 'w', JSON.stringify(ke2.map((e) => e.to)));
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
-  // ---- a box not logged yet, made right at the top of "What is it in?" (Ravi 09-27)
+  // ---- a box not logged yet: she photographs it (Ravi 09-27: "typing a name … and not being able to take a picture")
   await shootOne();
-  await page.click('.photo-card .path.in'); await page.waitForSelector('.it-search');
-  await page.fill('.it-search input', "Dona Homer's tin box"); await page.waitForTimeout(200);
-  check('K1 typed a box that is not logged: "New: Dona Homer\'s tin box" is offered at the top', /New:\s*Dona Homer's tin box/.test(await text('.it-new')) && !(await page.locator('.it-new').isDisabled()));
+  whereNext = { name: "Dona Homer's tin box", moves: true, index: 0, sure: false };
+  await page.click('.lc-shutter'); await page.waitForTimeout(1500);
+  check('K1 step back and photograph a box not logged: it is named from the photo, "In the …tin box" above Save', /tin box/i.test(await text('.lc-say')), await text('.lc-say'));
   await shot('17-new-box');
-  await page.click('.it-new'); await page.waitForTimeout(1500);
+  await page.click('.lc-k.sv'); await page.waitForTimeout(1800); whereNext = null;
   const tinBox = await byName("Dona Homer's tin box");
   const bcs = (await items()).filter((d) => d.name === 'bottle cap');
   const linked = [];
   for (const b of bcs) { const e = await openTo(b.id); if (e.length && e[0].to.t === 'thing' && tinBox && e[0].to.id === tinBox.id) linked.push(b.id); }
-  check('K2 …made the tin box (a thing, no place yet) and the new thing is IN it (an edge by id)', !!tinBox && !tinBox.location && linked.length === 1, JSON.stringify({ tin: !!tinBox, linked }));
+  check('K2 …made the tin box as a thing WITH its photo, and the new thing is IN it (an edge by id)', !!tinBox && !!tinBox.thumb && linked.length === 1, JSON.stringify({ tin: !!tinBox, photo: !!(tinBox && tinBox.thumb), linked }));
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
-  check('K3 on Home: the tin box is one tile ("1 inside") and waits under "Not put away"', /1 inside/.test(await text(`.tile:has-text("Dona Homer") .inbadge`)) && /Not put away/.test(await text('.notput')));
+  check('K3 on Home: the tin box is one tile ("1 inside"); with no place given it waits under "Not put away"', /1 inside/.test(await text(`.tile:has-text("Dona Homer") .inbadge`)) && /Not put away/.test(await text('.notput')));
   await shot('18-new-box-home');
 
   // ---- B: the trail

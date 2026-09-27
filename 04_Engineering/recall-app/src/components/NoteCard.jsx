@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Header from './Header.jsx';
 import { addItem, knownLocations, logEvent, firstName } from '../lib/db.js';
 import { me } from '../lib/auth.js';
-import { CheckIcon, LockIcon } from './Icons.jsx';
+import { CheckIcon, LockIcon, SaveIcon } from './Icons.jsx';
 import { privateWhy, hasSecret } from '../lib/sensitive.js';
 import PrivNote, { PhoneOnly } from './PrivNote.jsx';
 import InThingSheet from './InThingSheet.jsx';
@@ -90,7 +90,9 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
           : why && !touched && mine ? <div className="privnote" role="status"><LockIcon /><span>{`${why.charAt(0).toUpperCase()}${why.slice(1)}`}, so it starts private. Switch it off to share it.</span></div>
           : why && !mine ? <PrivNote v={{ private: true, why }} mine={false} ownerName={firstName(owner)} onDontSave={onBack} />
           : null}
-        <button type="button" className="btn-primary" disabled={!ready} onClick={save}><CheckIcon /><span>{place.trim() ? 'Save' : 'Save without a place'}</span></button>
+        {/* One verb per button (09-27): what Save does is the sentence above it. */}
+        <div className="lc-say note-say"><PinIcon /><span className="tx"><b>{place.trim() ? cap(place.trim()) : 'No place yet'}</b><span className="soft">{place.trim() ? (dest && dest.t === 'thing' ? 'in that box' : '') : 'You can put it away later'}</span></span></div>
+        <button type="button" className="btn-primary" disabled={!ready} onClick={save}><SaveIcon /><span>Save</span></button>
       </div>
       {inPick && <InThingSheet owner={owner} onCancel={() => setInPick(false)} onPick={(x) => { setInPick(false); setPlace(cap(x.name)); setDest({ t: 'thing', id: x.id, name: x.name }); setTyping(false); }} />}
     </div>

@@ -191,3 +191,20 @@ export function HomeIcon() {
 export function StarIcon() {
   return (<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z" /></svg>);
 }
+
+// The camera (09-27): Save has its own icon, reused in "+ Next" (Ravi: the floppy disk); the camera icon means
+// only "take a photo". A place not known yet is a pin with a question mark — not a button.
+export function SaveIcon() {
+  return (
+    <svg className="icon save" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 3h11l3 3v15H5z" /><path d="M8 3v5h7V3" /><path d="M8 13h8v8H8z" />
+    </svg>
+  );
+}
+export function PinAskIcon() {
+  return (
+    <svg className="icon pinask" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z" /><path d="M10.5 8.5a1.6 1.6 0 1 1 2.2 1.5c-.5.2-.7.6-.7 1v.3" /><path d="M12 13.2v.1" />
+    </svg>
+  );
+}

@@ -17,3 +17,4 @@ Openly licensed photos from Wikimedia Commons, used only in design mockups. Not 
 - **box.jpg** — File:An Overview of Moving Companies and Their Use of Moving Boxes.jpg · brownpau · CC BY 2.0 · https://commons.wikimedia.org/wiki/File:An_Overview_of_Moving_Companies_and_Their_Use_of_Moving_Boxes.jpg
 - **card.jpg** — File:HonusWagnerCard.jpg (1909 T206 card) · Public domain · https://commons.wikimedia.org/wiki/File:HonusWagnerCard.jpg
 - **smallbox.jpg** — File:Box, sewing (and contents) (AM 2017.43.10).jpg · Duffy, Lionel Vernon · CC BY 4.0 · https://commons.wikimedia.org/wiki/File:Box,_sewing_(and_contents)_(AM_2017.43.10).jpg
+- **closet.jpg** — File:Picture of a full closet.jpg · Punker1999 · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Picture_of_a_full_closet.jpg (added 2026-09-27 for S9)

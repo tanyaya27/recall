@@ -1,7 +1,7 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-24.
+*Done* when closed. Updated 2026-09-27.
 
 ## NOW — Apple Developer sign-up (its own session from 09-26; Ravi as an individual, Tanya 09-24)
 
@@ -133,7 +133,36 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   photo, with one tap to share it instead. Owner only (a helper can't make things private; they get told instead). Build in step 3.
 - [ ] **CONTAINERS LIVE 09-26 (20260926a, pushed 22e3cb2; edge rules deployed first).** Ravi: phone check, then pick
   A or B.
-- [ ] **FIX 2 09-27 (20260927b, in the folder, NOT pushed yet):** "In something" + "No place yet" at the top; "New: <typed>" makes
+- [ ] **BUILD 1 (20260927c) BUILT, on the Mac, NOT pushed — Ravi: look at `design/mockups/S10_1..4.jpg`, then push.** The camera
+  answers "where": step back and photograph what it's in, then where that is (a chain of photos); the AI names each and says box
+  or place, recognises a saved box/place and ASKS; Save / + Next beside the shutter (floppy icon, 27 px gap); the sentence above;
+  Cancel alone top-left; B (Answer card) default, A in Settings → Taking photos; Home card with the saved chain + Undo (owner);
+  a late privacy verdict shows on that card with Share it. Bug #10 fixed (only exact names or the AI's own "same as" match; a
+  shared word goes to the visual check). Bug #29 fixed (a button row widened the page). One verb per button: Put away / Put in /
+  Write it down Save. Retired: the mode row and Several (Q3), the capture-mode settings. No rules change (helpers creating a box
+  and a place from photos pass on the rig's rules). Audits: walk_s10 41 · main 96 · roles 44 · label 14 · private 34 · graph 58 ·
+  graph/nest unit tests pass. `audit_modes.js` retired with Several. Build 2: put away from the camera, the Find trail, retire
+  the old sheets (In something, Where is it now?, WhereSheet), PhotoCard for "new photo".
+- [ ] **09-27 ROUND 3 — Ravi: rulings R3-1..3** (board note "Round 3"; `mockups/S9c_round3.jpg`). Drawn from Ravi's notes: the chain
+  lines up (fixed 2-line names), "in" pills, scrolls sideways when deeper; **Save + next | shutter | Save** in one row; a Save icon
+  (floppy disk) reused in "+ Next"; camera icon = take a photo only (empty "where" = pin with ?); tap a chain photo → half-screen
+  preview, tap anywhere to close. Overlays translucent; deep chains scroll sideways in A **and B**. **B is the default (ruled; DECISIONS 09-27).** Shutter spacing ruled (119 px buttons, 27 px gap, 100 px shutter target). To rule: floppy vs check icon · "Type it
+  instead" above the shutter · round-2 points still stand. Still no code; build starts after these rulings.
+- [ ] **09-27 ROUND 2 — Ravi: rulings R2-1..4** (same board note, "Round 2"; `mockups/S9b_buttons.jpg`, `S9b_both.jpg`). Ravi agreed
+  photo-first where + rulings 3, 4, 5, 6 — **contingent on seeing the fix**. He wants A and B both pickable in Settings (leans B),
+  Cancel as a real button (it looked like the title), buttons grouped by function, and no sentences inside buttons. Board: Cancel
+  alone top-left; **Save + next** beside **Save**; shutter alone; one verb per button with a two-line sentence above it, app-wide;
+  Settings → Look → The camera (default B). To rule: grouping · the "Save + next" label · the button rule app-wide · default B.
+- [ ] **09-27 UX BOARD WALKTHROUGH — Ravi: rulings 1–6** (`design/BOARD_2026-09-27_walkthrough.md`). Ravi: "The sequence is
+  totally wrong." The board walked build 20260927b screen by screen with real photos in the viewfinder (`rig/walk_s9.js`): 31 issues,
+  numbered on `mockups/S9_walk_1..5.jpg`. Root cause: the 09-26 Q1 ruling (item → place on the camera) was never built; fixes 1–2
+  bolted sheets onto the old photo card, so 4 different screens ask "where" and none has a camera. Redesign
+  (`mockups/S9_redesign_1..3.jpg`): the camera asks where, she steps back and shoots what it's in and where that is (a chain of
+  photos), and the Save button names the place. Ravi's example: 14 taps + 2 typed → 5 taps, nothing typed. Rulings:
+  1 direction · 2 layout A/B · 3 after Save (Home + card, Next keeps shooting) · 4 retire the old sheets, Several, the
+  mandatory photo card · 5 put away from the camera · 6 fix bugs #10 (a shared word moved the wrong thing) and #29 (a sheet
+  off the edge) now. **No code changed; nothing to push.** Fixes 1–2 below are superseded by this once ruled.
+- [ ] **FIX 2 09-27 (20260927b) LIVE — pushed d7ff200; Ravi: phone check (pencil → In something → New: tin box).** "In something" + "No place yet" at the top; "New: <typed>" makes
   the box in "What is it in?". `mockups/S8_in_something_top.jpg`. Audits: graph 58 · main 98 · roles 42 · modes 25 · label 15 · private 37.
 - [ ] **FIXES 09-27 (20260927a) LIVE — pushed 3dcc073; Ravi: phone check + A or B.** a box by its photo wherever a place is asked + In something…;
   "Put things in it" on box-like cards; "No place yet" always one tap; Home "Not put away · N" → where → tap each.

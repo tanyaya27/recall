@@ -6,6 +6,24 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-27 — The camera answers "where"; B (answer card) is the default camera style (Ravi)
+
+**Decision (Ravi, contingent on seeing the built fix):** "where" is asked on the camera, photo first: after the thing, she
+steps back and photographs what it's in and where that is, building a chain of photos. After Save: Home with a card showing
+the saved chain + Undo. Retire the mode row/Several, the mandatory photo card and the old "where" sheets; put away later
+starts from the same camera. Two camera styles, both in Settings → Look: **B (answer card) is the default**, A (photo clear)
+pickable. Every overlay on the camera is slightly translucent; deep chains scroll sideways in both styles.
+Shutter row (ruled 09-27): **+ Next | shutter | Save**, side buttons 119 px wide with 27 px clear of the shutter on each side,
+and the shutter answers taps within a 100 px circle that never overlaps them (`design/mockups/S9c_shutter_gap.jpg`).
+Also ruled 09-27: "Type it instead" sits above the shutter (only before the first photo); Cancel alone top-left, no title on
+the camera; **one verb per button with a two-line sentence above it, app-wide** (no sentences inside buttons).
+Save icon (09-27, Ravi): **the floppy disk**, as "💾 Save" and "💾 + Next" at full size (the check and "Save + next" in words
+looked bad / too small). The dashed ring in the mockups marks the shutter's larger tap area; it is not drawn in the app.
+**Why:** the 09-27 walk (`design/BOARD_2026-09-27_walkthrough.md`): 4 screens asked "where", none with a camera; Ravi's
+example took 14 taps + 2 typed names and could never photograph the shelf; the redesign does it in 5 taps, nothing typed.
+**Would change our mind:** the one-user test showing people save with "no place yet" by reflex, or can't aim while the card
+covers the viewfinder (then A becomes the default).
+
 ## 2026-09-24 — Ravi enrolls in the Apple Developer Program as an individual; Tanya is credited; the name is paused (Tanya)
 
 **Decision (Tanya):**

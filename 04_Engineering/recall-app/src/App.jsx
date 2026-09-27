@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
 import { watchUser, finishSignIn } from './lib/auth.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, wantNames, watchNames, firstName, possessive, roleOn, putInto, changeLocation, setPromoted } from './lib/db.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, wantNames, watchNames, firstName, possessive, roleOn, putInto, changeLocation, setPromoted, undoChain } from './lib/db.js';
 import { me } from './lib/auth.js';
 import { getPrefs, savePrefs, openingMode } from './lib/prefs.js';
 import SeveralCamera from './components/SeveralCamera.jsx';
@@ -26,6 +26,8 @@ import Camera, { MAX_SHOTS, MODE_LABEL } from './components/Camera.jsx';
 import { MenuDrawer, LookScreen, LocationsScreen, PlaceScreen, NewPlaceScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
 import Confirm from './components/Confirm.jsx';
 import Choice from './components/Choice.jsx';
+import LogCamera from './components/LogCamera.jsx';
+import SavedCard from './components/SavedCard.jsx';
 import { shrink } from './lib/img.js';
 
 // Board decision 2026-09-05: depth one. Home (the board, "My items") and one card. Every
@@ -83,6 +85,9 @@ export default function App() {
   const [putIn, setPutIn] = useState(null);         // the box things are being put into (PutInSheet)
   const [away, setAway] = useState(null);           // Put away (Home chip): 'where' → { dest } → PutInSheet (not put away only)
   const [here, setHere] = useState('');            // "Log here" from inside a box or place: its name
+  const [log, setLog] = useState(null);             // the camera (09-27): { preset, key } — Log item / Log here
+  const [saved, setSaved] = useState(null);         // the Home card after a camera Save (the chain + Undo)
+  const savedRef = useRef(null); savedRef.current = saved; const logRef = useRef(null); logRef.current = log; // read by late callbacks
   const notePlace = (name) => { if (name) setLastPlace({ name, at: Date.now() }); };
   const presetPlace = lastPlace && Date.now() - lastPlace.at < 10 * 60 * 1000 ? lastPlace.name : '';
   const [moreFiles, setMoreFiles] = useState(null); // shots handed to the open photo card
@@ -210,7 +215,16 @@ export default function App() {
         <JoinScreen code={join}
           onJoined={(r, who) => { setJoin(null); if (!r.itemId) setWhose(r.grantor); say(`You can now see ${who ? possessive(who) : 'their'} things`); }}
           onDismiss={() => setJoin(null)} />
-        <Toast toast={toast} onDone={() => setToast(null)} />
+        {log && (
+        <LogCamera key={log.key} engine={engine} items={items} places={places} owner={whose || undefined} ownerName={whose ? firstName(whose) : ''}
+          look={getPrefs().cameraLook} preset={log.preset}
+          onSaved={logSaved} onCancel={() => setLog(null)} onNotice={privacyNotice}
+          onWrite={() => { setLog(null); logEvent('capture_write_open', {}); go('write', { key: Date.now() }); }} />
+      )}
+      {!log && <SavedCard card={saved && { ...saved, name: (() => { const it = items.find((x) => x.id === saved.itemId); return it && it.name ? it.name.charAt(0).toUpperCase() + it.name.slice(1) : saved.name; })() }} onDone={() => setSaved(null)}
+        onShare={async (c) => { await setVisibility({ id: c.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: c.itemId, to: 'shared', via: 'saved_card' }); setSaved((x) => (x ? { ...x, lock: false, priv: null, shared: true } : x)); }}
+        onUndo={async (u) => { await undoChain(u); say('Undone · nothing from that photo is kept'); }} />}
+      <Toast toast={toast} onDone={() => setToast(null)} />
       </>
     );
   }
@@ -248,6 +262,12 @@ export default function App() {
   // the photo stage, with one tap to share it instead. Returns true if a notice was shown.
   const privacyNotice = (n) => {
     if (!n || !n.done || !n.done.length) return false;
+    // The camera's Home card is showing this very thing: say it there, with Share it (one card, not two).
+    const sv = savedRef.current;
+    if (!logRef.current && sv && sv.itemId === n.itemId && n.done.includes('private') && !n.done.includes('photo')) {
+      setSaved((c) => (c && c.itemId === n.itemId ? { ...c, lock: true, priv: n.why || 'looks private', key: Date.now() } : c));
+      return true;
+    }
     const share = async () => { await setVisibility({ id: n.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: n.itemId, to: 'shared', via: 'toast' }); say(VISIBILITY_TOAST.household); };
     const text = n.done.includes('photo') ? 'Photo not kept · a secret could be read in it'
       : n.done.includes('private') ? `Kept private · ${n.why || 'looks private'}`
@@ -287,10 +307,13 @@ export default function App() {
   };
   // Log item: the camera opens in the mode Settings says (the last used, by default).
   const logTitle = () => (whose ? `Log item · in ${possessive(firstName(whose))} ReCall` : 'Log item');
-  const openLog = (mode) => {
-    const p = getPrefs(); const m = mode && p.captureModes.includes(mode) ? mode : openingMode(p);
-    if (m !== p.lastMode) savePrefs({ ...p, lastMode: m });
-    setCamera({ for: 'log', mode: m, title: logTitle() });
+  // Log item (09-27): one camera asks what, then where — step back for what it's in and where that is.
+  // `preset` is Log here: the box or place Home is showing. Several and the mode row went with Q3.
+  const openLog = (preset = null) => { logEvent('capture_open', { look: getPrefs().cameraLook, here: !!preset }); setLog({ preset, key: Date.now() }); };
+  const logSaved = (card) => {
+    if (card.where) notePlace(card.where); // Write it down offers the place used a moment ago
+    if (card.next) { setToast({ text: `Saved · ${card.name}${card.none ? '' : ` · ${card.l1}`}`, over: true, key: Date.now() }); return; }
+    setLog(null); setSaved({ ...card, key: Date.now() });
   };
   const switchMode = (m) => {
     setCamera((c) => ({ ...c, mode: m }));
@@ -345,7 +368,7 @@ export default function App() {
             if (result && result.saved) { if (!privacyNotice(result.notice)) say(result.place ? `Saved · ${result.place}` : 'Saved'); notePlace(result.place); }
             if (here && !(result && result.next)) { setHere(''); back(); return; } // Log here: back to the box
             home();
-            if (result && result.next) openLog('one'); // One thing mode: Next item goes straight back to the camera
+            if (result && result.next) openLog(); // One thing mode: Next item goes straight back to the camera
           }}
           onBack={back}
         />
@@ -417,7 +440,7 @@ export default function App() {
           scope={box ? { t: 'thing', thing: box } : { t: 'place', name: sc.name }} look={getPrefs().exp.homeInside}
           onOpenThing={(item, fix) => go('thing', { item, fix: !!fix })}
           onOpenInside={openInside} onOpenCard={(t) => go('thing', { item: t })} onBack={back} onHome={home}
-          onPutIn={(c) => setPutIn(c)} onLogHere={(name) => { setHere(name); openLog(); }}
+          onPutIn={(c) => setPutIn(c)} onLogHere={() => openLog(box ? { t: 'thing', item: box } : { t: 'place', name: sc.name })}
           onAsk={() => go('ask')} onHold={(item) => { if (roleOn(item) !== 'viewer') setSheet(item); }}
         />
       );
@@ -430,7 +453,6 @@ export default function App() {
           items={items} ready={engine.ready} whose={whose} role={role} removed={removedFrom}
           onOpenThing={(item, fix) => go('thing', { item, fix: !!fix })}
           onPhoto={() => openLog()}
-          onPhotoHold={getPrefs().captureModes.length > 1 ? () => setModePick(true) : null}
           onAsk={() => go('ask')}
           onSettings={() => go('settings')}
           onMenu={() => go('menu')}
@@ -461,7 +483,7 @@ export default function App() {
       )}
       {modePick && (
         <Choice title="Log item as…" options={[
-          ...getPrefs().captureModes.map((m) => ({ label: MODE_LABEL[m], onClick: () => { setModePick(false); logEvent('capture_mode', { mode: m, via: 'hold' }); openLog(m); } })),
+          ...getPrefs().captureModes.map((m) => ({ label: MODE_LABEL[m], onClick: () => { setModePick(false); logEvent('capture_mode', { mode: m, via: 'hold' }); openLog(); } })),
           { label: 'Cancel', onClick: () => setModePick(false) },
         ]} onCancel={() => setModePick(false)} />
       )}
@@ -509,6 +531,15 @@ export default function App() {
       {away && away.step === 'pick' && <PutInSheet dest={away.dest.t === 'thing' ? { t: 'thing', thing: items.find((x) => x.id === away.dest.thing.id) || away.dest.thing } : away.dest}
         items={items} onlyUnplaced onCancel={() => setAway(null)} onDone={(list) => doPut(away.dest, list)} />}
       {putIn && <PutInSheet container={items.find((x) => x.id === putIn.id) || putIn} items={items} onCancel={() => setPutIn(null)} onDone={(list) => doPutIn(putIn, list)} />}
+      {log && (
+        <LogCamera key={log.key} engine={engine} items={items} places={places} owner={whose || undefined} ownerName={whose ? firstName(whose) : ''}
+          look={getPrefs().cameraLook} preset={log.preset}
+          onSaved={logSaved} onCancel={() => setLog(null)} onNotice={privacyNotice}
+          onWrite={() => { setLog(null); logEvent('capture_write_open', {}); go('write', { key: Date.now() }); }} />
+      )}
+      {!log && <SavedCard card={saved && { ...saved, name: (() => { const it = items.find((x) => x.id === saved.itemId); return it && it.name ? it.name.charAt(0).toUpperCase() + it.name.slice(1) : saved.name; })() }} onDone={() => setSaved(null)}
+        onShare={async (c) => { await setVisibility({ id: c.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: c.itemId, to: 'shared', via: 'saved_card' }); setSaved((x) => (x ? { ...x, lock: false, priv: null, shared: true } : x)); }}
+        onUndo={async (u) => { await undoChain(u); say('Undone · nothing from that photo is kept'); }} />}
       <Toast toast={toast} onDone={() => setToast(null)} />
     </>
   );

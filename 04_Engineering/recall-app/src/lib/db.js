@@ -79,12 +79,12 @@ import { normName } from './names.js';
 import { setGraph, graph, openEdge, destOf, wouldLoop } from './graph.js';
 export { normName };
 function namesOf(it) { return [it.name, ...(it.aliases || [])].map(normName).filter(Boolean); }
-export function findByName(items, name) {
+export function findByName(items, name, { strict = false } = {}) {
   const n = normName(name);
   if (!n) return null;
   const live = items.filter((it) => !it.deleted);
   const exact = live.find((it) => namesOf(it).includes(n));
-  if (exact) return exact;
+  if (exact || strict) return exact || null;
   const head = n.split(' ').pop();
   if (head.length >= 3) {
     const soft = live.filter((it) => namesOf(it).some((x) => x.split(' ').pop() === head));
@@ -105,10 +105,14 @@ const QUALIFIER = new Set(['black', 'white', 'red', 'blue', 'green', 'grey', 'gr
 // What the photo card asks. The AI's own verdict ("sameAs", 2026-09-14 — Ravi: two logs of
 // one can of soda) comes first: it saw the photo and the list; name matching is the fallback
 // for when it names the thing but forgets to say so. Alternatives get a turn too.
+// Bug #10 (walk 09-27): a "1978 diary" matched "Yearbook 1978" on the shared word, and saving MOVED the
+// yearbook. A match that can move something must be exact: the AI's own sameAs, or the very same name or
+// alias. A shared word is only a hint — it makes the thing a candidate for the visual check (tier 3).
 export function findMatch(items, tag) {
   if (!tag) return null;
-  return findByName(items, tag.sameAs) || findByName(items, tag.name)
-    || (tag.alternatives || []).map((a) => findByName(items, a)).find(Boolean) || null;
+  const strict = { strict: true };
+  return findByName(items, tag.sameAs, strict) || findByName(items, tag.name, strict)
+    || (tag.alternatives || []).map((a) => findByName(items, a, strict)).find(Boolean) || null;
 }
 
 // ---------- live data ----------
@@ -448,6 +452,63 @@ export async function putInto(things, container, how = 'put') {
   logEvent('put_into', { container: container.id, things: n, how });
   return n;
 }
+// ---------- the camera's chain (09-27): the thing, then what it is in, then where that is ----------
+// `chain` runs outward: chain[0] is what the thing is in or at, chain[1] is where chain[0] is, and so on.
+// Each link is one of:
+//   { known: { t:'thing', item } }   a box already logged (its own place is kept unless a link follows it)
+//   { known: { t:'place', name } }   a place already known by name
+//   { photo, thumb, placePhoto, name, moves }   new from a photo: a box (moves) or a place (fixed)
+// Written outermost first, so every new box has its place the moment it exists. Returns what Undo needs.
+const capName = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+export async function saveChain(chain = [], { owner = me(), places = [] } = {}) {
+  const made = { items: [], places: [], moved: [] };
+  let outer = null; // { text, dest, placeId } — where the link just outside this one is
+  for (let i = chain.length - 1; i >= 0; i--) {
+    const l = chain[i];
+    let here;
+    if (l.known && l.known.t === 'thing') {
+      const it = l.known.item;
+      if (outer && !(outer.dest && outer.dest.t === 'thing' && outer.dest.id === it.id)) {
+        made.moved.push({ item: it, location: it.location || '', dest: openEdge(it.id) ? openEdge(it.id).to : null });
+        await changeLocation(it, outer.text, 'chosen', outer.dest);
+      }
+      here = { text: capName(it.name || 'A box'), dest: { t: 'thing', id: it.id, name: it.name || '' } };
+    } else if (l.known) {
+      here = { text: l.known.name, dest: { t: 'place', name: l.known.name } };
+    } else if (l.moves) {
+      const name = l.name || 'A box';
+      const id = await addItem({ name, photo: l.photo, thumb: l.thumb, owner, location: outer ? outer.text : '', dest: outer ? outer.dest : null, placeSource: 'chosen' });
+      made.items.push(id);
+      logEvent('container_new', { itemId: id, via: 'camera' });
+      here = { text: capName(name), dest: { t: 'thing', id, name } };
+    } else {
+      const name = capName(l.name || 'A place');
+      const known = placeNamed(name, places);
+      const id = await addPlace(name, places, l.placePhoto ? [l.placePhoto] : [], owner, outer && outer.placeId ? outer.placeId : null);
+      if (!known && id) made.places.push(id);
+      here = { text: name, dest: { t: 'place', name }, placeId: id };
+    }
+    outer = here;
+  }
+  return { first: outer, made };
+}
+// Undo a camera save (the Home card): the thing goes (or, if it was already logged, goes back where it
+// was), and every box and place made in the same save goes with it. Owner only — a helper can't delete.
+export async function undoChain({ itemId = null, isNew = false, prev = null, made = { items: [], places: [], moved: [] } } = {}) {
+  const g = graph();
+  const drop = async (id) => {
+    const it = g.byId.get(id) || { id };
+    for (const e of g.edges.filter((x) => x.from === id)) await deleteDoc(doc(col, e.id)).catch(() => {});
+    await purgeItem(it);
+  };
+  if (itemId && isNew) await drop(itemId);
+  else if (itemId && prev) { const it = g.byId.get(itemId); if (it) await changeLocation(it, prev.location || '', 'chosen', prev.dest || null); }
+  for (const m of made.moved || []) { const it = g.byId.get(m.item.id) || m.item; await changeLocation(it, m.location, 'chosen', m.dest); }
+  for (const id of made.items || []) await drop(id);
+  for (const id of made.places || []) await deleteDoc(doc(col, id)).catch(() => {});
+  logEvent('camera_undo', { isNew, made: (made.items || []).length + (made.places || []).length });
+}
+
 // A thing's edges follow its privacy, so a private thing never shows up in a box's count for a helper.
 async function syncEdgePrivacy(itemId, priv) {
   const mine = graph().edges.filter((e) => e.from === itemId && e.owner === me() && !!e.private !== !!priv);
@@ -605,13 +666,13 @@ export function knownLocations(items, limit = 5, places = []) {
 // third drawer ⊂ filing cabinet ⊂ office ⊂ home — built by the system in the background,
 // never by the user. Reserve `parent` (place id | null) on this doc for it; nothing reads it yet.
 export const PLACE_PHOTOS = 3;
-export async function addPlace(name, places = [], photos = [], owner = me()) {
+export async function addPlace(name, places = [], photos = [], owner = me(), parent = null) {
   const n = name.trim();
   if (!n) return null;
   const dup = places.find((p) => p.name.toLowerCase() === n.toLowerCase());
-  if (dup) { if (photos.length) await addPlacePhotos(dup, photos); return dup.id; }
+  if (dup) { if (photos.length && (dup.photos || []).length < PLACE_PHOTOS && dup.owner === me()) await addPlacePhotos(dup, photos); return dup.id; }
   const now = Date.now();
-  const ref = await addDoc(col, { kind: 'place', owner, by: me(), private: false, name: n, order: now, createdAt: now, parent: null,
+  const ref = await addDoc(col, { kind: 'place', owner, by: me(), private: false, name: n, order: now, createdAt: now, parent,
     photos: photos.slice(0, PLACE_PHOTOS).map((p) => ({ ...p, at: now })) });
   return ref.id;
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { contentsOf, wouldLoop, holderOf } from '../lib/graph.js';
-import { CheckIcon, NoteIcon } from './Icons.jsx';
+import { CheckIcon, NoteIcon, PinIcon } from './Icons.jsx';
 
 // Put things in a box (Ravi 09-25, P-B) — and, since 09-27, put things away at any place ("Not put away"
 // on Home → where → tap each). The things not put away come first; tap each one that goes; one save for
@@ -42,8 +42,10 @@ export default function PutInSheet({ container = null, dest = null, items = [], 
           </div>
         )}
         <div className="putin-foot">
+          {/* One verb per button (09-27): what it does is the sentence above it. */}
+          <div className="lc-say"><PinIcon /><span className="tx"><b>{picked.length ? `${picked.length} thing${picked.length === 1 ? '' : 's'}` : 'Tap each one that goes ' + (box ? 'in' : 'there')}</b><span className="soft">{box ? `into the ${(box.name || 'box').replace(/^(my|the)\s+/i, '')}` : `at ${d ? d.name : ''}`}</span></span></div>
           <button type="button" className="btn-primary" disabled={!picked.length} onClick={() => onDone(cands.filter((x) => picked.includes(x.id)))}>
-            <CheckIcon /><span>{picked.length ? `Put ${picked.length} ${where}` : 'Pick what goes ' + (box ? 'in' : 'there')}</span>
+            <CheckIcon /><span>{box ? 'Put in' : 'Put away'}</span>
           </button>
           <button type="button" className="btn-quiet" onClick={onCancel}>Cancel</button>
         </div>

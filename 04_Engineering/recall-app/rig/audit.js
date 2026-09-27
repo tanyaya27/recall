@@ -176,60 +176,61 @@ async function main() {
   check('D19 bar: Add photo · Edit · Remove (three operations); switch back → shared, lock gone', /Add photo/.test(await text('.actbar')) && /Remove/.test(await text('.actbar')) && !/Shared|Private/.test(await text('.actbar')) && await count('.thing-head .lk') === 0);
   await back(); await page.waitForSelector('.board');
 
-  // ---------- C. Log item paths ----------
-  await page.click('.footer .btn-primary >> nth=0'); await page.waitForSelector('.camera'); await page.click('.camera-cancel'); await page.waitForTimeout(200);
-  check('C1 camera Cancel → Home, nothing saved', await count('.camera') === 0 && await count('.board') === 1);
+  // ---------- C. Log item paths (the camera, 09-27: what, then where — LogCamera) ----------
+  const lc = async (n = 1) => { await page.waitForSelector('.lc'); await page.waitForTimeout(400); for (let i = 0; i < n; i++) { await page.click('.lc-shutter'); await page.waitForTimeout(350); } };
+  await page.click('.footer .btn-primary >> nth=0'); await page.waitForSelector('.lc'); await page.click('.lc-x'); await page.waitForTimeout(200);
+  check('C1 camera Cancel before a photo → Home, nothing saved, nothing asked', await count('.lc') === 0 && await count('.board') === 1);
   aiNext = { ...AI, name: 'blue mug', alternatives: [], sameAs: '' }; same = { index: 0, sure: false };
-  await page.click('.footer .btn-primary >> nth=0'); await shoot(2); await page.waitForSelector('.photo-card');
-  check('C2 two shots → roll with 2 thumbnails + Another', await count('.roll-shot') === 2 && await count('.roll-add') === 1);
-  await page.waitForTimeout(1500);
-  check('C3 named as a field (pencil) when nothing matches', await count('.photo-card .field-value.big') === 1 && /blue mug/.test(await text('.photo-card .field-text')));
-  await page.click('.roll-x >> nth=1'); await page.waitForTimeout(200);
-  check('C4 ✕ drops a shot → 1 thumbnail', await count('.roll-shot') === 1);
-  await page.click('.photo-card .field-value.big'); await page.fill('.photo-card input.edit-inline', 'coffee mug'); await page.press('.photo-card input.edit-inline', 'Enter'); await page.waitForTimeout(200);
-  check('C4a Where is it? starts as names; two view links under it', await count('.guess.withpic') === 0 && await count('.view-links .link-btn') === 2);
-  await page.click('.view-links .link-btn:has-text("Smaller photos")'); await page.waitForTimeout(150);
-  check('C4b Smaller photos → rows with a picture (last thing seen there) or a pin', await count('.guess.withpic') >= 2 && await count('.guess-pic') >= 2);
-  await page.click('.view-links .link-btn:has-text("Bigger photos")'); await page.waitForTimeout(150);
-  check('C4c Bigger photos → two-across grid', await count('.pgrid .pcell') >= 2);
-  await page.click('.view-links .link-btn:has-text("Names only")'); await page.waitForTimeout(150);
-  check('C4d Names only again; choice remembered on this phone', await count('.guess.withpic') === 0 && await page.evaluate(() => JSON.parse(localStorage.getItem('recall-prefs') || '{}').placeView) === 'names');
-  await page.click('text=Somewhere else'); await page.fill('.place-input', 'the shelf'); await page.click('text=Use this'); await page.waitForSelector('.board', { timeout: 5000 });
+  await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.waitForTimeout(1500);
+  check('C2 one photo → the card names it (capitalised); Save and + Next beside the shutter', /Blue mug/.test(await text('.lc-name')) && await count('.lc-k.sv') === 1 && await count('.lc-k.sn') === 1);
+  await page.click('.lc-name'); await page.fill('.sheet .place-input', 'coffee mug'); await page.click('.sheet .btn-primary'); await page.waitForTimeout(200);
+  check('C3 tap the name → rename', /Coffee mug/.test(await text('.lc-name')));
+  await page.click('.lc-chip.more'); await page.waitForSelector('.place-sheet');
+  check('C4 ••• → the place list (the fallback, behind More)', await count('.place-sheet .guess') >= 1);
+  await page.click('.place-sheet .guess.other:has-text("Somewhere else")'); await page.fill('.place-sheet .place-input', 'the shelf'); await page.click('.place-sheet .typing .btn-primary'); await page.waitForTimeout(300);
+  check('C4a the typed place is the sentence above Save (Save stays one word)', /the shelf/i.test(await text('.lc-say')) && (await text('.lc-k.sv')).trim() === 'Save');
+  await page.click('.lc-k.sv'); await page.waitForSelector('.board', { timeout: 5000 }); await page.waitForTimeout(500);
   const mug = await page.evaluate(() => window.__rig.dump().find((d) => d.kind === 'item' && d.name === 'coffee mug'));
-  check('C5 typed place saved, capitalised, AI name kept as alias', mug && mug.location === 'The shelf' && (mug.aliases || []).includes('blue mug'), mug && JSON.stringify([mug.location, mug.aliases]));
-  check('C6 board now 4 tiles', await count('.tile') === 4);
-  // Back before save cancels
-  await page.click('.footer .btn-primary >> nth=0'); await shoot(1); await page.waitForSelector('.photo-card'); await back(); await page.waitForTimeout(200);
-  check('C7 Back before save → nothing saved', await count('.tile') === 4 && await count('.board') === 1);
-  // Save before the name arrives (D3), no match → finishes
+  check('C5 typed place saved, AI name kept as alias', mug && /the shelf/i.test(mug.location) && (mug.aliases || []).includes('blue mug'), mug && JSON.stringify([mug.location, mug.aliases]));
+  check('C6 board now 4 tiles; Home shows the saved card', await count('.tile') === 4 && await count('.saved-card') === 1);
+  // Cancel after a photo asks first
+  await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.click('.lc-x'); await page.waitForTimeout(200);
+  check('C7 Cancel after a photo asks "Throw these photos away?"', /Throw these photos away/.test(await text('body')));
+  await page.click('text=Throw away'); await page.waitForTimeout(300);
+  check('C7b …Throw away → nothing saved', await count('.tile') === 4 && await count('.board') === 1);
+  // Save before the name arrives, no match → named afterwards
   aiNext = { ...AI, name: 'green pen', alternatives: [], sameAs: '' };
-  await page.click('.footer .btn-primary >> nth=0'); await shoot(1); await page.waitForSelector('.photo-card'); await page.click('.guess >> nth=0'); await page.waitForTimeout(2500);
+  await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.click('.lc-k.sv'); await page.waitForTimeout(2500);
   const pen = await page.evaluate(() => window.__rig.dump().find((d) => d.kind === 'item' && d.name === 'green pen'));
   check('C8 save-before-name → named afterwards, back on Home', !!pen && pen.naming === false && await count('.board') === 1, pen && `naming=${pen.naming}`);
-  // Name match → New photo of + Not your → forceNew creates new
-  aiNext = { ...AI, name: 'soda can', alternatives: [], sameAs: '' };
-  await page.click('.footer .btn-primary >> nth=0'); await shoot(1); await page.waitForSelector('.photo-card'); await page.waitForTimeout(1200);
-  check('C9 name tier matches "soda can" → sparkling soda', /New photo of/i.test(await text('.photo-card')) && /sparkling soda/i.test(await text('.photo-card .head')));
-  check('C10 grammar: Not your sparkling soda?', /Not your sparkling soda\?/.test(await text('.photo-card .link-btn')));
-  await page.click('.photo-card .link-btn'); await page.waitForTimeout(200);
-  check('C11 Not your → becomes a new-name field', await count('.photo-card .field-value.big') === 1);
-  await back(); await page.waitForTimeout(200);
-  // Visual tier: unsure match must NOT take over; sure match must
+  // Bug #10: a shared word is NOT a match any more ("soda can" ≠ "sparkling soda" by name)…
+  aiNext = { ...AI, name: 'soda can', alternatives: [], sameAs: '' }; same = { index: 0, sure: false };
+  await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.waitForTimeout(2200);
+  check('C9 a shared word is not a match (bug #10): no "Your sparkling soda?"', !/Your sparkling soda/i.test(await text('.lc')));
+  await page.click('.lc-x'); await page.click('text=Throw away'); await page.waitForTimeout(300);
+  // …the AI's own sameAs is, and it is ASKED
+  aiNext = { ...AI, name: 'soda can', alternatives: [], sameAs: 'sparkling soda' };
+  await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.waitForTimeout(1500);
+  check('C10 the AI says it is the same → asked: Your sparkling soda?', /Your sparkling soda\?/.test(await text('.lc-ask')));
+  await page.click('.lc-ask button:has-text("No, a new thing")'); await page.waitForTimeout(200);
+  check('C11 No, a new thing → the question goes, the AI name stays', await count('.lc-ask') === 0 && /Soda can/.test(await text('.lc-name')));
+  await page.click('.lc-x'); await page.click('text=Throw away'); await page.waitForTimeout(300);
+  // Visual tier: an unsure match is ignored; a sure one is asked
   aiNext = { ...AI, name: 'fizzy drink', alternatives: [], sameAs: '' }; same = { index: 1, sure: false };
-  await page.click('.footer .btn-primary >> nth=0'); await shoot(1); await page.waitForSelector('.photo-card'); await page.waitForTimeout(2200);
-  check('C12 unsure visual match is ignored (field stays)', await count('.photo-card .field-value.big') === 1);
-  await back(); await page.waitForTimeout(200);
+  await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.waitForTimeout(2200);
+  check('C12 unsure visual match is ignored', await count('.lc-ask') === 0);
+  await page.click('.lc-x'); await page.click('text=Throw away'); await page.waitForTimeout(300);
   same = { index: 1, sure: true };
-  await page.click('.footer .btn-primary >> nth=0'); await shoot(1); await page.waitForSelector('.photo-card'); await page.waitForTimeout(2200);
-  check('C13 sure visual match → New photo of', /New photo of/i.test(await text('.photo-card')));
-  await back(); await page.waitForTimeout(200);
-  // Late match after save → Is this your … ? → Yes merges (no new tile)
+  await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.waitForTimeout(2200);
+  check('C13 sure visual match → asked (Your …?)', /Your .*\?/.test(await text('.lc-ask')));
+  // Save without answering → asked before anything is merged → Yes merges (no new tile)
   const tilesBefore = await count('.tile');
-  await page.click('.footer .btn-primary >> nth=0'); await shoot(1); await page.waitForSelector('.photo-card'); await page.click('.guess >> nth=0'); await page.waitForTimeout(2500);
-  check('C14 late match → asks Is this your …?', /Is this your/.test(await text('.photo-card')));
-  await page.click('text=Yes, the same thing'); await page.waitForSelector('.board', { timeout: 5000 }); await page.waitForTimeout(300);
+  await page.click('.lc-k.sv'); await page.waitForTimeout(400);
+  check('C14 Save without answering → Is this your …?', /Is this your/.test(await text('body')));
+  await page.click('text=Yes, the same thing'); await page.waitForSelector('.board', { timeout: 5000 }); await page.waitForTimeout(400);
   check('C15 Yes → merged, no extra tile', await count('.tile') === tilesBefore, `${await count('.tile')} vs ${tilesBefore}`);
   aiNext = null; same = null;
+  await page.waitForTimeout(8500); // the saved card goes
 
   // ---------- E. Tile hold sheet ----------
   const t0 = await page.locator('.tile').first().boundingBox();
@@ -269,7 +270,7 @@ async function main() {
   await page.click('.ask button[type="submit"]'); await page.waitForTimeout(900);
   check('F4 AI says none → No photo of that yet + Take a photo of it', /No photo of that yet/.test(await text('.ask')) && await count('.ask button:has-text("Take a photo of it")') === 1);
   const askPhoto = page.locator('.ask button:has-text("Take a photo of it")');
-  if (await askPhoto.count()) { await askPhoto.click(); await page.waitForTimeout(400); check('F5 Take a photo of it → camera', await count('.camera') === 1); if (await count('.camera')) await page.click('.camera-cancel'); }
+  if (await askPhoto.count()) { await askPhoto.click(); await page.waitForTimeout(400); check('F5 Take a photo of it → camera', await count('.lc, .camera') === 1); if (await count('.lc')) await page.click('.lc-x'); else if (await count('.camera')) await page.click('.camera-cancel'); }
   else check('F5 Take a photo of it → camera', false, 'still a file input → lands on a dead photo card');
   await page.goBack(); await page.waitForSelector('.board');
 

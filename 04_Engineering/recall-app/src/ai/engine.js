@@ -229,6 +229,39 @@ Reply with ONLY a JSON object, no other text:
     return { index: n >= 1 && n <= candidates.length ? n - 1 : -1, sure: out.sure === true };
   }
 
+  // "Where it goes" (the camera, 09-27): she stepped back and photographed what the thing is in or
+  // where it is. Name it, say whether it MOVES (a tin, a box: a thing that can itself be put
+  // somewhere) or is FIXED (a shelf, a drawer, a counter: a place), and say whether it is one of the
+  // saved boxes/places shown. candidates: [{ name, thumb }] (≤ 6; the service takes 8 images).
+  // Returns { name, moves, index: n | -1, sure }. Never guesses a match it isn't sure of.
+  async whereIs(photoDataUrl, candidates = [], { thing = '', sensitivity = 'personal' } = {}) {
+    const segments = [{ text: 'NEW PHOTO:' }, { image: photoDataUrl }];
+    candidates.forEach((c, i) => { segments.push({ text: `SAVED ${i + 1} — "${c.name || 'unnamed'}":` }); segments.push({ image: c.thumb }); });
+    segments.push({ text:
+`Someone is logging where they put ${thing ? `their ${thing}` : 'one of their belongings'}. They stepped back and took the
+NEW PHOTO of what it is IN or WHERE it is: a container (a tin, a box, a bag) or a spot in the home
+(a shelf, a drawer, a cupboard, a counter, a room).
+
+1. NAME what the photo shows, the way its owner would say it, at most THREE words: "blue tin",
+   "linen closet shelf", "desk drawer", "garage". Not "a room" or "an object".
+2. MOVES: true if it is a container someone could pick up and carry somewhere else (tin, box, bag,
+   basket, case, jar, bin). false if it is part of the house or its furniture (shelf, drawer,
+   cupboard, closet, counter, table, room, garage).
+3. ${candidates.length ? `Is it the very same container or spot as one of the ${candidates.length} SAVED ones above? Same individual
+   object or spot, not merely the same kind. Answer 0 if none, or if you are unsure.` : 'Nothing is saved to compare with: answer 0.'}
+
+Reply with ONLY a JSON object, no other text:
+{"name": "<1-3 words>", "moves": <true or false>,
+ "index": <${candidates.length ? `1-${candidates.length} for the matching saved one, or 0` : '0'}>, "sure": <true only if confident it is that same one>}` });
+    const text = this.provider.visionJSONMulti
+      ? await this.provider.visionJSONMulti(this.cfg, segments, { sensitivity })
+      : await this.provider.visionJSON(this.cfg, segments[segments.length - 1].text, photoDataUrl, { sensitivity });
+    const out = parseJSON(text);
+    const n = Number(out.index) || 0;
+    return { name: typeof out.name === 'string' ? out.name.trim().slice(0, 40) : '', moves: out.moves === true,
+      index: n >= 1 && n <= candidates.length ? n - 1 : -1, sure: out.sure === true };
+  }
+
   // Does the new photo show THIS saved thing? Used when a photo is added to an existing
   // item (round 5, Ravi): a person who is not in the right frame of mind may add a coffee
   // cup to the folder. Returns { same, seen } — `seen` is what the new photo mainly shows.
