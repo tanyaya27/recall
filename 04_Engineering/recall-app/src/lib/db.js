@@ -276,6 +276,7 @@ export const ROLE_BLURB = { viewer: 'Sees your things and where they are. Cannot
 // (a helper's is refused by the rules' own logic: they could never see it again). `privateAuto`
 // keeps the reason ReCall gave ("looks like passwords"); '' when she chose it herself.
 export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '' }) {
+  location = placeText(location, null);
   const now = Date.now();
   const logId = `log_${now}`;
   const keep = !!priv && owner === me();
@@ -333,6 +334,7 @@ export async function nameItem(id, { name = '', description = '', restingOn = ''
 // the new place, now — so the new stay has a photo and the history never has a row without
 // one. Adding the place to a thing that had none is not a move: no sighting is written.
 export async function changeLocation(item, location, placeSource = 'chosen', dest = null) {
+  if (!dest) location = placeText(location, item);
   const now = Date.now();
   const history = [...(item.history || []), { location, at: now }].slice(-100);
   const moved = !!item.location && !!location && item.location.toLowerCase() !== location.toLowerCase();
@@ -393,6 +395,14 @@ async function dropSnapsOf(itemId, mineNow) {
   await Promise.all(snap.docs.map((d) => (mineNow ? deleteDoc(doc(col, d.id)) : updateDoc(doc(col, d.id), { deleted: true, deletedAt: Date.now() }))));
 }
 
+// The place text copy: when the words name a thing ("in the wooden box"), the copy is that thing's own
+// name ("Wooden box"), so the place lists never grow a second spelling of the same box (09-27).
+function placeText(location, item) {
+  if (!location) return location;
+  const d = destOf(location, item ? (graph().byId.get(item.id) || item) : null);
+  return d && d.t === 'thing' && d.name ? d.name.charAt(0).toUpperCase() + d.name.slice(1) : location;
+}
+
 // ---------- edges (DECISIONS 2026-09-25/26; lib/graph.js has the model) ----------
 // Every place write goes through here: close the thing's open "in" edge, open a new one. The words
 // decide the destination (graph.destOf): an exact name of another thing makes it a container;
@@ -438,6 +448,7 @@ export async function setPromoted(item, on) { await updateItem(item.id, { promot
 
 
 export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [], placeSource = 'chosen' }) {
+  location = placeText(location, item);
   const now = Date.now();
   const logId = `log_${now}`;
   const history = [...(item.history || []), { location, at: now }].slice(-100);
@@ -566,7 +577,11 @@ export function knownLocations(items, limit = 5, places = []) {
       counts.set(key, c);
     });
   });
+  // A name that IS a thing (the wooden box) is offered as that thing — by its photo, "In the wooden box" —
+  // never a second time as a place of the same name (09-27: both showed, both ticked).
+  const thingNames = new Set(items.filter((x) => !x.deleted && x.name).map((x) => normName(x.name)));
   return [...counts.entries()]
+    .filter(([loc]) => !thingNames.has(normName(loc)))
     .sort((a, b) => ((b[1].saved ? 1 : 0) - (a[1].saved ? 1 : 0)) || (b[1].last - a[1].last) || (b[1].n - a[1].n))
     .slice(0, limit).map(([loc]) => loc);
 }

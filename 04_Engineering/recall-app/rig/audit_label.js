@@ -89,7 +89,7 @@ async function main() {
   await page.click('.camera-write'); await page.waitForSelector('.note-card');
   check('W2 Type it → Write it down: What is it? · Where is it? · Keep this private · Save (disabled until a name)', /What is it\?/.test(await page.locator('.note-card').innerText()) && await page.locator('.note-card .btn-primary').isDisabled());
   await page.fill('#note-what', 'bank locker key');
-  await page.click('.note-card .guess.other'); await page.fill('.note-card .guesses .place-input', 'blue tin, top of the wardrobe');
+  await page.click('.note-card .guess.other:has-text("Somewhere else")'); await page.fill('.note-card .guesses .place-input', 'blue tin, top of the wardrobe');
   // 09-24: "bank locker key" looks private, so the switch is already on (private by default); no tap needed.
   await page.waitForTimeout(100); await shot('3-write');
   const snapsBefore = (await dump()).filter((d) => d.kind === 'snap').length;

@@ -106,7 +106,7 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   await page.click('.footer .btn-primary.whose'); await shoot(); await page.waitForSelector('.photo-card'); await page.waitForTimeout(1500);
   check('R6 photo card header says in Margaret\'s ReCall', /in Margaret’s ReCall/.test(await text('.header .title')));
   check('R6b the naming call went through ReCall\'s service FOR Margaret, called by Robert (no key on his phone)', await page.evaluate(() => window.__rig.lastAiOwner === 'margaret' && window.__rig.lastAiCaller === 'robert'));
-  await page.click('text=Not sure'); await page.waitForTimeout(700);
+  await page.click('text=No place yet'); await page.waitForTimeout(700);
   const logged = (await dump()).filter((d) => d.kind === 'item' && d.by === 'robert');
   check('R7 editor logs INTO her ReCall: owner = margaret, by = robert', logged.length === 1 && logged[0].owner === 'margaret' && logged[0].private === false, JSON.stringify(logged.map((l) => [l.owner, l.by])));
 

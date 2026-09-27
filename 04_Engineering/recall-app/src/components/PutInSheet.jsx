@@ -2,25 +2,30 @@ import { useState } from 'react';
 import { contentsOf, wouldLoop, holderOf } from '../lib/graph.js';
 import { CheckIcon, NoteIcon } from './Icons.jsx';
 
-// Put things in a box (Ravi 09-25, P-B; kept as the fallback in ARCH 09-26 — "show the destination" comes
-// later). From inside a box on Home: the things not put away come first, then everything else not
-// already in here. Tap each one that goes in; one save for all of them, with Undo on the toast.
+// Put things in a box (Ravi 09-25, P-B) — and, since 09-27, put things away at any place ("Not put away"
+// on Home → where → tap each). The things not put away come first; tap each one that goes; one save for
+// all of them, with Undo on the toast.
+//   dest: { t:'thing', thing } | { t:'place', name };  onlyUnplaced: list just the things with no place.
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-export default function PutInSheet({ container, items = [], onDone, onCancel }) {
+export default function PutInSheet({ container = null, dest = null, items = [], onlyUnplaced = false, onDone, onCancel }) {
+  const d = dest || (container ? { t: 'thing', thing: container } : null);
+  const box = d && d.t === 'thing' ? d.thing : null;
   const [picked, setPicked] = useState([]);
-  const already = new Set(contentsOf(container).map((x) => x.id));
-  const cands = items.filter((x) => !x.deleted && x.id !== container.id && !already.has(x.id) && !wouldLoop(x, container))
+  const already = new Set(box ? contentsOf(box).map((x) => x.id) : []);
+  const here = d && d.t === 'place' ? (d.name || '').toLowerCase() : '';
+  const cands = items.filter((x) => !x.deleted && (!box || (x.id !== box.id && !already.has(x.id) && !wouldLoop(x, box)))
+      && (!here || (x.location || '').toLowerCase() !== here) && (!onlyUnplaced || !x.location))
     .sort((a, b) => (!a.location === !b.location ? (b.lastSeenAt || 0) - (a.lastSeenAt || 0) : (!a.location ? -1 : 1)));
   const notPut = cands.filter((x) => !x.location).length;
   const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  const nm = (container.name || 'the box').replace(/^(my|the)\s+/i, '');
+  const where = box ? `in the ${(box.name || 'box').replace(/^(my|the)\s+/i, '')}` : `at ${d ? d.name : ''}`;
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet putin-sheet" role="dialog" aria-modal="true" aria-labelledby="putin-title" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-title" id="putin-title">Put things in the {nm}</div>
-        <div className="putin-sub">{notPut ? `${notPut} not put away yet, first · ` : ''}tap each one that goes in</div>
-        {cands.length === 0 ? <p className="empty">Everything is already in here.</p> : (
+        <div className="sheet-title" id="putin-title">{box ? `Put things ${where}` : `Put away ${where}`}</div>
+        <div className="putin-sub">{!onlyUnplaced && notPut ? `${notPut} not put away yet, first · ` : ''}tap each one that goes {box ? 'in' : 'there'}</div>
+        {cands.length === 0 ? <p className="empty">{onlyUnplaced ? 'Everything has a place.' : 'Everything is already in here.'}</p> : (
           <div className="board putin-grid">
             {cands.slice(0, 40).map((x) => {
               const on = picked.includes(x.id);
@@ -38,7 +43,7 @@ export default function PutInSheet({ container, items = [], onDone, onCancel }) 
         )}
         <div className="putin-foot">
           <button type="button" className="btn-primary" disabled={!picked.length} onClick={() => onDone(cands.filter((x) => picked.includes(x.id)))}>
-            <CheckIcon /><span>{picked.length ? `Put ${picked.length} in the ${nm}` : 'Pick what goes in'}</span>
+            <CheckIcon /><span>{picked.length ? `Put ${picked.length} ${where}` : 'Pick what goes ' + (box ? 'in' : 'there')}</span>
           </button>
           <button type="button" className="btn-quiet" onClick={onCancel}>Cancel</button>
         </div>

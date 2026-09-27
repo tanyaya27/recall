@@ -1229,3 +1229,14 @@ stumble test for every voice feature). Q9 added.
   one; typed names link to a thing only on an exact name; no circles); Home inside a box or place (A and B);
   promote ("Show on Home too"); Put in (+Undo); Log here; the card's box row with its photo; Find says
   "In the wooden box". Rules for edges proven on the real engine (21/21). Nothing moves without her tap.
+
+## 2026-09-27 — Fixes after the phone check (Ravi: "the item in place in place is not working"; "no facility to catalog without providing a place")
+
+- A box can be chosen **by its photo wherever a place is asked** (photo card, Write it down, Edit → Where it is):
+  the boxes in use as chips ("In the wooden box"), plus **In something…** (any logged thing, by photo, with a
+  search). No exact name to type. A box is offered once — never also as a place spelled like it.
+- **Any box-like thing's card offers "Put things in it"** (by its name: box, tin, bag, bin, drawer, folder…); any other
+  thing has it in Edit and the hold sheet, so ordinary cards stay short. An empty box used to open only its card.
+- **"No place yet · put it away later" is always one tap** on the photo card (even when a place is pre-chosen) and on
+  Write it down. Home shows **"Not put away · N"**; tapping it: where are they going (boxes by photo, places, typed) →
+  tap each thing → one save ("Put 2 at Hall table") with Undo.

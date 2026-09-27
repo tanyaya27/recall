@@ -131,8 +131,11 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 - [x] **BUILT 09-24 (20260924e): things that look private start private.** A typed name like "password", or a photo of a password,
   bank/ID card or medical/health paper (HIPAA-type), is saved *Only me* by default, and the person is told at or right after the
   photo, with one tap to share it instead. Owner only (a helper can't make things private; they get told instead). Build in step 3.
-- [ ] **CONTAINERS BUILT 09-26 (20260926a) — RAVI: look at `mockups/S6_containers_built.jpg`, then deploy the RULES
-  first, then push** (commands in chat). Phone check: Settings → Experimentation → try **Back + banner** and **Trail**;
+- [ ] **CONTAINERS LIVE 09-26 (20260926a, pushed 22e3cb2; edge rules deployed first).** Ravi: phone check, then pick
+  A or B.
+- [ ] **FIXES 09-27 (20260927a, in the folder, NOT pushed yet):** a box by its photo wherever a place is asked + In something…;
+  "Put things in it" on box-like cards; "No place yet" always one tap; Home "Not put away · N" → where → tap each.
+  `mockups/S7_inbox_fixes.jpg`. Audits: graph 55 · main 98 · roles 42 · modes 25 · label 15 · private 37 · logic 14. No rule change. Phone check: Settings → Experimentation → try **Back + banner** and **Trail**;
   pick a winner (then I delete the loser and, when empty, the section). Audits: graph 34/34 · edges on the real engine
   21/21 · graph logic 14/14 · main 98 · roles 42 · modes 25 · label 15 · private 37.
   Existing things have no links yet: they show as before until moved or put in a box (no migration).

@@ -139,7 +139,7 @@ async function main() {
   // Edit the place → history grows, seen now
   await page.click('.fix .field-value >> nth=1'); await page.waitForSelector('.place-sheet');
   check('D15p Where it is → the place list with pictures (household places, current one excluded)', await count('.place-sheet .guess.withpic') >= 2 && !/Kitchen counter/.test(await text('.place-sheet .guesses')));
-  await page.click('.place-sheet .guess.other'); await page.fill('.place-sheet .place-input', 'sofa'); await page.press('.place-sheet .place-input', 'Enter'); await page.waitForTimeout(500);
+  await page.click('.place-sheet .guess.other:has-text("Somewhere else")'); await page.fill('.place-sheet .place-input', 'sofa'); await page.press('.place-sheet .place-input', 'Enter'); await page.waitForTimeout(500);
   const i1b = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D15a edit place → history entry + lastSeenAt now', i1b.location === 'Sofa' && i1b.history.length === 3 && Date.now() - i1b.lastSeenAt < 5000);
   check('D15b title says Sofa; the move wrote a sighting (1 photo at Sofa); earlier counts 2 PLACES', /Sofa/.test(await text('.thing-head .row2')) && await count('.strip-page') === 1 && /Show earlier places\s*2/.test(await text('.sw-row >> nth=2')));

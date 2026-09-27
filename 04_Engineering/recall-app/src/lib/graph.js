@@ -117,3 +117,19 @@ export function destOf(text, item = null, g = G) {
   }
   return { t: 'place', name: raw };
 }
+
+// Boxes she already uses (things that hold something), most recently used first — offered as places.
+export function containers(g = G, limit = 3) {
+  return g.items.filter((x) => !x.deleted && x.name && contentsOf(x, g).length > 0)
+    .sort((a, b) => Math.max(...contentsOf(b, g).map((c) => c.lastSeenAt || 0)) - Math.max(...contentsOf(a, g).map((c) => c.lastSeenAt || 0)))
+    .slice(0, limit);
+}
+// Things whose name contains every typed word (for "In something…" and typed places). Never the thing
+// itself or anything it would make a circle with.
+export function thingMatches(text, item = null, g = G, limit = 4) {
+  const words = normName(text || '').split(' ').filter((w) => w.length >= 2);
+  if (!words.length) return [];
+  return g.items.filter((x) => !x.deleted && x.name && (!item || (x.id !== item.id && !wouldLoop(item, x, g))))
+    .filter((x) => { const n = [x.name, ...(x.aliases || [])].map(normName).join(' '); return words.every((w) => n.includes(w)); })
+    .slice(0, limit);
+}

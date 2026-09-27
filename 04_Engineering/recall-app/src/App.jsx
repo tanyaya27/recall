@@ -19,6 +19,7 @@ import Ask from './components/Ask.jsx';
 import Settings, { takeReturnRoute, noteInstalled } from './components/Settings.jsx';
 import Toast from './components/Toast.jsx';
 import PutInSheet from './components/PutInSheet.jsx';
+import WhereSheet from './components/WhereSheet.jsx';
 import { holderOf, contentsOf } from './lib/graph.js';
 import ItemSheet from './components/ItemSheet.jsx';
 import Camera, { MAX_SHOTS, MODE_LABEL } from './components/Camera.jsx';
@@ -80,6 +81,7 @@ export default function App() {
   // The place used a moment ago: One thing mode offers it already chosen, for ten minutes.
   const [lastPlace, setLastPlace] = useState(null); // { name, at }
   const [putIn, setPutIn] = useState(null);         // the box things are being put into (PutInSheet)
+  const [away, setAway] = useState(null);           // Put away (Home chip): 'where' → { dest } → PutInSheet (not put away only)
   const [here, setHere] = useState('');            // "Log here" from inside a box or place: its name
   const notePlace = (name) => { if (name) setLastPlace({ name, at: Date.now() }); };
   const presetPlace = lastPlace && Date.now() - lastPlace.at < 10 * 60 * 1000 ? lastPlace.name : '';
@@ -231,13 +233,17 @@ export default function App() {
   const say = (text, undo) => setToast({ text, undo, key: Date.now() });
   const openInside = (st) => go('inside', { scope: st.t === 'thing' ? { t: 'thing', id: st.thing.id } : { t: 'place', name: st.name } });
   // Put things into a box: one save for all, Undo puts each back where it was (edges close/reopen).
-  const doPutIn = async (box, list) => {
-    setPutIn(null);
+  const doPutIn = async (box, list) => doPut({ t: 'thing', thing: box }, list);
+  const doPut = async (dest, list) => {
+    setPutIn(null); setAway(null);
     const before = list.map((t) => ({ t, loc: t.location || '' }));
-    const n = await putInto(list, box);
-    const nm = (box.name || 'box').replace(/^(my|the)\s+/i, '');
-    say(`Put ${n} in the ${nm}`, async () => { for (const b of before) await changeLocation({ ...(items.find((x) => x.id === b.t.id) || b.t) }, b.loc, 'chosen'); logEvent('put_into_undo', { container: box.id, things: n }); });
+    let n = 0;
+    if (dest.t === 'thing') n = await putInto(list, dest.thing);
+    else { for (const t of list) { await changeLocation(t, dest.name, 'chosen'); n += 1; } logEvent('put_away', { place: dest.name, things: n }); }
+    const where = dest.t === 'thing' ? `in the ${(dest.thing.name || 'box').replace(/^(my|the)\s+/i, '')}` : `at ${dest.name}`;
+    say(`Put ${n} ${where}`, async () => { for (const b of before) await changeLocation({ ...(items.find((x) => x.id === b.t.id) || b.t) }, b.loc, 'chosen'); logEvent('put_undo', { things: n }); });
   };
+
   // Private by default, when the verdict came after the save (Ravi 09-24): she is told right after
   // the photo stage, with one tap to share it instead. Returns true if a notice was shown.
   const privacyNotice = (n) => {
@@ -356,7 +362,7 @@ export default function App() {
             home();
           }}
           onToast={say}
-          onOpen={(it) => go('thing', { item: it })}
+          onOpen={(it) => go('thing', { item: it })} onPutIn={(it) => setPutIn(it)}
         />
       );
       break;
@@ -432,6 +438,7 @@ export default function App() {
           onSwitch={() => { if (grants.length || whose) setSwitching(true); }}
           onStartOwn={() => { setWhose(null); logEvent('start_own', {}); }}
           onOpenInside={openInside} look={getPrefs().exp.homeInside}
+          onPutAway={() => { logEvent('put_away_open', {}); setAway({ step: 'where' }); }}
         />
       );
   }
@@ -476,6 +483,7 @@ export default function App() {
           onPromote={roleOn(live(sheet)) === 'owner' && holderOf(live(sheet)) ? async () => { const it = live(sheet); setSheet(null); await setPromoted(it, !it.promoted); say(it.promoted ? 'Off Home · still in its box' : 'On Home too'); } : null}
           promoted={!!live(sheet).promoted}
           onOpenCard={contentsOf(live(sheet)).length ? () => { const it = live(sheet); setSheet(null); go('thing', { item: it }); } : null}
+          onPutIn={() => { const it = live(sheet); setSheet(null); setPutIn(it); }}
           onCancel={() => setSheet(null)} />
       )}
       {mismatch && (
@@ -496,6 +504,10 @@ export default function App() {
           onKeep={() => setRemoving(null)}
           onAction={() => { const it = removing; setRemoving(null); removeItem(it); }} />
       )}
+      {away && away.step === 'where' && <WhereSheet count={items.filter((x) => !x.location).length} items={items} places={places}
+        onCancel={() => setAway(null)} onPick={(dest) => setAway({ step: 'pick', dest })} />}
+      {away && away.step === 'pick' && <PutInSheet dest={away.dest.t === 'thing' ? { t: 'thing', thing: items.find((x) => x.id === away.dest.thing.id) || away.dest.thing } : away.dest}
+        items={items} onlyUnplaced onCancel={() => setAway(null)} onDone={(list) => doPut(away.dest, list)} />}
       {putIn && <PutInSheet container={items.find((x) => x.id === putIn.id) || putIn} items={items} onCancel={() => setPutIn(null)} onDone={(list) => doPutIn(putIn, list)} />}
       <Toast toast={toast} onDone={() => setToast(null)} />
     </>

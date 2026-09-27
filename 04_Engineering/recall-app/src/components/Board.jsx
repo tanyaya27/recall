@@ -27,7 +27,7 @@ import { photoStamp } from '../lib/format.js';
 // the top level unless promoted. How "where you are" is shown is an experiment (Settings →
 // Experimentation): 'a' = Back + the box as a banner, 'b' = a trail you can tap along.
 export default function Board({ items, ready, whose = null, role = 'owner', removed = false, onOpenThing, onPhoto, onPhotoHold = null, onAsk, onSettings, onMenu, onHold, onSwitch, onStartOwn,
-  scope = null, look = 'a', onOpenInside = () => {}, onOpenCard = () => {}, onBack = () => {}, onHome = () => {}, onPutIn = () => {}, onLogHere = () => {} }) {
+  scope = null, look = 'a', onOpenInside = () => {}, onOpenCard = () => {}, onBack = () => {}, onHome = () => {}, onPutIn = () => {}, onLogHere = () => {}, onPutAway = null }) {
   const inThing = scope && scope.t === 'thing' ? scope.thing : null;
   const inPlace = scope && scope.t === 'place' ? scope.name : '';
   const scoped = inThing ? contentsOf(inThing) : inPlace ? atPlace(inPlace) : topLevel(items);
@@ -85,6 +85,9 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
         </div>
       )}
 
+      {/* Log first, put away later (Ravi 09-27): the things with no place gather here; one tap starts putting them away. */}
+      {!removed && !scope && canLog && onPutAway && (() => { const n = items.filter((x) => !x.location).length; return n > 0 && (
+        <button type="button" className="notput" onClick={onPutAway}><PinIcon /> Not put away · {n}</button>); })()}
       {!removed && things.length > 0 && (
         <div className="board">
           {things.map((it) => {

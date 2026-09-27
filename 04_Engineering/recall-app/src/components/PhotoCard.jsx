@@ -4,11 +4,13 @@ import { addItem, nameItem, resnapItem, absorbInto, findMatch, knownLocations, n
 import { verdictOf, hasSecret } from '../lib/sensitive.js';
 import { me } from '../lib/auth.js';
 import PrivNote from './PrivNote.jsx';
+import InThingSheet from './InThingSheet.jsx';
+import { containers, thingMatches, inPhrase } from '../lib/graph.js';
 import { getPrefs, savePrefs } from '../lib/prefs.js';
 import { matchThings } from '../lib/speech.js';
 import EditableText from './EditableText.jsx';
 import Header from './Header.jsx';
-import { CameraIcon, CloseIcon, PinIcon, CheckIcon } from './Icons.jsx';
+import { CameraIcon, CloseIcon, PinIcon, CheckIcon, BoxIcon } from './Icons.jsx';
 import { MAX_SHOTS } from './Camera.jsx';
 
 // The photo card — after the camera. Board decision 2026-09-05, screen 2 (D2, D3, D4);
@@ -53,6 +55,7 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   const [busy, setBusy] = useState(false);
   const [whole, setWhole] = useState(false);    // photo shown uncropped (L1)
   const [shareAnyway, setShareAnyway] = useState(false); // she tapped *Share it instead*
+  const [inPick, setInPick] = useState(false);          // "In something…": choose the thing it's in
   const tagPromise = useRef(null);
   const finished = useRef(false);
   const nextRef = useRef(false); // saved with *Next item*: the caller reopens the camera
@@ -163,6 +166,9 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
   const preset = resnapOf ? '' : (usual || presetPlace || '');
   const presetSource = usual ? 'usual' : 'session';
   const options = [...guesses, ...chips.filter((c) => !seen.has(c.toLowerCase()))].filter((o) => !preset || o.toLowerCase() !== preset.toLowerCase()).slice(0, preset ? 6 : 7);
+  const allBoxes = containers(undefined, 50);
+  const boxOf = (name) => allBoxes.find((b) => (b.name || '').toLowerCase() === (name || '').toLowerCase()) || null; // a place chip that IS a box shows as one
+  const boxes = resnapOf ? [] : allBoxes.slice(0, 3).filter((b) => ![preset, ...options].some((o) => (o || '').toLowerCase() === (b.name || '').toLowerCase()));
 
   // "Where is it?" view (round 7, Ravi): names only / smaller photos / bigger photos, switched by
   // the links under the list and remembered on this phone. Until a choice is made, photos come
@@ -392,15 +398,29 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
                   <div className="or-else">Somewhere else?</div>
                 </>
               )}
-              {view !== 'big' && options.map((g) => { const t = view === 'small' ? pic(g) : null; return (
+              {view !== 'big' && options.map((g) => { const bx = boxOf(g); const t = view === 'small' && !bx ? pic(g) : null; return bx ? (
+                <button key={g} type="button" className="guess withpic inbox" disabled={busy || typedSecret} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>
+                  {bx.thumb ? <img className="guess-pic" src={bx.thumb} alt="" /> : <span className="guess-pic none"><BoxIcon /></span>}
+                  <span>{inPhrase(bx)}</span>
+                </button>) : (
                 <button key={g} type="button" className={'guess' + (view === 'small' ? ' withpic' : '')} disabled={busy || typedSecret} onClick={() => save(g, guesses.includes(g) ? 'guess' : 'chip')}>
                   {view === 'small' && (t ? <img className="guess-pic" src={t.src} alt="" /> : <span className="guess-pic none"><PinIcon /></span>)}
                   <span>{g}</span>
                 </button>); })}
+              {/* Boxes already in use, by photo (09-27): one tap puts it IN the box — no exact name to type. */}
+              {view !== 'big' && boxes.map((b) => (
+                <button key={b.id} type="button" className="guess withpic inbox" disabled={busy || typedSecret} onClick={() => save(cap(b.name), 'chip')}>
+                  {b.thumb ? <img className="guess-pic" src={b.thumb} alt="" /> : <span className="guess-pic none"><BoxIcon /></span>}
+                  <span>{inPhrase(b)}</span>
+                </button>))}
               {!typing && (
                 <button type="button" className="guess other" disabled={busy || typedSecret} onClick={() => { setDraft(''); setTyping(true); }}>Somewhere else</button>
               )}
-              {!preset && <button type="button" className="guess quiet" disabled={busy || typedSecret} onClick={() => save('', 'not_sure')}>Not sure</button>}
+              {!typing && !resnapOf && (
+                <button type="button" className="guess other" disabled={busy || typedSecret} onClick={() => { setInPick(true); logEvent('in_thing_open', { from: 'photo_card' }); }}>In something…</button>
+              )}
+              {/* Log now, put away later (09-27, Ravi: "no facility to catalog without providing a place"). */}
+              {!resnapOf && <button type="button" className="guess quiet" disabled={busy || typedSecret} onClick={() => save('', 'not_sure')}>No place yet · put it away later</button>}
               {options.length > 0 && (
                 <div className="view-links">
                   {['names', 'small', 'big'].filter((v) => v !== view).map((v) => (
@@ -418,8 +438,14 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
                   onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim() && !typedSecret) save(draft.trim(), 'typed'); }}
                 />
                 <button type="button" className="btn-secondary" disabled={!draft.trim() || busy || typedSecret} onClick={() => save(draft.trim(), 'typed')}>Use this</button>
+                {thingMatches(draft, null).map((x) => (
+                  <button key={x.id} type="button" className="guess withpic inbox" disabled={busy || typedSecret} onClick={() => save(cap(x.name), 'chip')}>
+                    {x.thumb ? <img className="guess-pic" src={x.thumb} alt="" /> : <span className="guess-pic none"><BoxIcon /></span>}
+                    <span>{inPhrase(x)}</span>
+                  </button>))}
               </div>
             )}
+            {inPick && <InThingSheet onCancel={() => setInPick(false)} onPick={(x) => { setInPick(false); save(cap(x.name), 'chip'); }} />}
           </div>
         )}
 

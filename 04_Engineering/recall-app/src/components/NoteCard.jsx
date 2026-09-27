@@ -5,6 +5,9 @@ import { me } from '../lib/auth.js';
 import { CheckIcon, LockIcon } from './Icons.jsx';
 import { privateWhy, hasSecret } from '../lib/sensitive.js';
 import PrivNote, { PhoneOnly } from './PrivNote.jsx';
+import InThingSheet from './InThingSheet.jsx';
+import { containers, inPhrase } from '../lib/graph.js';
+import { BoxIcon } from './Icons.jsx';
 
 // Write it down, no photo (MVP #10, 2026-09-24). For the dark cupboard, the hiding place you'd
 // rather not photograph, or when typing — or the keyboard's own mic — is simply faster:
@@ -18,6 +21,7 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
   const [name, setName] = useState('');
   const [place, setPlace] = useState(presetPlace || '');
   const [typing, setTyping] = useState(false);
+  const [inPick, setInPick] = useState(false);
   const [touched, setTouched] = useState(false); // she moved the switch herself: ReCall stops deciding
   const [privSet, setPriv] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -54,7 +58,14 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
               <span>{c}</span>{place === c && <CheckIcon />}
             </button>
           ))}
-          {!typing && !(place && !chips.includes(place))
+          {containers(undefined, 3).map((b) => { const n = cap(b.name); return (
+            <button key={b.id} type="button" className={'guess withpic inbox' + (place === n ? ' pre' : '')} onClick={() => { setPlace(place === n ? '' : n); setTyping(false); }}>
+              {b.thumb ? <img className="guess-pic" src={b.thumb} alt="" /> : <span className="guess-pic none"><BoxIcon /></span>}
+              <span>{inPhrase(b)}</span>{place === n && <CheckIcon />}
+            </button>); })}
+          {!typing && <button type="button" className="guess other" onClick={() => setInPick(true)}>In something…</button>}
+          <button type="button" className={'guess quiet' + (!place && !typing ? ' pre' : '')} onClick={() => { setPlace(''); setTyping(false); }}>No place yet · put it away later</button>
+          {!typing && !(place && !chips.includes(place) && !containers(undefined, 3).some((b) => cap(b.name) === place))
             ? <button type="button" className="guess other" onClick={() => { setTyping(true); setPlace(''); }}>Somewhere else</button>
             : <input className="place-input" autoFocus={typing} value={place} placeholder="blue tin, top of the wardrobe" enterKeyHint="done"
                 onChange={(e) => setPlace(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />}
@@ -72,6 +83,7 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
           : null}
         <button type="button" className="btn-primary" disabled={!ready} onClick={save}><CheckIcon /><span>{place.trim() ? 'Save' : 'Save without a place'}</span></button>
       </div>
+      {inPick && <InThingSheet onCancel={() => setInPick(false)} onPick={(x) => { setInPick(false); setPlace(cap(x.name)); setTyping(false); }} />}
     </div>
   );
 }

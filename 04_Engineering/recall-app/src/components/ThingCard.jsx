@@ -11,7 +11,7 @@ import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
 import PlacePicker from './PlacePicker.jsx';
 import TidySheet from './TidySheet.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, ChevronIcon, PeopleIcon, NoteIcon, TagIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, ChevronIcon, PeopleIcon, NoteIcon, TagIcon, BoxIcon } from './Icons.jsx';
 
 // The thing card — the answer. Redesigned 2026-09-16 with Ravi over seven rendered passes
 // (design/DESIGN_2026-09-16_things-places-sightings.md §2, §13):
@@ -36,7 +36,12 @@ import { CameraIcon, TrashIcon, PencilIcon, LockIcon, ClockIcon, PinIcon, PinWas
 // the two switches, *Shared by Margaret*; no trash, no bar, no hold sheet — a card with nothing
 // to do. With *Show who added each photo* on, the stamp ends with the adder's first name
 // whenever someone other than the owner added it.
-export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, openFix = false, showAddedBy = true, peopleCount = 0, onOpen = () => {} }) {
+// A thing whose name says it holds things shows "Put things in it" on its card; any other thing has it in
+// Edit and in the hold sheet, so the card stays short (Ravi: no bulges in the flow).
+const HOLDS = /\b(box|boxes|tin|bag|bin|case|drawer|basket|folder|envelope|jar|chest|crate|trunk|pouch|suitcase|tote|cabinet|safe|carton|container|organi[sz]er|caddy|kit|tray|file|binder|backpack|purse|wallet)\b/i;
+const holdsThings = (name) => HOLDS.test(name || '');
+
+export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, openFix = false, showAddedBy = true, peopleCount = 0, onOpen = () => {}, onPutIn = null }) {
   const role = roleOn(item) || 'viewer';          // owner | editor | viewer
   const isOwner = role === 'owner', canEdit = role !== 'viewer';
   const [, bump] = useState(0);
@@ -238,6 +243,10 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             </div>
           </div>
         )}
+        {/* Any thing can hold things (09-27): an empty box's card is where you start putting things in. */}
+        {canEdit && onPutIn && (inside.length > 0 || holdsThings(item.name)) && (
+          <button type="button" className="btn-secondary putin-btn" onClick={() => { logEvent('put_in_open', { from: 'card', itemId: item.id }); onPutIn(item); }}><BoxIcon /> Put things in it</button>
+        )}
         {item.details && <div className="label-line"><TagIcon /><span>{item.details}</span></div>}
         {item.photo && pages.length > 1 && (
           <div className="dotsrow">
@@ -302,6 +311,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             )}
             <div className="fix-row">
               <button className="btn-quiet" onClick={async () => { await moveToTop(item, items); logEvent('move_to_top', { itemId: item.id }); setFixing(false); }}>Move to the top</button>
+              {onPutIn && !(inside.length > 0 || holdsThings(item.name)) && <button className="btn-quiet" onClick={() => { setFixing(false); logEvent('put_in_open', { from: 'edit', itemId: item.id }); onPutIn(item); }}>Put things in it</button>}
               <button className="btn-quiet" onClick={() => setFixing(false)}>Done</button>
             </div>
           </div>
@@ -309,7 +319,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
       </div>
 
       {picking && (
-        <PlacePicker current={item.location} items={items} places={places} onCancel={() => setPicking(false)}
+        <PlacePicker current={item.location} item={item} items={items} places={places} onCancel={() => setPicking(false)}
           onPick={async (v) => { setPicking(false); if (hasSecret(v)) { logEvent('privacy_secret_blocked', { field: 'location', via: 'card' }); onToast && onToast('Not saved · take the PIN or password out'); return; } const name = v.charAt(0).toUpperCase() + v.slice(1); await changeLocation(item, name); logEvent('correction', { itemId: item.id, field: 'location', via: 'picker' }); onToast && onToast(`Now at ${name}`); }} />
       )}
       {tidying && (

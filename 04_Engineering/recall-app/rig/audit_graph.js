@@ -57,10 +57,10 @@ async function main() {
     T('y', 'yearbook 1978', 'Memorabilia box', 'book.jpg', 79 * H), T('l', 'old letters', 'Memorabilia box', 'diary.jpg', 78 * H),
     T('c', 'baseball card', 'Wooden box', 'card.jpg', 70 * H), T('t', 'ticket stubs', 'Wooden box', null, 69 * H),
     T('u', 'coffee can', '', 'soda.jpg', 3 * H, { needsPlace: true }), T('b', 'blue binders', '', 'folder.jpg', 4 * H, { needsPlace: true }),
-    T('p', 'passport', 'Desk', 'folder.jpg', 5 * H, { private: true }),
+    T('p', 'passport', 'Desk', 'folder.jpg', 5 * H, { private: true }), T('s', 'shoe box', 'Closet', null, 6 * H),
     E('em', 'm', { t: 'place', name: 'Crawl space' }, 90 * H), E('ew', 'w', { t: 'thing', id: 'm', name: 'memorabilia box' }, 80 * H),
     E('ey', 'y', { t: 'thing', id: 'm', name: 'memorabilia box' }, 79 * H), E('el', 'l', { t: 'thing', id: 'm', name: 'memorabilia box' }, 78 * H),
-    E('ec', 'c', { t: 'thing', id: 'w', name: 'wooden box' }, 70 * H), E('et', 't', { t: 'thing', id: 'w', name: 'wooden box' }, 69 * H),
+    E('ec', 'c', { t: 'thing', id: 'w', name: 'wooden box' }, 70 * H), E('et', 't', { t: 'thing', id: 'w', name: 'wooden box' }, 69 * H), E('es', 's', { t: 'place', name: 'Closet' }, 6 * H),
   ]);
   await page.evaluate((s) => window.__rig.seed(s, 'recall_grants'), [{ id: 'dad_ravi', grantor: 'dad', grantee: 'ravi', role: 'editor', createdAt: now - 9e7 }]);
   await page.evaluate((s) => window.__rig.seed(s, 'recall_users'), [{ id: 'dad', name: 'Dad' }, { id: 'ravi', name: 'Ravi' }]);
@@ -70,6 +70,41 @@ async function main() {
   let t = await tiles();
   check('G1 Home shows the memorabilia box, not what is in it', t.some((x) => /Memorabilia box/.test(x)) && !t.some((x) => /Wooden box|Baseball card|Yearbook/.test(x)), t.join(' | '));
   check('G2 the box tile says "3 inside"', /3 inside/.test(await text('.tile:has-text("Memorabilia box") .inbadge')));
+  // ---- 09-27 (Ravi: "the item in place in place is not working"): an EMPTY box is where you start
+  await page.click('.tile:has-text("Shoe box")'); await page.waitForSelector('.card.thing');
+  check('J1 an empty box opens its card, which offers "Put things in it"', await count('.putin-btn') === 1); await shot('0a-emptybox');
+  await page.click('.putin-btn'); await page.waitForSelector('.putin-sheet');
+  await page.click('.putin-grid .tile:has-text("Reading glasses")'); await page.click('.putin-foot .btn-primary'); await page.waitForTimeout(600);
+  const sg = await openTo('g');
+  check('J2 …put the reading glasses in: an edge to the shoe box', sg.length === 1 && sg[0].to.id === 's', JSON.stringify(sg.map((e) => e.to)));
+  await page.click('.toast-undo'); await page.waitForTimeout(600);
+  await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
+  await page.click('.tile:has-text("Car keys")'); await page.waitForSelector('.card.thing');
+  await page.click('.act:has-text("Edit")'); await page.waitForTimeout(200); await page.click('.fix .field-value:has-text("Hall table")'); await page.waitForSelector('.place-sheet');
+  const opts = await page.locator('.place-sheet .guess span').allInnerTexts();
+  check('J2b a box is offered once, as the box ("In the wooden box"), never also as a place called "Wooden box"', opts.some((x) => /In the wooden box/.test(x)) && !opts.some((x) => /^Wooden box$/.test(x.trim())) && !opts.some((x) => /^Memorabilia box$/.test(x.trim())), opts.join(' | '));
+  const ov = await page.evaluate(() => { const sh = document.querySelector('.place-sheet').getBoundingClientRect(); return [...document.querySelectorAll('.place-sheet .guess')].map((b) => Math.round(sh.right - b.getBoundingClientRect().right)); });
+  check('J2c the place list stays inside the sheet (no row runs off the right edge)', ov.every((g) => g >= 8), JSON.stringify(ov));
+  await page.evaluate(() => document.querySelector('.place-sheet .btn-primary.alt').click()); await page.waitForTimeout(200);
+  check('J3 a thing that is not a container keeps a short card (no "Put things in it"; it is in Edit and the hold sheet)', await count('.putin-btn') === 0);
+  await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
+  // ---- Log first, put away later: the Home chip
+  check('J4 Home: "Not put away · 2" (the coffee can and the blue binders)', /Not put away · 2/.test(await text('.notput')));
+  await shot('0-notput');
+  await page.click('.notput'); await page.waitForSelector('.place-sheet');
+  const ws = await text('.place-sheet');
+  check('J5 Put away 2 things · Where are they going? — boxes by photo, then places', /Put away 2 things/.test(ws) && /In the memorabilia box/.test(ws) && /Hall table/.test(ws), ws.replace(/\n/g, ' / ').slice(0, 160));
+  await shot('0b-where');
+  await page.click('.place-sheet .guess:has-text("Hall table")'); await page.waitForSelector('.putin-sheet');
+  const pa = await page.locator('.putin-grid .tile-label').allInnerTexts();
+  check('J6 then only the things not put away are offered', pa.length === 2 && pa.every((x) => /Coffee can|Blue binders/.test(x)), pa.join(' | '));
+  await page.click('.putin-grid .tile:has-text("Coffee can")'); await page.click('.putin-grid .tile:has-text("Blue binders")');
+  check('J7 the button says it: "Put 2 at Hall table"', /Put 2 at Hall table/.test(await text('.putin-foot .btn-primary')));
+  await shot('0c-pick');
+  await page.click('.putin-foot .btn-primary'); await page.waitForTimeout(700);
+  check('J8 saved: both at the Hall table (place links), and the chip is gone', (await byName('coffee can')).location === 'Hall table' && (await openTo('b'))[0].to.name === 'Hall table' && await count('.notput') === 0);
+  await page.click('.toast-undo'); await page.waitForTimeout(700);
+  check('J9 Undo: not put away again', !(await byName('coffee can')).location && /Not put away · 2/.test(await text('.notput')));
   await shot('1-home');
   // ---- A: step in, one level at a time
   await page.click('.tile:has-text("Memorabilia box")'); await page.waitForSelector('.ctx-head');
@@ -150,8 +185,53 @@ async function main() {
   if (await page.locator('.sheet input, .place-input').count()) { await page.fill('.sheet input, .place-input', 'in the wooden box'); await page.keyboard.press('Enter'); } else { await page.click('.sheet button:has-text("Somewhere else")').catch(() => {}); await page.fill('.sheet input', 'in the wooden box'); await page.keyboard.press('Enter'); }
   await page.waitForTimeout(700);
   const ge = await openTo('g');
-  check('G23 typed "in the wooden box" → an edge to the wooden box (not a place called that)', ge.length === 1 && ge[0].to.t === 'thing' && ge[0].to.id === 'w', JSON.stringify(ge.map((e) => e.to)));
+  check('G23 typed "in the wooden box" → an edge to the wooden box (not a place called that); the text copy says "Wooden box"', ge.length === 1 && ge[0].to.t === 'thing' && ge[0].to.id === 'w' && (await byName('reading glasses')).location === 'Wooden box', JSON.stringify(ge.map((e) => e.to)));
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
+  // ---- 09-27 (Ravi: "item in place in place is not working"; "no facility to catalog without a place")
+  const shootOne = async () => { await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.waitForTimeout(350); await page.click('.shutter'); await page.waitForTimeout(250); await page.click('.camera-done'); await page.waitForSelector('.photo-card'); await page.waitForTimeout(900); };
+  await setPrefs({ lastMode: 'one' }); await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
+  await shootOne();
+  check('I1 photo card: a box already in use is offered by its photo ("In the memorabilia box"), never twice', await count('.photo-card .guess.inbox:has-text("In the memorabilia box")') === 1 && await count('.photo-card .guess:has-text("wooden box")') <= 1);
+  check('I2 photo card: "In something…" and "No place yet · put it away later" are always there', await count('.photo-card .guess:has-text("In something")') === 1 && await count('.photo-card .guess:has-text("No place yet")') === 1);
+  await shot('13-photo-inbox');
+  await page.click('.photo-card .guess:has-text("In something")'); await page.waitForSelector('.putin-sheet');
+  check('I3 "In something…": boxes first, by photo, with a search', /Wooden box|Memorabilia box/.test(await text('.putin-grid .tile-label')) && await count('.it-search input') === 1);
+  await page.fill('.it-search input', 'memorab'); await page.waitForTimeout(200);
+  await shot('14-in-something');
+  await page.click('.putin-grid .tile:has-text("Memorabilia box")'); await page.waitForTimeout(1500);
+  let bc = (await items()).find((d) => d.name === 'bottle cap' && d.location === 'Memorabilia box');
+  let bce = bc ? await openTo(bc.id) : [];
+  check('I4 …picked the memorabilia box by photo → saved IN it (an edge to the thing)', bce.length === 1 && bce[0].to.t === 'thing' && bce[0].to.id === 'm', JSON.stringify(bce.map((e) => e.to)));
+  await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
+  await shootOne();
+  const hadPreset = await count('.photo-card .guess.pre');
+  await page.click('.photo-card .guess:has-text("No place yet")'); await page.waitForTimeout(1500);
+  const np = (await items()).filter((d) => d.name === 'bottle cap' && !d.location);
+  check('I5 "No place yet" saves with no place and no link, even when a place was pre-chosen', np.length === 1 && (await openTo(np[0].id)).length === 0, `preset shown: ${hadPreset}`);
+  await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
+  check('I6 …and it shows on Home as "No place assigned"', /No place assigned/.test(await text('.tile:has-text("Bottle cap") .tile-label')) || (await page.locator('.tile-label.noplace').allInnerTexts()).some((x) => /Bottle cap/.test(x)));
+  // Write it down: In something… and No place yet
+  await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.camera'); await page.click('.camera-write'); await page.waitForSelector('.note-card');
+  await page.fill('#note-what', 'spare fuse');
+  check('I7 Write it down offers a box by photo, "In something…" and "No place yet"', await count('.note-card .guess.inbox') >= 1 && await count('.note-card .guess:has-text("In something")') === 1 && await count('.note-card .guess:has-text("No place yet")') === 1);
+  await page.click('.note-card .guess.inbox >> nth=0'); await page.waitForTimeout(100);
+  const boxName = (await text('.note-card .guess.inbox.pre')).replace(/^In the /, '');
+  await shot('15-write-inbox');
+  await page.click('.note-card .btn-primary'); await page.waitForSelector('.board'); await page.waitForTimeout(500);
+  const sf = await byName('spare fuse'); const sfe = sf ? await openTo(sf.id) : [];
+  check('I8 Write it down → in the box (an edge to the thing)', sfe.length === 1 && sfe[0].to.t === 'thing', `${boxName} ${JSON.stringify(sfe.map((e) => e.to))}`);
+  // Edit → Where it is → In something…
+  await page.click('.tile:has-text("Car keys")'); await page.waitForSelector('.card.thing');
+  await page.click('.act:has-text("Edit")'); await page.waitForTimeout(200); await page.click('.fix .field-value >> nth=1').catch(() => {}); await page.waitForTimeout(300);
+  if (!(await count('.place-sheet'))) { await page.click('.fix .field-value:has-text("Hall table")'); await page.waitForTimeout(300); }
+  check('I9 Edit → Where it is: boxes by photo + "In something…"', await count('.place-sheet .guess.inbox') >= 1 && await count('.place-sheet .guess:has-text("In something")') === 1);
+  await shot('16-edit-inbox');
+  await page.click('.place-sheet .guess:has-text("In something")'); await page.waitForSelector('.it-search');
+  await page.fill('.it-search input', 'wooden'); await page.waitForTimeout(200); await page.click('.putin-grid .tile:has-text("Wooden box")'); await page.waitForTimeout(800);
+  const ke2 = await openTo('k');
+  check('I10 …picked the wooden box → the car keys are in it', ke2.length === 1 && ke2[0].to.id === 'w', JSON.stringify(ke2.map((e) => e.to)));
+  await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
+
   // ---- B: the trail
   await setPrefs({ exp: { homeInside: 'b' } }); await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   await page.click('.tile:has-text("Memorabilia box")'); await page.waitForSelector('.trail'); await page.click('.tile:has-text("Wooden box")'); await page.waitForSelector('.trail .c.here:has-text("Wooden box")');
@@ -176,9 +256,9 @@ async function main() {
   await page.click('.footer .btn-primary.alt:has-text("Put in")'); await page.waitForSelector('.putin-sheet');
   const hc = await page.locator('.putin-grid .tile-label').allInnerTexts();
   check('G29 helper Put in: the private passport is never offered', !hc.some((x) => /Passport/.test(x)));
-  await page.click('.putin-grid .tile:has-text("Car keys")'); await page.click('.putin-foot .btn-primary'); await page.waitForTimeout(700);
-  const ke = (await page.evaluate(() => window.__rig.rules(false)), await openTo('k'));
-  check('G30 helper put the car keys in: an edge owned by Dad, made by Ravi', ke.length === 1 && ke[0].to.id === 'w' && ke[0].owner === 'dad' && ke[0].by === 'ravi', JSON.stringify(ke));
+  await page.click('.putin-grid .tile:has-text("Blue binders")'); await page.click('.putin-foot .btn-primary'); await page.waitForTimeout(700);
+  const ke = (await page.evaluate(() => window.__rig.rules(false)), await openTo('b'));
+  check('G30 helper put the blue binders in: an edge owned by Dad, made by Ravi', ke.length === 1 && ke[0].to.id === 'w' && ke[0].owner === 'dad' && ke[0].by === 'ravi', JSON.stringify(ke));
   // ---- Largest
   await boot('dad'); await setPrefs({ size: 'largest', exp: { homeInside: 'b' } }); await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   await page.click('.tile:has-text("Memorabilia box")'); await page.waitForSelector('.trail'); await page.click('.tile:has-text("Wooden box")'); await page.waitForSelector('.trail .c.here');
