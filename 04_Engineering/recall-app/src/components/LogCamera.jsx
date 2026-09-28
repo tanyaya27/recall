@@ -222,13 +222,24 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const photos = i === 0 ? thing.photos : (levels[i - 1] || {}).photos || [];
     if (photos.length || (i > 0 && known(levels[i - 1] || {}))) { setSheet({ preview: i }); setPvIndex(photos.length ? photos.length - 1 : 0); }
   }
+  // fix 2026-09-28 (phone, B1): a pick KEEPS the photos already taken on that tier — they attach to the picked
+  // place or box at save (R1/R2). It used to set photos: [], so shooting the white box and then tapping its pill
+  // threw the photo away and the place stayed photo-less everywhere.
   function pickKnown(k) {
     const i = sel === 0 ? Math.max(0, levels.findIndex((l) => !filled(l))) : sel - 1;
     const target = sel === 0 && levels.findIndex((l) => !filled(l)) === -1 ? levels.length : i;
     if (k.t === 'thing' && self && (k.item.id === self.id || wouldLoop(self, k.item))) return;
-    setLevels((ls) => { const c = [...ls]; while (c.length <= target) c.push(emptyLevel()); c[target] = { ...c[target], photos: [], known: k, status: 'known', ask: null }; return c; });
+    setLevels((ls) => { const c = [...ls]; while (c.length <= target) c.push(emptyLevel()); c[target] = { ...c[target], photos: c[target].photos || [], known: k, status: 'known', ask: null, no: false, yes: false, collisionNo: '' }; return c; });
     setSel(target + 1);
     logEvent('camera_where_chip', { t: k.t, level: target + 1 });
+  }
+  // fix 2026-09-28 (phone): Yes on a recognition ask now converts the level exactly like a list pick;
+  // the save gate saw ask-yes levels as still colliding and silently blocked Save. Same conversion as
+  // pickKnown (known + status:'known', ask/collision state cleared) but — unlike a chip pick, which
+  // targets an empty level — this level already has the photo(s) that triggered the ask, so they stay
+  // (never wiped): one path, both ask kinds (visual sure-match and byName collision), places and boxes.
+  function convertLevelToKnown(key, target) {
+    setLevels((ls) => ls.map((l) => (l.key === key ? { ...l, known: target, status: 'known', ask: null, no: false, yes: false, collisionNo: '' } : l)));
   }
   function removePhoto(li, pi) {
     if (li === 0) {
@@ -453,8 +464,8 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     <div className="lc-ask" role="group" aria-label="Is this the one you have?">
       <b>Your {own(askLevel.target.t === 'thing' ? askLevel.target.item.name : askLevel.target.name)}?</b>
       <div><button type="button" onClick={() => {
-          if (askLevel.byName) { setLevels((ls) => ls.map((l) => (l.key === askLevel.l.key ? { ...l, known: askLevel.target } : l))); logEvent('camera_where_collision', { answer: 'yes' }); }
-          else setLevels((ls) => ls.map((l) => (l.key === askLevel.l.key ? { ...l, yes: true } : l)));
+          convertLevelToKnown(askLevel.l.key, askLevel.target);
+          logEvent('camera_where_collision', { answer: 'yes', byName: !!askLevel.byName });
         }}>Yes</button>
         <button type="button" className="o" onClick={() => {
           if (askLevel.byName) {

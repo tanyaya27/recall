@@ -3,6 +3,34 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-27 (late).
 
+## NOW — Ravi's phone list (09-28, build 20260928b) — triage
+
+**Bugs — all four fixed in `20260928c`; regression checks in `rig/repro_f3.js` (31 checks):**
+- [x] 09-28 `20260928c` B1 **A where-photo is thrown away when a chip is tapped after it.** `LogCamera.pickKnown()` sets `photos: []`
+  on the level. So: shoot the white box → AI wrongly asks "Your desk drawer?" → tap the *White cardboard box* chip
+  → the photo is discarded; the place stays photo-less (thing page + ••• list). R1 fixed shot-after-pick, not
+  pick-after-shot. Fix: a pick keeps the level's photos (they attach to the picked place/box at save).
+- [x] 09-28 `20260928c` B2 **"In the photo: …" is stale.** (Interim fix: when the cover photo is removed, its caption goes with it — no caption beats a wrong one. The real answer is D3.) `restingOn` is stored once per thing from the first photo; deleting that
+  photo or adding new ones never updates it ("White wall" under a photo on orange carpet). Fix depends on D3.
+- [x] 09-28 `20260928c` B3 **"What is it?" rename sheet: the title touches the text box** (spacing; now 14 px, and applies to every sheet with a field).
+- [x] 09-28 `20260928c` B4 **No progress while a photo is added (1–3 s)** (now: a working toast with a spinner at once, replaced by the result; a second add while one runs is ignored) — nothing says it's working, invites double taps / leaving.
+
+**Design changes (Ravi 09-28) — NEXT: rendered options for Ravi to pick, then code (Ravi 09-28: bugs first, then these):**
+- [ ] D1 A visible **add-photo (camera +)** under the thing's photo, on the caption line, right-aligned — not only in
+  press-and-hold.
+- [ ] D2 **Photo viewer:** tap a photo → near-full-screen; ✕ or tap outside to close; swipe through the photos; a
+  **★ on the top-left to make it the main photo** (used everywhere). Same viewer for the place photo in *Where it is*
+  (swipe that place's photos, ★ there too).
+- [ ] D3 **Captions:** per-photo (changes as you swipe, editable in the viewer) or one per thing (editable in Rename).
+  New photos currently get no caption at all.
+- [ ] D4 **Camera where-card order:** the place pills belong inside the photo card, ABOVE "Your desk drawer?", so
+  picking a pill changes what's below it; drop the redundant last "Desk drawer" line; move the pin icon to the front
+  of "Your ___?", centred on that line, in the level's colour. ("There are more bugs in this area" — Ravi.)
+- [ ] D5 **The ••• list:** "Search places and boxes" (do we really distinguish? if so, auto-detect + a toggle to
+  change it; is a box not a place?); say these are places *already added*; restyle the dashed yellow "New place"
+  button (clear but less rough); heading "PLACES" → e.g. "Your places". Then walk new-place creation + its photo
+  end to end — B1 may apply there too.
+
 ## NOW — where-camera hardening shipped to the tree (adversarial session 09-27/28); Ravi's phone check
 
 - [x] 09-27 Adversarial walk (new cast) of `20260927d`: 90 states, both looks → F1–F10 confirmed Ravi's four

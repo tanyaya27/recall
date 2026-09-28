@@ -88,6 +88,7 @@ export default function App() {
   const [saved, setSaved] = useState(null);         // the Home card after a camera Save (the chain + Undo)
   const [renameLink, setRenameLink] = useState(null); // { id, kind, thumb } from the saved card's "Unnamed" line (R3.3)
   const [renameDraft, setRenameDraft] = useState('');
+  const adding = useRef(false); // B4: one add-photo at a time (see addPhotosTo)
   const savedRef = useRef(null); savedRef.current = saved; const logRef = useRef(null); logRef.current = log; // read by late callbacks
   const notePlace = (name) => { if (name) setLastPlace({ name, at: Date.now() }); };
   const presetPlace = lastPlace && Date.now() - lastPlace.at < 10 * 60 * 1000 ? lastPlace.name : '';
@@ -307,11 +308,19 @@ export default function App() {
   // No card, no question: same place, same time, no AI.
   // Round 5 (Ravi): a photo added to a thing is checked against that thing first. A coffee
   // cup added to the folder gets a question, not a silent save.
+  // fix 2026-09-28 (phone, B4): 1–3 s passed with nothing on screen, inviting a second tap or leaving mid-save.
+  // Now a working toast shows at once and stays until the result replaces it; a second call while one runs is ignored.
   const addPhotosTo = async (itemId, files, { checked = false } = {}) => {
+    if (adding.current) return;
     const it0 = itemsRef.current.find((x) => x.id === itemId);
     if (!it0) return;
+    adding.current = true;
+    try { await addPhotosToInner(it0, itemId, files, checked); } finally { adding.current = false; }
+  };
+  const addPhotosToInner = async (it0, itemId, files, checked) => {
+    setToast({ text: files.length > 1 ? `Adding ${files.length} photos…` : 'Adding the photo…', busy: true, key: Date.now() });
     if (!checked && engine.ready && it0.thumb) {
-      say('Checking the photo…');
+      setToast({ text: 'Checking the photo…', busy: true, key: Date.now() });
       try {
         const { photo } = await compressPhoto(files[0]);
         const r = await engine.looksLike(photo, { name: it0.name, thumb: await shrink(it0.thumb, 320) }, { sensitivity: 'personal' });

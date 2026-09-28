@@ -180,6 +180,61 @@ async function runLook(look) {
     // D: byName collision with a container.
     await scenario(`${L}-D-byname-box`, 'marble', { name: 'tin box', moves: true, sure: false }, 'tin box');
 
+    // ---------- 09-28 phone list, bugs B1–B4 ----------
+    // B1: shoot a where, THEN tap a place pill — the photo must stay and land on that place at save.
+    {
+      const T = `${L}-B1-pick-after-shot`;
+      await seedHouse(); AI = { name: 'lint brush' }; WHERE = [{ name: 'white box', moves: false, sure: false }]; SAME = { index: -1, sure: false };
+      await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
+      await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
+      const kcBefore = await placeByName('Kitchen counter');
+      await tap('.lc-chips .lc-chip:not(.more):has-text("Kitchen")', { wait: 500 });
+      const st = await camState(); const b1 = await shot(T, 'pill tapped after the where photo');
+      const badge = await page.locator('.lv-tile').nth(1).locator('.lv-n').innerText().catch(() => '1');
+      check(T, 'the pill set the tier to Kitchen counter', /kitchen counter/i.test(st.say), st.say, b1);
+      check(T, 'the where photo is still on the tier (square shows a photo, not a pin)', await page.locator('.lv-tile').nth(1).locator('img').count() > 0, 'badge=' + badge, '');
+      await tap('.lc-k.sv', { wait: 2500 });
+      const kcAfter = await placeByName('Kitchen counter');
+      check(T, 'after Save the photo is ON the Kitchen counter place (+1)', (kcAfter.photos || []).length === (kcBefore.photos || []).length + 1, `before=${(kcBefore.photos || []).length} after=${(kcAfter.photos || []).length}`, '');
+      check(T, 'no stray place called "white box" was made', !(await placeByName('white box')), '', '');
+    }
+    // B2: the caption follows the cover. Log a thing whose photo says "white wall", add a 2nd photo, remove the 1st.
+    {
+      const T = `${L}-B2-caption`;
+      await seedHouse(); AI = { name: 'lint brush', restingOn: 'white wall' }; WHERE = []; SAME = { index: -1, sure: false };
+      await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1500 });
+      await tap('.lc-k.sv', { wait: 2500 });
+      const it = await byName('lint brush');
+      await home();
+      await tap(`.tile:has-text("Lint brush")`, { wait: 700 });
+      const cap1 = await text('.seen-line');
+      check(T, 'first photo shows its caption', /white wall/i.test(cap1), cap1, await shot(T, 'caption on the first photo'));
+      // add a second photo through the page's own "Add a photo" camera
+      SAME = { same: true, index: 0, sure: true };
+      await tap('.tp-row:has-text("Add a photo")', { wait: 600 });
+      await cam('closet.jpg');
+      const busySeen = await page.waitForSelector('.camera', { timeout: 3000 }).then(async () => { await page.waitForTimeout(400); await page.click('.shutter'); await page.waitForTimeout(250); await page.click('.camera-done'); return page.waitForSelector('.toast.busy', { timeout: 1500 }).then(() => true).catch(() => false); }).catch(() => false);
+      check(`${L}-B4-busy`, 'adding a photo shows a working toast with a spinner at once', busySeen, '', await shot(`${L}-B4`, 'working toast while the photo is added'));
+      await page.waitForTimeout(2200);
+      const doneTxt = await text('.toast');
+      check(`${L}-B4-busy`, 'the working toast is replaced by the result', !/Adding|Checking/.test(doneTxt), 'toast="' + doneTxt + '"', '');
+      // remove the FIRST (cover) photo
+      const cover = (await byName('lint brush')).photo;
+      const hit = await page.evaluate((c) => { const imgs = [...document.querySelectorAll('.strip img, .photo img, img')]; const im = imgs.find((x) => x.src === c); if (!im) return 'no-cover-img'; let el = im; while (el && !el.querySelector('.photo-trash')) el = el.parentElement; const b = el && el.querySelector('.photo-trash'); if (!b) return 'no-trash'; b.scrollIntoView(); b.click(); return 'ok'; }, cover);
+      await page.waitForTimeout(500); await tap('.sheet button:has-text("Remove")', { wait: 1200 });
+      const after = await byName('lint brush');
+      check(T, 'the COVER photo was the one removed', hit === 'ok' && after.photo !== cover, 'hit=' + hit, '');
+      const cap2 = await text('.seen-line');
+      check(T, 'after the cover is removed, "In the photo: white wall" is gone', !/white wall/i.test(cap2), 'caption="' + cap2 + '"', await shot(T, 'caption after removing the first photo'));
+    }
+    // B3: the rename sheet's title does not touch the text box.
+    {
+      const T = `${L}-B3-sheet-gap`;
+      await tap('.tp-row:has-text("Rename")', { wait: 500 });
+      const gap = await page.evaluate(() => { const t = document.querySelector('.sheet .sheet-title'); const i = document.querySelector('.sheet input, .sheet .place-input'); if (!t || !i) return -1; return i.getBoundingClientRect().top - t.getBoundingClientRect().bottom; });
+      check(T, 'at least 10 px between "What is it?" and the text box', gap >= 10, 'gap=' + Math.round(gap), await shot(T, 'rename sheet spacing'));
+      await tap('.sheet .btn-quiet, .sheet button:has-text("Cancel")', { wait: 300 }).catch(() => {});
+    }
     // E: the menu's build stamp (Ravi 09-28) - the deploy stamp must be readable by a person.
     await home(); await tap('.menu-btn', { wait: 400 });
     const bld = await text('.drawer-build');

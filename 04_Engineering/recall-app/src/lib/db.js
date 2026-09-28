@@ -634,6 +634,9 @@ export async function removeSnap(item, snap, snaps) {
   if (wasCover && rest[0]) {
     const next = rest[0];
     Object.assign(patch, { photo: next.photo, thumb: next.thumb, thumbV: THUMB_V, location: next.location || item.location, lastSeenAt: next.at, logId: next.logId || next.id });
+    // fix 2026-09-28 (phone, B2): "In the photo: …" described the REMOVED cover ("White wall" under a photo on orange
+    // carpet). It follows the new cover's own caption if that photo has one, else it goes: no caption beats a wrong one.
+    patch.restingOn = next.restingOn || '';
   }
   if (snap.logId && snap.logId === item.logId) patch.photoCount = Math.max(1, (item.photoCount || 1) - 1);
   await updateDoc(doc(col, snap.id), { deleted: true, deletedAt: Date.now() });
