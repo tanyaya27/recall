@@ -15,7 +15,9 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 - [x] 09-28 `20260928c` B3 **"What is it?" rename sheet: the title touches the text box** (spacing; now 14 px, and applies to every sheet with a field).
 - [x] 09-28 `20260928c` B4 **No progress while a photo is added (1–3 s)** (now: a working toast with a spinner at once, replaced by the result; a second add while one runs is ignored) — nothing says it's working, invites double taps / leaving.
 
-**Design changes (Ravi 09-28) — NEXT: rendered options for Ravi to pick, then code (Ravi 09-28: bugs first, then these):**
+**Design changes (Ravi 09-28) — RULED 09-28 (DECISIONS; renders `design/mockups/D1..D5_*.jpg`), BUILT as `20260928d` (in the tree; audits 100·44·66·14·34·83·31 + new `rig/audit_d.js` 117): D1·A · D2·B · D3·A · D4·A · D5·A. Screens: `design/mockups/BUILD_2026-09-28d_*.png`.**
+- [ ] **Ravi: phone check of `20260928d`** (menu → Build 20260928d first): Add photo pill; tap a photo → viewer (Make main, Remove, Edit caption); swipe the strip → caption follows; tap the place photo in Where it is → that place's photos; camera where-step: pills on one line inside the card, "📍 Your …?" with Yes/No, tap a pill instead; ••• list wording and button.
+- [ ] Open (rules): helpers (Can help) can't edit photo captions or place photos — the Firestore rules only let editors mark snaps deleted and don't allow `photos` on place docs. Owner-only for now; a rules change + deploy if helpers should.
 - [ ] D1 A visible **add-photo (camera +)** under the thing's photo, on the caption line, right-aligned — not only in
   press-and-hold.
 - [ ] D2 **Photo viewer:** tap a photo → near-full-screen; ✕ or tap outside to close; swipe through the photos; a

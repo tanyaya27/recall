@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { knownLocations, placeNamed } from '../lib/db.js';
-import { graph, containers, contentsOf, wouldLoop, atPlace, holderOf } from '../lib/graph.js';
+import { graph, containers, wouldLoop, atPlace, holderOf } from '../lib/graph.js';
 import { normName } from '../lib/names.js';
 import { PinIcon, BoxIcon, SearchIcon, CameraIcon, PlusIcon } from './Icons.jsx';
 
@@ -9,7 +9,11 @@ import { PinIcon, BoxIcon, SearchIcon, CameraIcon, PlusIcon } from './Icons.jsx'
 // containers (things that hold things) — never the thing being placed, never anything inside it (no loops), never a
 // pencil. A place's picture is its OWN photo or a pin, never a photo borrowed from a thing that happens to be there.
 //   onPick(known)   known = { t:'thing', item } | { t:'place', name }
-//   onPhotograph    optional: "New place or box: photograph it" (the camera picks a new level)
+//   onPhotograph    optional: "Photograph a new place" (the camera picks a new level)
+// D5 (Ravi 09-28, mockup D5_place-list A): search "Search your places"; a solid rounded "Photograph a new place" button (no
+// dashes); ONE list headed "YOUR PLACES · N" (N = how many are shown) — places first (saved ones, then most recently used),
+// then the boxes and containers in their own order (interleaving by recency was not simple: a box's "used" is not a place's).
+// A box keeps its box icon; its second line is "a box · in Garage" / "a box · no place yet".
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 export default function WhereList({ item = null, items = [], places = [], title = 'Where does it go?', onPick, onPhotograph = null, onCancel }) {
@@ -26,22 +30,22 @@ export default function WhereList({ item = null, items = [], places = [], title 
   const exists = typed && [...placeList, ...boxList.map((b) => b.name)].some((n) => normName(n || '') === normName(bare));
   const placePic = (n) => { const p = placeNamed(n, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; };
   const placeSub = (n) => { const here = atPlace(n, g).filter((x) => !item || x.id !== item.id); return here.length ? here.slice(0, 2).map((x) => cap(x.name)).join(', ') + (here.length > 2 ? ` +${here.length - 2}` : '') : 'nothing here yet'; };
-  const boxSub = (b) => { const h = holderOf(b, g); const where = h ? `in the ${h.name}` : b.location || 'no place yet'; const n = contentsOf(b, g).length; return `${where}${n ? ` · ${n} inside` : ''}`; };
+  const boxSub = (b) => { const h = holderOf(b, g); return `a box · ${h ? `in the ${h.name}` : b.location ? `in ${b.location}` : 'no place yet'}`; };
+  const shown = placeList.length + boxList.length;
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet where-list" role="dialog" aria-modal="true" aria-labelledby="wl-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-title" id="wl-title">{title}</div>
-        <div className="wl-search"><SearchIcon /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search places and boxes" aria-label="Search places and boxes" enterKeyHint="search" /></div>
-        {onPhotograph && <button type="button" className="wl-new" onClick={onPhotograph}><CameraIcon /><span>New place or box: photograph it</span></button>}
+        <div className="wl-search"><SearchIcon /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your places" aria-label="Search your places" enterKeyHint="search" /></div>
+        {onPhotograph && <button type="button" className="wl-new" onClick={onPhotograph}><CameraIcon /><span>Photograph a new place</span></button>}
         {typed && !exists && <button type="button" className="wl-new typed" onClick={() => onPick({ t: 'place', name: cap(typed) })}><PlusIcon /><span>A new place called “{cap(typed)}”</span></button>}
         <div className="wl-scroll">
-          {placeList.length > 0 && <div className="wl-g">Places</div>}
+          {shown > 0 && <div className="wl-g">YOUR PLACES · {shown}</div>}
           {placeList.map((n) => { const t = placePic(n); return (
             <button type="button" key={'p' + n} className="wl-row" onClick={() => onPick({ t: 'place', name: n })}>
               {t ? <img src={t} alt="" /> : <span className="no"><PinIcon /></span>}
               <span className="tx"><b>{n}</b><small>{placeSub(n)}</small></span>
             </button>); })}
-          {boxList.length > 0 && <div className="wl-g">Boxes and containers</div>}
           {boxList.map((b) => (
             <button type="button" key={b.id} className="wl-row" onClick={() => onPick({ t: 'thing', item: b })}>
               {b.thumb ? <img src={b.thumb} alt="" /> : <span className="no"><BoxIcon /></span>}

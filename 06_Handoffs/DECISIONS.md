@@ -6,6 +6,27 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-28 — D1–D5 from Ravi's phone list: the rulings (Ravi, on BOARD_2026-09-28_phone-list-D1-D5.md)
+
+Picked from rendered options (`design/mockups/D1..D5_*.jpg`):
+- **D1 · A** — an "Add photo" pill on the caption line under the thing's photo (Ravi's own proposal; board agreed).
+- **D2 · B** — tap a photo → viewer with labelled pills "☆ Make main" / "★ Main photo" and "Remove"; ✕ and tap
+  outside close; swipe. **Ravi's change: the photo takes at least 80% of the available space.** The same viewer opens
+  from the place photo in *Where it is* (that place's photos, its own main photo).
+- **D3 · A** — a caption per photo; the line under the strip follows the photo on screen; editable in the viewer.
+  Replaces the one-per-thing "In the photo" (the root of bug B2).
+- **D4 · A** — the where-card: pills INSIDE the card above "📍 Your desk drawer?" (amber pin starting the line),
+  Yes / No, no separate place line. **Ravi's changes: the pills never wrap — at most two places and ••• on one
+  line, names cut short with "…"; no "tap another to change" hint (••• shows how).**
+- **D5 · A** — the ••• list: "Search your places"; a solid "📷 Photograph a new place" button (no dashes);
+  "YOUR PLACES · N"; one list, a thing that moves shows "a box · in Garage". Users see one word: places.
+
+**Objections recorded:** D2 — none (Ravi's 09-27 icon rule decided it). D3 — Priyanka: one more AI call per
+added photo (folded into the existing add-photo check, so no extra call). D4 — Devin and Dr Kim preferred B
+(no Yes/No); Ravi kept the explicit confirm (his white-box case). D5 — Noor preferred the list-row style.
+
+---
+
 ## 2026-09-27/28 — Adversarial re-review of the where-camera; the four gaps fixed; auto-execution ruled (Ravi)
 
 **Ravi's rulings:** (1) build `20260927d` has four gaps — one photo per tier via the pencil path; a recognized

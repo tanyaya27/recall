@@ -319,6 +319,7 @@ export default function App() {
   };
   const addPhotosToInner = async (it0, itemId, files, checked) => {
     setToast({ text: files.length > 1 ? `Adding ${files.length} photos…` : 'Adding the photo…', busy: true, key: Date.now() });
+    let caption = ''; // D3 (Ravi 09-28): what the FIRST new photo shows the thing resting on; '' when the check is skipped
     if (!checked && engine.ready && it0.thumb) {
       setToast({ text: 'Checking the photo…', busy: true, key: Date.now() });
       try {
@@ -326,6 +327,7 @@ export default function App() {
         const r = await engine.looksLike(photo, { name: it0.name, thumb: await shrink(it0.thumb, 320) }, { sensitivity: 'personal' });
         logEvent('add_check', { itemId, same: r.same, seen: r.seen || null });
         if (!r.same) { setToast(null); setMismatch({ item: it0, files, seen: r.seen }); return; }
+        caption = r.restingOn || '';
       } catch (err) { console.error(err); }
     }
     let added = 0;
@@ -333,7 +335,7 @@ export default function App() {
       const it = itemsRef.current.find((x) => x.id === itemId);
       if (!it) break;
       const { photo, thumb } = await compressPhoto(file);
-      const ok = await addSnapToLog(it, { photo, thumb });
+      const ok = await addSnapToLog(it, { photo, thumb, caption: added === 0 ? caption : '' }); // the check only looked at the first photo
       if (!ok) break;
       added += 1;
       await new Promise((r) => setTimeout(r, 50)); // let the listener deliver the new photoCount

@@ -106,11 +106,14 @@ async function main() {
   await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350);
   await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
   const wl = await text('.where-list');
+  // D5 ruling (Ravi 09-28): ONE list headed "YOUR PLACES · N"; a box is a row whose second line starts "a box · " (no Boxes heading any more).
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.where-list .wl-row')].map((r) => ({ b: r.querySelector('b').innerText, s: r.querySelector('small').innerText })));
+  const boxRows = rows.filter((r) => /^a box · /.test(r.s));
   check('J2b every box once, as a box — never again as a place called "Wooden box"; never a thing that holds nothing (#5, #10, #14)',
-    /Boxes and containers[\s\S]*Wooden box/i.test(wl) && !/Places[\s\S]*\nWooden box\n[\s\S]*Boxes/i.test(wl) && !/\n(Reading glasses|Coffee can|Passport|Car keys)\n/.test('\n' + (wl.split(/Boxes and containers/i)[1] || '') + '\n'), wl.replace(/\n/g, ' / ').slice(0, 220));
+    boxRows.filter((r) => r.b === 'Wooden box').length === 1 && rows.filter((r) => r.b === 'Wooden box').length === 1 && !rows.some((r) => /^(Reading glasses|Coffee can|Passport|Car keys)$/.test(r.b)) && /YOUR PLACES · \d+/.test(wl), wl.replace(/\n/g, ' / ').slice(0, 220));
   const ov = await page.evaluate(() => { const sh = document.querySelector('.where-list').getBoundingClientRect(); return [...document.querySelectorAll('.where-list .wl-row')].map((b) => Math.round(sh.right - b.getBoundingClientRect().right)); });
   check('J2c the list stays inside the sheet (no row runs off the right edge)', ov.every((g) => g >= 8), JSON.stringify(ov));
-  check('J2d "New place or box: photograph it" is at the top', await count('.where-list .wl-new:has-text("photograph it")') === 1);
+  check('J2d "Photograph a new place" is at the top (D5: was "New place or box: photograph it")', await count('.where-list .wl-new:has-text("Photograph a new place")') === 1);
   await shot('0-wherelist');
   await page.click('.where-list .btn-quiet'); await page.click('.lc-x'); await page.waitForTimeout(250);
   check('J3 a thing that is not a container keeps a short page (no In it block)', await count('#tp-in') === 0);
@@ -195,7 +198,7 @@ async function main() {
   await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350);
   await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
   const lw = await text('.where-list');
-  check('L1 moving the memorabilia box: the wooden box inside it is never offered, nor the box itself (no loops, #8)', !/Wooden box/.test(lw.split(/Boxes and containers/i)[1] || '') && !/\nMemorabilia box\n/.test(lw), lw.replace(/\n/g, ' / ').slice(0, 200));
+  check('L1 moving the memorabilia box: the wooden box inside it is never offered, nor the box itself (no loops, #8)', (await count('.where-list .wl-row:has(b:text-is("Wooden box"))')) === 0 && (await count('.where-list .wl-row:has(b:text-is("Memorabilia box"))')) === 0, lw.replace(/\n/g, ' / ').slice(0, 200));
   await page.click('.where-list .btn-quiet'); await page.click('.lc-x'); await page.waitForTimeout(250);
   await moveVia('Garage shelf', null);
   const me2 = await openTo('m');
@@ -248,7 +251,7 @@ async function main() {
   await page.fill('#note-what', 'spare fuse');
   check('I7 Write it down: "Pick a place or box" and "No place yet" at the top, and boxes by photo', await count('.note-card .guess.inbox') >= 1 && /Pick a place or box/.test(await text('.note-card .path.in')) && await count('.note-card .path.later') === 1);
   await page.click('.note-card .path.in'); await page.waitForSelector('.where-list');
-  check('I7b …it opens the same list as the camera\'s ••• (every place and box)', /Boxes and containers/i.test(await text('.where-list')) && /Where is the spare fuse\?/.test(await text('.where-list .sheet-title')));
+  check('I7b …it opens the same list as the camera\'s ••• (every place and box)', /YOUR PLACES · \d+/.test(await text('.where-list')) && /Where is the spare fuse\?/.test(await text('.where-list .sheet-title')));
   await page.click('.where-list .wl-row:has(b:text-is("Shoe box"))'); await page.waitForTimeout(150);
   await shot('15-write-inbox');
   await page.click('.note-card .btn-primary'); await page.waitForSelector('.board'); await page.waitForTimeout(500);

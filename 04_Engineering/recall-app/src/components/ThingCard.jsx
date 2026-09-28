@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { hasSecret } from '../lib/sensitive.js';
-import { renameItem, loadSnaps, removeSnap, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
+import { renameItem, loadSnaps, removeSnap, setMainPhoto, setSnapCaption, setPlaceMainPhoto, removePlacePhoto, updateItem, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { photoStamp, cap } from '../lib/format.js';
 import { contentsOf, chainOf, outerPlace, inPhrase, isContainer } from '../lib/graph.js';
@@ -10,6 +10,7 @@ import Confirm from './Confirm.jsx';
 import ItemSheet from './ItemSheet.jsx';
 import TidySheet from './TidySheet.jsx';
 import PrivNote from './PrivNote.jsx';
+import PhotoViewer from './PhotoViewer.jsx';
 import { CameraIcon, TrashIcon, PencilIcon, LockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, PeopleIcon, NoteIcon, TagIcon, BoxIcon, PlusIcon } from './Icons.jsx';
 
 // ONE PAGE PER THING (Ravi 09-27, BOARD_2026-09-27_every-path.md §2; mockups/S11_fix_pages.jpg). Every tile — Home,
@@ -42,11 +43,15 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   const [showEarlier, setShowEarlier] = useState(false); // per visit
   const [confirming, setConfirming] = useState(null); // 'item' | { snap } | 'holds'
   const [renaming, setRenaming] = useState(null);  // the draft name
+  // D2/D3 (Ravi 09-28): the photo viewer — { kind: 'thing', start } | { kind: 'place', name, start, nonce } — and the
+  // "What's in this photo?" sheet over it ({ index, draft }). Declared here with the others: this component returns early below.
+  const [viewer, setViewer] = useState(null);
+  const [capEdit, setCapEdit] = useState(null);
   const stripRef = useRef(null);
   const showTimes = getPrefs().showTimes !== false; // Settings → Taking photos (09-27: it's for the whole app, #27)
   const hold = useHold(() => { logEvent('photo_hold', { itemId: item && item.id }); setSheet(true); });
 
-  useEffect(() => { setSnaps(null); setIndex(0); setShowEarlier(false); setRenaming(null); }, [item?.id]); // eslint-disable-line
+  useEffect(() => { setSnaps(null); setIndex(0); setShowEarlier(false); setRenaming(null); setViewer(null); setCapEdit(null); }, [item?.id]); // eslint-disable-line
   useEffect(() => {
     if (!item || snaps !== null) return;
     let alive = true;
@@ -74,6 +79,10 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   const pages = showEarlier ? sightings : stay;
   const page = pages[Math.min(index, pages.length - 1)] || cover;
   const stayFull = stay.length >= LOG_MAX;
+  // D3 (Ravi 09-28): what each photo shows. A photo's own caption; the cover, from before captions existed, falls back to
+  // what the thing rests on (item.restingOn); any other photo with no caption says nothing.
+  const capOf = (p) => (!p ? '' : p.cover ? ((coverSnap && coverSnap.caption) || item.restingOn || '') : (p.caption || ''));
+  const pageCap = capOf(page);
   const dupCount = (() => { const seen = new Set(); let n = 0; sightings.forEach((s) => { const k = (s.location || '').toLowerCase(); if (seen.has(k)) n += 1; else seen.add(k); }); return n; })();
 
   function pageStep(el) { const a = el.children[0], b = el.children[1]; return a && b ? b.offsetLeft - a.offsetLeft : el.clientWidth; }
@@ -97,8 +106,34 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
     const { undo } = await removeSnap(item, target, all);
     setSnaps(all.filter((s) => s.id !== target.id));
     setIndex(0);
+    setViewer(null); // D2: closes the viewer so the Undo toast is not behind it
     logEvent('photo_removed', { itemId: item.id, snapId: target.id, wasCover: !!snap.cover });
     onToast && onToast('Photo removed', async () => { await undo(); setSnaps(null); logEvent('photo_restored', { itemId: item.id, snapId: target.id }); });
+  }
+  // D2: Make main — this photo becomes the one on the Home tile and the top of the page (display only; see db.setMainPhoto).
+  async function makeMain(i) {
+    const p = pages[i]; if (!p || p.cover) return;
+    let all = snaps; if (all === null) { all = await loadSnaps(item.id); setSnaps(all); }
+    const target = all.find((s) => s.id === p.id); if (!target) return;
+    await setMainPhoto(item, target, coverSnap);
+    logEvent('main_photo', { itemId: item.id, snapId: target.id, via: 'viewer' });
+  }
+  async function makePlaceMain(place, i) {
+    await setPlaceMainPhoto(place, i);
+    logEvent('main_photo', { place: place.name, via: 'viewer' });
+    setViewer((v) => (v ? { ...v, start: 0, nonce: (v.nonce || 0) + 1 } : v)); // the chosen one is first now: open on it
+  }
+  // D3: the "What's in this photo?" sheet's Save. The main photo's caption is also what the thing rests on (item.restingOn).
+  async function saveCaption() {
+    const v = (capEdit.draft || '').trim();
+    if (hasSecret(v)) return;
+    const p = pages[capEdit.index]; setCapEdit(null);
+    if (!p) return;
+    let all = snaps; if (all === null) { all = await loadSnaps(item.id); setSnaps(all); }
+    const snap = p.cover ? all.find((s) => s.photo === item.photo) : all.find((s) => s.id === p.id);
+    if (snap) { const ok = await setSnapCaption(snap, v); if (ok) setSnaps(all.map((s) => (s.id === snap.id ? { ...s, caption: v } : s))); }
+    if (p.cover) await updateItem(item.id, { restingOn: v });
+    logEvent('correction', { itemId: item.id, field: 'caption', via: 'viewer' });
   }
   async function tidy(kind) {
     setTidying(false);
@@ -140,6 +175,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
     : `seen ${photoStamp(item.lastSeenAt).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}`;
   const container = isContainer(item);
   const inside = contentsOf(item);
+  const placeDoc = viewer && viewer.kind === 'place' ? placeNamed(viewer.name, places) : null;
 
   return (
     <div className="screen thing-page">
@@ -157,12 +193,12 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         )}
         {item.photo && <div className="photo-wrap">
           <div className={'strip' + (pages.length > 1 ? '' : ' one')} ref={stripRef} onScroll={onScroll}>
-            {pages.map((p) => {
+            {pages.map((p, pi) => {
               const was = !here(p.location) && p.location;
               return (
                 <div className="strip-page" key={p.id}>
                   <div className="photo-box">
-                    <img className="photo-full" src={p.photo} alt={item.name || ''} {...(canEdit ? hold.props() : {})} onClick={canEdit ? hold.tap(() => {}) : undefined} />
+                    <img className="photo-full" src={p.photo} alt={item.name || ''} {...(canEdit ? hold.props() : {})} onClick={canEdit ? hold.tap(() => setViewer({ kind: 'thing', start: pi })) : () => setViewer({ kind: 'thing', start: pi })} />
                     {showTimes && <span className="stamp">{photoStamp(p.at)}{adder(p) ? ` · ${adder(p)}` : ''}</span>}
                     {canEdit && <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(p)}><TrashIcon /></button>}
                   </div>
@@ -180,7 +216,14 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             <span className="cnt">{Math.min(index, pages.length - 1) + 1} of {pages.length}</span>
           </div>
         )}
-        {item.restingOn && <div className="seen-line">In the photo: {item.restingOn}</div>}
+        {/* D1 + D3 (Ravi 09-28): under the strip, what the photo in view shows (left, may wrap) and the Add photo pill (right,
+            centred on the caption's first line). The pill does exactly what the "Add a photo" row below does. */}
+        {(pageCap || canEdit) && (
+          <div className="d1-cap">
+            {pageCap ? <div className="seen-line">In this photo: {pageCap}</div> : <span />}
+            {canEdit && <button type="button" className="d1-pill" disabled={stayFull} aria-label={stayFull ? `Add photo · ${LOG_MAX} here already` : 'Add photo'} onClick={() => { setSnaps(null); onAdd(); }}><CameraIcon /><span>Add photo</span></button>}
+          </div>
+        )}
         {item.details && <div className="label-line"><TagIcon /><span>{item.details}</span></div>}
       </div>
 
@@ -189,11 +232,13 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         <h2 id="tp-where">Where it is</h2>
         <div className={'tp-wh' + (hasPlace ? '' : ' none')}>
           {hasPlace ? (
-            <div className="ch" aria-hidden="true">
+            <div className="ch">
               {chain.slice(0, 3).map((c, i) => (
                 <span key={c.id} className="st">{i > 0 && <span className="in">in</span>}
                   {c.thumb ? <img src={c.thumb} alt="" /> : <span className="no"><BoxIcon /></span>}</span>))}
-              {outer && <span className="st">{chain.length > 0 && <span className="in">at</span>}{placePic(outer) ? <img src={placePic(outer)} alt="" /> : <span className="no"><PinIcon /></span>}</span>}
+              {outer && <span className="st">{chain.length > 0 && <span className="in">at</span>}{placePic(outer)
+                  ? <button type="button" className="ph-open" aria-label={`Photos of ${outer}`} onClick={() => setViewer({ kind: 'place', name: outer, start: 0, nonce: 0 })}><img src={placePic(outer)} alt="" /></button>
+                  : <span className="no"><PinIcon /></span>}</span>}
             </div>
           ) : <span className="no-pin"><PinIcon /></span>}
           <div className="tx">
@@ -264,6 +309,33 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         {isOwner && <button type="button" className="tp-row red" onClick={() => setConfirming('item')}><TrashIcon /><span>Remove</span></button>}
       </section>
 
+      {/* D2 (Ravi 09-28): the photo viewer — one for the thing's own photos, one for a place's. */}
+      {viewer && viewer.kind === 'thing' && item.photo && pages.length > 0 && (
+        <PhotoViewer photos={pages.map((p) => ({ key: p.id, src: p.photo, main: p.photo === item.photo }))} start={viewer.start}
+          title={(i, n) => `Photo ${i + 1} of ${n}${showTimes && pages[i] ? ` · ${photoStamp(pages[i].at)}` : ''}`}
+          caption={(i) => capOf(pages[i])}
+          onEdit={canEdit && isOwner ? (i) => setCapEdit({ index: i, draft: capOf(pages[i]) }) : null}
+          onMakeMain={canEdit ? makeMain : null} onRemove={canEdit ? (i) => askRemove(pages[i]) : null}
+          onClose={() => setViewer(null)} />
+      )}
+      {viewer && viewer.kind === 'place' && placeDoc && (placeDoc.photos || []).length > 0 && (
+        <PhotoViewer key={'pl' + (viewer.nonce || 0)} photos={placeDoc.photos.map((ph, j) => ({ key: `${ph.at}_${j}`, src: ph.photo || ph.thumb, main: j === 0 }))} start={viewer.start}
+          title={(i, n) => `${placeDoc.name} · photo ${i + 1} of ${n}`}
+          onMakeMain={isOwner ? (i) => makePlaceMain(placeDoc, i) : null} onRemove={isOwner ? (i) => setConfirming({ placePhoto: i, place: placeDoc }) : null}
+          onClose={() => setViewer(null)} />
+      )}
+      {capEdit && (
+        <div className="sheet-back" onClick={() => setCapEdit(null)} role="presentation">
+          <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="tp-cap" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-title" id="tp-cap">What’s in this photo?</div>
+            <input className="place-input" autoFocus value={capEdit.draft} onChange={(e) => setCapEdit({ ...capEdit, draft: e.target.value })} enterKeyHint="done" placeholder="on the orange carpet"
+              onKeyDown={(e) => { if (e.key === 'Enter') saveCaption(); }} aria-label="What is in this photo" />
+            {hasSecret(capEdit.draft) && <PrivNote typedSecret />}
+            <button type="button" className="btn-primary" disabled={hasSecret(capEdit.draft)} onClick={saveCaption}>Save</button>
+            <button type="button" className="btn-quiet" onClick={() => setCapEdit(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
       {renaming !== null && (
         <div className="sheet-back" onClick={() => setRenaming(null)} role="presentation">
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="tp-rn" onClick={(e) => e.stopPropagation()}>
@@ -308,6 +380,16 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             body={confirming.snap.cover ? 'The next photo becomes the one on the tile.' : 'The other photos stay.'}
             keepLabel="Keep it" actionLabel="Remove" onKeep={() => setConfirming(null)} onAction={() => removePhoto(confirming.snap)} />
         )
+      )}
+      {confirming && confirming.placePhoto !== undefined && (
+        <Confirm title="Remove this photo?" image={confirming.place.photos[confirming.placePhoto] ? confirming.place.photos[confirming.placePhoto].thumb : undefined}
+          body="The place keeps its name and its things." actionLabel="Remove" onKeep={() => setConfirming(null)}
+          onAction={async () => {
+            const { place, placePhoto: k } = confirming; setConfirming(null);
+            await removePlacePhoto(place, k); logEvent('place_photo_removed', { via: 'viewer' });
+            const left = (place.photos || []).length - 1;
+            setViewer((v) => (left > 0 && v ? { ...v, start: Math.min(k, left - 1), nonce: (v.nonce || 0) + 1 } : null));
+          }} />
       )}
       {confirming === 'item' && (
         <Confirm title={`Remove ${label} from My items?`}

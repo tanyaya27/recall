@@ -277,9 +277,11 @@ a different thing altogether (a coffee cup added to a folder)?
 
 Reply with ONLY a JSON object, no other text:
 {"same": <true if the new photo shows the saved thing, false if it is a different object>,
- "seen": "<what the new photo mainly shows, 1-3 everyday words>"}` });
+ "seen": "<what the new photo mainly shows, 1-3 everyday words>",
+ "restingOn": "<what the new photo shows the saved thing resting on or beside, a few words such as on the orange carpet, or empty>"}` });
     const out = parseJSON(await this.provider.visionJSONMulti(this.cfg, segments, { sensitivity }));
-    return { same: out.same !== false, seen: typeof out.seen === 'string' ? out.seen.trim() : '' };
+    return { same: out.same !== false, seen: typeof out.seen === 'string' ? out.seen.trim() : '',
+      restingOn: typeof out.restingOn === 'string' ? out.restingOn.trim().slice(0, 80) : '' };
   }
 
   // Prompted capture: the app asked for a specific photo, so it may check what it got.

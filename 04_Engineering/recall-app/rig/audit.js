@@ -187,7 +187,7 @@ async function main() {
   await page.click('.lc-name'); await page.fill('.sheet .place-input', 'coffee mug'); await page.click('.sheet .btn-primary'); await page.waitForTimeout(200);
   check('C3 tap the name → rename', /Coffee mug/.test(await text('.lc-name')));
   await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
-  check('C4 ••• → every place and box (WhereList), with New place or box: photograph it', await count('.where-list .wl-row') >= 1 && await count('.where-list .wl-new') === 1);
+  check('C4 ••• → every place and box (WhereList), with Photograph a new place (D5 ruling, Ravi 09-28: was New place or box: photograph it)', await count('.where-list .wl-row') >= 1 && await count('.where-list .wl-new') === 1);
   await page.fill('.wl-search input', 'the shelf'); await page.click('.wl-new.typed'); await page.waitForTimeout(300);
   check('C4a the typed place is the sentence above Save (Save stays one word)', /the shelf/i.test(await text('.lc-say')) && (await text('.lc-k.sv')).trim() === 'Save');
   await page.click('.lc-k.sv'); await page.waitForSelector('.board', { timeout: 5000 }); await page.waitForTimeout(500);

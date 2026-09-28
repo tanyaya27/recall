@@ -19,6 +19,7 @@ import { me } from './auth.js';
 import { call } from './functions.js';
 import { dayKey, timeOfDay } from './format.js';
 import { THUMB_V } from './img.js';
+import { hasSecret } from './sensitive.js';
 
 const col = collection(db, 'recall_items');
 const eventsCol = collection(db, 'recall_events');
@@ -317,7 +318,8 @@ export async function addItem({ name = '', location = '', description = '', phot
   });
   if (location) await recordMove({ id: ref.id, owner, private: keep }, location, placeSource || 'chosen', dest);
   if (!photo) return ref.id;
-  await addDoc(col, { kind: 'snap', owner, by: me(), itemId: ref.id, logId, photo, thumb, location, at: now });
+  // D3 (Ravi 09-28): the cover photo keeps its own caption — what it shows the thing resting on ("on the orange carpet").
+  await addDoc(col, { kind: 'snap', owner, by: me(), itemId: ref.id, logId, photo, thumb, location, at: now, caption: restingOn || '' });
   await writeExtras(ref.id, logId, extras, location, now, by, owner);
   return ref.id;
 }
@@ -366,6 +368,20 @@ export async function nameItem(id, { name = '', description = '', restingOn = ''
   if (description) patch.description = description;
   if (restingOn) patch.restingOn = restingOn;
   await updateItem(id, patch);
+  if (restingOn) await captionCoverSnap(id, restingOn);
+}
+// D3 (Ravi 09-28): a thing saved before its name arrived (naming: true) gets its first photo's caption when the AI's
+// answer lands — the same words that go on the item. Best effort: a helper's rules may refuse the snap write, and the
+// page then falls back to item.restingOn for the cover photo, so nothing is lost.
+async function captionCoverSnap(itemId, text) {
+  try {
+    const d = await getDoc(doc(col, itemId));
+    if (!d.exists()) return;
+    const cover = d.data().photo;
+    const all = await getDocs(query(col, where('kind', '==', 'snap'), where('itemId', '==', itemId)));
+    const hit = all.docs.find((x) => { const v = x.data(); return v.photo === cover && !v.deleted && !v.caption; });
+    if (hit) await updateDoc(doc(col, hit.id), { caption: text });
+  } catch (err) { console.error('caption cover', err); }
 }
 
 // Editing the place by hand IS a move: it goes into the history with a time, and the thing
@@ -590,7 +606,7 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
     photo, thumb, thumbV: THUMB_V, location, restingOn, needsPlace: !location, placeSource: location ? placeSource : '',
     lastSeenAt: now, updatedAt: now, history, capturedBy: by, logId, photoCount: 1 + extras.length,
   });
-  await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location, at: now });
+  await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location, at: now, caption: restingOn || '' }); // D3: its own caption
   await writeExtras(item.id, logId, extras, location, now, by, item.owner || me());
   await recordMove(item, location, placeSource, dest);
 }
@@ -602,11 +618,13 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
 // A guess nobody corrected stays findable as a guess instead of looking like a fact.
 export const PLACE_SOURCES = ['chosen', 'session', 'usual', 'guess'];
 export const LOG_MAX = 6; // cover + up to 5 more (Ravi 09-15: "only 2 in one go" was 4 - cover - 1)
-export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
+// D3 (Ravi 09-28): `caption` is what THIS photo shows the thing resting on or beside — from the add-photo check's
+// looksLike answer, '' when the check was skipped. It lives on the snap; the page shows the caption of the photo in view.
+export async function addSnapToLog(item, { photo, thumb, by = 'self', caption = '' }) {
   if (!item.photo) { // a written-down thing's first photo becomes its cover (MVP #10, 09-24)
     const now = Date.now(); const logId = `log_${now}`;
-    await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location: item.location || '', at: now });
-    await updateDoc(doc(col, item.id), { photo, thumb, thumbV: THUMB_V, photoCount: 1, logId, written: false, lastSeenAt: now, updatedAt: now });
+    await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location: item.location || '', at: now, caption: caption || '' });
+    await updateDoc(doc(col, item.id), { photo, thumb, thumbV: THUMB_V, photoCount: 1, logId, written: false, lastSeenAt: now, updatedAt: now, ...(caption ? { restingOn: caption } : {}) });
     return true;
   }
   const count = item.photoCount || 1;
@@ -618,8 +636,29 @@ export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
   // photos in one log can be days apart). Before this the time was faked to the log's own,
   // so photos added before 09-16 all show the day they were first logged.
   const at = Date.now();
-  await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location: item.location || '', at, extra: true });
+  await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location: item.location || '', at, extra: true, caption: caption || '' });
   await updateDoc(doc(col, item.id), { photoCount: count + 1, logId, updatedAt: Date.now() });
+  return true;
+}
+
+// D2 (Ravi 09-28): "Make main" — this photo becomes the one on the Home tile and the top of the page. DISPLAY only:
+// the thing's place, when it was last seen and its log stay exactly as they were (a photo taken at an earlier place
+// must not move the thing back there). The main photo's caption is the thing's restingOn (D3), so "In this photo: …"
+// under the tile keeps agreeing with the picture. `prev` (optional) is the snap that WAS the cover: a photo from before
+// captions existed keeps what the thing said it rested on as its own caption instead of losing it. Best effort.
+export async function setMainPhoto(item, snap, prev = null) {
+  if (!snap || !snap.photo || snap.photo === item.photo) return false;
+  if (prev && prev.id && !prev.caption && item.restingOn) {
+    try { await updateDoc(doc(col, prev.id), { caption: item.restingOn }); } catch (err) { console.error('keep caption', err); }
+  }
+  await updateItem(item.id, { photo: snap.photo, thumb: snap.thumb, thumbV: THUMB_V, restingOn: snap.caption || '' });
+  return true;
+}
+// D3: edit what one photo shows. A secret typed here is refused, as in a name (hasSecret). Returns false when refused.
+export async function setSnapCaption(snap, text) {
+  const t = (text || '').trim();
+  if (!snap || !snap.id || hasSecret(t)) return false;
+  await updateDoc(doc(col, snap.id), { caption: t });
   return true;
 }
 
@@ -630,13 +669,17 @@ export async function addSnapToLog(item, { photo, thumb, by = 'self' }) {
 export async function removeSnap(item, snap, snaps) {
   const rest = snaps.filter((s) => s.id !== snap.id && !s.deleted).sort((a, b) => b.at - a.at);
   const patch = {};
-  const wasCover = snap.photo === item.photo || (snap.logId && snap.logId === item.logId && !snap.extra);
+  // D2 (Ravi 09-28): the cover is the snap whose photo IS item.photo — Make main can point it at any snap, so the old
+  // "first photo of the log" test only applies to a thing whose cover has no snap of its own (very old data).
+  const hasCoverSnap = snaps.some((s) => s.photo === item.photo && !s.deleted);
+  const wasCover = snap.photo === item.photo || (!hasCoverSnap && snap.logId && snap.logId === item.logId && !snap.extra);
   if (wasCover && rest[0]) {
     const next = rest[0];
     Object.assign(patch, { photo: next.photo, thumb: next.thumb, thumbV: THUMB_V, location: next.location || item.location, lastSeenAt: next.at, logId: next.logId || next.id });
     // fix 2026-09-28 (phone, B2): "In the photo: …" described the REMOVED cover ("White wall" under a photo on orange
     // carpet). It follows the new cover's own caption if that photo has one, else it goes: no caption beats a wrong one.
-    patch.restingOn = next.restingOn || '';
+    // D3: the caption is now the snap's own `caption` (it was never a field on the snap before, so this was always '').
+    patch.restingOn = next.caption || '';
   }
   if (snap.logId && snap.logId === item.logId) patch.photoCount = Math.max(1, (item.photoCount || 1) - 1);
   await updateDoc(doc(col, snap.id), { deleted: true, deletedAt: Date.now() });
@@ -767,6 +810,13 @@ export async function addPlacePhotos(place, photos) {
 export async function removePlacePhoto(place, index) {
   const next = (place.photos || []).filter((_, i) => i !== index);
   await updateDoc(doc(col, place.id), { photos: next, updatedAt: Date.now() });
+}
+// D2 (Ravi 09-28): "Make main" on a place photo puts it first — first is the one shown as the place's picture.
+export async function setPlaceMainPhoto(place, index) {
+  const have = place.photos || [];
+  if (index <= 0 || index >= have.length) return false;
+  await updateDoc(doc(col, place.id), { photos: [have[index], ...have.filter((_, i) => i !== index)], updatedAt: Date.now() });
+  return true;
 }
 // The saved place with this name, if any (case-insensitive).
 export function placeNamed(name, places = []) {

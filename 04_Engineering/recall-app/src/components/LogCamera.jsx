@@ -460,9 +460,13 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       <div><button type="button" onClick={() => setThing((t) => ({ ...t, answer: 'yes' }))}>Yes</button>
         <button type="button" className="o" onClick={() => setThing((t) => ({ ...t, answer: 'no' }))}>No, a new thing</button></div>
     </div>) : null;
+  // D4 (Ravi 09-28, mockup D4_where-card A): the ask reads "📍 Your desk drawer?" — the pin at the START of the line, centred
+  // on it, in the colour of the level it asks about (amber for level 1) — then Yes / No, a new one. While it is up, the
+  // sentence line under it is not shown (it would only say the same place again).
+  const askColour = askLevel ? LEVEL_COLOURS[Math.min(Math.max(1, levels.findIndex((l) => l.key === askLevel.l.key) + 1), LEVEL_COLOURS.length - 1)] : '#fff';
   const whereAsk = askLevel ? (
     <div className="lc-ask" role="group" aria-label="Is this the one you have?">
-      <b>Your {own(askLevel.target.t === 'thing' ? askLevel.target.item.name : askLevel.target.name)}?</b>
+      <b style={{ color: askColour }}><PinIcon /><span>Your {own(askLevel.target.t === 'thing' ? askLevel.target.item.name : askLevel.target.name)}?</span></b>
       <div><button type="button" onClick={() => {
           convertLevelToKnown(askLevel.l.key, askLevel.target);
           logEvent('camera_where_collision', { answer: 'yes', byName: !!askLevel.byName });
@@ -477,6 +481,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           } else setLevels((ls) => ls.map((l) => (l.key === askLevel.l.key ? { ...l, no: true } : l)));
         }}>No, a new one</button></div>
     </div>) : null;
+  const askUp = !identity && !!whereAsk; // the thing's own "Your …?" (identity) is not about a place: the sentence stays under it
 
   // The level squares: the thing (0), each where level, then ＋ in the next colour.
   const squares = [];
@@ -515,6 +520,15 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       {links.length > 0 && !moveItem && <button type="button" className="lc-chg" aria-label="Change where it goes" onClick={() => setSheet('chain')}><PencilIcon /></button>}
     </div>) : null;
   const showChips = started && (sel > 0 || !real.length) && chips.length > 0;
+  // D4 (Ravi 09-28): the place pills live INSIDE the card, under the name and above the ask (both looks) — ONE line, never
+  // wrapping: at most two place pills and •••, long names cut with an ellipsis. The bar above the shutter row is gone.
+  const pillsEl = showChips ? (
+    <div className="lc-chips" aria-label="Or tap a place">
+      {chips.filter((c) => !real.some((l) => l.known && ((l.known.t === 'thing' && c.known.t === 'thing' && l.known.item.id === c.known.item.id) || (l.known.t === 'place' && c.known.t === 'place' && l.known.name === c.known.name)))).slice(0, 2).map((c) => (
+        <button key={c.key} type="button" className={'lc-chip' + (c.known.t === 'thing' ? ' box' : '')} onClick={() => pickKnown(c.known)}>
+          {c.thumb ? <img src={c.thumb} alt="" /> : <span className="ic">{c.known.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}<span>{c.label}</span></button>))}
+      <button type="button" className="lc-chip more" aria-label="Every place and box" onClick={() => setSheet('more')}><span className="ic">•••</span></button>
+    </div>) : null;
   const pv = sheet && sheet.preview !== undefined ? sheet.preview : null;
   const pvPhotos = (pv === null ? [] : pv === 0 ? (moveItem ? [{ photo: moveItem.photo || moveItem.thumb }] : thing.photos) : (() => { const l = levels[pv - 1] || {}; return l.photos && l.photos.length ? l.photos : (known(l) ? [{ photo: linkThumb(l) }] : []); })())
     .filter((p) => p && p.photo); // a thing or box with no photo has nothing to show
@@ -538,27 +552,20 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         {!started && onWrite && <div className="lc-typeit"><button type="button" onClick={onWrite}><PencilIcon />Type it instead</button></div>}
         {look === 'a' && started && (<>
           <div className={'lv-chain' + (many > 3 ? ' more' : '')}>{squares.map((s) => sq(s, true))}{plus(true)}</div>
-          {(privLine || identity || whereAsk) && <div className="lc-float">{identity || whereAsk}{privLine}</div>}
+          {(pillsEl || privLine || identity || whereAsk) && <div className="lc-float">{pillsEl && <div className="lc-pills-a">{pillsEl}</div>}{identity || whereAsk}{privLine}</div>}
         </>)}
         {look === 'b' && started && (
           <div className="lc-card">
             <div className={'lv-strip' + (many > 5 ? ' more' : '')}>{squares.map((s) => sq(s, false))}{plus(false)}</div>
             <button type="button" className="lc-name" disabled={!!moveItem} onClick={() => { setDraft(name); setSheet('rename'); }}>{cap(name) || 'Naming…'}{startPrivate && <LockIcon />}</button>
+            {pillsEl}
             {identity || whereAsk}
             {privLine}
-            {sentenceEl}
+            {!askUp && sentenceEl}
           </div>)}
       </div>
       <div className="lc-bot">
-        {showChips && (
-          <div className="lc-chips" aria-label="Or tap a place">
-            <span className="lc-cdot" style={{ background: sel > 0 ? colour : LEVEL_COLOURS[1] }} aria-hidden="true" />
-            {chips.filter((c) => !real.some((l) => l.known && ((l.known.t === 'thing' && c.known.t === 'thing' && l.known.item.id === c.known.item.id) || (l.known.t === 'place' && c.known.t === 'place' && l.known.name === c.known.name)))).slice(0, 2).map((c) => (
-              <button key={c.key} type="button" className={'lc-chip' + (c.known.t === 'thing' ? ' box' : '')} onClick={() => pickKnown(c.known)}>
-                {c.thumb ? <img src={c.thumb} alt="" /> : <span className="ic">{c.known.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}<span>{c.label}</span></button>))}
-            <button type="button" className="lc-chip more" aria-label="Every place and box" onClick={() => setSheet('more')}><span className="ic">•••</span></button>
-          </div>)}
-        {look === 'a' && sentenceEl}
+        {look === 'a' && !askUp && sentenceEl}
         <div className="lc-row">
           {started && !moveItem ? <button type="button" className="lc-k sn" disabled={busy || !!collidingLevel} onClick={() => save(true)} aria-label="Save and log the next thing"><SaveIcon /><span className="plus">+</span>Next</button> : <span />}
           <button type="button" className="lc-shutter" style={{ borderColor: colour }} aria-label="Take a photo" disabled={cam !== 'live' || busy} onClick={snap}><span /></button>
