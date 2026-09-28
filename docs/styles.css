@@ -435,6 +435,8 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .ask .hint { color: var(--ink-soft); font-size: min(1rem, 4.4vw); margin-top: 0.5rem; }
 .ask .board.live { margin-top: 0.75rem; }
 .tile .tile-sub.place { color: var(--ink-soft); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* REQUIREMENTS_2026-09-27 R6.2: a where-created container with no place yet — a plain muted dash, not the amber "No place yet". */
+.tile .tile-sub.dash { color: var(--ink-soft); font-weight: 500; }
 
 /* ---- round 7 (2026-09-15) ---------------------------------------------------------------- */
 /* When line: the time is a soft pill with a clock (it was a plain grey line that vanished
@@ -897,9 +899,25 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .pv-dots i.on { background: #fff; }
 .lc-pv .box b { display: block; font-size: 1.125rem; margin: 0.5rem 0.25rem 0.125rem; }
 .lc-pv .box small { display: block; color: #ccc; font-size: 0.875rem; margin: 0 0.25rem 0.5rem; }
+/* REQUIREMENTS_2026-09-27 R3.1: the level preview's name line is a button (Rename) — level 0 (the
+   thing) keeps its own separate rename affordance, so only pv > 0 renders this. */
+.lc-pv .box .pv-name { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; width: 100%; min-height: 44px; background: none; color: #fff; text-align: left; padding: 0 0.25rem; }
+.lc-pv .box .pv-name b { margin: 0.5rem 0 0.125rem; }
+.pv-rn { flex: none; font-size: 0.8125rem; font-weight: 700; color: #8CC4B2; text-decoration: underline; }
 .pv-rm { display: flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%; min-height: 48px; margin-top: 0.375rem; border-radius: 14px; background: rgba(255,255,255,0.1); color: #F2A28F; font-weight: 700; font-size: 1rem; }
 .pv-rm svg { width: 18px; height: 18px; }
 .lc-pv .hint { color: #eee; font-size: 0.875rem; margin-top: 0.75rem; }
+/* REQUIREMENTS_2026-09-27 R5: the chain sheet — one row per level, words on every control (F10):
+   thumb, name (tap = rename), Replace, Remove. All three controls stay >= 44px (Frank + Sunil). */
+.chain-sheet .cs-rows { margin: 0.5rem 0 0.25rem; }
+.chain-sheet .cs-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.chain-sheet .cs-row:last-child { border-bottom: 0; }
+.chain-sheet .cs-row img, .chain-sheet .cs-row .no { flex: none; width: 44px; height: 44px; border-radius: 10px; object-fit: cover; }
+.chain-sheet .cs-row .no { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+.chain-sheet .cs-row .no svg { width: 20px; height: 20px; }
+.chain-sheet .cs-name { flex: 1 1 auto; min-width: 7rem; min-height: 44px; text-align: left; font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: none; color: inherit; padding: 0; }
+.chain-sheet .cs-act { flex: none; min-height: 44px; padding: 0 0.75rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 0.875rem; }
+.chain-sheet .cs-act.rm { background: var(--amber-bg); color: var(--amber); }
 /* after Save: Home shows what was saved, as the chain, with Undo (replaces the toast for a log) */
 .saved-card { position: fixed; left: 0.75rem; right: 0.75rem; bottom: calc(var(--footer-h) + 0.75rem + env(safe-area-inset-bottom)); z-index: 16; padding: 0.75rem; border-radius: 1.125rem;
   background: rgba(43,40,35,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
@@ -935,6 +953,9 @@ html, body { overflow-x: hidden; }
 .lc-float .privnote { margin: 0; background: rgba(22,22,22,0.6); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .saved-card .sc-priv { white-space: normal; margin-top: 0.2rem; color: #E8E1D5; }
 .saved-card .sc-share { background: none; border: 0; padding: 0; min-height: 0; color: #8CC4B2; font-weight: 700; text-decoration: underline; font-size: inherit; }
+/* REQUIREMENTS_2026-09-27 R3.3: a link saved with no real name yet (still "A place"/"A box") gets
+   this instead of silently sitting unnamed forever — tap it to name the doc that was just made. */
+.saved-card .sc-unnamed { display: flex; align-items: center; min-height: 40px; margin-top: 0.3rem; padding: 0.3rem 0.6rem; border-radius: 999px; background: var(--amber-bg); color: var(--amber); font-weight: 700; font-size: 0.8125rem; white-space: normal; }
 .lc .sheet-back { background: rgba(0,0,0,0.3); }
 .lc .sheet { background: rgba(34,32,30,0.88); color: var(--ink); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,0.12); }
 .lc .sheet input { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.25); }

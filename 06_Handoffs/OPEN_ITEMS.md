@@ -3,6 +3,29 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-27 (late).
 
+## NOW — where-camera hardening shipped to the tree (adversarial session 09-27/28); Ravi's phone check
+
+- [x] 09-27 Adversarial walk (new cast) of `20260927d`: 90 states, both looks → F1–F10 confirmed Ravi's four
+  gaps + six more. Requirements + evidence: `design/REQUIREMENTS_2026-09-27_where-camera-hardening.md`,
+  `rig/WALK_INVENTORY.md`.
+- [x] 09-28 **R1–R7 implemented and verified (`20260928a`, committed to the tree, NOT pushed, NOT deployed):**
+  attach-never-replace; typed/picked places are real place docs (photos flow at save; cap 6 + byte guard;
+  typed level photographable immediately); per-level rename at capture + "Unnamed — tap to name";
+  name-collision ask + distinct-name gate; chain sheet (edit ONE level) replaces the chain-nuking Choice;
+  `asWhere` boxes off Not put away/pill, "N inside" tile, soft nudge; both looks. Audits **321/321**
+  (new `rig/audit_where.js` 63); blind re-walk `rig/verify_f2.js` **104/104**; strips
+  `design/mockups/VERIFY_R*.jpg`.
+- [ ] **Ravi: phone check of `20260928a`** (Safari private tab first): (1) chip-pick a known place → shoot 2
+  more photos → name must survive, place gains the photos; (2) type a brand-new place → photograph it in the
+  same flow; (3) force "Your …?" both ways (shoot a known box; let the AI name something like an existing
+  place) — Yes merges, No demands a new name; (4) save a new box with no outer level → it must NOT appear in
+  Not put away; card shows the nudge; (5) chain sheet: replace/remove one middle level only. Then commit +
+  push from the Mac (commands in the session log / chat).
+- [ ] Rig stub quota fix: `rig/stubs/firestore.js` `save()` should report, not swallow, QuotaExceededError
+  (LESSONS 09-28).
+- [ ] Fold the four-week plan forward: fast-capture renders and the one-user test now run against the
+  hardened camera.
+
 ## NOW — Apple Developer sign-up (its own session from 09-26; Ravi as an individual, Tanya 09-24)
 
 - [x] 09-24 **Tanya: Ravi enrolls as an individual; Tanya is credited** (DECISIONS 09-24). Details, and moving to an LLC

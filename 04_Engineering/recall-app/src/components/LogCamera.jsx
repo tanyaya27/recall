@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressPhoto, compressPlacePhoto, shrink } from '../lib/img.js';
 import { addItem, nameItem, resnapItem, changeLocation, findMatch, knownLocations, placeNamed, noteAlias, logEvent,
-  applyVerdict, saveChain } from '../lib/db.js';
+  applyVerdict, saveChain, PLACE_PHOTOS } from '../lib/db.js';
 import { verdictOf, hasSecret } from '../lib/sensitive.js';
 import { normName } from '../lib/names.js';
 import { me } from '../lib/auth.js';
@@ -11,6 +11,7 @@ import WhereList from './WhereList.jsx';
 import PrivNote from './PrivNote.jsx';
 import Choice from './Choice.jsx';
 import Confirm from './Confirm.jsx';
+import ChainSheet from './ChainSheet.jsx';
 import { CameraIcon, CloseIcon, PinIcon, LockIcon, PencilIcon, SaveIcon, PinAskIcon, BoxIcon, PlusIcon, TrashIcon } from './Icons.jsx';
 
 // The camera photographs the LEVEL you choose (Ravi 09-27, BOARD_2026-09-27_every-path.md; mockups S11_fix_camera.jpg).
@@ -34,7 +35,10 @@ const own = (s) => (s || '').toLowerCase().replace(/^(my|the|our)\s+/, '');
 const many = (s) => /[^su]s$/.test(own(s)) || /\b(glasses|scissors|pants|jeans|trousers|pliers|tongs)$/.test(own(s));
 const whereQ = (s) => (own(s) ? `Where ${many(s) ? 'are' : 'is'} the ${own(s)}?` : 'Where is it?');
 let KEY = 0;
-const emptyLevel = () => ({ key: ++KEY, photos: [], known: null, name: '', moves: false, status: 'empty', ask: null });
+// userName: a name given right at capture (R3) — always wins over the AI's late result, and never
+// gets overwritten by one. collisionNo: the resolved name she last said "No, a new one" to (R4.2) —
+// kept as the STRING, not a flag, so renaming to a DIFFERENT colliding name can ask again.
+const emptyLevel = () => ({ key: ++KEY, photos: [], known: null, name: '', userName: '', moves: false, status: 'empty', ask: null, collisionNo: '' });
 
 export default function LogCamera({ engine, items = [], places = [], owner = undefined, ownerName = '', look = 'b', preset = null, moveItem = null,
   onSaved, onCancel, onWrite, onNotice = () => {} }) {
@@ -110,10 +114,17 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     }
     const i = sel - 1;
     const cur = levelsRef.current[i] || emptyLevel();
-    const firstOfLevel = cur.photos.length === 0 || !!cur.known;
-    const next = { ...cur, photos: [...(cur.known ? [] : cur.photos), { ...s, file }], known: null, ...(firstOfLevel ? { status: 'naming', name: '', ask: null, no: false, yes: false } : {}) };
+    // REQUIREMENTS_2026-09-27 R1 (kills F1): a level that already has an IDENTITY — picked as a chip,
+    // confirmed "Yes" on an ask, or given a name of her own — keeps it. The shutter only ever ADDS a
+    // photo to it; it never wipes `known`, never re-enters the naming pass. Only a level with no
+    // identity yet behaves as before: first photo starts the naming pass, later ones just join it.
+    const identified = !!cur.known || (!!cur.ask && !cur.no) || !!cur.userName;
+    const firstOfLevel = !identified && cur.photos.length === 0;
+    const next = identified
+      ? { ...cur, photos: [...cur.photos, { ...s, file }] }
+      : { ...cur, photos: [...cur.photos, { ...s, file }], known: null, ...(firstOfLevel ? { status: 'naming', name: '', ask: null, no: false, yes: false, collisionNo: '' } : {}) };
     setLevels((ls) => { const c = [...ls]; while (c.length <= i) c.push(emptyLevel()); c[i] = next; return c; });
-    logEvent('camera_where_shot', { level: sel, n: next.photos.length });
+    logEvent('camera_where_shot', { level: sel, n: next.photos.length, identified });
     if (firstOfLevel) nameWhere(next.key, s.photo);
   }
 
@@ -142,8 +153,11 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   }
 
   async function nameWhere(key, photo) {
+    // REQUIREMENTS_2026-09-27 R4.3 (kills F8): 4 boxes + 4 places (was 2) — still one whereIs call.
+    // A place-starved pool was making recognition BY SIGHT fail routinely, pushing every photographed
+    // place onto the silent-merge path that R4.2's name-collision ask now also catches.
     const cands = [...boxes.filter((b) => b.thumb).slice(0, 4).map((b) => ({ c: { name: b.name, thumb: b.thumb }, known: { t: 'thing', item: b } })),
-      ...places.filter((p) => p.photos && p.photos.length).slice(0, 2).map((p) => ({ c: { name: p.name, thumb: p.photos[0].thumb }, known: { t: 'place', name: p.name } }))].slice(0, 6);
+      ...places.filter((p) => p.photos && p.photos.length).slice(0, 4).map((p) => ({ c: { name: p.name, thumb: p.photos[0].thumb }, known: { t: 'place', name: p.name } }))].slice(0, 8);
     let r = null;
     try {
       const small = await Promise.all(cands.map((x) => shrink(x.c.thumb, 320)));
@@ -152,7 +166,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (!mounted.current) return;
     const hit = r && r.index >= 0 && r.sure ? cands[r.index].known : null;
     logEvent('camera_where_named', { named: !!(r && r.name), moves: !!(r && r.moves), known: !!hit });
-    setLevels((ls) => ls.map((l) => (l.key !== key ? l : { ...l, status: r ? 'named' : 'failed', name: (r && r.name) || '', moves: !!(r && r.moves), ask: hit })));
+    // REQUIREMENTS_2026-09-27 R3.2: a name she typed before the AI answered WINS — the late result
+    // only ever fills `moves`/`ask`, never the name itself, once `userName` is set.
+    setLevels((ls) => ls.map((l) => (l.key !== key ? l : { ...l, status: r ? 'named' : 'failed', name: l.userName ? l.name : ((r && r.name) || ''), moves: !!(r && r.moves), ask: hit })));
   }
 
   // ---- what the screen says
@@ -174,7 +190,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const links = real.length ? real : suggestion && !moveItem ? [{ key: 'sugg', photos: [], known: suggestion.known, why: suggestion.why }] : [];
   const lastLink = links[links.length - 1];
   const known = (l) => (l.known ? l.known : l.ask && !l.no ? l.ask : null);
-  const linkName = (l) => { const k = known(l); return k ? (k.t === 'thing' ? cap(k.item.name) : k.name) : l.status === 'naming' ? 'Naming…' : cap(l.name) || (l.moves ? 'A box' : 'A place'); };
+  // REQUIREMENTS_2026-09-27 R3.2: a name given at capture (userName) shows immediately, even while
+  // `status` is still 'naming' — she should never see "Naming…" over a name she already gave it.
+  const linkName = (l) => { const k = known(l); return k ? (k.t === 'thing' ? cap(k.item.name) : k.name) : l.userName ? cap(l.userName) : l.status === 'naming' ? 'Naming…' : cap(l.name) || (l.moves ? 'A box' : 'A place'); };
   const linkThumb = (l) => (l.photos && l.photos.length ? l.photos[0].thumb : (() => { const k = known(l); return !k ? null : k.t === 'thing' ? k.item.thumb : placePic(k.name); })());
   const isBox = (l) => { const k = known(l); return k ? k.t === 'thing' : l.moves; };
 
@@ -182,7 +200,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (!links.length) return { l1: 'No place yet', l2: started ? 'Tap ＋ to add where it is' : '', none: true };
     const first = links[0];
     const n1 = linkName(first);
-    const l1 = first.status === 'naming' ? 'Naming the place…' : isBox(first) ? inPhrase({ name: n1 }) : n1;
+    const l1 = first.status === 'naming' && !first.userName ? 'Naming the place…' : isBox(first) ? inPhrase({ name: n1 }) : n1;
     const rest = links.slice(1).map(linkName);
     const lk = known(lastLink);
     if (lk && lk.t === 'thing') { const outer = chainOf(lk.item); rest.push(...outer.map((c) => cap(c.name))); const tail = outer.length ? outer[outer.length - 1] : lk.item; if (tail.location && !rest.includes(tail.location)) rest.push(tail.location); }
@@ -217,7 +235,15 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       setThing((t) => { const photos = t.photos.filter((_, j) => j !== pi); return photos.length ? { ...t, photos } : { photos: [], tag: undefined, match: null, answer: null }; });
       if (thing.photos.length === 1) { setLevels([]); setSel(0); setSheet(null); tagP.current = null; }
     } else {
-      setLevels((ls) => ls.map((l, j) => (j !== li - 1 ? l : { ...l, photos: l.photos.filter((_, k) => k !== pi), ...(l.photos.length === 1 ? { status: 'empty', name: '', ask: null } : {}) })));
+      // REQUIREMENTS_2026-09-27 R1.3: removing the last ATTACHED photo of an identified level keeps
+      // the identity (she picked it, the photo count didn't derive it) — the square falls back to the
+      // known thumb/pin via linkThumb(); only a level with no identity resets to empty.
+      setLevels((ls) => ls.map((l, j) => {
+        if (j !== li - 1) return l;
+        const photos = l.photos.filter((_, k) => k !== pi);
+        const identified = !!l.known || (!!l.ask && !l.no) || !!l.userName;
+        return photos.length === 0 && !identified ? { ...l, photos, status: 'empty', name: '', ask: null } : { ...l, photos };
+      }));
     }
     setPvIndex((x) => Math.max(0, x - 1));
     logEvent('camera_photo_removed', { level: li });
@@ -225,9 +251,55 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (left <= 0) setSheet(null);
   }
 
+  // ---- the chain sheet (R5, kills F5): the pencil edits ONE level, never the whole chain. `idx` is
+  // the level's position in `links` (0-based, matching `levels` when any level is real; the lone
+  // suggestion row, key 'sugg', has no backing level yet — Replace/Remove on it just starts one).
+  function chainRename(idx) {
+    if (!levels[idx]) { setLevels([emptyLevel()]); setSel(1); setDraft(''); setSheet({ levelRename: 0 }); return; }
+    const l = levels[idx];
+    setDraft(cap(l.userName || l.name) || '');
+    setSheet({ levelRename: idx });
+  }
+  function chainReplace(idx) {
+    if (!levels[idx]) { setLevels([emptyLevel()]); setSel(1); setSheet(null); logEvent('camera_where_change', { how: 'replace', level: 1 }); return; }
+    const oldKey = levels[idx].key;
+    setLevels((ls) => ls.map((l, j) => (j === idx ? { ...emptyLevel(), key: oldKey } : l)));
+    setSel(idx + 1);
+    setSheet(null);
+    logEvent('camera_where_change', { how: 'replace', level: idx + 1 });
+  }
+  function chainRemove(idx) {
+    if (!levels[idx]) { setLevels([]); setLastWhere(null); setSel(0); setSheet(null); logEvent('camera_where_change', { how: 'remove' }); return; }
+    const removedNum = idx + 1;
+    setLevels((ls) => ls.filter((_, j) => j !== idx));
+    setSel((s) => (s === removedNum ? Math.max(0, idx) : s > removedNum ? s - 1 : s));
+    setSheet(null);
+    logEvent('camera_where_change', { how: 'remove', level: removedNum });
+  }
+  function chainNoPlace() {
+    if (real.length >= 2) { setSheet('chain-clear'); return; }
+    setLevels([]); setLastWhere(null); setSel(0); setSheet(null);
+    logEvent('camera_where_change', { how: 'none' });
+  }
+  function chainClearConfirmed() {
+    setLevels([]); setLastWhere(null); setSel(0); setSheet(null);
+    logEvent('camera_where_change', { how: 'none_confirmed' });
+  }
+  // R3: applies the rename sheet's draft — to the thing (nameOverride) or to one WHERE level
+  // (userName only). A user name always wins; nameWhere's late AI result checks userName first.
+  function applyRename() {
+    const n = draft.trim();
+    if (!n || hasSecret(n)) return;
+    if (sheet === 'rename') { setNameOverride(n); setSheet(null); return; }
+    const idx = sheet.levelRename;
+    setLevels((ls) => ls.map((l, j) => (j === idx ? { ...l, userName: n } : l)));
+    setSheet(null);
+    logEvent('camera_level_rename', { level: idx + 1 });
+  }
+
   // ---- saving
   async function save(next, answer = thing.answer) {
-    if (busy || !started) return;
+    if (busy || !started || collidingLevel) return;
     if (!moveItem && thing.match && !answer) { setSheet({ ask: thing.match, next }); return; }
     const match = !moveItem && thing.match && answer === 'yes' ? thing.match : null;
     const name = moveItem ? moveItem.name : nameOverride || (match ? match.name : (tag && tag.name) || '');
@@ -241,19 +313,39 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       const resolved = [];
       for (const l of use) {
         const k = known(l);
-        if (k) resolved.push({ known: k });
-        else resolved.push({ photo: l.photos[0].photo, thumb: l.photos[0].thumb, extras: l.photos.slice(1).map((p) => ({ photo: p.photo, thumb: p.thumb })),
-          placePhotos: l.moves ? null : await Promise.all(l.photos.slice(0, 3).map((p) => compressPlacePhoto(p.file))), name: l.name, moves: l.moves });
+        if (k && k.t === 'thing') {
+          // REQUIREMENTS_2026-09-27 R1/R2: photos attached to a KNOWN box join it as extra shots.
+          resolved.push({ known: k, extraPhotos: l.photos.map((p) => ({ photo: p.photo, thumb: p.thumb })) });
+        } else if (k) {
+          // …and to a KNOWN place, as placePhotos on that place doc (capped the same as any place, R2.3).
+          const placePhotos = l.photos.length ? await Promise.all(l.photos.slice(0, PLACE_PHOTOS).map((p) => compressPlacePhoto(p.file))) : [];
+          resolved.push({ known: k, placePhotos });
+        } else {
+          const finalName = l.userName || l.name || '';
+          resolved.push({ photo: l.photos[0].photo, thumb: l.photos[0].thumb, extras: l.photos.slice(1).map((p) => ({ photo: p.photo, thumb: p.thumb })),
+            placePhotos: l.moves ? null : await Promise.all(l.photos.slice(0, PLACE_PHOTOS).map((p) => compressPlacePhoto(p.file))), name: finalName, moves: l.moves,
+            // REQUIREMENTS_2026-09-27 R3.3: still a placeholder at Save — never blocks the save, but the
+            // confirmation card offers "Unnamed — tap to name" on the doc this creates.
+            unnamed: !finalName.trim() });
+        }
       }
       const { first, made } = await saveChain(resolved, { owner: owner || me(), places });
       const location = first ? first.text : '';
       const dest = first ? first.dest : null;
       const thumbs = [moveItem ? moveItem.thumb : dropPhoto ? null : thing.photos[0].thumb, ...use.map(linkThumb)];
+      // R3.3: made.links[j] lines up with use[j]/resolved[j] — pick out the ones saved unnamed.
+      const unnamed = use.map((l, j) => { const info = made.links && made.links[j]; return info && info.unnamed ? { id: info.id, kind: info.kind, thumb: linkThumb(l) } : null; }).filter(Boolean);
+      // R6.4 (kills F6, soft nudge not a chore): the outermost link is a brand-new box with nothing
+      // beyond it — only when the usual second line would otherwise say nothing about where it is.
+      const lastReal = links.length ? links[links.length - 1] : null;
+      const lastIsNewBox = !moveItem && lastReal && !known(lastReal) && lastReal.moves;
+      let l2 = say.none ? '' : say.l2;
+      if (lastIsNewBox && !l2) l2 = `You haven't said where the ${linkName(lastReal)} is — its page can, any time.`;
       if (moveItem) {
         const prev = { location: moveItem.location || '', dest: openEdge(moveItem.id) ? openEdge(moveItem.id).to : null };
         const ok = location ? await changeLocation(moveItem, location, 'chosen', dest) : true;
         logEvent('camera_move', { itemId: moveItem.id, ok, depth: resolved.length });
-        onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2: say.none ? '' : say.l2, none: say.none, moved: true, refused: ok === false,
+        onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2, none: say.none, moved: true, refused: ok === false, unnamed,
           undo: mine ? { itemId: moveItem.id, isNew: false, prev, made } : null });
         return;
       }
@@ -282,7 +374,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         }
       }
       logEvent('capture', { initiatedBy: 'camera', itemId, merged: !!match, depth: resolved.length, photos: thing.photos.length, made: made.items.length + made.places.length, next: !!next, look, beforeName: tag === undefined });
-      const card = { itemId, where: location, name: cap(name) || 'Saved', lock: startPrivate || (match && match.private), thumbs, l1: say.l1, l2: say.none ? '' : say.l2, none: say.none,
+      const card = { itemId, where: location, name: cap(name) || 'Saved', lock: startPrivate || (match && match.private), thumbs, l1: say.l1, l2, none: say.none, unnamed,
         undo: mine ? { itemId, isNew, prev, made } : null };
       if (next) {
         onSaved({ ...card, next: true });
@@ -300,13 +392,52 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const colour = LEVEL_COLOURS[Math.min(sel, LEVEL_COLOURS.length - 1)];
   const lvName = (i) => (i === 0 ? (cap(name) || 'the thing') : linkName(levels[i - 1] || links[i - 1] || {}));
   const selLevel = sel > 0 ? levels[sel - 1] : null;
+  // REQUIREMENTS_2026-09-27 R2.4 (kills the b-f dead end): a level that is already KNOWN (chip,
+  // WhereList pick — typed-new or existing) but has no photo of its OWN yet gets its own prompt, so
+  // the typed path can photograph right away instead of looking like a dead end.
   const prompt = !started ? { b: 'Photograph the thing', s: 'Take as many photos of it as you like.' }
     : sel === 0 ? { b: `${cap(name) || 'The thing'} · ${thing.photos.length} photo${thing.photos.length === 1 ? '' : 's'}`, s: 'Another photo of it, or tap ＋ to photograph where it goes.' }
     : !filled(selLevel) ? (moveItem && sel === 1 ? { b: whereQ(name), s: 'Photograph the place or what it is in. Or tap one.' }
       : sel === 1 ? { b: 'Where it goes', s: `Photograph what ${own(name) ? 'the ' + own(name) : 'it'} is in, or where it is. Or tap a place.` }
       : { b: whereQ(lvName(sel - 1)), s: 'Photograph what it is in, or where it is. Or tap a place.' })
+    : (selLevel.known && selLevel.photos.length === 0) ? { b: `${linkName(selLevel)} — add a photo of it, or tap ＋ for where that is.`, s: '' }
     : { b: `${isBox(selLevel) ? inPhrase({ name: linkName(selLevel) }) : linkName(selLevel)}${selLevel.photos.length ? ` · ${selLevel.photos.length} photo${selLevel.photos.length === 1 ? '' : 's'}` : ''}`, s: `Another photo of it, or tap ＋ for where ${isBox(selLevel) ? 'the ' + own(linkName(selLevel)) : 'that'} is.` };
-  const askLevel = levels.find((l) => l.ask && !l.no && !l.yes && l.status === 'named');
+  // REQUIREMENTS_2026-09-27 R4.2 (kills F3/F8): a level's resolved name — the AI's, or her own —
+  // may be the SAME (normName) as a place or container she already has, even when the visual check
+  // missed it. Never merge silently: same "Your {name}?" ask, same Yes/No, but "No" also opens the
+  // rename sheet right away (the distinct-name gate below keeps Save off until she does).
+  const resolvedLevelName = (l) => cap(l.userName || l.name || '');
+  function collisionFor(rawName) {
+    const n = normName(rawName);
+    if (!n) return null;
+    const p = places.find((pl) => normName(pl.name) === n);
+    if (p) return { t: 'place', name: p.name };
+    const b = items.find((it) => !it.deleted && it.name && isContainer(it, graph()) && normName(it.name) === n);
+    if (b) return { t: 'thing', item: b };
+    return null;
+  }
+  const levelCollision = (l) => {
+    if (known(l)) return null;
+    const nm = resolvedLevelName(l);
+    return nm ? collisionFor(nm) : null;
+  };
+  // R4.4 (kills F7): at most one level ask at a time, in chain order — a visual sure-match ask
+  // (already stored on the level as `ask`) takes priority over a same-name collision found here.
+  const levelAsks = [];
+  levels.forEach((l) => {
+    if (l.ask && !l.no && !l.yes && l.status === 'named') { levelAsks.push({ l, target: l.ask, byName: false }); return; }
+    if (!l.ask || l.no) {
+      const col = levelCollision(l);
+      if (col && l.collisionNo !== resolvedLevelName(l)) levelAsks.push({ l, target: col, byName: true });
+    }
+  });
+  const askLevel = levelAsks[0] || null;
+  // R4.2: the Save gate — a level that is new AND still names something already saved can't be
+  // saved as a second doc by accident. Scoped to that link only: removing/replacing it (R5), or
+  // renaming it, or answering the ask, all clear the gate; nothing else about the save is blocked.
+  const collidingLevel = levels.find((l) => levelCollision(l));
+  // R4.2: the sentence explains the gate instead of showing its usual second line.
+  if (collidingLevel) say.l2 = `'${resolvedLevelName(collidingLevel)}' needs its own name — tap it.`;
   function retake() { logEvent('privacy_retake', { via: 'camera' }); setThing({ photos: [], tag: undefined, match: null, answer: null }); setLevels([]); setSel(0); setNameOverride(''); setShareAnyway(false); tagP.current = null; }
   const privLine = started && !moveItem ? (
     <PrivNote v={v} mine={mine} ownerName={ownerName} isNew={!match} shared={shareAnyway}
@@ -320,9 +451,20 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     </div>) : null;
   const whereAsk = askLevel ? (
     <div className="lc-ask" role="group" aria-label="Is this the one you have?">
-      <b>Your {own(askLevel.ask.t === 'thing' ? askLevel.ask.item.name : askLevel.ask.name)}?</b>
-      <div><button type="button" onClick={() => setLevels((ls) => ls.map((l) => (l.key === askLevel.key ? { ...l, yes: true } : l)))}>Yes</button>
-        <button type="button" className="o" onClick={() => setLevels((ls) => ls.map((l) => (l.key === askLevel.key ? { ...l, no: true } : l)))}>No, a new one</button></div>
+      <b>Your {own(askLevel.target.t === 'thing' ? askLevel.target.item.name : askLevel.target.name)}?</b>
+      <div><button type="button" onClick={() => {
+          if (askLevel.byName) { setLevels((ls) => ls.map((l) => (l.key === askLevel.l.key ? { ...l, known: askLevel.target } : l))); logEvent('camera_where_collision', { answer: 'yes' }); }
+          else setLevels((ls) => ls.map((l) => (l.key === askLevel.l.key ? { ...l, yes: true } : l)));
+        }}>Yes</button>
+        <button type="button" className="o" onClick={() => {
+          if (askLevel.byName) {
+            const nm = resolvedLevelName(askLevel.l);
+            const idx = levels.findIndex((l) => l.key === askLevel.l.key);
+            setLevels((ls) => ls.map((l) => (l.key === askLevel.l.key ? { ...l, collisionNo: nm } : l)));
+            setDraft(nm); setSheet({ levelRename: idx, msg: `There's already a '${nm}'. Give this one its own name.` });
+            logEvent('camera_where_collision', { answer: 'no' });
+          } else setLevels((ls) => ls.map((l) => (l.key === askLevel.l.key ? { ...l, no: true } : l)));
+        }}>No, a new one</button></div>
     </div>) : null;
 
   // The level squares: the thing (0), each where level, then ＋ in the next colour.
@@ -359,7 +501,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     <div className="lc-say">
       <PinIcon />
       <span className="tx"><b>{say.l1}</b>{say.l2 && <span className="soft">{say.l2}</span>}</span>
-      {links.length > 0 && !moveItem && <button type="button" className="lc-chg" aria-label="Change where it goes" onClick={() => setSheet('change')}><PencilIcon /></button>}
+      {links.length > 0 && !moveItem && <button type="button" className="lc-chg" aria-label="Change where it goes" onClick={() => setSheet('chain')}><PencilIcon /></button>}
     </div>) : null;
   const showChips = started && (sel > 0 || !real.length) && chips.length > 0;
   const pv = sheet && sheet.preview !== undefined ? sheet.preview : null;
@@ -407,9 +549,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           </div>)}
         {look === 'a' && sentenceEl}
         <div className="lc-row">
-          {started && !moveItem ? <button type="button" className="lc-k sn" disabled={busy} onClick={() => save(true)} aria-label="Save and log the next thing"><SaveIcon /><span className="plus">+</span>Next</button> : <span />}
+          {started && !moveItem ? <button type="button" className="lc-k sn" disabled={busy || !!collidingLevel} onClick={() => save(true)} aria-label="Save and log the next thing"><SaveIcon /><span className="plus">+</span>Next</button> : <span />}
           <button type="button" className="lc-shutter" style={{ borderColor: colour }} aria-label="Take a photo" disabled={cam !== 'live' || busy} onClick={snap}><span /></button>
-          {started ? <button type="button" className="lc-k sv" disabled={busy || (moveItem && !real.length)} onClick={() => save(false)}><SaveIcon />{busy ? 'Saving…' : 'Save'}</button> : <span />}
+          {started ? <button type="button" className="lc-k sv" disabled={busy || (moveItem && !real.length) || !!collidingLevel} onClick={() => save(false)}><SaveIcon />{busy ? 'Saving…' : 'Save'}</button> : <span />}
         </div>
       </div>
 
@@ -421,29 +563,45 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
               {pvPhotos.map((p, j) => <img key={j} src={p.photo} alt="" />)}
             </div>
             {pvPhotos.length > 1 && <div className="pv-dots">{pvPhotos.map((_, j) => <i key={j} className={j === pvIndex ? 'on' : ''} />)}</div>}
-            <b>{lvName(pv)}{pvPhotos.length > 1 ? ` · photo ${pvIndex + 1} of ${pvPhotos.length}` : ''}</b>
+            {/* REQUIREMENTS_2026-09-27 R3.1: the name line is a button — tap it to rename this ONE
+                level (level 0, the thing, keeps its own existing rename affordance elsewhere). */}
+            {pv > 0 ? (
+              <button type="button" className="pv-name" onClick={() => chainRename(pv - 1)}>
+                <b>{lvName(pv)}{pvPhotos.length > 1 ? ` · photo ${pvIndex + 1} of ${pvPhotos.length}` : ''}</b><span className="pv-rn">Rename</span>
+              </button>
+            ) : <b>{lvName(pv)}{pvPhotos.length > 1 ? ` · photo ${pvIndex + 1} of ${pvPhotos.length}` : ''}</b>}
             {pvPhotos.length > 1 && <small>Swipe for the other photos of {pv === 0 ? 'it' : 'this level'}</small>}
             {!(pv === 0 && moveItem) && ((pv === 0 ? thing.photos : (levels[pv - 1] || {}).photos || []).length > 0) && (
               <button type="button" className="pv-rm" onClick={() => removePhoto(pv, pvIndex)}><TrashIcon />Remove this photo</button>)}
           </div>
           <div className="hint">Tap anywhere else to close</div>
         </div>)}
-      {sheet === 'change' && <Choice title="Where it goes" options={[
-        { label: 'Photograph it again', onClick: () => { setSheet(null); setLevels([]); setLastWhere(null); setSel(1); setLevels([emptyLevel()]); logEvent('camera_where_change', { how: 'again' }); } },
-        { label: 'Pick from every place and box', onClick: () => setSheet('more') },
-        { label: 'No place yet', onClick: () => { setSheet(null); setLevels([]); setLastWhere(null); setSel(0); logEvent('camera_where_change', { how: 'none' }); } },
-        { label: 'Cancel', onClick: () => setSheet(null) }]} onCancel={() => setSheet(null)} />}
+      {/* REQUIREMENTS_2026-09-27 R5 (kills F5): the pencil opens the chain sheet, not a 3-option
+          Choice that reset the whole chain. One row per level — Replace and Remove only ever touch
+          that row; the old 'change' Choice is gone for good (net sheet count: zero). */}
+      {sheet === 'chain' && (
+        <ChainSheet rows={(real.length || levels.length ? levels : links).map((l, i) => ({ key: l.key, idx: i, name: linkName(l), thumb: linkThumb(l), box: isBox(l) }))}
+          onRename={chainRename} onReplace={chainReplace} onRemove={chainRemove}
+          onMore={() => { setSheet(null); addLevel(); }}
+          onPickList={() => setSheet('more')}
+          onNoPlace={chainNoPlace}
+          onCancel={() => setSheet(null)} />)}
+      {sheet === 'chain-clear' && <Confirm title="Clear where it goes?" body="Every level you've photographed or picked so far goes." keepLabel="Keep it" actionLabel="Clear"
+        onKeep={() => setSheet('chain')} onAction={chainClearConfirmed} />}
       {sheet === 'more' && <WhereList item={self} items={items} places={places} title={whereQ(name)}
         onCancel={() => setSheet(null)} onPick={(k) => { setSheet(null); pickKnown(k); }}
         onPhotograph={() => { setSheet(null); if (sel === 0 || filled(selLevel)) addLevel(); }} />}
-      {sheet === 'rename' && (
+      {/* R3: one rename sheet serves both the thing (sheet === 'rename', nameOverride) and any WHERE
+          level (sheet.levelRename, that level's userName only — R3.2: a name given here always wins
+          over a late AI result). A collision "No" (R4.2) opens this pre-filled with its own message. */}
+      {(sheet === 'rename' || (sheet && sheet.levelRename !== undefined)) && (
         <div className="sheet-back" onClick={() => setSheet(null)} role="presentation">
           <div className="sheet" role="dialog" aria-labelledby="lc-rn" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-title" id="lc-rn">What is it?</div>
+            <div className="sheet-title" id="lc-rn">{sheet !== 'rename' && sheet.msg ? sheet.msg : 'What is it called?'}</div>
             <input className="place-input" autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} enterKeyHint="done"
-              onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim() && !hasSecret(draft)) { setNameOverride(draft.trim()); setSheet(null); } }} />
+              onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim() && !hasSecret(draft)) applyRename(); }} />
             {hasSecret(draft) && <PrivNote typedSecret />}
-            <button className="btn-primary" disabled={!draft.trim() || hasSecret(draft)} onClick={() => { setNameOverride(draft.trim()); setSheet(null); }}>Use this name</button>
+            <button className="btn-primary" disabled={!draft.trim() || hasSecret(draft)} onClick={applyRename}>Use this name</button>
             <button className="btn-quiet" onClick={() => setSheet(null)}>Cancel</button>
           </div>
         </div>)}

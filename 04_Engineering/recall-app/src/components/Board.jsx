@@ -79,7 +79,8 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
       )}
 
       {/* Log first, put away later (Ravi 09-27): the things with no place gather here; one tap starts putting them away. */}
-      {!removed && canLog && onPutAway && (() => { const n = items.filter((x) => !x.location && !holderOf(x)).length; return n > 0 && (
+      {/* REQUIREMENTS_2026-09-27 R6.1/6.2: asWhere containers don't count as things left to put away. */}
+      {!removed && canLog && onPutAway && (() => { const n = items.filter((x) => !x.location && !holderOf(x) && !x.asWhere).length; return n > 0 && (
         <button type="button" className="notput" onClick={onPutAway}><PinIcon /> Not put away · {n}</button>); })()}
       {!removed && things.length > 0 && (
         <div className="board">
@@ -89,6 +90,10 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
             const inside = isContainer(it) ? contentsOf(it).length : 0; // a box: one tile, a count
             const h = holderOf(it);
             const where = h ? inPhrase(h) : it.location || '';
+            // REQUIREMENTS_2026-09-27 R6.2: a where-created container with no place yet is not a chore —
+            // no amber "No place yet" flip, just a plain muted dash. Once it has a real place (moved), it
+            // reads exactly like any other tile.
+            const asWhereBlank = !!it.asWhere && !where;
             return (
               <button key={it.id} className="tile"
                 {...hold.props(it)}
@@ -103,9 +108,10 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
                 {/* No place: the label block flips to reverse colours and says so (Ravi 09-16 —
                     the corner pin badge of 09-15 was "pure crap"). Words plus the flipped block,
                     so it reads without colour; the lock watermark is unaffected. */}
-                <div className={'tile-label' + (where ? '' : ' noplace')}>
+                <div className={'tile-label' + (where || asWhereBlank ? '' : ' noplace')}>
                   {cap(it.name)}
                   {where ? <span className="tile-sub place"><PinIcon />{where}</span>
+                    : asWhereBlank ? <span className="tile-sub dash">—</span>
                     : <span className="tile-sub">No place yet</span>}
                   {tag && <span className="tile-owner">{tag}</span>}
                 </div>

@@ -7,7 +7,10 @@ import { ChevronLeftIcon, ChevronIcon, NoteIcon } from './Icons.jsx';
 // Each opens its own page, where "Put it somewhere" opens the camera. It no longer asks "where?" first and then
 // offers a pencil as a place. Putting several away at once comes later, on the camera.
 export default function NotPutAway({ items = [], onBack, onOpen }) {
-  const list = items.filter((x) => !x.deleted && !x.location && !holderOf(x)).sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
+  // REQUIREMENTS_2026-09-27 R6.1/6.2: a box made only because it was named as WHERE something else goes
+  // (asWhere) is not a chore to put away — it never shows up here (it still gets a place of its own the
+  // moment someone moves it, same as anything else).
+  const list = items.filter((x) => !x.deleted && !x.location && !holderOf(x) && !x.asWhere).sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
   return (
     <div className="screen notput-page">
       <div className="thing-head">

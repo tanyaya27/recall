@@ -294,7 +294,8 @@ async function main() {
   await page.click('.loc-row:has-text("Garage")'); await page.waitForSelector('.place-photos');
   check('G5d one-location screen: 2 photos + add slot', await count('.place-photo img') === 2 && await count('.place-photo.add') === 1);
   await page.click('.place-photo.add'); await shoot(1); await page.waitForTimeout(500);
-  check('G5e third photo added, add slot gone', await count('.place-photo img') === 3 && await count('.place-photo.add') === 0);
+  // REQUIREMENTS_2026-09-27 R2: PLACE_PHOTOS is 6 now (was 3), so a third photo does not use up the cap — the add slot stays.
+  check('G5e third photo added, add slot still there (cap is 6 now)', await count('.place-photo img') === 3 && await count('.place-photo.add') === 1);
   await page.click('.field-value'); await page.fill('.settings input.place-input', 'Garage shelf'); await page.click('.row button:has-text("Save")'); await page.waitForTimeout(400);
   check('G6 rename a location → back on the list, renamed', await page.locator('.loc-row:has-text("Garage shelf")').count() === 1);
   await page.click('.loc-row:has-text("Garage shelf")'); await page.waitForSelector('.place-photos');

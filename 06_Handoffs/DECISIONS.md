@@ -6,6 +6,42 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-27/28 — Adversarial re-review of the where-camera; the four gaps fixed; auto-execution ruled (Ravi)
+
+**Ravi's rulings:** (1) build `20260927d` has four gaps — one photo per tier via the pencil path; a recognized
+place must be confirmed, never silently merged; a new place is named right there; "Not put away" must not
+collect places-that-are-not-things. (2) A NEW adversarial cast reviews it — new PM, new UX auditor, three
+adversarial personas — walking every click path and screen, logically and visually. (3) **The changes execute
+automatically, agents spawned without per-step review.** That supersedes, for this run only, the render-first
+rule from 09-14; recorded here because it is a process exception, not a new default.
+
+**What shipped (`20260928a`, in the working tree, not pushed):** R1 a level holds identity AND photos — the
+shutter attaches, never replaces, and no naming pass reruns on an identified level; R2 typed and picked places
+become real place docs, level photos flow onto them at save, PLACE_PHOTOS 3→6 with a byte guard, and a
+typed-new level stays selected so it can be photographed in the same breath; R3 any level can be renamed at
+capture (user name beats a late AI name; "Unnamed — tap to name" on the saved card); R4 the "Your {name}?"
+ask now fires on name collisions as well as visual matches — Yes merges photos into the existing record, No
+requires a distinct name before that link saves; pool 4 boxes + 4 places; one ask at a time; R5 the chain
+sheet edits one level (rename/replace/remove) and replaces the Choice that wiped the whole chain; R6
+where-created containers carry `asWhere` and are not chores — off the Not-put-away list and pill, "N inside"
+instead of amber on the tile, a soft nudge line on the saved card; R7 all of it in both looks. Full text with
+acceptance criteria: `design/REQUIREMENTS_2026-09-27_where-camera-hardening.md`; evidence strips
+`design/mockups/VERIFY_R1..R6.jpg`. Audits 321/321 (new suite `rig/audit_where.js`, 63); blind verification
+by a fresh agent 104/104.
+
+**Objections recorded (the new board):** Tomás wanted a confirm on every photo attached to a picked identity
+— overruled (selecting the level and pressing the shutter IS the intent; badge + per-photo remove instead).
+Grace wanted where-boxes kept on Not put away lest orphans multiply — overruled by the walk (they are
+reachable four other ways); her soft-nudge compromise shipped. Mei wanted 10 place photos — Priyanka's
+Firestore-doc-size constraint held it at 6. Maya (standing board, on the process): an auto-executed session
+should still end at a phone check before any push — it does; nothing is pushed.
+
+**Would change our mind:** the phone check failing where the rig passed (then the rig gains the missing
+probe); the distinct-name gate annoying real users (then relax to a warning); place docs nearing the size
+guard in real use (then photos move to Storage — already Tier-3 #11).
+
+---
+
 ## 2026-09-27 — The camera answers "where"; B (answer card) is the default camera style (Ravi)
 
 **Decision (Ravi, contingent on seeing the built fix):** "where" is asked on the camera, photo first: after the thing, she

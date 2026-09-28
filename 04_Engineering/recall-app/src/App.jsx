@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
 import { watchUser, finishSignIn } from './lib/auth.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, repairPencilCabinet, wantNames, watchNames, firstName, possessive, roleOn, putInto, changeLocation, setPromoted, undoChain } from './lib/db.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, repairPencilCabinet, wantNames, watchNames, firstName, possessive, roleOn, putInto, changeLocation, setPromoted, undoChain, renameItem, renamePlace } from './lib/db.js';
 import { me } from './lib/auth.js';
 import { getPrefs, savePrefs, openingMode } from './lib/prefs.js';
 import SeveralCamera from './components/SeveralCamera.jsx';
@@ -86,6 +86,8 @@ export default function App() {
   const [here, setHere] = useState('');            // "Log here" from inside a box or place: its name
   const [log, setLog] = useState(null);             // the camera (09-27): { preset, moveItem, key } — Log item · Log something in · Move it
   const [saved, setSaved] = useState(null);         // the Home card after a camera Save (the chain + Undo)
+  const [renameLink, setRenameLink] = useState(null); // { id, kind, thumb } from the saved card's "Unnamed" line (R3.3)
+  const [renameDraft, setRenameDraft] = useState('');
   const savedRef = useRef(null); savedRef.current = saved; const logRef = useRef(null); logRef.current = log; // read by late callbacks
   const notePlace = (name) => { if (name) setLastPlace({ name, at: Date.now() }); };
   const presetPlace = lastPlace && Date.now() - lastPlace.at < 10 * 60 * 1000 ? lastPlace.name : '';
@@ -211,6 +213,18 @@ export default function App() {
   }
 
   const live = (it) => items.find((x) => x.id === it?.id) || it;
+  // R3.3: the saved card's "Unnamed — tap to name" line — opens the rename sheet for the doc the
+  // camera just made (a new place or a new box saved with no real name yet). Defined before the
+  // `join` early return: it's a JSX prop value there, evaluated eagerly, not inside a callback body.
+  const openRenameLink = (u) => { setRenameDraft(''); setRenameLink(u); };
+  const applyRenameLink = async () => {
+    const n = renameDraft.trim();
+    if (!n || !renameLink) return;
+    if (renameLink.kind === 'thing') { const it = items.find((x) => x.id === renameLink.id); if (it) await renameItem(it, n); }
+    else { const p = places.find((x) => x.id === renameLink.id); if (p) await renamePlace(p, n, items); }
+    setSaved((s) => (s ? { ...s, unnamed: (s.unnamed || []).filter((x) => x.id !== renameLink.id) } : s));
+    setRenameLink(null);
+  };
   if (join) {
     return (
       <>
@@ -225,7 +239,19 @@ export default function App() {
       )}
       {!log && <SavedCard card={saved && { ...saved, name: (() => { const it = items.find((x) => x.id === saved.itemId); return it && it.name ? it.name.charAt(0).toUpperCase() + it.name.slice(1) : saved.name; })() }} onDone={() => setSaved(null)}
         onShare={async (c) => { await setVisibility({ id: c.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: c.itemId, to: 'shared', via: 'saved_card' }); setSaved((x) => (x ? { ...x, lock: false, priv: null, shared: true } : x)); }}
-        onUndo={async (u) => { await undoChain(u); say('Undone · nothing from that photo is kept'); }} />}
+        onUndo={async (u) => { await undoChain(u); say('Undone · nothing from that photo is kept'); }}
+        onRenameLink={openRenameLink} />}
+      {/* R3.3: the "Unnamed — tap to name" line's rename sheet — renames the place/box saveChain just made. */}
+      {renameLink && (
+        <div className="sheet-back" onClick={() => setRenameLink(null)} role="presentation">
+          <div className="sheet" role="dialog" aria-labelledby="rl-title" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-title" id="rl-title">What is it called?</div>
+            <input className="place-input" autoFocus value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)} enterKeyHint="done"
+              onKeyDown={(e) => { if (e.key === 'Enter' && renameDraft.trim()) applyRenameLink(); }} />
+            <button className="btn-primary" disabled={!renameDraft.trim()} onClick={applyRenameLink}>Use this name</button>
+            <button className="btn-quiet" onClick={() => setRenameLink(null)}>Cancel</button>
+          </div>
+        </div>)}
       <Toast toast={toast} onDone={() => setToast(null)} />
       </>
     );
@@ -528,7 +554,19 @@ export default function App() {
       )}
       {!log && <SavedCard card={saved && { ...saved, name: (() => { const it = items.find((x) => x.id === saved.itemId); return it && it.name ? it.name.charAt(0).toUpperCase() + it.name.slice(1) : saved.name; })() }} onDone={() => setSaved(null)}
         onShare={async (c) => { await setVisibility({ id: c.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: c.itemId, to: 'shared', via: 'saved_card' }); setSaved((x) => (x ? { ...x, lock: false, priv: null, shared: true } : x)); }}
-        onUndo={async (u) => { await undoChain(u); say('Undone · nothing from that photo is kept'); }} />}
+        onUndo={async (u) => { await undoChain(u); say('Undone · nothing from that photo is kept'); }}
+        onRenameLink={openRenameLink} />}
+      {/* R3.3: the "Unnamed — tap to name" line's rename sheet — renames the place/box saveChain just made. */}
+      {renameLink && (
+        <div className="sheet-back" onClick={() => setRenameLink(null)} role="presentation">
+          <div className="sheet" role="dialog" aria-labelledby="rl-title" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-title" id="rl-title">What is it called?</div>
+            <input className="place-input" autoFocus value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)} enterKeyHint="done"
+              onKeyDown={(e) => { if (e.key === 'Enter' && renameDraft.trim()) applyRenameLink(); }} />
+            <button className="btn-primary" disabled={!renameDraft.trim()} onClick={applyRenameLink}>Use this name</button>
+            <button className="btn-quiet" onClick={() => setRenameLink(null)}>Cancel</button>
+          </div>
+        </div>)}
       <Toast toast={toast} onDone={() => setToast(null)} />
     </>
   );

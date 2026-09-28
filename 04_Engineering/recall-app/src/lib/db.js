@@ -300,7 +300,7 @@ export const ROLE_BLURB = { viewer: 'Sees your things and where they are. Cannot
 // `private` (09-24): a thing that looks private starts private — only the owner may start one so
 // (a helper's is refused by the rules' own logic: they could never see it again). `privateAuto`
 // keeps the reason ReCall gave ("looks like passwords"); '' when she chose it herself.
-export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '', dest = null, holds = undefined }) {
+export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '', dest = null, holds = undefined, asWhere = false }) {
   location = placeText(location, null);
   const now = Date.now();
   const logId = `log_${now}`;
@@ -311,6 +311,9 @@ export async function addItem({ name = '', location = '', description = '', phot
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
     history: [{ location, at: now }], logId, photoCount: photo ? 1 + extras.length : 0, details: details || '', written: !photo,
     ...(holds === undefined ? {} : { holds: !!holds }),
+    // REQUIREMENTS_2026-09-27 R6.1: a box made because it was named as WHERE something else goes (the camera's
+    // outward chain) is not a chore to put away — it's marked so Not put away and the board can leave it alone.
+    ...(asWhere ? { asWhere: true } : {}),
   });
   if (location) await recordMove({ id: ref.id, owner, private: keep }, location, placeSource || 'chosen', dest);
   if (!photo) return ref.id;
@@ -324,6 +327,17 @@ async function writeExtras(itemId, logId, extras, location, at, by, owner = me()
   for (let i = 0; i < extras.length; i++) {
     await addDoc(col, { kind: 'snap', owner, by: me(), itemId, logId, photo: extras[i].photo, thumb: extras[i].thumb, location, at: at + i + 1, extra: true });
   }
+}
+// REQUIREMENTS_2026-09-27 R2: photos the camera attached to a thing that was already logged (picked as a
+// known link on the chain, not photographed fresh) — appended the same way any other extra shot of a log
+// joins it (writeExtras), then photoCount is bumped to match so Add photo / earlier-photos counts stay true.
+export async function addItemPhotos(item, extras = []) {
+  if (!extras || !extras.length) return 0;
+  const now = Date.now();
+  const logId = item.logId || `log_${item.lastSeenAt || now}`;
+  await writeExtras(item.id, logId, extras, item.location || '', now, item.capturedBy || 'self', item.owner || me());
+  await updateDoc(doc(col, item.id), { photoCount: (item.photoCount || (item.photo ? 1 : 0)) + extras.length, logId, updatedAt: now });
+  return extras.length;
 }
 
 // Every name a thing has been called stays with it, so the next photo still matches.
@@ -488,7 +502,7 @@ export async function putInto(things, container, how = 'put') {
 // Written outermost first, so every new box has its place the moment it exists. Returns what Undo needs.
 const capName = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 export async function saveChain(chain = [], { owner = me(), places = [] } = {}) {
-  const made = { items: [], places: [], moved: [] };
+  const made = { items: [], places: [], moved: [], links: [] };
   let outer = null; // { text, dest, placeId } — where the link just outside this one is
   for (let i = chain.length - 1; i >= 0; i--) {
     const l = chain[i];
@@ -499,21 +513,36 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
         made.moved.push({ item: it, location: it.location || '', dest: openEdge(it.id) ? openEdge(it.id).to : null });
         await changeLocation(it, outer.text, 'chosen', outer.dest);
       }
+      // REQUIREMENTS_2026-09-27 R2: photos the camera attached to an already-logged thing on this
+      // chain (l.extraPhotos, Stage 2) join it as extra photos — same mechanism as any other extra shot.
+      if (l.extraPhotos && l.extraPhotos.length) await addItemPhotos(it, l.extraPhotos);
       here = { text: capName(it.name || 'A box'), dest: { t: 'thing', id: it.id, name: it.name || '' } };
+      made.links[i] = null; // an already-known link never needs the "Unnamed" marker (R3.3)
     } else if (l.known) {
-      here = { text: l.known.name, dest: { t: 'place', name: l.known.name } };
+      // REQUIREMENTS_2026-09-27 R2: a typed or picked PLACE becomes a real place doc too, not just words
+      // on the item — same call the photographed branch below makes, so it nests (parent) the same way.
+      const name = l.known.name;
+      const known = placeNamed(name, places);
+      const id = await addPlace(name, places, l.placePhotos || [], owner, outer && outer.placeId ? outer.placeId : null);
+      if (!known && id) made.places.push(id);
+      here = { text: name, dest: { t: 'place', name }, placeId: id };
+      made.links[i] = null;
     } else if (l.moves) {
       const name = l.name || 'A box';
-      const id = await addItem({ name, photo: l.photo, thumb: l.thumb, extras: l.extras || [], owner, location: outer ? outer.text : '', dest: outer ? outer.dest : null, placeSource: 'chosen', holds: true });
+      const id = await addItem({ name, photo: l.photo, thumb: l.thumb, extras: l.extras || [], owner, location: outer ? outer.text : '', dest: outer ? outer.dest : null, placeSource: 'chosen', holds: true, asWhere: true });
       made.items.push(id);
       logEvent('container_new', { itemId: id, via: 'camera' });
       here = { text: capName(name), dest: { t: 'thing', id, name } };
+      // REQUIREMENTS_2026-09-27 R3.3: a new box saved with no real name (still "A box"/empty) is
+      // marked so the confirmation card can offer "Unnamed — tap to name" on the doc just made.
+      made.links[i] = { id, kind: 'thing', unnamed: !!l.unnamed };
     } else {
       const name = capName(l.name || 'A place');
       const known = placeNamed(name, places);
       const id = await addPlace(name, places, l.placePhotos || (l.placePhoto ? [l.placePhoto] : []), owner, outer && outer.placeId ? outer.placeId : null);
       if (!known && id) made.places.push(id);
       here = { text: name, dest: { t: 'place', name }, placeId: id };
+      made.links[i] = { id, kind: 'place', unnamed: !!l.unnamed };
     }
     outer = here;
   }
@@ -699,7 +728,14 @@ export function knownLocations(items, limit = 5, places = []) {
 // Future (Ravi 09-15, architecture note): places will form a hierarchy — back of drawer ⊂
 // third drawer ⊂ filing cabinet ⊂ office ⊂ home — built by the system in the background,
 // never by the user. Reserve `parent` (place id | null) on this doc for it; nothing reads it yet.
-export const PLACE_PHOTOS = 3;
+// REQUIREMENTS_2026-09-27 R2: 3 → 6 (the camera can now attach a photo at every level of a chain, not
+// just the top two or three places used most).
+export const PLACE_PHOTOS = 6;
+// REQUIREMENTS_2026-09-27 R2: a place doc's photos are approximated by summing their base64 string
+// lengths and kept under ~700 KB serialized, so one place can't blow up the document past Firestore's
+// per-doc size in practice. Approximate, not exact — good enough to keep a place doc small.
+const PLACE_PHOTOS_BYTES = 700 * 1024;
+const photoBytes = (p) => (p ? (p.photo || '').length + (p.thumb || '').length : 0);
 export async function addPlace(name, places = [], photos = [], owner = me(), parent = null) {
   const n = name.trim();
   if (!n) return null;
@@ -712,9 +748,18 @@ export async function addPlace(name, places = [], photos = [], owner = me(), par
 }
 export async function addPlacePhotos(place, photos) {
   const now = Date.now();
-  const next = [...(place.photos || []), ...photos.map((p) => ({ ...p, at: now }))].slice(0, PLACE_PHOTOS);
+  const have = place.photos || [];
+  let total = have.reduce((n, p) => n + photoBytes(p), 0);
+  const room = [];
+  for (const p of photos) {
+    if (have.length + room.length >= PLACE_PHOTOS) break; // the count cap still applies first
+    const b = photoBytes(p);
+    if (total + b > PLACE_PHOTOS_BYTES) continue; // over the byte budget: skip this one, silently keep what fits
+    room.push(p); total += b;
+  }
+  const next = [...have, ...room.map((p) => ({ ...p, at: now }))].slice(0, PLACE_PHOTOS);
   await updateDoc(doc(col, place.id), { photos: next, updatedAt: now });
-  return next.length - (place.photos || []).length;
+  return next.length - have.length;
 }
 export async function removePlacePhoto(place, index) {
   const next = (place.photos || []).filter((_, i) => i !== index);
@@ -833,4 +878,4 @@ export async function exportEvents() {
 
 // The rig (never the app): audits call the write functions directly to prove the loop guard at write time.
 // __RIG__ is defined only by rig/build.sh; in the app this line does nothing.
-if (typeof __RIG__ !== 'undefined' && typeof window !== 'undefined') window.__rigdb = { changeLocation, putInto, setHolds };
+if (typeof __RIG__ !== 'undefined' && typeof window !== 'undefined') window.__rigdb = { changeLocation, putInto, setHolds, saveChain, addItem, addPlace, addPlacePhotos, addItemPhotos };

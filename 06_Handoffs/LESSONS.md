@@ -363,3 +363,13 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   can no longer test the guard behind them. The rig exposes the write functions to the audit (`window.__rigdb`, defined only
   when `__RIG__` is), and L2 calls them directly.
 
+- **2026-09-28 — the rig's Firestore stub silently loses writes past ~5 MB of photos.** `rig/stubs/firestore.js`
+  persists to localStorage and swallows `QuotaExceededError`; after ~15–20 full-res photos in one continuous
+  run, saves LOOK fine on screen but vanish on reload. In long walks, reseed (`__rig.reset()`) between
+  scenario groups, and don't diagnose a "lost" doc as an app bug until you've checked
+  `localStorage.getItem('rig-store').length`. Fix worth making: have `save()` surface quota failures.
+- **2026-09-28 — the rig bundles from `rig/src`, a COPY of the app source.** Editing `rig-src/src` (or the
+  repo src) does nothing until you copy it over; `diff -rq` the two trees when a change refuses to appear.
+- **2026-09-28 — an audit can encode yesterday's constant.** audit.js G5e asserted the add-photo slot vanished
+  at 3 place photos — true only while PLACE_PHOTOS was 3. When a requirement changes a constant, grep the
+  audits for the old value before trusting green.
