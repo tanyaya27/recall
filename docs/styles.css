@@ -1034,3 +1034,6 @@ html, body { overflow-x: hidden; }
 .np-row .tx b { font-size: 1.0625rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-row .tx small { font-size: 0.875rem; color: var(--ink-soft); }
 .np-row > svg { flex: none; width: 1.2rem; height: 1.2rem; color: var(--amber); }
+
+/* The build stamp at the foot of the menu drawer (Ravi 09-28): quiet, copyable, never a button. */
+.drawer .drawer-build { padding: 0.9rem 1rem 0.3rem; font-size: 0.8125rem; color: var(--ink-soft); user-select: text; -webkit-user-select: text; }

@@ -373,3 +373,7 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-28 — an audit can encode yesterday's constant.** audit.js G5e asserted the add-photo slot vanished
   at 3 place photos — true only while PLACE_PHOTOS was 3. When a requirement changes a constant, grep the
   audits for the old value before trusting green.
+- **2026-09-28 — a phone check without a visible build stamp is worthless.** The Version card was trimmed out of
+  Settings on 09-27; the next phone test ran on a stale bundle (the app was open across the push) and an hour went
+  into "debugging" code that was fine. The menu drawer now shows *Build <stamp>*; read it before trusting anything
+  a phone shows. And a home-screen web app that is already open keeps its old JS across a push — close it fully.

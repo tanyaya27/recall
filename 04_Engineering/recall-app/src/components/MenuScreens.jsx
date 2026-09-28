@@ -22,6 +22,19 @@ export const MENU_ITEMS = [
   { id: 'research', label: 'Research log' },
 ];
 
+// The build on the phone, readable by a person (Ravi 09-28). The Version card left Settings in the
+// 09-27 trim, and the very next phone check had no way to tell old build from new — that cost a
+// debugging round. The ?v= stamp on our own script tag is the deploy stamp; the bundle's build time
+// is the fallback (the rig loads app.js without ?v=).
+const BUILD_ID = (() => {
+  try {
+    const s = [...document.querySelectorAll('script[src]')].find((x) => /app\.js/.test(x.src));
+    const m = s && s.src.match(/[?&]v=([\w.-]+)/);
+    if (m) return m[1];
+  } catch { /* stamp only */ }
+  try { return String(__BUILD__); } catch { return ''; }
+})();
+
 export function MenuDrawer({ open, onPick, onClose }) {
   if (!open) return null;
   return (
@@ -32,6 +45,7 @@ export function MenuDrawer({ open, onPick, onClose }) {
           <button key={m.id} className="drawer-row" onClick={() => onPick(m.id)}>{m.label}</button>
         ))}
         <button className="drawer-row quiet" onClick={onClose}>Close</button>
+        {BUILD_ID && <div className="drawer-build" aria-label="App build">Build {BUILD_ID}</div>}
       </nav>
     </div>
   );

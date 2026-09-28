@@ -21,6 +21,14 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   place) — Yes merges, No demands a new name; (4) save a new box with no outer level → it must NOT appear in
   Not put away; card shows the nudge; (5) chain sheet: replace/remove one middle level only. Then commit +
   push from the Mac (commands in the session log / chat).
+- [x] 09-28 **Phone scare on `20260928a` resolved — no code bug.** The stuck "Yes then Save" state was the phone
+  running the PREVIOUS bundle (the app was open across the push). The rig proved the shipped code sound in all four
+  recognition variants; the old verification's hole (it only checked "no duplicate doc" after Yes-save, which passes
+  even when the save never happens) is closed by `rig/repro_f3.js` — 21 checks, now a committed suite: Save must
+  CLOSE the camera, WRITE the item, and drop the confirmed chip. Run it with the other audits.
+- [x] 09-28 **`20260928b`: the build is readable again** — the menu drawer's foot shows *Build <stamp>* (the ?v=
+  deploy stamp). The Version card left Settings in the 09-27 trim and the very next phone check had no way to tell
+  old build from new. Phone-check rule from here: open the menu, read the build, THEN test.
 - [ ] Rig stub quota fix: `rig/stubs/firestore.js` `save()` should report, not swallow, QuotaExceededError
   (LESSONS 09-28).
 - [ ] Fold the four-week plan forward: fast-capture renders and the one-user test now run against the
