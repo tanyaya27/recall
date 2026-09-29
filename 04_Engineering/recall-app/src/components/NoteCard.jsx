@@ -91,7 +91,7 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
           : why && !mine ? <PrivNote v={{ private: true, why }} mine={false} ownerName={firstName(owner)} onDontSave={onBack} />
           : null}
         {/* One verb per button (09-27): what Save does is the sentence above it. */}
-        <div className="lc-say note-say"><PinIcon /><span className="tx"><b>{place.trim() ? cap(place.trim()) : 'No place yet'}</b><span className="soft">{place.trim() ? (dest && dest.t === 'thing' ? 'in that box' : '') : 'You can put it away later'}</span></span></div>
+        <div className="lc-say note-say"><span className="tx"><span className="l1"><span className="lc-pin"><PinIcon /></span><b>{place.trim() ? cap(place.trim()) : 'No place yet'}</b></span><span className="soft">{place.trim() ? (dest && dest.t === 'thing' ? 'in that box' : '') : 'You can put it away later'}</span></span></div>
         <button type="button" className="btn-primary" disabled={!ready} onClick={save}><SaveIcon /><span>Save</span></button>
       </div>
       {/* The one list of "where" (09-27): every place and every box, with search; never a pencil. */}

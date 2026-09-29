@@ -384,3 +384,5 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   had rules off — so "every owner update to a place is refused" shipped with every suite green, twice looking like a
   UI freeze on Ravi's phone. Rules: (1) every new doc kind gets the fields the rules read; (2) any flow that writes
   must be tested once with `__rig.rules(true)`; (3) a write that can be refused must never fail silently on screen.
+
+- 2026-09-29 — **Check icon/text alignment on the pixels, not the boxes.** The camera pin was "centred" by its box three builds running and Ravi kept seeing it low: a font with deep descender space puts the capitals above the middle of the line. Fix = stand the icon on the baseline and lift it by half the capital height (`1cap`); the check (`rig/repro_f3.js` H) compares the ink centre of the icon with the ink centre of the capitals.

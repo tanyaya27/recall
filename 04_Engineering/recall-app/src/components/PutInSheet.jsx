@@ -43,7 +43,7 @@ export default function PutInSheet({ container = null, dest = null, items = [], 
         )}
         <div className="putin-foot">
           {/* One verb per button (09-27): what it does is the sentence above it. */}
-          <div className="lc-say"><PinIcon /><span className="tx"><b>{picked.length ? `${picked.length} thing${picked.length === 1 ? '' : 's'}` : 'Tap each one that goes ' + (box ? 'in' : 'there')}</b><span className="soft">{box ? `into the ${(box.name || 'box').replace(/^(my|the)\s+/i, '')}` : `at ${d ? d.name : ''}`}</span></span></div>
+          <div className="lc-say"><span className="tx"><span className="l1"><span className="lc-pin"><PinIcon /></span><b>{picked.length ? `${picked.length} thing${picked.length === 1 ? '' : 's'}` : 'Tap each one that goes ' + (box ? 'in' : 'there')}</b></span><span className="soft">{box ? `into the ${(box.name || 'box').replace(/^(my|the)\s+/i, '')}` : `at ${d ? d.name : ''}`}</span></span></div>
           <button type="button" className="btn-primary" disabled={!picked.length} onClick={() => onDone(cands.filter((x) => picked.includes(x.id)))}>
             <CheckIcon /><span>{box ? 'Put in' : 'Put away'}</span>
           </button>

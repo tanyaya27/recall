@@ -1,7 +1,26 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-27 (late).
+*Done* when closed. Updated 2026-09-29.
+
+## NOW — `20260929b`: Move it opens on the current place; the pin lines up; the prompt sits with the card (Ravi 09-29)
+
+- [x] Ravi 09-29: **Move it opens on the thing's current place** — level 1 is the current place (amber square, its photo),
+  the line reads **Current place: Kitchen counter**. Pick or photograph another → **New place: …**; tap the current place
+  (now the first pill) → back to **Current place**. Save with nothing changed closes and writes nothing. A photo taken while
+  the current place is selected starts a NEW place (it never adds photos to the old one).
+- [x] Colours: "Current place:" / "New place:" and the pin are level 1's amber; the place name stays white. In the prompt,
+  "Where are the" is grey and the thing's name is bold white.
+- [x] **The pin is centred on the text** — measured on the pixels, not the boxes (the old code centred the boxes, and in
+  the rig's font that still left the pin 3px low). The pin now stands on the baseline and is lifted by half the capital
+  height (`1cap`), so it lands on the middle of the capitals in any font or text size. Same fix in the note card and the
+  "put in" sheet. Check in `rig/repro_f3.js` (H) at normal and large text; `rig/probe_pin.js` dumps the geometry.
+- [x] Ravi 09-29: **the step prompt moved from the top of the picture into the card, just above the squares** (look B);
+  above the chain in look A. Before the first photo there is no card, so it stays at the top then.
+- [x] Suites: 50 · 100 · 44 · 66 · 14 · 34 · 117 · 83. Screens: `design/mockups/MOVE_2026-09-29b_prompt-in-card.jpg`,
+  `PIN_2026-09-29b_before-after.jpg`.
+- [ ] **Ravi: phone check of `20260929b`** (menu → Build 20260929b): Move it on a thing that has a place — the pin sits in
+  line with "Current place: …", the question sits in the card above the squares.
 
 ## NOW — `20260929a`: the move got stuck again (Ravi 09-29) — root cause found in the RULES, fixed
 

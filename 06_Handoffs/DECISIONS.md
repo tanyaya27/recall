@@ -6,6 +6,18 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-29 — Moving a thing starts from where it is now; the step prompt lives in the card (Ravi)
+
+- **Move it opens on the current place** (level 1 filled, "Current place: X"; a different pick reads "New place: Y"; the
+  current place returns as the first pill). Why: "No place yet" on a thing that has a place was false, and going back
+  should be one tap. Labels and pin take level 1's colour; the name stays white.
+- **The prompt moved from the top of the picture into the card, above the squares.** It was at the top by the 09-27
+  design, to keep the middle of the picture clear for aiming and to read as the step's title. Ravi: at the top it loses its
+  connection to the squares and pills it talks about, which are at the bottom. The picture still has the whole upper
+  area. What would change our mind: people cutting off the thing when aiming because the card grew.
+- **Icon-to-text alignment is checked on the pixels** (ink centre of the icon vs ink centre of the capitals), not on
+  element boxes — box-centred icons still look low when the font's descender space is large.
+
 ## 2026-09-28 — D1–D5 from Ravi's phone list: the rulings (Ravi, on BOARD_2026-09-28_phone-list-D1-D5.md)
 
 Picked from rendered options (`design/mockups/D1..D5_*.jpg`):

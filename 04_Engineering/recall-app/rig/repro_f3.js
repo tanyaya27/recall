@@ -91,6 +91,15 @@ async function runLook(look) {
   const box = (min) => page.locator(min).first().evaluate((el) => { const r = el.getBoundingClientRect(); return { w: r.width, h: r.height }; });
   const home = async () => { await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board'); await page.waitForTimeout(350); };
   const LOG = '.footer .btn-primary:not(.alt)';
+  // ink centre (CSS px, page coords) of the pixels of one colour inside an element: 'amber' (level 1) or 'white'
+  const inkMid = async (sel, kind) => { const r = await page.locator(sel).first().boundingBox(); if (!r) return null;
+    const buf = await page.screenshot({ clip: { x: r.x, y: r.y - 4, width: r.width, height: r.height + 8 } });
+    return page.evaluate(async ([b64, kind, top]) => { const im = new Image(); im.src = 'data:image/png;base64,' + b64; await im.decode();
+      const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data; let lo = 1e9, hi = -1;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) { const i = (y * c.width + x) * 4, R = d[i], G = d[i + 1], B = d[i + 2];
+        const ok = kind === 'amber' ? (R > 200 && G > 140 && G < 215 && B < 130) : (R > 225 && G > 225 && B > 225); if (ok) { if (y < lo) lo = y; if (y > hi) hi = y; } }
+      return lo > hi ? null : Math.round((top - 4 + (lo + hi + 1) / 4) * 10) / 10; }, [buf.toString('base64'), kind, r.y]); };
 
   const shotN = {};
   const makeShot = (look) => async (req, label) => {
@@ -264,6 +273,60 @@ async function runLook(look) {
       check(T, 'the thing moved to the picked place', !!it && (it.location || '').toLowerCase() === placeName.toLowerCase(), 'loc=' + (it && it.location) + ' picked=' + placeName, '');
       const after = await placeByName(placeName);
       check(T, 'the 2 photos are on that place', !!after && (after.photos || []).length === Math.min(6, (before.photos || []).length + 2), `before=${(before.photos || []).length} after=${after && (after.photos || []).length}`, '');
+      await page.evaluate(() => window.__rig.rules(false));
+    }
+    // ---------- 09-29 Ravi: Move it opens on the CURRENT place ----------
+    {
+      const T = `${L}-H-move-current`;
+      await seedHouse(); AI = { name: 'x' }; WHERE = [{ name: 'window sill', moves: false, sure: false }]; SAME = { index: -1, sure: false };
+      await home(); await page.evaluate(() => window.__rig.rules(true));
+      const b0 = await byName('spare batteries');
+      await tap('.tile:has-text("Spare batteries")', { wait: 700 }); await tap('button:has-text("Move it")', { wait: 900 });
+      const say0 = await text('.lc-say .tx'); const sq1img = await page.locator('.lv-tile').nth(1).locator('img').count();
+      const pills0 = await page.locator('.lc-chip:not(.more)').allInnerTexts().catch(() => []);
+      const q = await page.locator('.lc-prompt b .q').count();
+      const s1 = await shot(T, 'Move it: opens on the current place');
+      // 09-29b (Ravi, "the location icon is not in line with the text"): measured on the PIXELS, not the boxes — the pin's
+      // ink centre vs the white text's ink centre on line 1, at normal and large text. And the step prompt sits in the card,
+      // directly above the squares, not at the top of the picture.
+      for (const sc of ['1', '1.38']) {
+        await page.evaluate((v) => document.documentElement.style.setProperty('--scale', v), sc); await page.waitForTimeout(250);
+        const pinY = await inkMid('.lc-say .lc-pin svg', 'amber'); const txtY = await inkMid('.lc-say .l1 > b', 'white');
+        check(T, `pin centred on the text line (scale ${sc})`, pinY != null && txtY != null && Math.abs(pinY - txtY) <= 1, `pin ${pinY} text ${txtY}`, '');
+      }
+      await page.evaluate(() => document.documentElement.style.setProperty('--scale', '1')); await page.waitForTimeout(200);
+      const pr = await page.evaluate(() => { const r = (q) => { const e = document.querySelector(q); return e ? e.getBoundingClientRect() : null; };
+        const p = r('.lc-card > .lc-prompt'), st = r('.lc-card .lv-strip'); return { top: !!document.querySelector('.lc-view > .lc-prompt'), inCard: !!p, gap: p && st ? Math.round(st.top - p.bottom) : null }; });
+      check(T, 'the step prompt is in the card, just above the squares (not at the top)', !pr.top && pr.inCard && pr.gap >= 0 && pr.gap <= 12, JSON.stringify(pr), '');
+      check(T, 'opens with "Current place: Kitchen counter" (not "No place yet")', /current place:\s*kitchen counter/i.test(say0), say0, s1);
+      check(T, 'level 1 shows the current place\'s photo', sq1img > 0, '', '');
+      check(T, 'the current place is not among the pills', !pills0.some((x) => /kitchen/i.test(x)), JSON.stringify(pills0), '');
+      check(T, 'the prompt\'s question words are styled apart from the name', q === 1, 'q=' + q, '');
+      await tap('.lc-k.sv', { wait: 1500 });
+      const b1 = await byName('spare batteries'); const st1 = await camState();
+      check(T, 'Save with nothing changed closes and writes nothing', st1.open === false && b1.location === b0.location && b1.lastSeenAt === b0.lastSeenAt, `open=${st1.open} loc=${b1.location}`, '');
+      // pick a new place, then back to the current, then the new again and save
+      await tap('button:has-text("Move it")', { wait: 900 });
+      await tap('.lc-chip:not(.more):has-text("Craft nook")', { wait: 500 });
+      const say2 = await text('.lc-say .tx'); const pills2 = await page.locator('.lc-chip:not(.more)').allInnerTexts().catch(() => []);
+      const s2 = await shot(T, 'picked a new place: label + current place is the first pill');
+      check(T, 'after picking: "New place: Craft nook"', /new place:\s*craft nook/i.test(say2), say2, s2);
+      check(T, 'the current place is now the FIRST pill', /kitchen/i.test(pills2[0] || ''), JSON.stringify(pills2), '');
+      await tap('.lc-chip:not(.more):has-text("Kitchen")', { wait: 500 });
+      const say3 = await text('.lc-say .tx');
+      check(T, 'tapping it goes back to "Current place: Kitchen counter"', /current place:\s*kitchen counter/i.test(say3), say3, await shot(T, 'back to the current place'));
+      await tap('.lc-chip:not(.more):has-text("Craft nook")', { wait: 500 }); await tap('.lc-k.sv', { wait: 2500 });
+      const b2 = await byName('spare batteries');
+      check(T, 'saving the new place moves it', (b2.location || '').toLowerCase() === 'craft nook', 'loc=' + b2.location, '');
+      // photographing on the current-place level makes a NEW place (doesn't attach to the current one)
+      await tap('button:has-text("Move it")', { wait: 900 });
+      await cam('real_painting.jpg'); await tap('.lc-shutter', { wait: 2200 });
+      const say4 = await text('.lc-say .tx');
+      check(T, 'a photo on the current place starts a new place ("New place: Window sill")', /new place:\s*window sill/i.test(say4), say4, await shot(T, 'photographed a new place'));
+      const cnBefore = (await placeByName('Craft nook')).photos.length;
+      await tap('.lc-k.sv', { wait: 2500 });
+      const b3 = await byName('spare batteries'); const cnAfter = (await placeByName('Craft nook')).photos.length;
+      check(T, 'moved to the new place; the old place gained no photo', /window sill/i.test(b3.location || '') && cnAfter === cnBefore, `loc=${b3.location} craft ${cnBefore}->${cnAfter}`, '');
       await page.evaluate(() => window.__rig.rules(false));
     }
     // E: the menu's build stamp (Ravi 09-28) - the deploy stamp must be readable by a person.
