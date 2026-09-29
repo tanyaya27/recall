@@ -19,6 +19,8 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   above the chain in look A. Before the first photo there is no card, so it stays at the top then.
 - [x] Suites: 50 · 100 · 44 · 66 · 14 · 34 · 117 · 83. Screens: `design/mockups/MOVE_2026-09-29b_prompt-in-card.jpg`,
   `PIN_2026-09-29b_before-after.jpg`.
+- [ ] **Next build (Ravi 09-28):** Settings → Version box: add the build name ("Build 20260929b", the same stamp as the ☰ menu) as the last line of the box, so the time-stamp and the name are in one place.
+- [ ] **Ravi 09-29: more bugs found on the phone after `20260929b`** → the next session: `PROMPT_2026-09-29_bugfix.md` (he sends the list there).
 - [ ] **Ravi: phone check of `20260929b`** (menu → Build 20260929b): Move it on a thing that has a place — the pin sits in
   line with "Current place: …", the question sits in the card above the squares.
 

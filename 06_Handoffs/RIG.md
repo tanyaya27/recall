@@ -96,3 +96,20 @@ the functions: `./rules-test/run_ai_test.sh`.
 - Real rules engine: `04_Engineering/firebase/rules-test/test_edges.mjs` (run with the other suites under
   `firebase emulators:exec --config firebase.test.json --only firestore`).
 - Settings → Experimentation: `EXPERIMENTS` in `src/lib/prefs.js`; delete an entry (and its losing branch) once decided.
+
+## The bug-fix loop (2026-09-29)
+
+- **Suites and the baseline at `20260929b`:** repro_f3 50 · audit 100 · audit_roles 44 · audit_graph 66 ·
+  audit_label 14 · audit_private 34 · audit_d 117 · audit_where 83. Some take several minutes: run them in the
+  background with `timeout 900`.
+- **The rig bundles from its own copy of `src`.** Copy the edited `src` and `styles.css` in, then run `./build.sh`,
+  before every run.
+- **Permissions:** the stub mirrors the real `consistent()`, so missing `sharedWith`/`roles` are refused. Rules
+  enforcement is OFF by default. Run any flow that writes once with `window.__rig.rules(true)`.
+- **Alignment:** `probe_pin.js` dumps the camera sentence line's geometry, both looks, at text size 1 and 1.38.
+  `repro_f3.js` H compares the INK centre of the icon with that of the text, from a screenshot.
+- **Production bundle** (from the app folder):
+  `esbuild src/main.jsx --bundle --format=esm --jsx=automatic --external:react --external:react/jsx-runtime --external:react-dom/client --external:firebase/* --define:__BUILD__="'<UTC ISO time>'" --outfile=docs/app.js --minify`.
+  Then bump both `?v=` stamps in `docs/index.html`. The stylesheet is `docs/styles.css`.
+- **Which build the phone runs:** the ☰ menu shows "Build <v>" (from the `?v=` stamp). Settings → Version shows
+  `__BUILD__` in local time.
