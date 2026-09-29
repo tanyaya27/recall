@@ -69,6 +69,8 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
+> **2026-09-29 (late night) — `20260929g` built (NOT pushed): the camera card as Ravi ruled it (3 s look, ☰ Choose place, + adds a level, hold Save = Save + Next, a place's 7th photo replaces the oldest). 536 checks green. `f` is pushed.**
+>
 > **2026-09-29 (evening) — `20260929f` built (NOT pushed): "thing" → "item" everywhere. Camera-card redesign ruled from mockups (DECISIONS), not built yet. `e` is pushed.**
 >
 > **2026-09-29 (late) — `20260929e`: caption/Add photo alignment + 2-line cap, neutral pin placeholder. Camera-card redesign in mockups, awaiting Ravi (OPEN_ITEMS). `d` (tier rulings Q1–Q5) is pushed.**

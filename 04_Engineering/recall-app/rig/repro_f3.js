@@ -160,18 +160,21 @@ async function runLook(look) {
 
   // =================================================================================================
   async function runSuite(look) {
-    const L = look.toUpperCase(); await setPrefs({ cameraLook: look });
+    const L = look.toUpperCase();
     const shot = makeShot(look);
-    const camState = () => page.evaluate(() => ({ open: !!document.querySelector('.lc'), askText: (document.querySelector('.lc-ask') || {}).innerText || '', saveTxt: (document.querySelector('.lc-k.sv') || {}).innerText || '', saveDis: (document.querySelector('.lc-k.sv') || {}).disabled ?? null, say: (document.querySelector('.lc-say .tx') || {}).innerText || '', chips: [...document.querySelectorAll('.lc-chip span:last-child')].map((x) => x.innerText) }));
+    const camState = () => page.evaluate(() => ({ open: !!document.querySelector('.lc'), askText: (document.querySelector('.lc-ask2') || {}).innerText || '', saveTxt: (document.querySelector('.lc-k.sv') || {}).innerText || '', saveDis: (document.querySelector('.lc-k.sv') || {}).disabled ?? null, say: (document.querySelector('.lc-say .tx') || {}).innerText || '' }));
+    // 09-29g camera card: places come from "☰ Choose place" (no pills). Pick one by name from the open list, or open it first.
+    const choose = async (name) => { if (!(await page.locator('.where-list').count())) { await tap('.lc-choose', { wait: 400 }); }
+      await page.fill('.wl-search input', name); await page.waitForTimeout(150); await tap(`.where-list .wl-row:not(.wl-sugg):has-text("${name}")`, { wait: 500 }); };
     const scenario = async (tag, thing, where, target) => {
       await seedHouse(); AI = { name: thing }; WHERE = [where]; SAME = { index: -1, sure: false };
       await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
       await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
       let st = await camState(); await shot(tag, 'after the where shot: ask state');
-      check(tag, 'the "Your ...?" ask appeared', new RegExp(target, 'i').test(st.askText), JSON.stringify(st).slice(0, 200), '');
-      if (/Your/.test(st.askText)) { await tap('.lc-ask button:has-text("Yes")', { wait: 600 }); }
+      check(tag, 'the "Is this the …?" ask appeared', new RegExp('Is this the ' + target, 'i').test(st.askText), JSON.stringify(st).slice(0, 200), '');
+      if (/Is this/.test(st.askText)) { await tap('.lc-ask2 button:has-text("Yes")', { wait: 600 }); }
       st = await camState(); await shot(tag, 'after Yes');
-      check(tag, 'after Yes the chips no longer offer the confirmed identity', !st.chips.some((c) => new RegExp(target.slice(0, 6), 'i').test(c)), 'chips=' + JSON.stringify(st.chips), '');
+      check(tag, 'after Yes the line names the confirmed place', new RegExp('Place:\\s*(in the )?' + target, 'i').test(st.say), 'say=' + st.say, '');
       check(tag, 'after Yes, Save is enabled', st.saveDis === false, JSON.stringify(st).slice(0, 200), '');
       await tap('.lc-k.sv', { wait: 2500 });
       st = await camState(); await shot(tag, 'after Save');
@@ -197,11 +200,10 @@ async function runLook(look) {
       await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
       await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
       const kcBefore = await placeByName('Kitchen counter');
-      await tap('.lc-chips .lc-chip:not(.more):has-text("Kitchen")', { wait: 500 });
-      const st = await camState(); const b1 = await shot(T, 'pill tapped after the where photo');
-      const badge = await page.locator('.lv-tile').nth(1).locator('.lv-n').innerText().catch(() => '1');
-      check(T, 'the pill set the tier to Kitchen counter', /kitchen counter/i.test(st.say), st.say, b1);
-      check(T, 'the where photo is still on the tier (square shows a photo, not a pin)', await page.locator('.lv-tile').nth(1).locator('img').count() > 0, 'badge=' + badge, '');
+      await choose('Kitchen counter'); // Choose place opened on its own (not recognised) — pick from its list
+      const st = await camState(); const b1 = await shot(T, 'place chosen after the where photo');
+      check(T, 'choosing set the tier to Kitchen counter', /kitchen counter/i.test(st.say), st.say, b1);
+      check(T, 'the where photo is still on the tier (square shows a photo, not a pin)', await page.locator('.lv-strip .lv-sq').nth(0).locator('img').count() > 0, '', '');
       await tap('.lc-k.sv', { wait: 2500 });
       const kcAfter = await placeByName('Kitchen counter');
       check(T, 'after Save the photo is ON the Kitchen counter place (+1)', (kcAfter.photos || []).length === (kcBefore.photos || []).length + 1, `before=${(kcBefore.photos || []).length} after=${(kcAfter.photos || []).length}`, '');
@@ -252,14 +254,11 @@ async function runLook(look) {
       await home(); await page.evaluate(() => window.__rig.rules(true));
       await tap('.tile:has-text("Spare batteries")', { wait: 700 });
       await tap('button:has-text("Move it")', { wait: 900 });
-      const pills = await page.locator('.lc-chip:not(.more)').allInnerTexts().catch(() => []);
-      check(T, 'the current place (Kitchen counter) is NOT offered as a pill', !pills.some((x) => /kitchen/i.test(x)), 'pills=' + JSON.stringify(pills), await shot(T, 'move: pills without the current place'));
-      await tap('.lc-chip.more', { wait: 600 });
+      await shot(T, 'move: opens on the current place');
+      await tap('.lc-choose', { wait: 600 });
       const cur = await page.locator('.wl-row:has(.wl-cur)').allInnerTexts().catch(() => []);
-      check(T, 'the ••• list marks Kitchen counter "Current place"', cur.length === 1 && /kitchen counter/i.test(cur[0]), JSON.stringify(cur), await shot(T, '••• list with Current place'));
-      await tap('.sheet .btn-quiet, .sheet button:has-text("Cancel")', { wait: 400 });
-      const pick = (pills[0] || '').split('\n')[0].replace(/…$/, '');
-      await tap('.lc-chip:not(.more):has-text("Craft nook")', { wait: 500 });
+      check(T, 'the Choose place list marks Kitchen counter "Current place"', cur.length === 1 && /kitchen counter/i.test(cur[0]), JSON.stringify(cur), await shot(T, 'Choose place list with Current place'));
+      await choose('Craft nook');
       const placeName = 'Craft nook';
       const before = (await placeByName(placeName)) || { photos: [] };
       await cam('real_desk.jpg'); await tap('.lc-shutter', { wait: 1200 });
@@ -282,47 +281,37 @@ async function runLook(look) {
       await home(); await page.evaluate(() => window.__rig.rules(true));
       const b0 = await byName('spare batteries');
       await tap('.tile:has-text("Spare batteries")', { wait: 700 }); await tap('button:has-text("Move it")', { wait: 900 });
-      const say0 = await text('.lc-say .tx'); const sq1img = await page.locator('.lv-tile').nth(1).locator('img').count();
-      const pills0 = await page.locator('.lc-chip:not(.more)').allInnerTexts().catch(() => []);
-      const q = await page.locator('.lc-prompt b .q').count();
+      const say0 = await text('.lc-say .tx'); const sq1img = await page.locator('.lv-strip .lv-sq').nth(0).locator('img').count();
+      const prompt0 = await text('.lc-prompt');
       const s1 = await shot(T, 'Move it: opens on the current place');
-      // 09-29b (Ravi, "the location icon is not in line with the text"): measured on the PIXELS, not the boxes — the pin's
-      // ink centre vs the white text's ink centre on line 1, at normal and large text. And the step prompt sits in the card,
-      // directly above the squares, not at the top of the picture.
-      for (const sc of ['1', '1.38']) {
-        await page.evaluate((v) => document.documentElement.style.setProperty('--scale', v), sc); await page.waitForTimeout(250);
-        const pinY = await inkMid('.lc-say .lc-pin svg', 'amber'); const txtY = await inkMid('.lc-say .l1 > b', 'white');
-        check(T, `pin centred on the text line (scale ${sc})`, pinY != null && txtY != null && Math.abs(pinY - txtY) <= 1, `pin ${pinY} text ${txtY}`, '');
-      }
-      await page.evaluate(() => document.documentElement.style.setProperty('--scale', '1')); await page.waitForTimeout(200);
       const pr = await page.evaluate(() => { const r = (q) => { const e = document.querySelector(q); return e ? e.getBoundingClientRect() : null; };
         const p = r('.lc-card > .lc-prompt'), st = r('.lc-card .lv-strip'); return { top: !!document.querySelector('.lc-view > .lc-prompt'), inCard: !!p, gap: p && st ? Math.round(st.top - p.bottom) : null }; });
       check(T, 'the step prompt is in the card, just above the squares (not at the top)', !pr.top && pr.inCard && pr.gap >= 0 && pr.gap <= 12, JSON.stringify(pr), '');
-      check(T, 'opens with "Current place: Kitchen counter" (not "No place yet")', /current place:\s*kitchen counter/i.test(say0), say0, s1);
+      check(T, 'opens with "Place: Kitchen counter" (not "not defined")', /place:\s*kitchen counter/i.test(say0), say0, s1);
       check(T, 'level 1 shows the current place\'s photo', sq1img > 0, '', '');
-      check(T, 'the current place is not among the pills', !pills0.some((x) => /kitchen/i.test(x)), JSON.stringify(pills0), '');
-      check(T, 'the prompt\'s question words are styled apart from the name', q === 1, 'q=' + q, '');
+      check(T, 'the prompt asks "Moved it? Photograph the new place, or choose one."', /Moved it\? Photograph the new place, or choose one\./.test(prompt0), prompt0, '');
       await tap('.lc-k.sv', { wait: 1500 });
       const b1 = await byName('spare batteries'); const st1 = await camState();
       check(T, 'Save with nothing changed closes and writes nothing', st1.open === false && b1.location === b0.location && b1.lastSeenAt === b0.lastSeenAt, `open=${st1.open} loc=${b1.location}`, '');
       // pick a new place, then back to the current, then the new again and save
       await tap('button:has-text("Move it")', { wait: 900 });
-      await tap('.lc-chip:not(.more):has-text("Craft nook")', { wait: 500 });
-      const say2 = await text('.lc-say .tx'); const pills2 = await page.locator('.lc-chip:not(.more)').allInnerTexts().catch(() => []);
-      const s2 = await shot(T, 'picked a new place: label + current place is the first pill');
-      check(T, 'after picking: "New place: Craft nook"', /new place:\s*craft nook/i.test(say2), say2, s2);
-      check(T, 'the current place is now the FIRST pill', /kitchen/i.test(pills2[0] || ''), JSON.stringify(pills2), '');
-      await tap('.lc-chip:not(.more):has-text("Kitchen")', { wait: 500 });
+      await choose('Craft nook');
+      const say2 = await text('.lc-say .tx');
+      const s2 = await shot(T, 'chose a new place');
+      check(T, 'after choosing: "Place: Craft nook"', /place:\s*craft nook/i.test(say2), say2, s2);
+      await choose('Kitchen counter');
       const say3 = await text('.lc-say .tx');
-      check(T, 'tapping it goes back to "Current place: Kitchen counter"', /current place:\s*kitchen counter/i.test(say3), say3, await shot(T, 'back to the current place'));
-      await tap('.lc-chip:not(.more):has-text("Craft nook")', { wait: 500 }); await tap('.lc-k.sv', { wait: 2500 });
+      check(T, 'choosing the current place again goes back to "Place: Kitchen counter"', /place:\s*kitchen counter/i.test(say3), say3, await shot(T, 'back to the current place'));
+      await choose('Craft nook'); await tap('.lc-k.sv', { wait: 2500 });
       const b2 = await byName('spare batteries');
       check(T, 'saving the new place moves it', (b2.location || '').toLowerCase() === 'craft nook', 'loc=' + b2.location, '');
       // photographing on the current-place level makes a NEW place (doesn't attach to the current one)
       await tap('button:has-text("Move it")', { wait: 900 });
       await cam('real_painting.jpg'); await tap('.lc-shutter', { wait: 2200 });
+      const draft4 = await page.locator('.wl-pend input').inputValue().catch(() => '');
+      if (await count('.wl-pend .btn-primary')) await tap('.wl-pend .btn-primary', { wait: 500 });
       const say4 = await text('.lc-say .tx');
-      check(T, 'a photo on the current place starts a new place ("New place: Window sill")', /new place:\s*window sill/i.test(say4), say4, await shot(T, 'photographed a new place'));
+      check(T, 'a photo on the current place starts a new place (offered as "Window sill", then "Place: Window sill")', /window sill/i.test(draft4) && /place:\s*window sill/i.test(say4), `${draft4} | ${say4}`, await shot(T, 'photographed a new place'));
       const cnBefore = (await placeByName('Craft nook')).photos.length;
       await tap('.lc-k.sv', { wait: 2500 });
       const b3 = await byName('spare batteries'); const cnAfter = (await placeByName('Craft nook')).photos.length;

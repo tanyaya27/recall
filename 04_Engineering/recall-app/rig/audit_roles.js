@@ -20,6 +20,18 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
   const page = await ctx.newPage(); const denied = []; page.on('console', (m) => { if (/permission-denied/.test(m.text())) denied.push(m.text()); }); page.on('pageerror', (e) => { if (/permission-denied/.test(e.message)) denied.push(e.message); });
+  // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
+  // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
+  const settleWhere = async (fallback = '') => {
+    for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
+    await page.waitForTimeout(300);
+    if (await page.locator('.wl-pend .btn-primary').count()) {
+      if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
+      await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
+    }
+  };
+  const pickPlace = async (name) => { await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.click(`.where-list .wl-row:has-text("${name}")`); await page.waitForTimeout(350); };
+  const saveNext = async () => { const b = await page.locator('.lc-k.sv').boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up(); await page.waitForTimeout(400); };
   let first = true;
   const boot = async (uid, { anon = false, whose = null, url = '' } = {}) => {
     if (first) { await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen'); first = false; }
@@ -106,7 +118,7 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   denied.length = 0; await page.click('.tp-row:has-text("Add a photo")'); await shoot(); await page.waitForTimeout(1200);
   const snapsG = (await dump()).filter((d) => d.kind === 'snap' && d.itemId === 'g');
   check('R4 editor CAN add a photo; the snap is by robert, owned by margaret', snapsG.length === 3 && snapsG.filter((s) => s.by === 'robert' && s.owner === 'margaret').length === 2 && denied.length === 0, `snaps=${snapsG.length} denied=${denied.length}`);
-  await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
+  await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); await page.click('.lc-choose'); await page.waitForSelector('.where-list');
   await page.click('.where-list .wl-row:has(b:text-is("Hall table"))'); await page.waitForTimeout(250); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(700);
   check('R5 editor CAN move it with the camera (place + a sighting written)', (await dump()).find((d) => d.id === 'g').location === 'Hall table' && (await dump()).some((d) => d.kind === 'snap' && d.itemId === 'g' && d.moved && d.by === 'robert'));
   await page.goBack(); await page.waitForSelector('.board');
@@ -121,7 +133,7 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   await page.waitForTimeout(5500);
   await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
   // Build 2: every where photo goes where HE says — ＋ picks the next level before each one.
-  await page.click('.lc-shutter'); await page.waitForTimeout(1200); await page.click('.lv-sq.plus'); await page.click('.lc-shutter'); await page.waitForTimeout(1500); await page.click('.lv-sq.plus'); await page.click('.lc-shutter'); await page.waitForTimeout(1500);
+  await page.click('.lc-shutter'); await page.waitForTimeout(1200); await page.click('.lv-sq.plus'); await page.click('.lc-shutter'); await settleWhere('Blue tin'); await page.click('.lv-sq.plus'); await page.click('.lc-shutter'); await settleWhere('Top shelf');
   denied.length = 0; await page.click('.lc-k.sv'); await page.waitForTimeout(500);
   if (await count('.item-sheet button:has-text("No, a new item")')) { await page.click('.item-sheet button:has-text("No, a new item")'); } // the AI named it "thing" again: asked, never assumed
   await page.waitForTimeout(2500);

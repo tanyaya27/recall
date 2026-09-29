@@ -3,7 +3,7 @@ import { getAIConfig, saveAIConfig, providerList, AIEngine } from '../ai/engine.
 import Header from './Header.jsx';
 import { currentUser, isAnonymous, signIn, lastSignIn } from '../lib/auth.js';
 import { legacyCount, logEvent } from '../lib/db.js';
-import { getPrefs, savePrefs, CAMERA_LOOKS, EXPERIMENTS } from '../lib/prefs.js';
+import { getPrefs, savePrefs, EXPERIMENTS } from '../lib/prefs.js';
 import { APPLE_SIGNIN } from './People.jsx';
 import { BUILD_ID } from './MenuScreens.jsx';
 
@@ -205,17 +205,7 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
           with Q3 (one thing per photo). */}
       <div className="group-title">Taking photos</div>
       <div className="group">
-        <div className="grow">
-          <label>The camera</label>
-          <div className="lookpick">
-            {CAMERA_LOOKS.map((l) => (
-              <button key={l.id} type="button" className={'lookopt' + (cap.cameraLook === l.id ? ' on' : '')} aria-pressed={cap.cameraLook === l.id}
-                onClick={() => setCapture({ cameraLook: l.id })}>
-                <span className={'mini mini-' + l.id} aria-hidden="true"><i className="p1" /><i className="p2" /><i className="p3" /><i className="card" /><i className="row" /></span>
-                <b>{l.label}</b><small>{l.blurb}</small>
-              </button>))}
-          </div>
-        </div>
+        {/* 09-29g: the camera has one look now (Ravi's rulings); the A/B picker went with look A. */}
         {/* Moved here from every thing's page (09-27, #27): it was always a setting for the whole app. */}
         <div className="grow">
           <div className="sw-row">

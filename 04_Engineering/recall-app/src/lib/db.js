@@ -852,26 +852,38 @@ export async function addPlace(name, places = [], photos = [], owner = me(), par
   const n = name.trim();
   if (!n) return null;
   const dup = places.find((p) => p.name.toLowerCase() === n.toLowerCase());
-  if (dup) { if (photos.length && (dup.photos || []).length < PLACE_PHOTOS && dup.owner === me()) await addPlacePhotos(dup, photos); return dup.id; }
+  if (dup) { if (photos.length && dup.owner === me()) await addPlacePhotos(dup, photos); return dup.id; } // 09-29: a full place takes the new photo too (the oldest goes)
   const now = Date.now();
   const ref = await addDoc(col, { kind: 'place', owner, by: me(), private: false, ...PLACE_SHARE, name: n, order: now, createdAt: now, parent,
     photos: photos.slice(0, PLACE_PHOTOS).map((p) => ({ ...p, at: now })) });
   return ref.id;
 }
+// 09-29 (Ravi): a place keeps at most PLACE_PHOTOS photos, and a NEW photo always gets in — the oldest goes to make room
+// ("keep the picture current"). The first photo is the place's picture (D2 "Make main") and is kept; the oldest of the
+// others goes first. The byte budget works the same way. Returns how many new photos were added.
 export async function addPlacePhotos(place, photos) {
+  // 09-29 (Ravi: "the old photo should be replaced to keep the list at 6"): the main photo (first) always stays,
+  // the new photos go in, and the OLDEST of the others rotate out — by count (6) and by the ~700 KB byte guard.
   const now = Date.now();
   const have = place.photos || [];
-  let total = have.reduce((n, p) => n + photoBytes(p), 0);
-  const room = [];
-  for (const p of photos) {
-    if (have.length + room.length >= PLACE_PHOTOS) break; // the count cap still applies first
-    const b = photoBytes(p);
-    if (total + b > PLACE_PHOTOS_BYTES) continue; // over the byte budget: skip this one, silently keep what fits
-    room.push(p); total += b;
-  }
-  const next = [...have, ...room.map((p) => ({ ...p, at: now }))].slice(0, PLACE_PHOTOS);
-  await updateDoc(doc(col, place.id), { photos: next, updatedAt: now, ...placeShare(place) });
-  return next.length - have.length;
+  const bytes = (list) => list.reduce((n, p) => n + photoBytes(p), 0);
+  let main = have[0] || null;
+  let rest = have.slice(1);
+  let inc = photos.map((p) => ({ ...p, at: now }));
+  const fresh = new Set(inc);
+  if (!main && inc.length) { inc = inc.filter((p) => photoBytes(p) <= PLACE_PHOTOS_BYTES); main = inc.shift() || null; }
+  const mainB = photoBytes(main);
+  inc = inc.filter((p) => mainB + photoBytes(p) <= PLACE_PHOTOS_BYTES); // one that can never fit is skipped
+  const room = PLACE_PHOTOS - (main ? 1 : 0);
+  if (inc.length > room) inc = inc.slice(-room); // more new than room: the newest win
+  while (inc.length > 1 && mainB + bytes(inc) > PLACE_PHOTOS_BYTES) inc.shift();
+  while (rest.length && (rest.length + inc.length > room || mainB + bytes(rest) + bytes(inc) > PLACE_PHOTOS_BYTES)) rest.shift();
+  const all = [...(main ? [main] : []), ...rest, ...inc];
+  const incoming = photos.length;
+  const added = all.filter((p) => fresh.has(p)).length;
+  await updateDoc(doc(col, place.id), { photos: all, updatedAt: now, ...placeShare(place) });
+  if (have.length + incoming > all.length) logEvent('place_photo_rotated', { placeId: place.id, dropped: have.length + incoming - all.length });
+  return added;
 }
 export async function removePlacePhoto(place, index) {
   const next = (place.photos || []).filter((_, i) => i !== index);

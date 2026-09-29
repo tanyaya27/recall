@@ -29,6 +29,18 @@ async function main() {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
   });
   const page = await ctx.newPage();
+  // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
+  // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
+  const settleWhere = async (fallback = '') => {
+    for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
+    await page.waitForTimeout(300);
+    if (await page.locator('.wl-pend .btn-primary').count()) {
+      if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
+      await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
+    }
+  };
+  const pickPlace = async (name) => { await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.click(`.where-list .wl-row:has-text("${name}")`); await page.waitForTimeout(350); };
+  const saveNext = async () => { const b = await page.locator('.lc-k.sv').boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up(); await page.waitForTimeout(400); };
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/camera/.test(m.text())) errors.push('console: ' + m.text().slice(0, 160)); });
   const shot = async (n) => { await page.waitForTimeout(250); await page.screenshot({ path: `shots/label-${n}.png` }); };
@@ -58,7 +70,7 @@ async function main() {
   aiNext = tagOf('screws', { details: '#8 × 1-1/4 in · stainless · pan head · 100 ct' });
   await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
   await page.click('.lc-shutter'); await page.waitForTimeout(1500);
-  await page.click('.lc-chip:has-text("Desk")'); await page.click('.lc-k.sv'); await page.waitForSelector('.board'); await page.waitForTimeout(500);
+  await pickPlace('Desk'); await page.click('.lc-k.sv'); await page.waitForSelector('.board'); await page.waitForTimeout(500);
   const screws = (await items()).find((d) => d.name === 'screws');
   check('L1 One thing: the label text is saved on the thing', screws && /stainless/.test(screws.details || ''), JSON.stringify(screws && screws.details));
   await page.click('.tile:has-text("Screws")'); await page.waitForSelector('.card.thing'); await page.waitForTimeout(500);

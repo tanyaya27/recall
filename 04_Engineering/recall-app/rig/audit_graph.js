@@ -28,6 +28,18 @@ async function main() {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
   });
   const page = await ctx.newPage();
+  // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
+  // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
+  const settleWhere = async (fallback = '') => {
+    for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
+    await page.waitForTimeout(300);
+    if (await page.locator('.wl-pend .btn-primary').count()) {
+      if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
+      await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
+    }
+  };
+  const pickPlace = async (name) => { await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.click(`.where-list .wl-row:has-text("${name}")`); await page.waitForTimeout(350); };
+  const saveNext = async () => { const b = await page.locator('.lc-k.sv').boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up(); await page.waitForTimeout(400); };
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/camera/.test(m.text())) errors.push('console: ' + m.text().slice(0, 160)); });
   const shot = async (n) => { await page.waitForTimeout(250); await page.screenshot({ path: `shots/graph-${n}.png` }); };
@@ -76,7 +88,7 @@ async function main() {
   const home = async () => { await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board'); await page.waitForTimeout(250); };
   const moveVia = async (search, pick) => { // on a thing's page: Move it / Put it somewhere → ••• → search → pick a row (or the typed new place) → Save
     await page.click('.tp-btn:has-text("Move it"), .tp-btn:has-text("Put it somewhere")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350);
-    await page.click('.lc-chip.more'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', search); await page.waitForTimeout(150);
+    await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', search); await page.waitForTimeout(150);
     if (pick) await page.click(`.where-list .wl-row:has(b:text-is("${pick}"))`); else await page.click('.wl-new.typed');
     await page.waitForTimeout(250); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(600);
   };
@@ -104,7 +116,7 @@ async function main() {
   // ---- ••• on the camera: every place and every box — never a thing that holds nothing, never a loop
   await page2('Car keys');
   await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350);
-  await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
+  await page.click('.lc-choose'); await page.waitForSelector('.where-list');
   const wl = await text('.where-list');
   // D5 ruling (Ravi 09-28): ONE list headed "YOUR PLACES · N"; a box is a row whose second line starts "a box · " (no Boxes heading any more).
   const rows = await page.evaluate(() => [...document.querySelectorAll('.where-list .wl-row')].map((r) => ({ b: r.querySelector('b').innerText, s: r.querySelector('small').innerText })));
@@ -127,9 +139,9 @@ async function main() {
   await page.click('.np-row:has-text("Coffee can")'); await page.waitForSelector('.thing-page');
   check('J6 a row opens that thing\'s page: amber "No place yet" and Put it somewhere', /No place yet/.test(await text('.tp-wh b')) && await count('.tp-btn.amber:has-text("Put it somewhere")') === 1);
   await page.click('.tp-btn:has-text("Put it somewhere")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350);
-  check('J7 Put it somewhere → the camera: "Where is the coffee can?", the can already there, level 1 chosen', /Where is the coffee can\?/.test(await text('.lc-prompt')) && /^Level 1/.test(await page.locator('.lv-sq.sel').getAttribute('aria-label')));
+  check('J7 Put it somewhere → the camera: "Where is the coffee can?" (in the band), the can already there, level 1 chosen', /Where is the\s*coffee can\?/i.test(await text('.lc-band')) && /^Level 1/.test(await page.locator('.lv-sq.sel').getAttribute('aria-label')));
   await shot('0c-putsomewhere');
-  await page.click('.lc-chip:has-text("Hall table")'); await page.waitForTimeout(250);
+  await pickPlace('Hall table');
   check('J7b one verb on the button ("Save"); the sentence above says "Hall table"', (await text('.lc-k.sv')).trim() === 'Save' && /Hall table/.test(await text('.lc-say')));
   await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(600);
   check('J8 saved: at the Hall table (a place edge); the page says so; a toast with Undo', (await byName('coffee can')).location === 'Hall table' && (await openTo('u'))[0].to.name === 'Hall table' && /Hall table/.test(await text('.tp-wh b')) && await count('.toast-undo') === 1);
@@ -196,7 +208,7 @@ async function main() {
   const before = JSON.stringify((await items()).find((d) => d.id === 'c'));
   await page2('Memorabilia box');
   await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350);
-  await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
+  await page.click('.lc-choose'); await page.waitForSelector('.where-list');
   const lw = await text('.where-list');
   check('L1 moving the memorabilia box: the wooden box inside it is never offered, nor the box itself (no loops, #8)', (await count('.where-list .wl-row:has(b:text-is("Wooden box"))')) === 0 && (await count('.where-list .wl-row:has(b:text-is("Memorabilia box"))')) === 0, lw.replace(/\n/g, ' / ').slice(0, 200));
   await page.click('.where-list .btn-quiet'); await page.click('.lc-x'); await page.waitForTimeout(250);
@@ -216,7 +228,7 @@ async function main() {
   // ---- typing a box's name finds the box — never a new place with the same words (G23)
   await page2('Reading glasses');
   await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350);
-  await page.click('.lc-chip.more'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', 'in the wooden box'); await page.waitForTimeout(200);
+  await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', 'in the wooden box'); await page.waitForTimeout(200);
   check('G23a typed "in the wooden box": the wooden box is the answer; no "A new place called …"', await count('.where-list .wl-row:has(b:text-is("Wooden box"))') === 1 && await count('.wl-new.typed') === 0);
   await page.click('.where-list .wl-row:has(b:text-is("Wooden box"))'); await page.waitForTimeout(250); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(600);
   const ge = await openTo('g');
@@ -227,13 +239,16 @@ async function main() {
   const shootOne = async () => { await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); await page.click('.lc-shutter'); await page.waitForTimeout(1200);
     if (await count('.lc-ask button:has-text("No, a new item")')) { await page.click('.lc-ask button:has-text("No, a new item")'); await page.waitForTimeout(200); } };
   await shootOne();
-  const chipLabels = (await page.locator('.lc-chip:not(.more)').allInnerTexts()).map((x) => x.trim());
-  const boxChip = (await page.locator('.lc-chip.box').first().innerText().catch(() => '')).trim();
-  check('I1 the camera: a place chip and a box chip (the box with its photo), never one twice', !!boxChip && await count('.lc-chip.box img') >= 1 && await count('.lc-chip:not(.box):not(.more)') >= 1 && new Set(chipLabels).size === chipLabels.length, chipLabels.join(' | '));
-  check('I2 the camera: "No place yet" is the sentence until a place is given; Save is always one word, beside the shutter', /No place yet/.test(await text('.lc-say')) && (await text('.lc-k.sv')).trim() === 'Save');
-  await shot('13-camera-chips');
-  await page.click('.lc-chip.box'); await page.waitForTimeout(300);
-  check('I3 tap the box chip: "In the …" (and where the box is) above Save', new RegExp('In the ' + boxChip.toLowerCase()).test(await text('.lc-say')), boxChip + ' / ' + await text('.lc-say'));
+  // 09-29 (Ravi): no pills on the camera any more — ☰ Choose place lists places and boxes (a box with its photo).
+  await page.click('.lc-choose'); await page.waitForSelector('.where-list');
+  const wrows = await page.evaluate(() => [...document.querySelectorAll('.where-list .wl-row')].map((r) => ({ b: r.querySelector('b').innerText, s: r.querySelector('small').innerText, img: !!r.querySelector('img') })));
+  const boxRow = wrows.find((r) => /^a box · /.test(r.s)); const boxChip = boxRow ? boxRow.b : '';
+  check('I1 the camera: ☰ Choose place lists places and boxes (a box with its photo), none twice', !!boxRow && boxRow.img && wrows.some((r) => !/^a box · /.test(r.s)) && new Set(wrows.map((r) => r.b)).size === wrows.length, wrows.map((r) => r.b).join(' | '));
+  await page.click('.where-list .btn-quiet'); await page.waitForTimeout(250);
+  check('I2 the camera: "Place: not defined" until a place is given; Save is always one word, beside the shutter', /Place:\s*not defined/.test(await text('.lc-say')) && (await text('.lc-k.sv')).trim() === 'Save');
+  await shot('14-camera-chips');
+  await pickPlace(boxChip);
+  check('I3 choose the box: "Place: In the …" above Save', new RegExp('In the ' + boxChip.toLowerCase()).test(await text('.lc-say')), boxChip + ' / ' + await text('.lc-say'));
   await page.click('.lc-k.sv'); await page.waitForTimeout(1500);
   const boxDoc = await byName(boxChip.toLowerCase());
   let bc = (await items()).find((d) => d.name === 'bottle cap' && d.location === boxChip);
@@ -264,10 +279,10 @@ async function main() {
   await home();
   // ---- a box not logged yet: she photographs it — ＋ first, so the photo goes where she means (Ravi 09-27)
   await shootOne();
-  check('K0 after the first photo the THING stays chosen (a second photo is another photo of it)', /^The item/.test(await page.locator('.lv-sq.sel').getAttribute('aria-label')));
+  check('K0 after the first photo the ITEM stays chosen (its photo in the band, white ring): a second photo is another photo of it', await count('.lc-band .lc-thing.sel') === 1);
   await page.click('.lv-sq.plus'); await page.waitForTimeout(200);
   whereNext = { name: "Dona Homer's tin box", moves: true, index: 0, sure: false };
-  await page.click('.lc-shutter'); await page.waitForTimeout(1500);
+  await page.click('.lc-shutter'); await settleWhere();
   check('K1 ＋ then a photo: named from the photo, "In the …tin box" above Save', /tin box/i.test(await text('.lc-say')), await text('.lc-say'));
   await shot('17-new-box');
   await page.click('.lc-k.sv'); await page.waitForTimeout(1800); whereNext = null;

@@ -60,6 +60,18 @@ async function main() {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
   const page = await ctx.newPage();
+  // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
+  // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
+  const settleWhere = async (fallback = '') => {
+    for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
+    await page.waitForTimeout(300);
+    if (await page.locator('.wl-pend .btn-primary').count()) {
+      if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
+      await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
+    }
+  };
+  const pickPlace = async (name) => { await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.click(`.where-list .wl-row:has-text("${name}")`); await page.waitForTimeout(350); };
+  const saveNext = async () => { const b = await page.locator('.lc-k.sv').boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up(); await page.waitForTimeout(400); };
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/camera/.test(m.text())) errors.push('console: ' + m.text().slice(0, 160)); });
   const shot = async (n) => { await page.waitForTimeout(250); await page.screenshot({ path: `shots/where-${n}.png` }); };
@@ -154,35 +166,43 @@ async function main() {
   let pc1 = (await places()).find((p) => p.id === 'pc1');
   await rigdb('addPlacePhotos', pc1, [{ photo: 'p6', thumb: 't6' }, { photo: 'p7', thumb: 't7' }, { photo: 'p8', thumb: 't8' }]);
   pc1 = (await places()).find((p) => p.id === 'pc1');
-  check('C1 PLACE_PHOTOS caps at 6 (was 3), even offered 3 more on top of 5', pc1.photos.length === 6, `photos=${pc1.photos.length}`);
+  check('C1 PLACE_PHOTOS caps at 6 (was 3), even offered 3 more on top of 5 — main kept, oldest others out', pc1.photos.map((p) => p.photo).join(',') === 'p1,p4,p5,p6,p7,p8', pc1.photos.map((p) => p.photo).join(','));
 
-  // C2: already at 6 — the count cap holds even though the new ones are tiny and well within budget.
+  // C2: already at 6 — 09-29 ruling (Ravi): the new photos REPLACE the oldest, the list stays at 6, the main photo stays.
   await rigdb('addPlacePhotos', pc1, [{ photo: 'p9', thumb: 't9' }, { photo: 'p10', thumb: 't10' }]);
   pc1 = (await places()).find((p) => p.id === 'pc1');
-  check('C2 already-full place stays at 6', pc1.photos.length === 6, `photos=${pc1.photos.length}`);
+  const c2 = pc1.photos.map((p) => p.photo).join(',');
+  check('C2 already-full place stays at 6: main kept, the 2 new ones in, the 2 oldest others out', c2 === 'p1,p6,p7,p8,p9,p10', c2);
 
-  // D1: the byte guard skips oversized candidates but keeps trying the rest — it does not just stop
-  // at the first one that doesn't fit ("silently keep what fits", R2).
+  // D1: the byte guard (~700 KB) — a photo that alone can never fit is skipped; of the rest, the newest win.
   await page.evaluate((s) => window.__rig.seed(s), [PL('pc2', 'Byte test', [])]);
   await page.waitForTimeout(150);
   let pc2 = (await places()).find((p) => p.id === 'pc2');
   await rigdb('addPlacePhotos', pc2, [
     { photo: kb(750), thumb: '' },  // alone already over ~700 KB — skipped
-    { photo: kb(300), thumb: '' },  // fits (300 KB)
-    { photo: kb(300), thumb: '' },  // fits (600 KB total)
-    { photo: kb(300), thumb: '' },  // would push to 900 KB — skipped
+    { photo: kb(300), thumb: '' },
+    { photo: kb(300), thumb: '' },
+    { photo: kb(300), thumb: '' },  // three of 300 = 900 KB — one has to go
   ]);
   pc2 = (await places()).find((p) => p.id === 'pc2');
   const totalBytes = pc2.photos.reduce((n, p) => n + (p.photo || '').length + (p.thumb || '').length, 0);
-  check('D1 byte guard: oversized candidates skipped, smaller ones after them still kept', pc2.photos.length === 2 && totalBytes <= 700 * 1024, `kept=${pc2.photos.length} bytes=${totalBytes}`);
+  check('D1 byte guard: the oversized one skipped, the rest kept up to ~700 KB', pc2.photos.length === 2 && totalBytes <= 700 * 1024, `kept=${pc2.photos.length} bytes=${totalBytes}`);
 
-  // D2: existing photos are never dropped to make room — only new ones are ever skipped.
+  // D2: the main photo is never dropped; a new photo too big to sit beside it is skipped, a small one gets in.
   await page.evaluate((s) => window.__rig.seed(s), [PL('pc3', 'Byte test 2', [{ photo: kb(650), thumb: '', at: now }])]);
   await page.waitForTimeout(150);
   let pc3 = (await places()).find((p) => p.id === 'pc3');
   await rigdb('addPlacePhotos', pc3, [{ photo: kb(10), thumb: '' }, { photo: kb(200), thumb: '' }]);
   pc3 = (await places()).find((p) => p.id === 'pc3');
-  check('D2 the small one that still fits is kept, the original photo is untouched', pc3.photos.length === 2 && pc3.photos[0].photo.length === 650 * 1024, `kept=${pc3.photos.length}`);
+  check('D2 the main photo is untouched; the small new one that fits is kept', pc3.photos.length === 2 && pc3.photos[0].photo.length === 650 * 1024 && pc3.photos[1].photo.length === 10 * 1024, `kept=${pc3.photos.length}`);
+
+  // D3: over the byte budget with room by count — the OLDEST non-main photo makes way for the new one.
+  await page.evaluate((s) => window.__rig.seed(s), [PL('pc4', 'Byte test 3', [{ photo: kb(100), thumb: 'm', at: now - 3 }, { photo: kb(200), thumb: 'old', at: now - 2 }, { photo: kb(200), thumb: 'mid', at: now - 1 }])]);
+  await page.waitForTimeout(150);
+  let pc4 = (await places()).find((p) => p.id === 'pc4');
+  await rigdb('addPlacePhotos', pc4, [{ photo: kb(300), thumb: 'new' }]);
+  pc4 = (await places()).find((p) => p.id === 'pc4');
+  check('D3 byte guard rotates: main + newest kept, the oldest other photo goes', pc4.photos.map((p) => p.thumb).join(',') === 'm,mid,new', pc4.photos.map((p) => p.thumb).join(','));
 
   // ============================================================================================
   // E. R6.1 — a where-created container (the camera's moves branch) is marked asWhere.
@@ -252,122 +272,99 @@ async function main() {
   }
 
   // ---- G. R1 — a level with an identity APPENDS photos and keeps that identity (kills F1) ----
+  // 09-29g camera card: places are picked with "☰ Choose place"; the strip holds place squares only (level 1 = .lv-sq nth 0).
   console.log('\n---- R1 (attach, never replace) ----');
-  await seedWhereHouse('wh1'); await setPrefs({ cameraLook: 'b' });
+  await seedWhereHouse('wh1');
+  const openTier = async (i) => { const sq = page.locator('.lv-strip .lv-sq').nth(i); if (!/\bsel\b/.test(await sq.getAttribute('class'))) { await sq.click(); await page.waitForTimeout(300); } await sq.click(); await page.waitForTimeout(400); };
+  const sayT = async () => (await text('.lc-say b')).replace(/^Place:\s*/, '').trim();
   AI = { name: 'nail clippers' }; WHERE = [];
   await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 });
-  const chipLabel = await count('.lc-chips .lc-chip:not(.more)') ? await text('.lc-chips .lc-chip:not(.more) span:last-child') : '';
-  await tap('.lc-chips .lc-chip:not(.more)', { wait: 500 }); // pick a KNOWN place with 0 photos
-  const promptOnPick = await text('.lc-prompt b');
-  check('G1 R2.4: a known level with 0 photos gets "{Name} — add a photo…" prompt, camera stays on it', new RegExp(`^${chipLabel} — add a photo`).test(promptOnPick), promptOnPick);
+  await pickPlace('Garage'); // a KNOWN place with 0 photos (a location name only)
+  check('G1 a picked place with 0 photos: "Place: Garage", the camera stays on it (its square selected)', /^garage$/i.test(await sayT()) && await count('.lv-sq.sel') === 1, await sayT());
   await cam('real_desk.jpg'); await tap('.lc-shutter', { wait: 1400 }); // shot #1 on the identified level
-  const sayAfter1 = await text('.lc-say b');
   await shot('g1-attach-shot1');
-  check('G2 R1.1/1.2: after a photo, the sentence still names the PICKED identity, not "Naming…"', sayAfter1.trim().toLowerCase() === chipLabel.trim().toLowerCase(), sayAfter1);
+  check('G2 R1.1/1.2: after a photo, the line still names the PICKED place, not "Looking…"', /^garage$/i.test(await sayT()) && await count('.wl-pend') === 0, await sayT());
   await cam('real_painting.jpg'); await tap('.lc-shutter', { wait: 1400 }); // shot #2
-  const badge2 = await page.locator('.lv-sq').nth(1).locator('.lv-n').innerText().catch(() => '');
+  const badge2 = await page.locator('.lv-strip .lv-sq').nth(0).locator('.lv-n').innerText().catch(() => '');
   check('G3 R1.2: the level square badge shows the count (2) after two attached photos', badge2 === '2', badge2);
-  const placeBefore = await placeByName(chipLabel);
+  const placeBefore = await placeByName('Garage');
   await tap('.lc-k.sv', { wait: 1500 });
-  const placeAfter = await placeByName(chipLabel);
-  check('G4 R1.5/R2.2: Save sends the attached photos as placePhotos to the SAME known place doc (no new doc)',
-    !!placeAfter && placeAfter.photos.length === (placeBefore ? placeBefore.photos.length : 0) + 2 && (await places()).filter((p) => p.name.toLowerCase() === chipLabel.toLowerCase()).length === 1,
+  const placeAfter = await placeByName('Garage');
+  check('G4 R1.5/R2.2: Save sends the attached photos to the SAME place (no second doc)',
+    !!placeAfter && placeAfter.photos.length === (placeBefore ? placeBefore.photos.length : 0) + 2 && (await places()).filter((p) => p.name.toLowerCase() === 'garage').length === 1,
     `before=${placeBefore && placeBefore.photos.length} after=${placeAfter && placeAfter.photos.length}`);
 
   // R1.3: removing the LAST attached photo of an identified level keeps the identity.
   AI = { name: 'spare key' }; WHERE = [];
   await home(); await cam('real_pencil.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 });
-  const boxChip = await count('.lc-chips .lc-chip.box') ? await text('.lc-chips .lc-chip.box span:last-child') : '';
-  await tap('.lc-chips .lc-chip.box', { wait: 500 });
+  await pickPlace('wooden box');
   await cam('real_spoon.jpg'); await tap('.lc-shutter', { wait: 1400 });
-  // `sel` is already on this level (pickKnown selected it, shot() doesn't move sel), so tapLevel(i===sel)
-  // opens the preview on the first click here — no extra tap needed.
-  await page.locator('.lv-sq').nth(1).click(); await page.waitForTimeout(500); // open its preview (only photo)
+  await page.locator('.lv-strip .lv-sq').nth(0).click(); await page.waitForTimeout(400); // selected square → its sheet
+  await tap('.tier-sheet .sheet-row:has-text("See its photos")', { wait: 500 });
   await shot('g5-before-remove');
-  check('G5a preview opens for the identified level with its one attached photo', await count('.pv-rm') === 1);
+  check('G5a its photos open from the level\'s sheet, with the one attached photo removable', await count('.pv-rm') === 1);
   await tap('.pv-rm', { wait: 500 });
-  const sayAfterRemove = await text('.lc-say b');
-  // a box link renders as "In the {name}" (inPhrase), not the bare name — same phrasing J5/J6 already expect.
-  check('G5b R1.3: removing the last attached photo KEEPS the identity — sentence still names the box, not reset to "No place yet"',
-    sayAfterRemove.trim().toLowerCase() === `in the ${boxChip.trim().toLowerCase()}`, sayAfterRemove);
+  check('G5b R1.3: removing the last attached photo KEEPS the identity — still "Place: In the wooden box"', /^in the wooden box$/i.test(await sayT()), await sayT());
   await tap('.lc-x', { wait: 400 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 400 });
 
-  // R1.4 (regression guard): a level with NO identity still runs the naming pass as before.
+  // R1.4 (regression guard): a level with NO identity still runs the naming pass.
   AI = { name: 'measuring tape' }; WHERE = [{ name: 'garage shelf b', moves: false }];
   await home(); await cam('real_cetaphil.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('box14.jpg'); await tap('.lc-shutter', { wait: 200 });
-  const namingShown = /naming/i.test(await text('.lc-say b').catch(() => ''));
+  await tap('.lv-sq.plus', { wait: 300 }); await cam('box14.jpg'); await tap('.lc-shutter', { wait: 100 });
+  const lookShown = await count('.lv-look') > 0;
   await page.waitForTimeout(1500);
-  check('G6 R1.4: a level with no identity still shows "Naming…" then the AI result (unchanged path)', namingShown || /garage shelf b/i.test(await text('.lc-say b')));
+  const draftG6 = await page.locator('.wl-pend input').inputValue().catch(() => '');
+  check('G6 R1.4: a level with no identity is looked at, then offered with ReCall\'s name to confirm', (lookShown || /garage shelf b/i.test(draftG6)) && /garage shelf b/i.test(draftG6), `look=${lookShown} draft=${draftG6}`);
+  await settleWhere();
   await tap('.lc-x', { wait: 400 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 400 });
 
-  // ---- H. R3 — rename a level right there; a user name beats a late AI result ----
+  // ---- H. R3 — rename a level right there (its sheet → Rename) ----
   console.log('\n---- R3 (rename per level) ----');
   await seedWhereHouse('wh2');
   AI = { name: 'usb hub' }; WHERE = [{ name: 'linen shelf', moves: false }];
   await home(); await cam('real_desk.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg');
-  await tap('.lc-shutter', { wait: 120 }); // shutter pressed, naming pass now in flight (AI answers after ~100ms)
-  await tap('.lc-chg', { wait: 400 });
-  check('H1a chain sheet reachable immediately, even mid-naming-pass (R3.2)', await count('.chain-sheet') === 1);
-  const rowNameBefore = await text('.chain-sheet .cs-name');
-  await tap('.chain-sheet .cs-name', { wait: 400 });
-  check('H1b tapping the row name opens "What is it called?" pre-filled with the level\'s current name', /What is it called/.test(await text('.sheet-title')) && (await page.locator('.sheet input.place-input').first().inputValue()) === rowNameBefore);
+  await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 200 });
+  await settleWhere(); // takes ReCall's "linen shelf"
+  await page.locator('.lv-strip .lv-sq').nth(0).click(); await page.waitForTimeout(400);
+  check('H1a the selected square opens its sheet: See its photos / Choose place / Rename / Remove this level',
+    await count('.tier-sheet') === 1 && /See its photos[\s\S]*Choose place[\s\S]*Rename[\s\S]*Remove this level/.test(await text('.tier-sheet')), await text('.tier-sheet'));
+  await tap('.tier-sheet .sheet-row:has-text("Rename")', { wait: 400 });
+  check('H1b Rename opens "What is it called?" pre-filled with the level\'s current name', /What is it called/.test(await text('.sheet-title')) && /linen shelf/i.test(await page.locator('.sheet input.place-input').first().inputValue()));
   await type('.sheet input.place-input', 'Craft shelf');
-  await tap('.sheet .btn-primary', { wait: 900 }); // apply BEFORE the AI's answer has necessarily settled
-  const sayAfterRename = await text('.lc-say b');
-  await page.waitForTimeout(1200); // let the AI's (late) answer arrive, if it hasn't already
-  const sayAfterAI = await text('.lc-say b');
-  check('H2 R3.2: a name given pre-save WINS — it shows immediately and a late AI result never overwrites it',
-    sayAfterRename === 'Craft shelf' && sayAfterAI === 'Craft shelf', `${sayAfterRename} / ${sayAfterAI}`);
-  await tap('.lc-k.sv', { wait: 1500 });
-  const craftPlace = await placeByName('Craft shelf');
-  check('H2b the doc is created with the USER name, never the AI\'s "linen shelf"', !!craftPlace && !(await placeByName('linen shelf')));
-
-  // R3.3: a level saved with a placeholder name marks "Unnamed — tap to name"; tapping renames the doc.
-  AI = { name: 'battery pack' }; WHERE = [{ name: '', moves: true }];
-  await home(); await cam('real_desk.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('box.jpg'); await tap('.lc-shutter', { wait: 1600 });
-  await tap('.lc-k.sv', { wait: 1600 });
-  check('H3a R3.3: saved with a placeholder name → "Unnamed — tap to name" on the card (Save never blocked)', await count('.sc-unnamed') === 1);
-  await tap('.sc-unnamed', { wait: 500 });
-  check('H3b tapping it opens the rename sheet', /What is it called/.test(await text('.sheet-title')));
-  await type('.sheet input.place-input', 'Battery shelf');
   await tap('.sheet .btn-primary', { wait: 700 });
-  check('H3c the line is gone once named, and the created doc now carries the given name',
-    await count('.sc-unnamed') === 0 && (await items()).some((it) => it.name === 'Battery shelf' && it.asWhere));
+  check('H2 R3.2: the given name shows at once', /^craft shelf$/i.test(await sayT()), await sayT());
+  await tap('.lc-k.sv', { wait: 1500 });
+  check('H2b the doc is created with the USER name, never the AI\'s "linen shelf"', !!(await placeByName('Craft shelf')) && !(await placeByName('linen shelf')));
 
   // ---- I. R4 — collisions never merge silently; single ask; 4+4 pool ----
   console.log('\n---- R4 (name-collision ask) ----');
   await seedWhereHouse('wh3');
-  // I1/I2: AI names a NEW where-photo the same as an ALREADY-SAVED place → ask fires → Yes merges.
+  // I1/I2: AI names a NEW where-photo the same as an ALREADY-SAVED place → "Is this the X?" → Yes merges.
   AI = { name: 'travel adapter' }; WHERE = [{ name: 'Kitchen counter', moves: false }];
   await home(); await cam('real_cetaphil.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
   await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1700 });
-  check('I1 R4.2/4.5: a same-NAME (not visually sure) match still raises the "Your X?" ask', await count('.lc-ask') === 1, await text('.lc-ask b').catch(() => ''));
-  check('I2 R4.2: Save is off while the collision ask is unresolved', await page.locator('.lc-k.sv').isDisabled());
+  check('I1 R4.2/4.5: a same-NAME (not visually sure) match still asks "Is this the Kitchen counter?"', /Is this the Kitchen counter\?/.test(await text('.lc-ask2')), await text('.lc-ask2'));
+  check('I2 R4.2: Save is off while the ask is unresolved', await page.locator('.lc-k.sv').isDisabled());
   const kcBefore = await placeByName('Kitchen counter');
-  await tap('.lc-ask button:not(.o)', { wait: 500 }); // Yes
+  await tap('.lc-ask2 button:has-text("Yes")', { wait: 500 });
   await tap('.lc-k.sv', { wait: 1500 });
   const kcAfter = await placeByName('Kitchen counter');
   const placesNamedKC = (await places()).filter((p) => p.name === 'Kitchen counter');
-  check('I3 R4.5: Yes → photos land on the EXISTING place, no second doc',
+  check('I3 R4.5: Yes → the photo lands on the EXISTING place, no second doc',
     placesNamedKC.length === 1 && kcAfter.photos.length === kcBefore.photos.length + 1, `docs=${placesNamedKC.length} photos ${kcBefore.photos.length}->${kcAfter.photos.length}`);
 
-  // I4/I5: same scenario, but No → distinct-name gate → rename → two docs after Save.
+  // I4/I5: same, but "No, ☰ Choose place" → the name field says it's taken → a new name → two docs after Save.
   AI = { name: 'phone stand' }; WHERE = [{ name: 'Hall table', moves: false }];
   await home(); await cam('real_painting.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
   await tap('.lv-sq.plus', { wait: 300 }); await cam('book.jpg'); await tap('.lc-shutter', { wait: 1700 });
-  await tap('.lc-ask button.o', { wait: 600 }); // No, a new one
-  check('I4a No opens the rename sheet with the distinct-name line', /already a .Hall table./.test(await text('.sheet-title')));
-  check('I4b Save is still off — the gate names the colliding link', await page.locator('.lc-k.sv').isDisabled() && /needs its own name/.test(await text('.lc-say .soft').catch(() => '')));
-  await type('.sheet input.place-input', 'Hall table west');
-  await tap('.sheet .btn-primary', { wait: 500 });
-  check('I4c the gate clears once the name differs', !(await page.locator('.lc-k.sv').isDisabled()));
+  await tap('.lc-ask2 button.o', { wait: 600 });
+  check('I4a No opens Choose place with the name field, and says "Hall table" is taken', await count('.wl-pend input') === 1 && /already have a place called .Hall table./.test(await text('.wl-taken')), await text('.wl-taken'));
+  check('I4b "Use this name" is off while the name is taken', await page.locator('.wl-pend .btn-primary').isDisabled());
+  await page.locator('.wl-pend input').fill('Hall table west'); await page.waitForTimeout(250);
+  check('I4c the gate clears once the name differs', !(await page.locator('.wl-pend .btn-primary').isDisabled()));
+  await tap('.wl-pend .btn-primary', { wait: 400 });
   await tap('.lc-k.sv', { wait: 1500 });
-  check('I5 R4.5: No + rename → TWO place docs after Save (Mei\'s five Shelves stay five)',
+  check('I5 R4.5: No + a new name → TWO place docs after Save (Mei\'s five Shelves stay five)',
     !!(await placeByName('Hall table')) && !!(await placeByName('Hall table west')));
 
   // I6: candidate pool is 4 boxes + 4 places (was 2) — assert the actual whereIs request body.
@@ -381,6 +378,7 @@ async function main() {
   await home(); await cam('real_desk.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
   await tap('.lv-sq.plus', { wait: 300 }); await cam('drawer.jpg'); await tap('.lc-shutter', { wait: 1700 });
   check('I6 R4.3: the whereIs candidate pool is 4 boxes + 4 places = 8 (was 2 places)', lastPool === 8, `lastPool=${lastPool}`);
+  await settleWhere();
 
   // I7: single-ask priority — a pending THING-identity ask suppresses a level ask (R4.4/F7).
   await seedWhereHouse('wh5');
@@ -390,43 +388,37 @@ async function main() {
   AI = { name: 'garden shears', sameAs: 'garden shears' }; WHERE = [{ name: 'Kitchen counter', moves: false }];
   await home(); await cam('real_desk.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
   const identityAskUp = await count('.lc-ask') === 1;
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1700 });
-  check('I7 R4.4: with a thing-identity ask already up, no SECOND ask renders at once (single ask, F7)', identityAskUp && await count('.lc-ask') === 1);
+  if (await count('.lv-sq.plus')) { await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1700 }); }
+  const i7n = await count('.lc-ask'); await shot('i7-single-ask');
+  check('I7 R4.4: with a thing-identity ask already up, no SECOND ask renders at once (single ask, F7)', identityAskUp && i7n === 1, `identity=${identityAskUp} asks=${i7n}`);
+  await tap('.lc-ask:not(.lc-ask2) button:not(.o)', { wait: 600 }); // answer the item's ask
+  check('I7b …and once it is answered, the place question comes next ("Is this the Kitchen counter?")', /Is this the Kitchen counter\?/.test(await text('.lc-ask2')), await text('.lc-card'));
   await tap('.lc-x', { wait: 400 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 400 });
 
-  // ---- J. R5 — the chain sheet (kills F5) ----
-  console.log('\n---- R5 (chain sheet) ----');
+  // ---- J. R5 — each level's own sheet (replaces the 09-27 chain sheet) ----
+  console.log('\n---- R5 (level sheet) ----');
   await seedWhereHouse('wh6');
   AI = { name: 'usb cable' }; WHERE = [{ name: 'zip pouch', moves: true }, { name: 'shelf a', moves: false }, { name: 'closet b', moves: false }];
   await home(); await cam('real_desk.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('box.jpg'); await tap('.lc-shutter', { wait: 1600 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1600 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('drawer.jpg'); await tap('.lc-shutter', { wait: 1600 });
-  const sayBeforeChain = [await text('.lc-say b'), await text('.lc-say .soft')].join(' | ');
-  await tap('.lc-chg', { wait: 500 });
-  await shot('j-chain-sheet-3deep');
-  check('J1 R5.2: the old 3-option Choice ("Photograph it again") is gone for good', await count('.item-sheet:has-text("Photograph it again")') === 0);
-  check('J2 the chain sheet shows one row per level (3 rows for a 3-deep chain)', await count('.chain-sheet .cs-row') === 3);
-  check('J3 R5.3: Replace and Remove are WORDS, not bare icons', /Replace/.test(await text('.chain-sheet .cs-row')) && (await page.locator('.chain-sheet .cs-row .cs-act.rm').first().innerText()) === 'Remove');
-  const target44 = await Promise.all(['.chain-sheet .cs-name', '.chain-sheet .cs-act:not(.rm)', '.chain-sheet .cs-act.rm'].map((s) => minH(s)));
-  check('J4 R5.3: every row control is >= 44px tall (Frank + Sunil)', target44.every((h) => h >= 44), JSON.stringify(target44));
-  await tap('.chain-sheet .cs-row:nth-child(2) .cs-act:not(.rm)', { wait: 500 }); // Replace level 2
-  const sayAfterReplace = [await text('.lc-say b'), await text('.lc-say .soft')].join(' | ');
-  check('J5 R5.4: Replace level 2 clears ONLY that level — levels 1 and 3 untouched',
-    /zip pouch/.test(sayAfterReplace) && /closet b/i.test(sayAfterReplace) && !/shelf a/i.test(sayAfterReplace), `before="${sayBeforeChain}" after="${sayAfterReplace}"`);
-  await tap('.lc-chg', { wait: 500 });
-  await tap('.chain-sheet .cs-row:nth-child(2) .cs-act.rm', { wait: 500 }); // Remove the now-empty level 2
-  const sayAfterRemove2 = [await text('.lc-say b'), await text('.lc-say .soft')].join(' | ');
-  check('J6 R5.4: Remove level 2 → the chain is 1 -> 3 (zip pouch, closet b)', /zip pouch/.test(sayAfterRemove2) && /closet b/i.test(sayAfterRemove2));
-  // No place yet, with 2+ levels filled → confirm first.
-  await tap('.lc-chg', { wait: 500 });
-  await tap('.chain-sheet .btn-secondary.amber:has-text("No place yet")', { wait: 500 });
-  check('J7 R5.1: "No place yet" with 2+ filled levels asks to confirm first', await count('.sheet-title:has-text("Clear where it goes")') === 1);
-  await tap('.sheet .btn-primary.alt', { wait: 500 }); // Keep it → back to the chain sheet
-  check('J8 Keep it returns to the chain sheet, nothing cleared', await count('.chain-sheet') === 1);
-  await tap('.chain-sheet .btn-secondary.amber:has-text("No place yet")', { wait: 500 });
-  await tap('.sheet .btn-secondary.amber', { wait: 600 }); // Clear
-  check('J9 Clear empties the whole chain — back to "No place yet"', /No place yet/.test(await text('.lc-say b')));
+  for (const f of ['box.jpg', 'closet.jpg', 'drawer.jpg']) { await tap('.lv-sq.plus', { wait: 300 }); await cam(f); await tap('.lc-shutter', { wait: 300 }); await settleWhere(); }
+  const chainJ = await text('.lc-chainline');
+  check('J1 the old 3-option Choice ("Photograph it again") is gone for good', await count('text=Photograph it again') === 0);
+  check('J2 three levels → three place squares, and the chain line reads zip pouch in shelf a in closet b',
+    await count('.lv-strip .lv-sq:not(.plus)') === 3 && /zip pouch\s*in\s*shelf a\s*in\s*closet b/i.test(chainJ), chainJ);
+  await openTier(1); // select level 2, tap again → its sheet
+  await shot('j-level-sheet');
+  check('J3 R5.3: the level sheet\'s actions are WORDS (Choose place, Remove this level), not bare icons', /Choose place/.test(await text('.tier-sheet')) && /Remove this level/.test(await text('.tier-sheet')));
+  const rowsH = await page.locator('.tier-sheet .sheet-row').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+  check('J4 R5.3: every row is >= 44px tall (Frank + Sunil)', rowsH.length >= 3 && rowsH.every((h) => h >= 44), JSON.stringify(rowsH));
+  await tap('.tier-sheet .sheet-row.danger', { wait: 500 });
+  const chainJ5 = await text('.lc-chainline');
+  check('J5 R5.4: Remove level 2 → the chain is zip pouch in closet b (levels 1 and 3 untouched)', /zip pouch\s*in\s*closet b/i.test(chainJ5) && !/shelf a/i.test(chainJ5), chainJ5);
+  await openTier(0);
+  await tap('.tier-sheet .sheet-row:has-text("Choose place")', { wait: 400 });
+  await page.fill('.wl-search input', 'Hall table'); await page.waitForTimeout(150);
+  await tap('.where-list .wl-row:not(.wl-sugg):has-text("Hall table")', { wait: 500 });
+  const chainJ6 = await text('.lc-chainline');
+  check('J6 R5.4: Choose place from level 1\'s sheet replaces ONLY level 1 → Hall table in closet b', /^Hall table\s*in\s*closet b/i.test(chainJ6), chainJ6);
   await tap('.lc-x', { wait: 400 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 400 });
 
   // ---- K. R6.4 — the soft nudge, not a chore ----
@@ -434,56 +426,23 @@ async function main() {
   await seedWhereHouse('wh7');
   AI = { name: 'flashlight' }; WHERE = [{ name: 'tackle box', moves: true }];
   await home(); await cam('real_desk.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('box.jpg'); await tap('.lc-shutter', { wait: 1700 });
+  await tap('.lv-sq.plus', { wait: 300 }); await cam('box.jpg'); await tap('.lc-shutter', { wait: 300 }); await settleWhere();
   await tap('.lc-k.sv', { wait: 1500 });
   const cardL2 = await text('.saved-card .s small');
   check('K1 R6.4: outermost NEW box, no outer level → the card\'s l2 is the soft nudge, not a blank',
     /haven.t said where the tackle box is/i.test(cardL2), cardL2);
 
-  // Regression guard: a box with something ALREADY beyond it never gets the nudge (l2 already says something).
-  // The outer level is picked as a KNOWN chip (not AI-named) — naming "Hall table" via AI would collide
-  // with the real seeded place of that name and correctly raise the R4 byName ask, which isn't this test.
+  // Regression guard: a box with something ALREADY beyond it never gets the nudge.
   AI = { name: 'multitool' }; WHERE = [{ name: 'gear pouch', moves: true }];
   await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('box14.jpg'); await tap('.lc-shutter', { wait: 1600 });
+  await tap('.lv-sq.plus', { wait: 300 }); await cam('box14.jpg'); await tap('.lc-shutter', { wait: 300 }); await settleWhere();
   await tap('.lv-sq.plus', { wait: 300 });
-  await tap('.lc-chips .lc-chip.more', { wait: 400 });
-  await tap('.wl-row:has-text("Hall table")', { wait: 500 });
+  await pickPlace('Hall table');
   await tap('.lc-k.sv', { wait: 1500 });
   const cardL2b = await text('.saved-card .s small');
   check('K2 …but when l2 already names the outer place, no nudge is appended', !/haven.t said where/i.test(cardL2b), cardL2b);
 
-  // ---- L. R7 — parity: the R1/R4/R5 core paths, run again in look A ----
-  console.log('\n---- R7 (look A parity) ----');
-  await seedWhereHouse('wh8'); await setPrefs({ cameraLook: 'a' });
-  // R1 in look A
-  AI = { name: 'coaster set' }; WHERE = [];
-  await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 }); await tap('.lc-chips .lc-chip:not(.more)', { wait: 500 });
-  // .lv-t .lc-nm .first() is the THING tile (index 0) — the level tile (the pick) is .nth(1).
-  const chipA = await page.locator('.lv-t .lc-nm').nth(1).innerText().catch(() => '');
-  await cam('real_desk.jpg'); await tap('.lc-shutter', { wait: 1400 });
-  const nmAfterA = await page.locator('.lv-t .lc-nm').nth(1).innerText().catch(() => '');
-  check('L1 R1/R7 (look A): identity survives a photo — the level tile still names the pick', nmAfterA.trim().toLowerCase() === chipA.trim().toLowerCase(), `${chipA} / ${nmAfterA}`);
-  await tap('.lc-x', { wait: 400 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 400 });
-  // R4 collision ask + gate in look A
-  AI = { name: 'desk lamp' }; WHERE = [{ name: 'Kitchen counter', moves: false }];
-  await home(); await cam('real_cetaphil.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1700 });
-  check('L2 R4/R7 (look A): the collision ask renders (as the floating lc-float card)', await count('.lc-float .lc-ask') === 1 || await count('.lc-ask') === 1);
-  check('L2b Save is off while colliding (look A)', await page.locator('.lc-k.sv').isDisabled());
-  await tap('.lc-ask button:not(.o)', { wait: 500 }); // Yes
-  await tap('.lc-k.sv', { wait: 1400 });
-  check('L2c Yes merges in look A too — still one Kitchen counter doc', (await places()).filter((p) => p.name === 'Kitchen counter').length === 1);
-  // R5 chain sheet in look A
-  AI = { name: 'paint brush' }; WHERE = [{ name: 'craft bin', moves: true }, { name: 'shelf x', moves: false }];
-  await home(); await cam('real_painting.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('box.jpg'); await tap('.lc-shutter', { wait: 1600 });
-  await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1600 });
-  await tap('.lc-chg', { wait: 500 });
-  check('L3 R5/R7 (look A): the chain sheet opens with a row per level', await count('.chain-sheet .cs-row') === 2);
-  await tap('.chain-sheet .cs-row:nth-child(1) .cs-act.rm', { wait: 500 });
-  check('L3b Remove level 1 in look A leaves level 2 alone', /shelf x/i.test(await text('.lc-say b')));
+  // L (look A parity) retired 09-29g: the camera has one look now.
 
   check('Z0 no page/console errors across the whole run (Stage 1 + Stage 2/3)', errors.length === 0, errors.join(' | '));
 

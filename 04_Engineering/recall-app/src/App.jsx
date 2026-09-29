@@ -361,7 +361,7 @@ export default function App() {
       return;
     }
     if (card.where) notePlace(card.where); // Write it down offers the place used a moment ago
-    if (card.next) { setToast({ text: `Saved · ${card.name}${card.none ? '' : ` · ${card.l1}`}`, over: true, key: Date.now() }); return; }
+    if (card.next) return; // 09-29 (Ravi): the camera itself flashes "Spare batteries ✓ saved" and stays open for the next item
     setLog(null); setSaved({ ...card, key: Date.now() });
   };
   const switchMode = (m) => {

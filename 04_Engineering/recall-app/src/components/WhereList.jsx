@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { knownLocations, placeNamed } from '../lib/db.js';
 import { graph, containers, wouldLoop, atPlace, holderOf } from '../lib/graph.js';
 import { normName } from '../lib/names.js';
-import { PinIcon, BoxIcon, SearchIcon, CameraIcon, PlusIcon } from './Icons.jsx';
+import { PinIcon, BoxIcon, SearchIcon, CameraIcon, PlusIcon, ListIcon } from './Icons.jsx';
+import { hasSecret } from '../lib/sensitive.js';
 
 // Every place and every container, in one list (Ravi 09-27; mockups/S11_fix_pages.jpg "••• every place and box").
 // The only list of "where" in the app: behind ••• on the camera, and in Write it down. It offers places (always) and
@@ -16,8 +17,17 @@ import { PinIcon, BoxIcon, SearchIcon, CameraIcon, PlusIcon } from './Icons.jsx'
 // A box keeps its box icon; its second line is "a box · in Garage" / "a box · no place yet".
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-export default function WhereList({ item = null, items = [], places = [], title = 'Where does it go?', onPick, onPhotograph = null, onCancel, exclude = null }) {
+// 09-29 (Ravi) — the camera's ONE "Choose place" sheet. `chooser` gives it the ☰ title. After a photo the camera couldn't
+// place (not recognised, or "No"), `pending` puts that photo on top: "A new place?" + a name field (ReCall's guess) +
+// "Use this name"; the list below is headed "Or it's one of your places". `suggest` is a late recognition: first row.
+export default function WhereList({ item = null, items = [], places = [], title = 'Where does it go?', onPick, onPhotograph = null, onCancel, exclude = null,
+  chooser = false, pending = null, suggest = null }) {
   const [q, setQ] = useState('');
+  const [draft, setDraft] = useState(pending ? pending.draft || '' : '');
+  const [touched, setTouched] = useState(false);
+  // a late answer from ReCall fills the name — unless she has already typed one
+  useEffect(() => { if (pending && !touched && pending.draft && pending.draft !== draft) setDraft(pending.draft); }, [pending && pending.draft]); // eslint-disable-line react-hooks/exhaustive-deps
+  const taken = pending && draft.trim() && pending.taken ? pending.taken(draft.trim()) : '';
   const g = graph();
   // "in the wooden box" searches for "wooden box": the little words in front are how people say where, not part of the name.
   const bare = q.trim().replace(/^(in|inside|into|on|at|under)\s+/i, '').replace(/^(the|my|a|an|our)\s+/i, '');
@@ -40,12 +50,25 @@ export default function WhereList({ item = null, items = [], places = [], title 
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet where-list" role="dialog" aria-modal="true" aria-labelledby="wl-title" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-title" id="wl-title">{title}</div>
+        <div className="sheet-title" id="wl-title">{chooser ? <span className="wl-chooser"><ListIcon />Choose place</span> : title}</div>
+        {pending && (
+          <div className="wl-pend">
+            <div className="wl-pend-h">{pending.thumb ? <img src={pending.thumb} alt="" style={{ borderColor: pending.colour }} /> : null}<span><b>A new place?</b><small>Name the place in your photo</small></span></div>
+            <input className="place-input" value={draft} onChange={(e) => { setTouched(true); setDraft(e.target.value); }} placeholder="What is it called?" aria-label="What is this place called?" enterKeyHint="done"
+              onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim() && !taken && !hasSecret(draft)) pending.onUse(draft.trim()); }} />
+            {taken ? <p className="wl-taken">{taken}</p> : <p className="wl-hint">{pending.guessed ? 'ReCall’s guess — type to change it.' : ' '}</p>}
+            <button type="button" className="btn-primary" disabled={!draft.trim() || !!taken || hasSecret(draft)} onClick={() => pending.onUse(draft.trim())}>Use this name</button>
+          </div>)}
+        {suggest && (
+          <button type="button" className="wl-row wl-sugg" onClick={() => onPick(suggest.known)}>
+            {suggest.thumb ? <img src={suggest.thumb} alt="" /> : <span className="no"><PinIcon /></span>}
+            <span className="tx"><b>Is it the {suggest.name}?</b><small>ReCall thinks so, from the photo</small></span>
+          </button>)}
         <div className="wl-search"><SearchIcon /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your places" aria-label="Search your places" enterKeyHint="search" /></div>
-        {onPhotograph && <button type="button" className="wl-new" onClick={onPhotograph}><CameraIcon /><span>Photograph a new place</span></button>}
+        {onPhotograph && !pending && <button type="button" className="wl-new" onClick={onPhotograph}><CameraIcon /><span>Photograph a new place</span></button>}
         {typed && !exists && <button type="button" className="wl-new typed" onClick={() => onPick({ t: 'place', name: cap(typed) })}><PlusIcon /><span>A new place called “{cap(typed)}”</span></button>}
         <div className="wl-scroll">
-          {shown > 0 && <div className="wl-g">YOUR PLACES · {shown}</div>}
+          {shown > 0 && <div className="wl-g">{pending ? 'OR IT’S ONE OF YOUR PLACES' : 'YOUR PLACES'} · {shown}</div>}
           {placeList.map((n) => { const t = placePic(n); return (
             <button type="button" key={'p' + n} className="wl-row" onClick={() => onPick({ t: 'place', name: n })}>
               {t ? <img src={t} alt="" /> : <span className="no"><PinIcon /></span>}

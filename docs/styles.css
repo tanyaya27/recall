@@ -1129,3 +1129,70 @@ html, body { overflow-x: hidden; }
 .lc-bstack > .lv-chain { position: static; }
 .lc-bstack > .lc-prompt { position: static; margin: 0 0.75rem; }
 .lc .lc-say .lab { font-weight: 600; }
+
+/* ===== 09-29 (Ravi) — the camera card for multi-level places (DECISIONS 09-29 evening; mockups MV_2026-09-29_*) ===== */
+/* the top band: the item's photo + the question; Cancel is at the bottom now */
+.lc-band { justify-content: flex-start; gap: 0.625rem; min-height: 4rem; }
+.lc-thing { position: relative; flex: none; width: 46px; height: 46px; min-height: 0; padding: 0; border-radius: 10px; overflow: hidden; border: 2.5px solid rgba(255,255,255,0.85); background: #222; }
+.lc-thing img { width: 100%; height: 100%; object-fit: cover; }
+.lc-thing.sel { border: 4px solid #fff; box-shadow: 0 0 0 2px rgba(0,0,0,0.5); }
+.lc-thing .lv-n { right: 1px; bottom: 1px; }
+.lc-title { flex: 1; min-width: 0; line-height: 1.2; }
+.lc-title small { display: flex; align-items: center; gap: 0.4rem; color: #BDB6AB; font-size: 0.875rem; font-weight: 600; }
+.lc-title small .lc-whose { padding: 0.1rem 0.5rem; font-size: 0.75rem; }
+.lc-title b, .lc-title .lc-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0; padding: 0; min-height: 0; background: none; color: #fff; font-size: 1.0625rem; font-weight: 800; text-align: left; }
+/* before the first photo the prompt stays at the top of the picture */
+.lc-prompt.lc-first { position: absolute; }
+/* the card: one short prompt, the place squares with ＋ and Choose place, "Place: …", then the chain under a thin line */
+.lc-card .lc-prompt, .lc-card > .lc-prompt { position: static; display: block; padding: 0 0.125rem; margin: 0 0 0.625rem; border: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0; font-size: 1rem; font-weight: 700; line-height: 1.3; }
+.lc-plus-in { display: inline-flex; vertical-align: -0.2em; } .lc-plus-in svg { width: 1.15em; height: 1.15em; }
+.lc-row2 { display: flex; align-items: center; flex-wrap: nowrap; gap: 0.5rem; } /* 09-29g: Choose place stays on the squares' row; the squares scroll (Q1) */
+.lc-row2 .lv-strip { flex: 0 1 auto; min-width: 0; }
+.lc-choose { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 44px; padding: 0 0.75rem; border-radius: 999px; white-space: nowrap;
+  background: transparent; border: 1.5px solid rgba(255,255,255,0.55); color: #fff; font-size: 0.9375rem; font-weight: 800; }
+.lc-choose svg { width: 1.2rem; height: 1.2rem; } .lc-choose:disabled { opacity: 0.35; }
+.lv-sq.plus { width: 44px; border: 0; background: transparent; color: #fff; } .lv-sq.plus svg { width: 30px; height: 30px; }
+.lv-sq.empty.sel { border-style: solid; }
+.lv-sq.sugg { border-style: dashed; border-width: 3px; }
+.lv-sq:disabled { opacity: 1; }
+.lv-look { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); }
+.lv-look i { width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.25); border-top-color: #fff; animation: lcspin 0.9s linear infinite; }
+@keyframes lcspin { to { transform: rotate(360deg); } }
+.lc-card .lc-say { margin: 0.625rem 0.125rem 0.125rem; min-height: 0; }
+.lc-card .lc-say .tx b { white-space: normal; font-size: 1rem; }
+.lc-say .lab { font-weight: 800; } .lc-say .nd { color: #D6D0C6; font-weight: 600; } .lc-look { color: #D6D0C6; }
+.lc-chainline { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin: 0.625rem 0.125rem 0.125rem; padding-top: 0.5625rem; border-top: 1px solid rgba(255,255,255,0.2); font-size: 0.9375rem; font-weight: 700; }
+.lc-chainline .cp { display: inline-flex; align-items: center; gap: 0.375rem; } .lc-chainline .soft { font-weight: 600; }
+/* "Is this the Desk drawer?" — the new photo and the saved one side by side */
+.lc-card .lc-ask2 { margin: 0.125rem; }
+.lc-ask2 .pair { display: flex; align-items: center; gap: 0.625rem; margin: 0 0 0.625rem; flex-wrap: nowrap; }
+.lc-ask2 .pair img, .lc-ask2 .pair .theirs { flex: none; width: 58px; height: 58px; border-radius: 12px; object-fit: cover; border: 3px solid rgba(255,255,255,0.45); box-sizing: border-box; }
+.lc-ask2 .pair .theirs.no { display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); }
+.lc-ask2 .pair .eq { font-size: 1.375rem; font-weight: 800; color: #D6D0C6; }
+.lc-ask2 .pair b { display: block; flex: 1; min-width: 0; font-size: 1.0625rem; line-height: 1.25; }
+.lc-ask2 button.o { display: inline-flex; align-items: center; gap: 0.4rem; } .lc-ask2 button.o svg { width: 1.1rem; height: 1.1rem; }
+/* bottom row: Cancel | shutter | Save (the iOS camera-picker layout) */
+.lc-row .lc-x { justify-self: start; min-height: 56px; border-radius: 16px; padding: 0 0.875rem; background: rgba(40,40,40,0.9); border: 1.5px solid #666; }
+.lc-row .lc-k.sv { justify-self: end; padding: 0 1rem; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+.lc-k.sv.next { background: #3E8C7A; box-shadow: 0 0 0 3px #7FD1B9; }
+/* after Save + Next: "Spare batteries ✓ saved" on a see-through panel */
+.lc-saved { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5; width: max-content; max-width: 86%; padding: 1rem 1.5rem; border-radius: 1.125rem;
+  background: rgba(24,22,20,0.62); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.14);
+  color: #fff; font-size: 1.375rem; font-weight: 800; text-align: center; pointer-events: none; }
+.lc-saved .ok { color: #7FD1B9; white-space: nowrap; }
+/* Choose place: the ☰ title; after an unplaced photo, "A new place?" + a name field on top */
+.wl-chooser { display: inline-flex; align-items: center; gap: 0.5rem; } .wl-chooser svg { width: 1.2rem; height: 1.2rem; }
+.wl-pend { margin: 0 0 0.75rem; }
+.wl-pend-h { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+.wl-pend-h img { width: 58px; height: 58px; border-radius: 12px; object-fit: cover; border: 3px solid; box-sizing: border-box; }
+.wl-pend-h b { display: block; font-size: 1.0625rem; } .wl-pend-h small { display: block; color: var(--ink-soft); font-size: 0.875rem; }
+.wl-hint, .wl-taken { margin: 0.25rem 0.125rem 0.5rem; font-size: 0.875rem; color: var(--ink-soft); min-height: 1em; } .wl-taken { color: var(--amber); }
+.wl-sugg { border: 2px solid var(--accent); border-radius: 12px; margin-bottom: 0.5rem; }
+/* tap the selected square: that level's own sheet */
+.tier-sheet .ts-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+.tier-sheet .ts-head img, .tier-sheet .ts-head .no { flex: none; width: 58px; height: 58px; border-radius: 12px; object-fit: cover; border: 3px solid; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+.tier-sheet .ts-head b { display: block; font-size: 1.125rem; } .tier-sheet .ts-head small { display: block; color: var(--ink-soft); font-size: 0.875rem; }
+.tier-sheet .sheet-row { display: flex; align-items: center; gap: 0.625rem; width: 100%; text-align: left; margin-top: 0.5rem;
+  padding: 0.875rem 1rem; min-height: 3.5rem; background: var(--accent-soft); color: var(--accent); font-size: min(1.1875rem, 5vw); font-weight: 600; border-radius: var(--radius); }
+.tier-sheet .sheet-row svg { width: 1.2em; height: 1.2em; flex: none; }
+.tier-sheet .sheet-row.danger { background: var(--amber-bg); color: var(--amber); }

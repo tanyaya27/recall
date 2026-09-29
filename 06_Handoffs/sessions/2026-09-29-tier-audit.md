@@ -46,3 +46,13 @@ only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eig
   and the saved flash). All rulings on one sheet: `design/mockups/MV_2026-09-29_camera-card-all-rulings.jpg`; DECISIONS.
 - `f`: "thing" → "item" everywhere. Suites: 50 · 100 · 44 · 66 · 14 · 34 · 117 · 63 · tiers 40 · probe_cap 14.
 - Next: build the camera card once the recognise wait and the 6-photo cap are answered.
+
+## 09-29 (late night): `20260929g` — the camera card built
+- Ravi ruled the last two: the recognise wait is **3 s** (later maybe "wait 3 more seconds"), and a place's 7th photo
+  **replaces the oldest** (the main photo stays). Built the whole ruled card (see OPEN_ITEMS `g`, DECISIONS late night).
+- Migrating the suites to the new controls found three real defects, fixed: two questions on screen at once (item + place),
+  "what the a place is in", and ☰ Choose place dropping under the squares at 2+ levels (plus a 3 px clip at Largest).
+  Also removed the dead "The camera" A/B picker from Settings.
+- New suites: audit_card 31, probe_row 9. Suites: audit 100 · roles 44 · graph 66 · label 14 · private 34 · d 83 ·
+  where 53 · repro_f3 45 · tiers 43 · probe_cap 14 · card 31 · row 9 = 536, all green.
+- Screens: `design/mockups/BUILD_2026-09-29g_camera-card.jpg`.

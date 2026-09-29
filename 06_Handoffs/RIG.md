@@ -131,3 +131,14 @@ the functions: `./rules-test/run_ai_test.sh`.
   2-line cap, Normal/Large/Largest × both themes; and the no-photo pin square not in button colours. `PORT=8420 node probe_cap.js`.
 - `gen_mv.py` → `mock/mv_*.html`, `mock/mc_*.html`; `node render_mv.js` → `shots_mv/`; `compose_mv.py` — the camera-card
   redesign mockups (09-29).
+- `audit_card.js` (31 checks, = `tiers_head.js` + `card_body.js`): the 09-29g camera card — Move opens, + adds a level, the
+  3 s look (everything waits), "Is this the …?" Yes / No → Choose place with the name field and the "already have" refusal,
+  the timeout + late answer, the level sheet, hold Save → Save + Next → "✓ saved", the 6-photo rotation. `PORT=8603`.
+- `probe_row.js` (9 checks, = `tiers_head.js` + `probe_row_body.js`): ☰ Choose place stays on the squares' row with 1–3
+  levels at Normal/Large/Largest; the selected square and + stay in view. Shots in `shots_row/`. `PORT=8605`.
+- **Camera helpers for suites** (09-29g, pasted after `const page = await ctx.newPage();`): `settleWhere()` waits out the
+  look and accepts ReCall's name in the Choose place sheet; `pickPlace(name)` goes through ☰ Choose place; `saveNext()`
+  holds Save for 0.8 s. The pills (`.lc-chip`), the chain sheet (`.chain-sheet`) and look A are gone.
+- **Full run (09-29g): 536 checks.** audit 100 · audit_roles 44 · audit_graph 66 · audit_label 14 · audit_private 34 ·
+  audit_d 83 · audit_where 53 · repro_f3 45 · audit_tiers 43 · probe_cap 14 · audit_card 31 · probe_row 9. Run the six
+  plain suites together, then the browser-heavy ones **three at a time** (five at once ran the container out of memory).

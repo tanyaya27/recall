@@ -31,6 +31,18 @@ async function main() {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
   });
   const page = await ctx.newPage();
+  // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
+  // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
+  const settleWhere = async (fallback = '') => {
+    for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
+    await page.waitForTimeout(300);
+    if (await page.locator('.wl-pend .btn-primary').count()) {
+      if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
+      await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
+    }
+  };
+  const pickPlace = async (name) => { await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.click(`.where-list .wl-row:has-text("${name}")`); await page.waitForTimeout(350); };
+  const saveNext = async () => { const b = await page.locator('.lc-k.sv').boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up(); await page.waitForTimeout(400); };
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/camera/.test(m.text())) errors.push('console: ' + m.text().slice(0, 160)); });
   const shot = async (n) => { await page.waitForTimeout(250); await page.screenshot({ path: `shots/priv-${n}.png` }); };
@@ -48,7 +60,7 @@ async function main() {
   const openCam = async () => { await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); };
   const shootOne = async () => { await openCam(); await page.click('.lc-shutter'); await page.waitForTimeout(400); };
   // The camera (09-27): tap the place chip if there is one, then Save.
-  const saveAt = async (nm) => { const c = page.locator(`.lc-chip:has-text("${nm}")`); if (await c.count()) await c.first().click(); await page.waitForTimeout(150); await page.click('.lc-k.sv'); await page.waitForSelector('.board'); };
+  const saveAt = async (nm) => { if (nm) await pickPlace(nm).catch(() => {}); await page.waitForTimeout(150); await page.click('.lc-k.sv'); await page.waitForSelector('.board'); };
   const waitFor = async (fn, ms = 6000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return true; await page.waitForTimeout(150); } return false; };
 
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen');
@@ -108,9 +120,9 @@ async function main() {
   await shootOne(); await page.waitForSelector('.privnote.stop');
   aiNext = tagOf('recovery sheet', { private: true, privateWhy: 'looks like passwords' });
   await page.click('.pn-link:has-text("Take it closed")'); await page.waitForTimeout(300);
-  check('X3a Take it closed → back to step 1 on the same camera', /Photograph the item/.test(await text('.lc-prompt')));
+  check('X3a Take it closed → back to step 1 on the same camera', /Photograph it/.test(await text('.lc-band')));
   await page.click('.lc-shutter'); await page.waitForTimeout(1200);
-  check('X3 …a new photo, named again, now "Kept private" (photo kept)', /Kept private/.test(await text('.privnote')) && await count('.privnote.stop') === 0 && await count('.lv-s .lv-sq img') === 1);
+  check('X3 …a new photo, named again, now "Kept private" (photo kept)', /Kept private/.test(await text('.privnote')) && await count('.privnote.stop') === 0 && await count('.lc-band .lc-thing img') === 1);
   await saveAt('Desk'); await page.waitForTimeout(400);
   const dc = await byName('recovery sheet');
   check('X4 …saved with its photo, private', dc && !!dc.photo && dc.private === true);
@@ -136,7 +148,7 @@ async function main() {
   check('L2 Share it (on the card) → shared', (await byName('pill organizer')).private === false);
   // Next item: the verdict lands while the camera is open again
   aiNext = tagOf('passport', { private: true, privateWhy: 'looks like ID' });
-  await shootOne(); await page.click('.lc-k.sn'); await page.waitForSelector('.lc');
+  await shootOne(); await saveNext(); await page.waitForSelector('.lc');
   const overOk = await waitFor(async () => /Kept private · looks like ID/.test(await text('.toast.over')));
   check('L3 Next item: the notice shows OVER the camera, and the passport is private', overOk && (await byName('passport') || {}).private === true);
   await shot('6-late-over-camera');

@@ -212,3 +212,7 @@ export function PinAskIcon() {
     </svg>
   );
 }
+// 09-29 (Ravi): "☰ Choose place" — a list, the same glyph on the camera's button, the "No, Choose place" answer and the sheet.
+export function ListIcon() {
+  return (<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1.2" fill="currentColor" /><circle cx="4.5" cy="12" r="1.2" fill="currentColor" /><circle cx="4.5" cy="18" r="1.2" fill="currentColor" /></svg>);
+}

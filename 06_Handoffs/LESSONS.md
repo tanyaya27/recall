@@ -415,3 +415,11 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-29 (evening) — A copy change breaks the audits that match words.** The things→items sweep failed six checks that
   matched "No, a new thing", "Put things in", "2 things", "The thing", "where things are". Grep the audits for the old words
   in the same change.
+- **2026-09-29 (late night) — A redesign can drop a rule the old screen kept.** The old card showed one question at a time
+  (R4.4/F7); the new card rendered the item's "Your X?" and the place's "Is this the Y?" together. The old suite's check
+  caught it only after it was migrated to the new controls — migrate the checks, don't retire them with the screen.
+- **2026-09-29 (late night) — Five Playwright suites at once ran the container out of memory** (the run was killed, and a
+  timing check read 4.0 s for a 3 s timer). Run at most three browser suites at a time; rerun a timing failure alone.
+- **2026-09-29 (late night) — Look at the built screen at 2+ levels and at Largest, not just the first state.** Every check
+  passed while ☰ Choose place had dropped under the squares at 2 levels (and the selected square was clipped 3 px at
+  Largest). `rig/probe_row.js` now measures the row.

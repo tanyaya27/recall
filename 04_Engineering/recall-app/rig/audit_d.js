@@ -327,68 +327,38 @@ async function main() {
     return { n: chips.length, places: chips.filter((c) => !c.classList.contains('more')).length, more: row.querySelectorAll('.lc-chip.more').length, tops: chips.map((c) => Math.round(c.getBoundingClientRect().top)), offs: chips.map((c) => c.offsetTop),
       rights: chips.map((c) => Math.round(c.getBoundingClientRect().right)), rowRight: Math.round(rr.right), rowH: Math.round(rr.height), ell: chips.filter((c) => !c.classList.contains('more')).map((c) => getComputedStyle(c.querySelector('span:last-child')).textOverflow) };
   }, sel);
-  for (const look of ['b', 'a']) {
-    const L = look.toUpperCase(); const wrap = look === 'b' ? '.lc-card' : '.lc-float';
-    await shootWhere(look);
-    check(`D4 ${L}: before any place photo the pills are already in the card, none in the bottom bar`, await count(`${wrap} .lc-chips`) === 1 && await count('.lc-bot .lc-chips') === 0);
-    check(`D4 ${L}: no "tap another" hint text anywhere (no ask)`, !/tap another/i.test(await page.evaluate(() => document.body.innerText)));
+  // 09-29 (Ravi): the D4 where-card (pills in the card, "📍 Your desk drawer?") is SUPERSEDED by the camera card of 09-29 —
+  // no pills; one look; the question is "Is this the Desk drawer?" with both photos, Yes / "No, ☰ Choose place". The new card
+  // has its own suite (audit_card.js); D4's lasting promises are kept here: the photo stays on its level, Yes resolves it,
+  // Save writes the thing there, and the tag's caption lands on the first photo (D3).
+  {
+    const L = 'B';
+    await shootWhere('b');
     await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
-    check(`D4 ${L}: the recognition ask is up ("Your desk drawer?")`, /Your desk drawer\?/i.test(await text('.lc-ask')), await text('.lc-ask'));
-    check(`D4 ${L}: pills are INSIDE the card (not in the bottom bar)`, await count(`${wrap} .lc-chips`) === 1 && await count('.lc-bot .lc-chips') === 0);
-    const ol = await oneLine(`${wrap} .lc-chips`);
-    check(`D4 ${L}: ONE line — every pill shares the same top (and offsetTop), never wraps`, !!ol && new Set(ol.tops).size === 1 && new Set(ol.offs).size === 1 && ol.rowH <= 52, JSON.stringify(ol));
-    check(`D4 ${L}: at most two place pills plus the ••• pill`, !!ol && ol.places <= 2 && ol.more === 1 && ol.n <= 3, JSON.stringify(ol));
-    check(`D4 ${L}: inside 390 px, names ellipsised`, !!ol && ol.rights.every((r) => r <= 390) && ol.rights.every((r) => r <= ol.rowRight + 1) && ol.ell.every((e) => e === 'ellipsis'), JSON.stringify(ol));
-    const pin = await page.evaluate(() => { const b = document.querySelector('.lc-ask b'); const sv = b.firstElementChild; const sp = b.lastElementChild; const rs = sv.getBoundingClientRect(), rt = sp.getBoundingClientRect(); return { first: sv.tagName.toLowerCase(), rightOfSvg: rs.right, textLeft: rt.left, cs: rs.top + rs.height / 2, ct: rt.top + rt.height / 2, colour: getComputedStyle(b).color, text: sp.innerText }; });
-    check(`D4 ${L}: the pin icon is at the START of the ask line, vertically centred on it`, pin.first === 'svg' && pin.rightOfSvg <= pin.textLeft && Math.abs(pin.cs - pin.ct) <= 3 && pin.text === 'Your desk drawer?', JSON.stringify(pin));
-    check(`D4 ${L}: the pin (and line) take the selected level's colour — amber for level 1`, pin.colour === LEVEL1, pin.colour);
-    check(`D4 ${L}: Yes and "No, a new one" follow, each >= 44 px`, /^Yes$/.test((await text('.lc-ask button:not(.o)')).trim()) && /^No, a new one$/.test((await text('.lc-ask button.o')).trim()) && (await box('.lc-ask button')).h >= 43.5);
-    check(`D4 ${L}: while an ask shows, the separate sentence line is NOT shown`, await count('.lc-say') === 0);
-    check(`D4 ${L}: no "tap another" hint (ask showing)`, !/tap another/i.test(await page.evaluate(() => document.body.innerText)));
-    await shot(`D4_ask-${L}`);
-    // tap the 2nd pill (the box): the ask resolves, the sentence reads the chosen place
-    const labels = await page.locator(`${wrap} .lc-chip:not(.more) span:last-child`).allInnerTexts();
-    await tap(`${wrap} .lc-chip:not(.more) >> nth=1`, { wait: 700 });
-    const say = await text('.lc-say');
-    check(`D4 ${L}: tapping the 2nd pill during an ask sets that place — the ask is gone, the sentence reads it`, await count('.lc-ask') === 0 && await count('.lc-say') === 1 && new RegExp(labels[1].replace(/…$/, ''), 'i').test(say.replace(/^In the /i, '')), JSON.stringify({ labels, say }));
-    check(`D4 ${L}: the photo taken for the where-level stays on that level (fix B1 kept)`, await page.locator('.lv-tile').nth(1).locator('img').count() > 0);
-    check(`D4 ${L}: still no "tap another" hint`, !/tap another/i.test(await page.evaluate(() => document.body.innerText)));
-    if (look === 'b') await shot('D4_after-pill-B');
-    // first pill during an ask, same result (fresh)
-    await shootWhere(look); await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
-    const l0 = await page.locator(`${wrap} .lc-chip:not(.more) span:last-child`).first().innerText();
-    await tap(`${wrap} .lc-chip:not(.more) >> nth=0`, { wait: 700 });
-    check(`D4 ${L}: tapping the 1st pill during an ask also resolves it`, await count('.lc-ask') === 0 && (await text('.lc-say')).toLowerCase().includes(l0.replace(/…$/, '').toLowerCase()), l0 + ' / ' + await text('.lc-say'));
-    // Yes still works and saves
-    await shootWhere(look); await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
-    await tap('.lc-ask button:not(.o)', { wait: 600 });
-    check(`D4 ${L}: Yes resolves the ask; the sentence line is back, reading the place`, await count('.lc-ask') === 0 && /Desk drawer/.test(await text('.lc-say')));
+    check(`D4 ${L}: the recognition question is up: "Is this the Desk drawer?", Yes and "No, ☰ Choose place", each ≥ 44 px`, /Is this the Desk drawer\?/i.test(await text('.lc-ask2')) && (await box('.lc-ask2 button:not(.o)')).h >= 44 && (await box('.lc-ask2 button.o')).h >= 44 && /No,\s*Choose place/.test(await text('.lc-ask2 button.o')), await text('.lc-ask2'));
+    await tap('.lc-ask2 button:not(.o)', { wait: 600 });
+    check(`D4 ${L}: Yes → "Place: Desk drawer"; the photo taken for the level stays on it (fix B1 kept)`, await count('.lc-ask2') === 0 && /Place:\s*Desk drawer/.test(await text('.lc-say')) && await page.locator('.lc-card .lv-tile').nth(0).locator('img').count() > 0, await text('.lc-say'));
+    await shot('D4_ask-B-superseded');
     await tap('.lc-k.sv', { wait: 2500 });
     const lb = (await dump()).find((d) => d.kind === 'item' && d.name === 'lint brush');
     check(`D4 ${L}: Save closes the camera and writes the thing at Desk drawer`, await count('.lc') === 0 && !!lb && lb.location === 'Desk drawer');
     const cs = lb ? (await snapsOf(lb.id)).find((s) => !s.extra) : null;
     check(`D3 ${L}: the first photo of a NEW thing gets the tag's restingOn as its snap caption`, !!cs && cs.caption === 'on the orange carpet' && lb.restingOn === 'on the orange carpet', JSON.stringify({ c: cs && cs.caption }));
-  }
-  // long names: still one line, still inside 390 px
-  for (const look of ['b', 'a']) {
-    const L = look.toUpperCase(); const wrap = look === 'b' ? '.lc-card' : '.lc-float';
-    const long = 'The very long name of the back corner of the garage workshop';
-    const own = { owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [] };
-    await seed([{ id: 'lg', kind: 'item', ...own, name: 'paint tin', location: long, photo: null, thumb: null, written: true, order: now0, createdAt: now0, lastSeenAt: now0, logId: 'l_lg', photoCount: 0, history: [{ location: long, at: now0 }] },
-      { id: 'lgb', kind: 'item', ...own, name: 'extremely long named storage container for the garage', location: 'Garage', photo: img('tin.jpg'), thumb: img('tin.jpg'), thumbV: 2, holds: true, order: now0, createdAt: now0, lastSeenAt: now0 - 1000, logId: 'l_lgb', photoCount: 1, history: [{ location: 'Garage', at: now0 }] }]);
-    await setPrefs({ cameraLook: look }); AI = { name: 'nail', restingOn: '' }; WHERE = []; SAME = { index: -1, sure: false };
-    await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1400 });
-    const ol = await oneLine(`${wrap} .lc-chips`);
-    check(`D4 ${L}: long place and box names — still one line, two pills + •••, all inside 390 px, cut with an ellipsis`, !!ol && new Set(ol.tops).size === 1 && ol.places <= 2 && ol.more === 1 && ol.rights.every((r) => r <= 390) && ol.ell.every((e) => e === 'ellipsis') && ol.rights[0] >= 130
-      && await page.locator(`${wrap} .lc-chip:not(.more) span:last-child`).evaluateAll((a) => a.some((s) => s.scrollWidth > s.clientWidth)), JSON.stringify(ol));
-    if (look === 'b') await shot('D4_long-names-B');
+    // "No, ☰ Choose place" → the sheet with the photo on top; pick another place from the list: the photo stays with it
+    await shootWhere('b'); await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
+    await tap('.lc-ask2 button.o', { wait: 600 });
+    check(`D4 ${L}: No → ☰ Choose place with the photo on top ("A new place?") and the list below`, await count('.where-list .wl-pend img') === 1 && await count('.where-list .wl-row') >= 2);
+    const second = (await page.locator('.where-list .wl-row:not(.wl-sugg) b').allInnerTexts()).map((x) => x.trim()).find((x) => x !== 'Desk drawer');
+    await page.locator(`.where-list .wl-row:not(.wl-sugg):has(b:text-is("${second}"))`).first().click(); await page.waitForTimeout(500);
+    check(`D4 ${L}: picking another place sets it; the photo stays on the level`, (await text('.lc-say')).includes(second) && await page.locator('.lc-card .lv-tile').nth(0).locator('img').count() > 0, second + ' / ' + await text('.lc-say'));
+    await tap('.lc-x', { wait: 300 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 300 });
   }
 
   // ============================== D5 · the ••• list ==============================
   {
     await seed(); await setPrefs({ cameraLook: 'b' }); AI = { name: 'lint roller', restingOn: '' }; WHERE = []; SAME = { index: -1, sure: false };
     await home(); await cam('scissors.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1400 });
-    await tap('.lv-sq.plus', { wait: 350 }); await tap('.lc-chip.more', { wait: 500 });
+    await tap('.lv-sq.plus', { wait: 350 }); await tap('.lc-choose', { wait: 500 });
     check('D5 the search placeholder is "Search your places"', await page.locator('.where-list .wl-search input').getAttribute('placeholder') === 'Search your places');
     const nb = await page.locator('.where-list .wl-new:not(.typed)').evaluate((b) => { const cs = getComputedStyle(b); return { t: b.innerText.trim(), border: cs.borderStyle, bg: cs.backgroundColor, radius: cs.borderRadius, svg: b.querySelectorAll('svg').length, h: b.getBoundingClientRect().height }; });
     check('D5 the new-place control is a solid rounded "Photograph a new place" button (camera icon + words, no dashes)', nb.t === 'Photograph a new place' && !/dashed/.test(nb.border) && nb.bg !== 'rgba(0, 0, 0, 0)' && parseFloat(nb.radius) >= 8 && nb.svg === 1 && nb.h >= 44, JSON.stringify(nb));

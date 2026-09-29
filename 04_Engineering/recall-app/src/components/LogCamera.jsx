@@ -12,7 +12,7 @@ import PrivNote from './PrivNote.jsx';
 import Choice from './Choice.jsx';
 import Confirm from './Confirm.jsx';
 import ChainSheet from './ChainSheet.jsx';
-import { CameraIcon, CloseIcon, PinIcon, LockIcon, PencilIcon, SaveIcon, PinAskIcon, BoxIcon, PlusIcon, TrashIcon } from './Icons.jsx';
+import { CameraIcon, CloseIcon, PinIcon, LockIcon, PencilIcon, SaveIcon, PinAskIcon, BoxIcon, PlusIcon, TrashIcon, ListIcon } from './Icons.jsx';
 
 // The camera photographs the LEVEL you choose (Ravi 09-27, BOARD_2026-09-27_every-path.md; mockups S11_fix_camera.jpg).
 //
@@ -29,6 +29,11 @@ import { CameraIcon, CloseIcon, PinIcon, LockIcon, PencilIcon, SaveIcon, PinAskI
 //   is chosen; Save moves it. preset: "Log something into the tin" — level 1 is that box.
 export const LEVEL_COLOURS = ['#FFFFFF', '#F5B942', '#4DB6F5', '#F2766B', '#A98BF7', '#5BD08D', '#F57EC0', '#3FD0C9', '#C5E35A', '#F79A45', '#E3C9A0'];
 const MAX_LEVELS = 10;
+// 09-29 (Ravi): after the shutter photographs a place, ReCall looks at it and EVERYTHING waits — at most this long. Then it
+// counts as not recognised and "Choose place" opens to name it (a late answer still shows there). Timings are logged.
+export const RECOG_MS = 3000;
+// 09-29 (Ravi): hold Save this long and the button turns into "Save + Next".
+const HOLD_MS = 600;
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const own = (s) => (s || '').toLowerCase().replace(/^(my|the|our)\s+/, '');
 // "Where is the spoon?" / "Where are the car keys?" — a name that reads as plural gets "are".
@@ -70,6 +75,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const [pvIndex, setPvIndex] = useState(0);
   const [draft, setDraft] = useState('');
   const [lastWhere, setLastWhere] = useState(null); // + Next: the where of the thing saved a moment ago
+  const [savedFlash, setSavedFlash] = useState(''); // 09-29: "Spare batteries ✓ saved", after Save + Next
+  const [holdNext, setHoldNext] = useState(false);  // 09-29: Save held long enough → "Save + Next"
+  const holdT = useRef(null); const holdLive = useRef(false);
   const tagP = useRef(null);
   const mounted = useRef(true);
   const openedAt = useRef(Date.now());
@@ -176,20 +184,26 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     // place onto the silent-merge path that R4.2's name-collision ask now also catches.
     const cands = [...boxes.filter((b) => b.thumb).slice(0, 4).map((b) => ({ c: { name: b.name, thumb: b.thumb }, known: { t: 'thing', item: b } })),
       ...places.filter((p) => p.photos && p.photos.length).slice(0, 4).map((p) => ({ c: { name: p.name, thumb: p.photos[0].thumb }, known: { t: 'place', name: p.name } }))].slice(0, 8);
-    let r = null;
+    let r = null; const t0 = Date.now(); let settled = false;
+    // 09-29 (Ravi): the wait is capped. Past RECOG_MS the level stops "looking" (not recognised) and Choose place opens.
+    const timer = setTimeout(() => { if (settled || !mounted.current) return;
+      setLevels((ls) => ls.map((l) => (l.key === key && l.status === 'naming' ? { ...l, status: 'named', timedOut: true } : l)));
+      logEvent('camera_where_timeout', { ms: RECOG_MS }); }, RECOG_MS);
     try {
       const small = await Promise.all(cands.map((x) => shrink(x.c.thumb, 320)));
       r = await engine.whereIs(photo, cands.map((x, i) => ({ name: x.c.name, thumb: small[i] })), { thing: nameNow(), sensitivity: 'personal' });
     } catch (err) { console.error(err); }
+    settled = true; clearTimeout(timer);
     if (!mounted.current) return;
     const hit = r && r.index >= 0 && r.sure ? cands[r.index].known : null;
-    logEvent('camera_where_named', { named: !!(r && r.name), moves: !!(r && r.moves), known: !!hit });
+    logEvent('camera_where_named', { named: !!(r && r.name), moves: !!(r && r.moves), known: !!hit, ms: Date.now() - t0, late: Date.now() - t0 > RECOG_MS });
     // REQUIREMENTS_2026-09-27 R3.2: a name she typed before the AI answered WINS — the late result
     // only ever fills `moves`/`ask`, never the name itself, once `userName` is set.
     // Q4 (Ravi 09-29): outside a place there are only places — a tier photographed there is a place even if the AI calls it
     // something that moves, and a box is never its match.
     setLevels((ls) => ls.map((l, j) => { if (l.key !== key) return l; const outP = placeBelow(ls, j);
-      return { ...l, status: r ? 'named' : 'failed', name: l.userName ? l.name : ((r && r.name) || ''), moves: !outP && !!(r && r.moves), ask: outP && hit && hit.t === 'thing' ? null : hit }; }));
+      if (l.known) return l; // she chose a place while it was looking (after the time-out): her choice stands
+      return { ...l, status: r ? 'named' : 'failed', name: l.userName ? l.name : ((r && r.name) || ''), moves: !outP && !!(r && r.moves), ask: outP && hit && hit.t === 'thing' ? null : (l.userName ? null : hit) }; }));
   }
 
   // ---- what the screen says
@@ -281,15 +295,16 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   function tapLevel(i) {
     if (i === 0 && moveItem) { if (moveItem.photo || moveItem.thumb) { setSheet({ preview: 0 }); setPvIndex(0); } return; }
     if (i !== sel) { setSel(i); return; }
-    const photos = i === 0 ? thing.photos : (levels[i - 1] || {}).photos || [];
-    if (photos.length || (i > 0 && known(levels[i - 1] || {}))) { setSheet({ preview: i }); setPvIndex(photos.length ? photos.length - 1 : 0); }
+    // 09-29 (Ravi): tap the SELECTED square → that level's own sheet (its photos, Choose place, Rename, Remove this level).
+    if (i > 0) { setSheet({ tier: i - 1 }); return; }
+    if (thing.photos.length) { setSheet({ preview: 0 }); setPvIndex(thing.photos.length - 1); }
   }
   // fix 2026-09-28 (phone, B1): a pick KEEPS the photos already taken on that tier — they attach to the picked
   // place or box at save (R1/R2). It used to set photos: [], so shooting the white box and then tapping its pill
   // threw the photo away and the place stayed photo-less everywhere.
-  function pickKnown(k) {
-    const i = sel === 0 ? Math.max(0, levels.findIndex((l) => !filled(l))) : sel - 1;
-    const target = sel === 0 && levels.findIndex((l) => !filled(l)) === -1 ? levels.length : i;
+  function pickKnown(k, at = null) {
+    const i = at !== null ? at : sel === 0 ? Math.max(0, levels.findIndex((l) => !filled(l))) : sel - 1;
+    const target = at !== null ? at : sel === 0 && levels.findIndex((l) => !filled(l)) === -1 ? levels.length : i;
     if (k.t === 'thing' && self && (k.item.id === self.id || wouldLoop(self, k.item))) return;
     if (blockedAt(k, target + 1)) return;
     setLevels((ls) => { const c = [...ls]; while (c.length <= target) c.push(emptyLevel()); c[target] = { ...c[target], photos: c[target].photos || [], known: k, status: 'known', ask: null, no: false, yes: false, collisionNo: '', current: !!moveItem && target === 0 && sameKnown(k, hereKnown(moveItem)) }; return c; });
@@ -394,12 +409,12 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           resolved.push({ known: k, extraPhotos: l.photos.map((p) => ({ photo: p.photo, thumb: p.thumb })) });
         } else if (k) {
           // …and to a KNOWN place, as placePhotos on that place doc (capped the same as any place, R2.3).
-          const placePhotos = l.photos.length ? await Promise.all(l.photos.slice(0, PLACE_PHOTOS).map((p) => compressPlacePhoto(p.file))) : [];
+          const placePhotos = l.photos.length ? await Promise.all(l.photos.slice(-PLACE_PHOTOS).map((p) => compressPlacePhoto(p.file))) : [];
           resolved.push({ known: k, placePhotos });
         } else {
           const finalName = l.userName || l.name || '';
           resolved.push({ photo: l.photos[0].photo, thumb: l.photos[0].thumb, extras: l.photos.slice(1).map((p) => ({ photo: p.photo, thumb: p.thumb })),
-            placePhotos: l.moves ? null : await Promise.all(l.photos.slice(0, PLACE_PHOTOS).map((p) => compressPlacePhoto(p.file))), name: finalName, moves: l.moves,
+            placePhotos: l.moves ? null : await Promise.all(l.photos.slice(-PLACE_PHOTOS).map((p) => compressPlacePhoto(p.file))), name: finalName, moves: l.moves,
             // REQUIREMENTS_2026-09-27 R3.3: still a placeholder at Save — never blocks the save, but the
             // confirmation card offers "Unnamed — tap to name" on the doc this creates.
             unnamed: !finalName.trim() });
@@ -455,6 +470,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         undo: mine ? { itemId, isNew, prev, made } : null };
       if (next) {
         onSaved({ ...card, next: true });
+        setSavedFlash(cap(name) || 'Item'); setTimeout(() => { if (mounted.current) setSavedFlash(''); }, 1500);
         setThing({ photos: [], tag: undefined, match: null, answer: null }); setLevels([]); setSel(0); setNameOverride(''); setShareAnyway(false); openedAt.current = Date.now(); tagP.current = null;
         setLastWhere(dest ? (dest.t === 'thing' ? { t: 'thing', item: { ...(graph().byId.get(dest.id) || {}), id: dest.id, name: dest.name, thumb: thumbs[1] || (graph().byId.get(dest.id) || {}).thumb } } : dest) : null);
         setBusy(false);
@@ -543,68 +559,121 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       <div><button type="button" onClick={() => setThing((t) => ({ ...t, answer: 'yes' }))}>Yes</button>
         <button type="button" className="o" onClick={() => setThing((t) => ({ ...t, answer: 'no' }))}>No, a new item</button></div>
     </div>) : null;
-  // D4 (Ravi 09-28, mockup D4_where-card A): the ask reads "📍 Your desk drawer?" — the pin at the START of the line, centred
-  // on it, in the colour of the level it asks about (amber for level 1) — then Yes / No, a new one. While it is up, the
-  // sentence line under it is not shown (it would only say the same place again).
-  const askColour = askLevel ? LEVEL_COLOURS[Math.min(Math.max(1, levels.findIndex((l) => l.key === askLevel.l.key) + 1), LEVEL_COLOURS.length - 1)] : '#fff';
+  // ======================================================================================================================
+  // 09-29 (Ravi, mockups MV_2026-09-29_*; DECISIONS 09-29 evening) — the camera card for multi-level places.
+  //   Top band: the item's photo and the question (Move it: "Where is the Walgreens Photo brochure?"; Log item: "New item").
+  //   The card: one short prompt · the PLACE squares only (the item is up in the band), "in" between, a plain white ＋ that
+  //   only ADDS a level (shown once the last level is set) and "☰ Choose place" · "Place: …" in the selected level's colour
+  //   · under a thin line, the chain "Desk drawer (in) In air (in) Office". No colour dot, no pin, no pills, no •••.
+  //   A level is set by the shutter (ReCall looks — everything waits ≤ RECOG_MS — then "Is this the Desk drawer?" Yes /
+  //   "No, ☰ Choose place") or by ☰ Choose place. Tap the selected square: its own sheet (photos, Choose place, Rename,
+  //   Remove this level). Bottom: Cancel | shutter | Save; hold Save → "Save + Next" → "Spare batteries ✓ saved".
+  // ======================================================================================================================
+  const lvColour = (i) => LEVEL_COLOURS[Math.min(Math.max(i, 0), LEVEL_COLOURS.length - 1)];
+  const recognising = levels.some((l) => l.status === 'naming' && !l.timedOut && !l.known);
+  const locked = busy || recognising;
+  // The where question ("Is this the Desk drawer?"): a sure visual match, or a place/box with the same name.
   const askIdx = askLevel ? levels.findIndex((l) => l.key === askLevel.l.key) : -1;
-  const askOther = askIdx >= 0 && askIdx + 1 !== sel;
-  const askThumb = askOther ? linkThumb(askLevel.l) : null;
-  const whereAsk = askLevel ? (
-    <div className="lc-ask" role="group" aria-label="Is this the one you have?">
-      {/* Q5 · A (Ravi 09-29): a question about a tier that is NOT the one selected (the AI answered tier 2 after ＋ moved on
-          to tier 3) shows that tier's own photo in its colour ring, so it never relies on colour alone. */}
-      {askOther
-        ? <b style={{ color: askColour }}>{askThumb ? <img className="lc-ask-sq" src={askThumb} alt="" style={{ borderColor: askColour }} /> : <PinIcon />}<span>Is this your {own(askLevel.target.t === 'thing' ? askLevel.target.item.name : askLevel.target.name)}?</span></b>
-        : <b style={{ color: askColour }}><PinIcon /><span>Your {own(askLevel.target.t === 'thing' ? askLevel.target.item.name : askLevel.target.name)}?</span></b>}
-      <div><button type="button" onClick={() => {
-          convertLevelToKnown(askLevel.l.key, askLevel.target);
-          logEvent('camera_where_collision', { answer: 'yes', byName: !!askLevel.byName });
-        }}>Yes</button>
-        <button type="button" className="o" onClick={() => {
-          if (askLevel.byName) {
-            const nm = resolvedLevelName(askLevel.l);
-            const idx = levels.findIndex((l) => l.key === askLevel.l.key);
-            setLevels((ls) => ls.map((l) => (l.key === askLevel.l.key ? { ...l, collisionNo: nm } : l)));
-            setDraft(nm); setSheet({ levelRename: idx, msg: `There's already a '${nm}'. Give this one its own name.` });
-            logEvent('camera_where_collision', { answer: 'no' });
-          } else setLevels((ls) => ls.map((l) => (l.key === askLevel.l.key ? { ...l, no: true } : l)));
-        }}>No, a new one</button></div>
-    </div>) : null;
-  const askUp = !identity && !!whereAsk; // the thing's own "Your …?" (identity) is not about a place: the sentence stays under it
-
-  // The level squares: the thing (0), each where level, then ＋ in the next colour.
-  const squares = [];
-  if (started) {
-    const t0 = moveItem ? moveItem.thumb : thing.photos[0] && thing.photos[0].thumb;
-    squares.push({ i: 0, thumb: t0, n: moveItem ? 0 : thing.photos.length, lock: startPrivate, nm: cap(name) || 'Naming…' });
-    const shown = real.length || levels.length ? levels : links; // before any level exists, the suggestion stands in level 1
-    shown.forEach((l, j) => squares.push({ i: j + 1, thumb: linkThumb(l), n: l.photos ? l.photos.length : 0, empty: !filled(l), box: isBox(l), nm: filled(l) ? linkName(l) : 'Where?', sugg: l.key === 'sugg' }));
+  const askTarget = askLevel ? askLevel.target : null;
+  const askName = askTarget ? (askTarget.t === 'thing' ? own(askTarget.item.name) : askTarget.name) : '';
+  const askPic = askTarget ? (askTarget.t === 'thing' ? askTarget.item.thumb : placePic(askTarget.name)) : null;
+  const askMine = askLevel ? linkThumb(askLevel.l) : null;
+  function askNo() {
+    if (!askLevel) return;
+    const l = askLevel.l; const idx = askIdx;
+    if (askLevel.byName) setLevels((ls) => ls.map((x) => (x.key === l.key ? { ...x, collisionNo: resolvedLevelName(l), prompted: true } : x)));
+    else setLevels((ls) => ls.map((x) => (x.key === l.key ? { ...x, no: true, prompted: true } : x)));
+    setSel(idx + 1); setSheet({ choose: idx, withPhoto: true });
+    logEvent('camera_where_collision', { answer: 'no', byName: !!askLevel.byName });
   }
-  const sq = (s, big) => {
-    const c = LEVEL_COLOURS[Math.min(s.i, LEVEL_COLOURS.length - 1)]; const on = s.i === sel && !s.sugg;
+  // R4.4/F7: one question at a time — the item's own "Your X?" goes first, the place question waits for it.
+  const whereAsk = askLevel && !identity && !(sheet && sheet.choose !== undefined) ? (
+    <div className="lc-ask lc-ask2" role="group" aria-label="Is this the one you have?">
+      <div className="pair">
+        {askMine ? <img src={askMine} alt="" style={{ borderColor: lvColour(askIdx + 1) }} /> : null}
+        <span className="eq">=</span>
+        {askPic ? <img src={askPic} alt="" className="theirs" /> : <span className="theirs no">{askTarget.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}
+        <b>Is this the {askName}?</b>
+      </div>
+      <div><button type="button" onClick={() => { convertLevelToKnown(askLevel.l.key, askLevel.target); setSel(askIdx + 1); logEvent('camera_where_collision', { answer: 'yes', byName: !!askLevel.byName }); }}>Yes</button>
+        <button type="button" className="o" onClick={askNo}>No, <ListIcon /> Choose place</button></div>
+    </div>) : null;
+
+  // A new place ReCall couldn't place (not recognised, or timed out) — the Choose place sheet opens on its own, once.
+  useEffect(() => {
+    if (sheet || busy || identity) return;
+    const idx = levels.findIndex((l) => l.status !== 'naming' && l.status !== 'empty' && l.status !== 'known' && !l.prompted && !l.known && !l.userName
+      && l.photos.length > 0 && !(l.ask && !l.no) && !levelCollision(l));
+    if (idx < 0) return;
+    setLevels((ls) => ls.map((l, j) => (j === idx ? { ...l, prompted: true } : l)));
+    setSel(idx + 1); setSheet({ choose: idx, withPhoto: true });
+    logEvent('camera_choose_open', { why: levels[idx].timedOut ? 'timeout' : 'not_recognised', level: idx + 1 });
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function useName(idx, n) {
+    setLevels((ls) => ls.map((l, j) => (j === idx ? { ...l, userName: n, status: l.status === 'naming' ? 'named' : l.status, no: true, prompted: true } : l)));
+    setSheet(null); logEvent('camera_level_rename', { level: idx + 1, via: 'choose' });
+  }
+  function takenMsg(n) {
+    const c = collisionFor(n);
+    return c ? `You already have ${c.t === 'thing' ? 'a' : 'a place called'} “${c.t === 'thing' ? cap(c.item.name) : c.name}” — pick it below, or give this one its own name.` : '';
+  }
+
+  // The squares: places only (levels 1..n), "in" between; ＋ adds a level once the last one is set.
+  const shownLevels = real.length || levels.length ? levels : (links.length && !moveItem ? links : []); // before any level: the suggestion stands in level 1
+  const plusOk = started && lastFilled && levels.length < MAX_LEVELS && !locked;
+  const sq = (l, j) => {
+    const i = j + 1; const c = lvColour(i); const on = i === sel && l.key !== 'sugg'; const empty = !filled(l); const th = linkThumb(l);
+    const looking = l.status === 'naming' && !l.timedOut && !l.known;
     return (
-      <div className={big ? 'lv-t' : 'lv-s'} key={'l' + s.i}>
-        {s.i > 0 && <span className="lc-in">in</span>}
+      <div className="lv-s" key={'l' + l.key}>
+        {j > 0 && <span className="lc-in">in</span>}
         <div className="lv-tile">
-          <button type="button" className={'lv-sq' + (on ? ' sel' : '') + (s.empty ? ' empty' : '')} style={on || s.empty ? { borderColor: c, color: c } : undefined}
-            aria-label={s.i === 0 ? `The item: ${s.nm}` : `Level ${s.i}: ${s.nm}`} aria-pressed={on} onClick={() => (s.sugg ? pickKnown(links[0].known) : tapLevel(s.i))}>
-            {s.thumb ? <img src={s.thumb} alt="" /> : s.empty ? <PinAskIcon /> : s.box ? <BoxIcon /> : <PinIcon />}
-            {s.n > 1 && <span className="lv-n">{s.n}</span>}
-            {s.lock && <span className="lc-lk"><LockIcon /></span>}
+          <button type="button" className={'lv-sq' + (on ? ' sel' : '') + (empty ? ' empty' : '') + (l.key === 'sugg' ? ' sugg' : '')} disabled={locked && !on}
+            style={on || empty || l.key === 'sugg' ? { borderColor: c, color: c } : undefined}
+            aria-label={`Level ${i}: ${empty ? 'not defined' : linkName(l)}`} aria-pressed={on}
+            onClick={() => (l.key === 'sugg' ? pickKnown(l.known) : tapLevel(i))}>
+            {th ? <img src={th} alt="" /> : isBox(l) && !empty ? <BoxIcon /> : <PinIcon />}
+            {l.photos && l.photos.length > 1 && <span className="lv-n">{l.photos.length}</span>}
+            {looking && <span className="lv-look" aria-label="Looking at the photo"><i /></span>}
           </button>
-          {big && <div className="lc-nm">{s.nm}</div>}
         </div>
       </div>);
   };
-  const plus = (big) => (canAdd ? (
-    <div className={big ? 'lv-t' : 'lv-s'} key="plus"><span className="lc-in">in</span>
-      <div className="lv-tile"><button type="button" className="lv-sq empty plus" style={{ borderColor: LEVEL_COLOURS[Math.min(levels.length + 1, LEVEL_COLOURS.length - 1)], color: LEVEL_COLOURS[Math.min(levels.length + 1, LEVEL_COLOURS.length - 1)] }}
-        aria-label="Add where it is: the next level" onClick={addLevel}><PlusIcon /></button>{big && <div className="lc-nm">Where?</div>}</div></div>) : null);
-  const many = squares.length + (canAdd ? 1 : 0);
-  // 09-29 (tier audit T8): at three tiers the row is wider than the card (390 px phone: the 4th square cut, ＋ out of
-  // sight) and the fade only switched on above 5 squares. Measure instead: fade when there is more to the right, and keep
-  // the selected square — and ＋ right after a new level — scrolled into view.
+  // What the selected square is about, in words: "Place: …" in its colour (09-29, Ravi: no pin, no Current/New label).
+  const focusIdx = sel > 0 ? sel - 1 : 0;
+  const focus = sel > 0 ? levels[focusIdx] : shownLevels[0];
+  const focusColour = lvColour(focusIdx + 1);
+  const focusLooking = focus && focus.status === 'naming' && !focus.timedOut && !focus.known;
+  const placeLine = !started ? null : focusLooking ? { look: true }
+    : { name: focus && filled(focus) ? (isBox(focus) ? inPhrase({ name: linkName(focus) }) : linkName(focus)) : 'not defined', empty: !(focus && filled(focus)) };
+  // The chain, under a thin line: every level set so far, then what the outermost is already known to be in (grey).
+  const chainParts = (() => {
+    const out = shownLevels.map((l, j) => ({ n: !filled(l) ? '?' : l.status === 'naming' && !l.userName && !known(l) ? '…' : linkName(l), c: lvColour(j + 1) }));
+    const lk = known(lastLink || {});
+    if (lastLink && filled(lastLink) && lk) {
+      const outer = lk.t === 'thing' ? [...chainOf(lk.item).map((x) => cap(x.name)), (() => { const ch = chainOf(lk.item); const tail = ch.length ? ch[ch.length - 1] : lk.item; return tail.location || ''; })()].filter(Boolean)
+        : placeOuter(lk.name).map((x) => (x.t === 'thing' ? cap(x.item.name) : x.name));
+      outer.forEach((n) => { if (!out.some((o) => o.n === n)) out.push({ n, c: '#BDB6AB', soft: true }); });
+    }
+    return out;
+  })();
+  // The prompt: one short line about the selected square (09-29: no dot; never "Save, or…"; the ＋ drawn as the button's).
+  // "the Desk drawer", but "this place" / "this box" while it has no name yet (never "the a place").
+  const theOf = (l) => (!known(l) && !l.userName && !l.name ? (l.moves ? 'this box' : 'this place') : 'the ' + own(linkName(l)));
+  const plusGlyph = <span className="lc-plus-in" aria-label="plus"><PlusIcon /></span>;
+  const promptLine = !started ? null
+    : sel === 0 ? (thing.photos.length ? (shownLevels.length && filled(shownLevels[0]) ? <>Another photo of it, or tap {plusGlyph} to add what {theOf(shownLevels[shownLevels.length - 1])} is in.</> : <>Another photo of it, or tap {plusGlyph} to add where it is.</>) : null)
+    : focusLooking ? null
+    : !filled(focus) ? (focusIdx === 0 ? (moveItem ? <>Moved it? Photograph the new place, or choose one.</> : <>Where is it? Photograph the place, or choose one.</>)
+      : <>What is {theOf(levels[focusIdx - 1])} in? Photograph it, or choose one.</>)
+    : (moveItem && focusIdx === 0 && focus.current) ? <>Moved it? Photograph the new place, or choose one.</>
+    : focusIdx + 1 >= MAX_LEVELS ? null
+    : <>Tap {plusGlyph} to add what {theOf(focus)} is in.</>;
+  const chooseAt = sel > 0 ? sel - 1 : Math.max(0, levels.findIndex((l) => !filled(l)) === -1 ? levels.length : levels.findIndex((l) => !filled(l)));
+  const openChoose = () => { if (locked) return; if (chooseAt >= levels.length) { setLevels((ls) => [...ls, emptyLevel()]); } setSel(chooseAt + 1); setSheet({ choose: chooseAt, withPhoto: false }); logEvent('camera_choose_open', { why: 'button', level: chooseAt + 1 }); };
+
+  // the strip keeps the selected square (and ＋ right after it's added) in view; the fade shows only when more is off to the right
   const stripRef = useRef(null);
   const [stripMore, setStripMore] = useState(false);
   useLayoutEffect(() => {
@@ -612,47 +681,52 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const on = el.querySelector('.lv-sq.sel'); const pl = el.querySelector('.lv-sq.plus');
     const want = [on, sel === levels.length && pl ? pl : null].filter(Boolean);
     const box = el.getBoundingClientRect();
-    want.forEach((t) => { const r = t.getBoundingClientRect(); if (r.right > box.right - 2) el.scrollLeft += r.right - box.right + 8; else if (r.left < box.left + 2) el.scrollLeft -= box.left - r.left + 8; });
+    want.forEach((t) => { const r = t.getBoundingClientRect(); if (r.right > box.right - 2) el.scrollLeft += r.right - box.right + 4; else if (r.left < box.left + 2) el.scrollLeft -= box.left - r.left + 4; });
     const more = el.scrollWidth - el.clientWidth - el.scrollLeft > 2; if (more !== stripMore) setStripMore(more);
   });
   const onStripScroll = (e) => { const el = e.currentTarget; const more = el.scrollWidth - el.clientWidth - el.scrollLeft > 2; if (more !== stripMore) setStripMore(more); };
 
-  const sentenceEl = started ? (
-    <div className="lc-say">
-      {/* 09-29 (Ravi): the pin takes the colour of level 1's border; a label ("Current place" / "New place") is a different
-          colour from the place's name. */}
-      {/* 09-29b: the pin lives INSIDE line 1's own row and is centred on it by flex — never a margin guess. */}
-      <span className="tx"><span className="l1"><span className="lc-pin" style={{ color: LEVEL_COLOURS[1] }}><PinIcon /></span><b>{say.label && <span className="lab" style={{ color: LEVEL_COLOURS[1] }}>{say.label}: </span>}{say.l1}</b></span>{say.l2 && <span className="soft">{say.l2}</span>}{moving.map((m) => <span key={m} className="soft lc-move">{m}</span>)}</span>
-      {links.length > 0 && !moveItem && <button type="button" className="lc-chg" aria-label="Change where it goes" onClick={() => setSheet('chain')}><PencilIcon /></button>}
-    </div>) : null;
-  // 09-29 (Ravi): the current place is not a pill while it IS the selection (it's in the ••• list, tagged). Once a new
-  // place is picked or photographed, the current place comes back as the FIRST pill — going back is one tap.
-  const hereChip = hereNow && !(levels[0] && levels[0].current) ? (() => { const k = hereKnown(moveItem); return !k ? null : k.t === 'thing'
-    ? { key: 'b' + k.item.id, label: cap(k.item.name), thumb: k.item.thumb, known: k } : { key: 'p' + k.name, label: k.name, thumb: placePic(k.name), known: k }; })() : null;
-  const pillList = hereChip ? [hereChip, ...chips.filter((c) => !isHereNow(c))] : chips.filter((c) => !isHereNow(c));
-  const showChips = started && (sel > 0 || !real.length) && chips.length > 0;
-  // D4 (Ravi 09-28): the place pills live INSIDE the card, under the name and above the ask (both looks) — ONE line, never
-  // wrapping: at most two place pills and •••, long names cut with an ellipsis. The bar above the shutter row is gone.
-  const pillsEl = showChips ? (
-    <div className="lc-chips" aria-label="Or tap a place">
-      {pillList.filter((c) => !blockedAt(c.known, sel || 1)).filter((c) => !real.some((l) => l.known && ((l.known.t === 'thing' && c.known.t === 'thing' && l.known.item.id === c.known.item.id) || (l.known.t === 'place' && c.known.t === 'place' && l.known.name === c.known.name)))).slice(0, 2).map((c) => (
-        <button key={c.key} type="button" className={'lc-chip' + (c.known.t === 'thing' ? ' box' : '')} onClick={() => pickKnown(c.known)}>
-          {c.thumb ? <img src={c.thumb} alt="" /> : <span className="ic">{c.known.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}<span>{c.label}</span></button>))}
-      <button type="button" className="lc-chip more" aria-label="Every place and box" onClick={() => setSheet('more')}><span className="ic">•••</span></button>
-    </div>) : null;
-  // 09-29b (Ravi): once there is a photo, the step prompt sits with what it's about — inside the card, just above the
-  // squares (B), or just above the chain (A). Before the first photo there is nothing below to relate to, so it stays up top.
-  const promptEl = (
-    <div className="lc-prompt"><span className="dot" style={{ borderColor: colour }} aria-hidden="true" /><div><b>{prompt.parts ? <><span className="q">{prompt.parts.pre}</span>{prompt.parts.name}{prompt.parts.post}</> : prompt.b}</b><small>{prompt.s}</small></div></div>);
+  // Save: a tap saves; held HOLD_MS it becomes "Save + Next" (let go = save and log the next item); slide off = nothing.
+  const canNext = started && !moveItem;
+  const saveOff = locked || (moveItem && !real.length) || !!collidingLevel;
+  const holdStart = (e) => {
+    if (saveOff) return; holdLive.current = true; setHoldNext(false);
+    try { e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
+    clearTimeout(holdT.current);
+    if (canNext) holdT.current = setTimeout(() => { if (!holdLive.current) return; setHoldNext(true); if (navigator.vibrate) navigator.vibrate(25); logEvent('camera_save_hold', {}); }, HOLD_MS);
+  };
+  const holdEnd = (e) => {
+    if (!holdLive.current) return; holdLive.current = false; clearTimeout(holdT.current);
+    const r = e.currentTarget.getBoundingClientRect(); const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    const next = holdNext; setHoldNext(false);
+    if (!inside) return; // slid off: nothing
+    save(next);
+  };
+  const holdCancel = () => { holdLive.current = false; clearTimeout(holdT.current); setHoldNext(false); };
+
   const pv = sheet && sheet.preview !== undefined ? sheet.preview : null;
   const pvPhotos = (pv === null ? [] : pv === 0 ? (moveItem ? [{ photo: moveItem.photo || moveItem.thumb }] : thing.photos) : (() => { const l = levels[pv - 1] || {}; return l.photos && l.photos.length ? l.photos : (known(l) ? [{ photo: linkThumb(l) }] : []); })())
-    .filter((p) => p && p.photo); // a thing or box with no photo has nothing to show
+    .filter((p) => p && p.photo); // an item or box with no photo has nothing to show
+  const tierIdx = sheet && sheet.tier !== undefined ? sheet.tier : null;
+  const tierL = tierIdx !== null ? levels[tierIdx] : null;
+  const chooseIdx = sheet && sheet.choose !== undefined ? sheet.choose : null;
+  const chooseL = chooseIdx !== null ? levels[chooseIdx] : null;
+  const bandThumb = moveItem ? moveItem.thumb : thing.photos[0] && thing.photos[0].thumb;
 
   return (
-    <div className={'lc lc-' + look} role="dialog" aria-modal="true" aria-label="Log item">
-      <div className="lc-top">
-        <button type="button" className="lc-x" onClick={tryCancel}><CloseIcon /><span>Cancel</span></button>
-        {ownerName ? <span className="lc-whose">{ownerName}’s ReCall</span> : null}
+    <div className={'lc lc-b'} role="dialog" aria-modal="true" aria-label="Log item">
+      <div className="lc-top lc-band">
+        {started && bandThumb ? (
+          <button type="button" className={'lc-thing' + (!moveItem && sel === 0 ? ' sel' : '')} aria-label={moveItem ? 'The item’s photo' : sel === 0 ? 'The item: tap to see its photos' : 'The item: tap to take another photo of it'}
+            onClick={() => { if (moveItem || sel === 0) { setSheet({ preview: 0 }); setPvIndex(0); } else setSel(0); }} disabled={locked}>
+            <img src={bandThumb} alt="" />{!moveItem && thing.photos.length > 1 && <span className="lv-n">{thing.photos.length}</span>}{startPrivate && <span className="lc-lk"><LockIcon /></span>}
+          </button>) : null}
+        <div className="lc-title">
+          <small>{ownerName ? <span className="lc-whose">{ownerName}’s ReCall</span> : null}{moveItem ? 'Where is the' : 'New item'}</small>
+          {moveItem ? <b className="lc-name">{name}?</b>
+            : started ? <button type="button" className="lc-name" onClick={() => { setDraft(name); setSheet('rename'); }}>{cap(name) || 'Naming…'}</button>
+            : <b>Photograph it</b>}
+        </div>
       </div>
       <div className="lc-view">
         <video ref={videoRef} playsInline muted autoPlay className={cam === 'live' ? '' : 'hidden'} />
@@ -662,44 +736,60 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           <div className="camera-msg"><p>The camera could not start on this phone.</p>
             <label className="btn-primary file"><CameraIcon /> Use the phone's camera
               <input type="file" accept="image/*" capture="environment" onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) shot(f); }} /></label></div>)}
-        {!started && promptEl}
+        {/* before the first photo the band already says "New item · Photograph it" — no second prompt over the picture */}
         {/* Type it instead: inside the picture, before the first photo (Ravi 09-27). */}
         {!started && onWrite && <div className="lc-typeit"><button type="button" onClick={onWrite}><PencilIcon />Type it instead</button></div>}
-        {look === 'a' && started && (<>
-          <div className="lc-bstack">{promptEl}<div ref={stripRef} onScroll={onStripScroll} className={'lv-chain' + (stripMore ? ' more' : '')}>{squares.map((s) => sq(s, true))}{plus(true)}</div></div>
-          {(pillsEl || privLine || identity || whereAsk) && <div className="lc-float">{pillsEl && <div className="lc-pills-a">{pillsEl}</div>}{identity || whereAsk}{privLine}</div>}
-        </>)}
-        {look === 'b' && started && (
+        {savedFlash && <div className="lc-saved" role="status">{savedFlash} <span className="ok">✓ saved</span></div>}
+        {started && (
           <div className="lc-card">
-            {promptEl}
-            <div ref={stripRef} onScroll={onStripScroll} className={'lv-strip' + (stripMore ? ' more' : '')}>{squares.map((s) => sq(s, false))}{plus(false)}</div>
-            <button type="button" className="lc-name" disabled={!!moveItem} onClick={() => { setDraft(name); setSheet('rename'); }}>{cap(name) || 'Naming…'}{startPrivate && <LockIcon />}</button>
-            {pillsEl}
-            {identity || whereAsk}
+            {identity}
+            {whereAsk || (<>
+              {promptLine && <div className="lc-prompt">{promptLine}</div>}
+              <div className="lc-row2">
+                <div ref={stripRef} onScroll={onStripScroll} className={'lv-strip' + (stripMore ? ' more' : '')}>
+                  {shownLevels.map((l, j) => sq(l, j))}
+                  {plusOk && <div className="lv-s" key="plus"><div className="lv-tile"><button type="button" className="lv-sq plus" aria-label="Add a level: what it is in" onClick={addLevel}><PlusIcon /></button></div></div>}
+                </div>
+                <button type="button" className="lc-choose" disabled={locked} onClick={openChoose}><ListIcon />Choose place</button>
+              </div>
+              {placeLine && (
+                <div className="lc-say">
+                  <span className="tx">
+                    {placeLine.look ? <b className="lc-look">Looking at the photo…</b>
+                      : <b><span className="lab" style={{ color: focusColour }}>Place:</span> <span className={placeLine.empty ? 'nd' : ''}>{placeLine.name}</span></b>}
+                    {collidingLevel && <span className="soft">{`'${resolvedLevelName(collidingLevel) || linkName(collidingLevel)}' needs its own name — tap it.`}</span>}
+                    {moving.map((m) => <span key={m} className="soft lc-move">{m}</span>)}
+                  </span>
+                </div>)}
+              {chainParts.length >= 2 && (
+                <div className="lc-chainline" aria-label={'Where: ' + chainParts.map((p) => p.n).join(' in ')}>
+                  {chainParts.map((p, j) => <span key={j} className="cp">{j > 0 && <span className="lc-in">in</span>}<span style={{ color: p.c }} className={p.soft ? 'soft' : ''}>{p.n}</span></span>)}
+                </div>)}
+            </>)}
             {privLine}
-            {!askUp && sentenceEl}
           </div>)}
       </div>
       <div className="lc-bot">
-        {look === 'a' && !askUp && sentenceEl}
         {saveErr && <div className="lc-err" role="alert">{saveErr}</div>}
         <div className="lc-row">
-          {started && !moveItem ? <button type="button" className="lc-k sn" disabled={busy || !!collidingLevel} onClick={() => save(true)} aria-label="Save and log the next item"><SaveIcon /><span className="plus">+</span>Next</button> : <span />}
-          <button type="button" className="lc-shutter" style={{ borderColor: colour }} aria-label="Take a photo" disabled={cam !== 'live' || busy} onClick={snap}><span /></button>
-          {started ? <button type="button" className="lc-k sv" disabled={busy || (moveItem && !real.length) || !!collidingLevel} onClick={() => save(false)}><SaveIcon />{busy ? 'Saving…' : 'Save'}</button> : <span />}
+          <button type="button" className="lc-x" onClick={tryCancel}><CloseIcon /><span>Cancel</span></button>
+          <button type="button" className="lc-shutter" style={{ borderColor: sel === 0 ? '#fff' : lvColour(sel) }} aria-label="Take a photo" disabled={cam !== 'live' || locked} onClick={snap}><span /></button>
+          {started ? <button type="button" className={'lc-k sv' + (holdNext ? ' next' : '')} disabled={saveOff}
+            aria-label={canNext ? 'Save (hold for Save + Next)' : 'Save'}
+            onPointerDown={holdStart} onPointerUp={holdEnd} onPointerCancel={holdCancel} onContextMenu={(e) => e.preventDefault()}
+            onClick={(e) => { if (e.detail === 0 && !saveOff) save(false); }}>
+            {holdNext ? 'Save + Next' : <><SaveIcon />{busy ? 'Saving…' : 'Save'}</>}</button> : <span />}
         </div>
       </div>
 
       {pv !== null && pvPhotos.length > 0 && (
         <div className="lc-pv" role="dialog" aria-label={lvName(pv)} onClick={() => setSheet(null)}>
-          <div className="box" style={{ borderColor: LEVEL_COLOURS[Math.min(pv, LEVEL_COLOURS.length - 1)] }} onClick={(e) => e.stopPropagation()}>
+          <div className="box" style={{ borderColor: lvColour(pv) }} onClick={(e) => e.stopPropagation()}>
             <div className="pv-strip" onScroll={(e) => { const el = e.currentTarget; const i = Math.round(el.scrollLeft / el.clientWidth); if (i !== pvIndex) setPvIndex(i); }}
               ref={(el) => { if (el && el.dataset.init !== String(pv)) { el.dataset.init = String(pv); el.scrollLeft = pvIndex * el.clientWidth; } }}>
               {pvPhotos.map((p, j) => <img key={j} src={p.photo} alt="" />)}
             </div>
             {pvPhotos.length > 1 && <div className="pv-dots">{pvPhotos.map((_, j) => <i key={j} className={j === pvIndex ? 'on' : ''} />)}</div>}
-            {/* REQUIREMENTS_2026-09-27 R3.1: the name line is a button — tap it to rename this ONE
-                level (level 0, the thing, keeps its own existing rename affordance elsewhere). */}
             {pv > 0 ? (
               <button type="button" className="pv-name" onClick={() => chainRename(pv - 1)}>
                 <b>{lvName(pv)}{pvPhotos.length > 1 ? ` · photo ${pvIndex + 1} of ${pvPhotos.length}` : ''}</b><span className="pv-rn">Rename</span>
@@ -711,24 +801,27 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           </div>
           <div className="hint">Tap anywhere else to close</div>
         </div>)}
-      {/* REQUIREMENTS_2026-09-27 R5 (kills F5): the pencil opens the chain sheet, not a 3-option
-          Choice that reset the whole chain. One row per level — Replace and Remove only ever touch
-          that row; the old 'change' Choice is gone for good (net sheet count: zero). */}
-      {sheet === 'chain' && (
-        <ChainSheet rows={(real.length || levels.length ? levels : links).map((l, i) => ({ key: l.key, idx: i, name: linkName(l), thumb: linkThumb(l), box: isBox(l) }))}
-          onRename={chainRename} onReplace={chainReplace} onRemove={chainRemove}
-          onMore={() => { setSheet(null); addLevel(); }}
-          onPickList={() => setSheet('more')}
-          onNoPlace={chainNoPlace}
-          onCancel={() => setSheet(null)} />)}
-      {sheet === 'chain-clear' && <Confirm title="Clear where it goes?" body="Every level you've photographed or picked so far goes." keepLabel="Keep it" actionLabel="Clear"
-        onKeep={() => setSheet('chain')} onAction={chainClearConfirmed} />}
-      {sheet === 'more' && <WhereList item={self} items={items} places={places} title={whereQ(name)} exclude={(k) => blockedAt(k, sel || 1)}
-        onCancel={() => setSheet(null)} onPick={(k) => { setSheet(null); pickKnown(k); }}
-        onPhotograph={() => { setSheet(null); if (sel === 0 || filled(selLevel)) addLevel(); }} />}
-      {/* R3: one rename sheet serves both the thing (sheet === 'rename', nameOverride) and any WHERE
-          level (sheet.levelRename, that level's userName only — R3.2: a name given here always wins
-          over a late AI result). A collision "No" (R4.2) opens this pre-filled with its own message. */}
+      {/* Tap the selected square: what you can do with THIS level (09-29 mockup "tap a selected square"). */}
+      {tierL && (
+        <div className="sheet-back" onClick={() => setSheet(null)} role="presentation">
+          <div className="sheet tier-sheet" role="dialog" aria-modal="true" aria-label={linkName(tierL)} onClick={(e) => e.stopPropagation()}>
+            <div className="ts-head">{linkThumb(tierL) ? <img src={linkThumb(tierL)} alt="" style={{ borderColor: lvColour(tierIdx + 1) }} /> : <span className="no" style={{ borderColor: lvColour(tierIdx + 1) }}><PinIcon /></span>}
+              <span><b>{filled(tierL) ? linkName(tierL) : 'Not defined'}</b><small>{tierL.photos.length ? `${tierL.photos.length} photo${tierL.photos.length === 1 ? '' : 's'} taken now` : 'no photo taken now'}{tierIdx > 0 ? ` · where ${theOf(levels[tierIdx - 1])} is` : ''}</small></span></div>
+            {(tierL.photos.length > 0 || linkThumb(tierL)) && <button type="button" className="sheet-row" onClick={() => { setSheet({ preview: tierIdx + 1 }); setPvIndex(0); }}>See its photos</button>}
+            <button type="button" className="sheet-row" onClick={() => setSheet({ choose: tierIdx, withPhoto: false })}><ListIcon /> Choose place</button>
+            {filled(tierL) && !known(tierL) && <button type="button" className="sheet-row" onClick={() => chainRename(tierIdx)}><PencilIcon /> Rename</button>}
+            <button type="button" className="sheet-row danger" onClick={() => chainRemove(tierIdx)}><TrashIcon /> Remove this level</button>
+            <button type="button" className="btn-quiet" onClick={() => setSheet(null)}>Close</button>
+          </div>
+        </div>)}
+      {chooseL && (
+        <WhereList item={self} items={items} places={places} chooser exclude={(k) => blockedAt(k, chooseIdx + 1)}
+          pending={sheet.withPhoto && chooseL.photos.length && !chooseL.known ? { thumb: chooseL.photos[0].thumb, colour: lvColour(chooseIdx + 1), draft: cap(chooseL.userName || chooseL.name || ''), guessed: !!(chooseL.name && !chooseL.userName),
+            taken: takenMsg, onUse: (n) => useName(chooseIdx, n) } : null}
+          suggest={sheet.withPhoto && chooseL.ask && !chooseL.known ? { known: chooseL.ask, name: chooseL.ask.t === 'thing' ? own(chooseL.ask.item.name) : chooseL.ask.name, thumb: chooseL.ask.t === 'thing' ? chooseL.ask.item.thumb : placePic(chooseL.ask.name) } : null}
+          onCancel={() => { setSheet(null); if (!filled(chooseL)) chainRemove(chooseIdx); }}
+          onPick={(k) => { setSheet(null); pickKnown(k, chooseIdx); }}
+          onPhotograph={() => setSheet(null)} />)}
       {(sheet === 'rename' || (sheet && sheet.levelRename !== undefined)) && (
         <div className="sheet-back" onClick={() => setSheet(null)} role="presentation">
           <div className="sheet" role="dialog" aria-labelledby="lc-rn" onClick={(e) => e.stopPropagation()}>

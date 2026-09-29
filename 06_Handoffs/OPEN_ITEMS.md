@@ -1,7 +1,37 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-29 (evening).
+*Done* when closed. Updated 2026-09-29 (late).
+
+## NOW — `20260929g`: the camera card, built to Ravi's rulings (09-29 late)
+
+- [x] Built as ruled (all-rulings sheet `design/mockups/MV_2026-09-29_camera-card-all-rulings.jpg`): the item's photo and
+  "Where is the Spare batteries?" / "New item" in the top band; places-only squares with the "in" pill; a plain white **+**
+  that only ADDS a level; **☰ Choose place** (one line) on the squares' row; "Place: …" / "Place: not defined" in the
+  level's colour; the chain under a thin line with "in" pills; tap a selected square → its sheet (See its photos, ☰ Choose
+  place, Rename, Remove this level); **Cancel bottom-left**; **hold Save → "Save + Next"** (let go = save and next; quick
+  tap = Save; slide off = nothing) → "Spare batteries ✓ saved". Look A is gone (one camera).
+- [x] Ravi 09-29: **the recognise wait is 3 s.** While ReCall looks, everything waits (no +, Choose place, Save); a known
+  place → "Is this the Desk drawer?" with both photos, Yes / No, ☰ Choose place; not recognised or 3 s up → Choose place
+  opens by itself with the photo on top and a name field (ReCall's guess filled in; a late answer fills it if untouched;
+  a name you already have is refused with "pick it below, or give this one its own name").
+- [ ] PARKED (Ravi 09-29): a setting to "wait 3 more seconds" before Choose place opens. Log the real timings first
+  (`camera_where_timeout` / the `ms` on each where answer).
+- [x] Ravi 09-29: **6 photos per place — the newest replaces the oldest.** The main photo (first) always stays; the oldest
+  of the others rotate out, by count and by the ~700 KB guard (audit_where C1/C2/D1–D3). Note: the Places screen's own
+  **Add photo** still hides at 6 (you remove one there by hand) — say if that one should rotate too.
+- [x] Found while re-running the suites: the item's "Your garden shears?" and a place's "Is this the Kitchen counter?" could
+  show **at once** — now one question at a time (the item's first, then the place's) (audit_where I7/I7b).
+- [x] Found: an unnamed level read "Tap + to add what **the a place** is in" → "what **this place** is in".
+- [x] Found on the pixels: at 2+ levels **☰ Choose place dropped to its own line** under the squares (wasted height) — now
+  it stays on the row and the squares scroll; the selected square and + stay in view at Normal/Large/Largest
+  (`rig/probe_row.js`, 9 checks).
+- [x] Settings → Taking photos: the "The camera" A/B picker is gone (look A is gone, so the picker did nothing).
+- [ ] **Ravi: phone check of `20260929g`** (menu → Build 20260929g): Move it on an item → photograph the new place (wait,
+  then "Is this…?" or Choose place opens); + for the next level; tap a selected square; hold Save for Save + Next; a
+  place with 6 photos gets a 7th (the oldest non-main goes).
+- Suites (all green): audit 100 · roles 44 · graph 66 · label 14 · private 34 · d 83 · where 53 · repro_f3 45 ·
+  tiers 43 · probe_cap 14 · audit_card 31 · probe_row 9 = **536**.
 
 ## NOW — `20260929e`: the item page's caption and pin (Ravi 09-29) · the camera card redesign (mockups, awaiting Ravi)
 
@@ -11,14 +41,14 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   the caption sits ~4 px low). audit_d D1 now asserts the new rule (it asserted "centred on the first line", the 09-28 D1).
 - [x] Ravi 09-29: the pin square in **Where it is** (a place with no photo) looked like the Move it button and he pressed
   it — now a plain grey outline; the button colour is kept for things you can press.
-- [ ] **Ravi: the camera card redesign** (`design/mockups/MV_2026-09-29_camera-card-redesign.jpg`,
+- [x] (built in `g`, above) **Ravi: the camera card redesign** (`design/mockups/MV_2026-09-29_camera-card-redesign.jpg`,
   `MV_2026-09-29_cancel-bottom.jpg`): the question in the top band with the thing's photo (B); the row is places only; a
   plain white + that opens the chooser (no pills, no •••); tap a selected square → its sheet (photos, change, rename, add a
   place between, remove); one status line for the selected square; the chain "Desk drawer › In air › Office" at 2+ levels;
   no P1/P2. **Open:** Cancel at the bottom left (Ravi 09-29 — needs B) — in Log item it collides with **+ Next**: L1 drops
   + Next (the saved card offers "Log another"), L2 squeezes ✕ | shutter | + Next | Save (cramped; + Next wraps at Largest).
 - [ ] Ravi: phone check of `20260929e` (menu → Build 20260929e): a thing with a long caption, at Largest text too.
-- [ ] **Ravi: the "set a level" sequence** (`design/mockups/MV_2026-09-29_set-a-level.jpg`, Ravi 09-29: "+ … conflated adding
+- [x] (built in `g`, above) **Ravi: the "set a level" sequence** (`design/mockups/MV_2026-09-29_set-a-level.jpg`, Ravi 09-29: "+ … conflated adding
   a tier with picking the place for the tier in focus"): **+ only ADDS a level** (shown once the last level is set); the level
   in focus is set by **the shutter** (the photo is recognised, everything waits ≤~4 s, then "Is this the Desk drawer?" Yes →
   photo added to that place / No or not recognised → the one popup: name it, or pick one) or by **Choose a place** (the list).
@@ -41,7 +71,14 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 - Mockups ruled 09-29 (camera card), all on one sheet: `design/mockups/MV_2026-09-29_camera-card-all-rulings.jpg` —
   "Choose place" (one line, the list icon) everywhere incl. "No, ☰ Choose place"; "Spare batteries ✓ saved" (✓ saved in
   green) on a translucent blurred panel; a thin translucent line above the chain text (it is about the whole card, not one
-  square). Still open: the recognise wait (3 s / 4 s) and the 6-photo cap (newest replaces oldest?).
+  square). Ruled 09-29 late: 3 s wait; the newest replaces the oldest (built in `g`).
+- [ ] **PARKED (Ravi 09-29, power-user, build later): insert a level in the middle of a chain.** Ravi's idea: drag a square
+  to the right → a bordered + opens in the gap. Only ONE + at a time (the end + hides while a gap is open, returns when it's
+  set). Save is off until the gap is set or removed (a small ✕ on it). Claude's notes: start the drag with a press-and-hold
+  (a plain sideways drag already scrolls the row at 3+ levels); keep "Add a place between X and Y" in the level's sheet as
+  the findable way to the same state; while Save is off, the Place line says why ("not defined — choose it or remove it");
+  inserting under the Desk drawer moves the drawer (and what's in it), so the Q3 line says it ("Desk drawer: In air → …").
+  Mock up before building.
 
 ## NOW — `20260929d`: Ravi's tier rulings Q1–Q5 built (09-29 night)
 

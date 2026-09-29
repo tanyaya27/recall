@@ -6,6 +6,26 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-29 (late night) — Recognise wait 3 s; a place's 7th photo replaces the oldest; one camera look (Ravi) — built as `20260929g`
+
+- **ReCall looks at a place photo for up to 3 s, then Choose place opens by itself** (Ravi: "go with 3 seconds"). Everything
+  waits while it looks, so no question can arrive for a level you've already left (this retires the 09-29 Q5 "ask about
+  another tier" case — there is no other tier to be on). A late answer still fills the name field if you haven't typed.
+  *Would change:* real timings showing most answers land at 3–4 s → the parked "wait 3 more seconds" option.
+- **A place keeps 6 photos; a new one replaces the oldest** (Ravi: "the old photo should be replaced to keep the list at 6").
+  The main photo (first, the one shown for the place) never rotates out; the ~700 KB guard drops in the same order. Before
+  this a 7th photo was dropped silently. The Places screen's own Add photo still hides at 6 (removing is by hand there).
+  *Would change:* someone losing a photo they cared about → rotate only photos the camera added.
+- **One question at a time, the item's first.** "Your garden shears?" and "Is this the Kitchen counter?" had both shown at
+  once in the new card (the old card had this rule — R4.4/F7); the place question now waits for the item's answer.
+- **One camera look.** Look A is gone with the redesign, so Settings no longer offers "The camera" A/B (a control that did
+  nothing). The saved `cameraLook` pref is ignored.
+- **Choose place stays on the squares' row** at every level count and text size; the squares scroll sideways (Q1's rule)
+  rather than pushing the button to its own line (Ravi: maximize vertical space).
+- **The rig's old card checks were rewritten, not kept.** audit_d's D4 pill checks (83 checks now), audit_where's chain-sheet
+  and look-A sections (J7–J9, L1–L3) test controls that no longer exist; their requirements are re-asserted on the new card
+  (level sheet J1–J6, single ask I7/I7b, rename H1–H2) and in audit_card (31).
+
 ## 2026-09-29 (evening) — "item" everywhere; the camera card for multi-level places (Ravi, on the MV_2026-09-29 mockups)
 
 - **"thing" → "item" in every user-facing string** (Ravi: "Change things to items"; DECISIONS 09-14 said one noun app-wide and

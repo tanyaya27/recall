@@ -138,9 +138,9 @@ async function main() {
   check('D14 header shows new name', /Spectacles/.test(await text('.thing-head .name')));
   // Edit the place → history grows, seen now
   await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
-  check('D15m Move it → the camera, the thing already there, level 1 chosen (amber ring)', await count('.lv-sq') >= 2 && await page.locator('.lv-sq.sel').getAttribute('aria-label').then((a) => /^Level 1/.test(a || '')) && /245, 185, 66|F5B942/i.test(await page.evaluate(() => getComputedStyle(document.querySelector('.lc-shutter')).borderTopColor)));
-  await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
-  check('D15p ••• → every place and box, with search; no thing that holds nothing', await count('.where-list .wl-search input') === 1 && await count('.where-list .wl-row') >= 1 && !/Boxes and containers/i.test(await text('.where-list')) && await count('.where-list .wl-g') === 1);
+  check('D15m Move it → the camera, the item up in the band, level 1 chosen (amber ring)', await count('.lc-band .lc-thing') === 1 && await count('.lc-card .lv-sq:not(.plus)') >= 1 && await page.locator('.lv-sq.sel').getAttribute('aria-label').then((a) => /^Level 1/.test(a || '')) && /245, 185, 66|F5B942/i.test(await page.evaluate(() => getComputedStyle(document.querySelector('.lc-shutter')).borderTopColor)));
+  await page.click('.lc-choose'); await page.waitForSelector('.where-list');
+  check('D15p ☰ Choose place → every place and box, with search; no thing that holds nothing', await count('.where-list .wl-search input') === 1 && await count('.where-list .wl-row') >= 1 && !/Boxes and containers/i.test(await text('.where-list')) && await count('.where-list .wl-g') === 1);
   await page.fill('.wl-search input', 'sofa'); await page.click('.wl-new.typed'); await page.waitForTimeout(300); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(500);
   const i1b = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D15a edit place → history entry + lastSeenAt now', i1b.location === 'Sofa' && i1b.history.length === 3 && Date.now() - i1b.lastSeenAt < 5000);
@@ -183,11 +183,11 @@ async function main() {
   check('C1 camera Cancel before a photo → Home, nothing saved, nothing asked', await count('.lc') === 0 && await count('.board') === 1);
   aiNext = { ...AI, name: 'blue mug', alternatives: [], sameAs: '' }; same = { index: 0, sure: false };
   await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.waitForTimeout(1500);
-  check('C2 one photo → the card names it (capitalised); Save and + Next beside the shutter', /Blue mug/.test(await text('.lc-name')) && await count('.lc-k.sv') === 1 && await count('.lc-k.sn') === 1);
+  check('C2 one photo → the band names it (capitalised); Cancel | shutter | Save (hold Save = Save + Next; no + Next button)', /Blue mug/.test(await text('.lc-name')) && await count('.lc-k.sv') === 1 && await count('.lc-k.sn') === 0 && /hold for Save \+ Next/.test(await page.locator('.lc-k.sv').getAttribute('aria-label')) && await count('.lc-bot .lc-x') === 1);
   await page.click('.lc-name'); await page.fill('.sheet .place-input', 'coffee mug'); await page.click('.sheet .btn-primary'); await page.waitForTimeout(200);
   check('C3 tap the name → rename', /Coffee mug/.test(await text('.lc-name')));
-  await page.click('.lc-chip.more'); await page.waitForSelector('.where-list');
-  check('C4 ••• → every place and box (WhereList), with Photograph a new place (D5 ruling, Ravi 09-28: was New place or box: photograph it)', await count('.where-list .wl-row') >= 1 && await count('.where-list .wl-new') === 1);
+  await page.click('.lc-choose'); await page.waitForSelector('.where-list');
+  check('C4 ☰ Choose place → every place and box (WhereList), with Photograph a new place (D5 ruling, Ravi 09-28: was New place or box: photograph it)', await count('.where-list .wl-row') >= 1 && await count('.where-list .wl-new') === 1);
   await page.fill('.wl-search input', 'the shelf'); await page.click('.wl-new.typed'); await page.waitForTimeout(300);
   check('C4a the typed place is the sentence above Save (Save stays one word)', /the shelf/i.test(await text('.lc-say')) && (await text('.lc-k.sv')).trim() === 'Save');
   await page.click('.lc-k.sv'); await page.waitForSelector('.board', { timeout: 5000 }); await page.waitForTimeout(500);
@@ -242,7 +242,7 @@ async function main() {
   await page.mouse.move(t0.x + 40, t0.y + 40); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
   check('E2a build 2: the hold sheet is trimmed (#28)', !/Change the place|Rename|Move to the top/.test(await text('.item-sheet')));
   await page.click('.item-sheet button:has-text("Move it"), .item-sheet button:has-text("Put it somewhere")'); await page.waitForSelector('.lc');
-  check('E3 Move it → the camera with the thing there, asking where', /Where (is|are) the/.test(await text('.lc-prompt')));
+  check('E3 Move it → the camera with the item there, asking where (in the band)', /Where (is|are) the/.test(await text('.lc-band')));
   await page.click('.lc-x'); await page.waitForTimeout(300);
   await page.mouse.move(t0.x + 40, t0.y + 40); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
   await page.click('text=Remove from my items'); await page.waitForSelector('.sheet');
