@@ -399,3 +399,8 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-29 (evening) — Multi-tier needs its own walk.** The 09-27 walk wrote "＋ (blue, level 2) — would add a further
   level" and stopped there; no suite ever saved a place at tier 2. Every combination (known/new × place/box × Log/Move),
   saved with the rules on, then read back on every screen: `rig/audit_tiers.js`.
+- **2026-09-29 (night) — Put a question to Ravi as a story about his own things, not as a label.** "Q3 re-parent", "place
+  inside a box", "an ask for another tier" meant nothing to him ("so cryptic, I can't figure out what you are asking me").
+  What worked: two short paragraphs each — what happens today in plain words (Kitchen counter, Craft nook, the glue), why
+  it matters, and one recommendation — and he answered "OK to both" in one line. Explain the words "box" and "place"
+  every time they carry the question.

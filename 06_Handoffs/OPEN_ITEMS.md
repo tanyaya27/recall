@@ -3,6 +3,15 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-29 (evening).
 
+## NOW — `20260929d`: Ravi's tier rulings Q1–Q5 built (09-29 night)
+
+- [x] Q1 thing page: every tier; squares scroll sideways at 3+, words show all tiers with " · ". Q2 Places: "in Oak cabinet
+  · …". Q3 say it, don't ask ("Kitchen counter: Craft nook → Pantry shelf" before Save and on the card/toast). Q4 outside a
+  place, only places. Q5 an ask about another tier shows that tier's photo. DECISIONS 09-29 (night).
+- [x] `rig/audit_tiers.js` now 40 checks (Q1–Q5 added). Screens: `design/mockups/BUILD_2026-09-29d_tier-rulings.jpg`.
+- [ ] **Ravi: phone check of `20260929d`** (menu → Build 20260929d): a thing three tiers deep — its page (squares scroll,
+  words wrap); Places ("in …"); pick a place that already has a where, give tier 2 something else — the line before Save.
+
 ## NOW — `20260929c`: tier 2 and beyond are stored (Ravi 09-29: "it doesn't store that next tier") — adversarial audit
 
 - [x] Ravi 09-29 (phone on `20260929b`): Move it → Desk drawer kept at tier 1 → ＋ → 2 photos named "In air" → Save: tier 2 not
@@ -20,7 +29,7 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
 - [x] Next build item: Settings → Version ends with "Build 20260929c" (the ☰ menu's stamp). Check S16.
 - [x] Suites: repro_f3 50 · audit 100 · audit_roles 44 · audit_graph 66 · audit_label 14 · audit_private 34 · audit_d 117 ·
   audit_where 63 · **audit_tiers 26**. (The handoff said audit_where 83; the suite has 63 checks and was 63/63 at the start.)
-- [ ] **Ravi + Tanya: rule on Q1–Q5** (renders `design/mockups/TIERS_Q1..Q5_*.jpg`; board positions in the audit file):
+- [x] (09-29 night, `20260929d`) **Ravi + Tanya: rule on Q1–Q5** (renders `design/mockups/TIERS_Q1..Q5_*.jpg`; board positions in the audit file):
   Q1 how the thing's page shows the tiers (A row · B words · C ladder) — until then the tiers are stored and shown in the
   camera only; Q2 Places list (A "in the …" line · B nested); Q3 a place that already has a where is said to be elsewhere
   (A it comes in as tier 2 · B last word wins, said on the card · C ask) — today B without the words; Q4 a place inside a box

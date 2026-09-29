@@ -254,6 +254,14 @@ async function runLook(look) {
       const stripNow = await page.evaluate(() => { const p = document.querySelector('.lv-sq.plus'); const c = document.querySelector('.lc-card'); return p && c ? Math.round(p.getBoundingClientRect().right - c.getBoundingClientRect().right) : null; });
       check('S2', 'at three tiers the ＋ square is inside the card (not cut off / out of sight)', stripNow !== null && stripNow <= 0, 'overhang px=' + stripNow);
       rec.strip = await page.evaluate(() => { const s = document.querySelector('.lv-strip'); const p = document.querySelector('.lv-sq.plus'); const c = document.querySelector('.lc-card'); const r = (e) => e && e.getBoundingClientRect(); return s && { scrollW: s.scrollWidth, clientW: s.clientWidth, overflowX: getComputedStyle(s).overflowX, plusRight: p ? Math.round(r(p).right) : null, cardRight: Math.round(r(c).right) }; }); await save(); await after(rec, 'stapler');
+      check('S2', 'Drawer 3 is in the Oak cabinet', (await inOf('Drawer 3')) === 'place:oak cabinet', await inOf('Drawer 3'));
+      check('S2', 'the Oak cabinet is in the Office', (await inOf('Oak cabinet')) === 'place:office', await inOf('Oak cabinet'));
+      check('S2', 'the Office is in nothing', (await inOf('Office')) === 'none', await inOf('Office'));
+      // Q1 · Ravi 09-29: every tier on the thing's page — squares scroll sideways, the words show every tier with a separator.
+      const tp = rec.thingPage || { text: '', squares: 0 };
+      check('S2', 'Q1: the thing\'s page shows all 3 tiers as squares', tp.squares === 3, JSON.stringify(tp));
+      check('S2', 'Q1: the words show every tier, separated: "Drawer 3 | Oak cabinet · Office"', /Drawer 3/.test(tp.text) && /Oak cabinet · Office/.test(tp.text), tp.text);
+      check('S2', 'Q2: Places says "in Oak cabinet" under Drawer 3', (rec.placesList || []).some((r) => /^Drawer 3 \| in Oak cabinet · /.test(r)), JSON.stringify((rec.placesList || []).slice(0, 3)));
     });
     // S3 — a new thing: known place > known place.
     await scen('S3', 'Log: known place (Kitchen counter) > known place (Craft nook)', async (rec) => {
@@ -276,22 +284,31 @@ async function runLook(look) {
       await plus(); rec.steps.push(await pickWhere('Pantry shelf'));
       await snapCam(rec, 'known > different known'); await save(); await after(rec, 'tape');
       check('S4', 'Kitchen counter has exactly one "where" (the last one said)', (await inOf('Kitchen counter')) === 'place:pantry shelf', await inOf('Kitchen counter'));
+      const c4 = rec.cam[rec.cam.length - 1] || {};
+      check('S4', 'Q3: before Save the camera says "Kitchen counter: Craft nook → Pantry shelf"', /Kitchen counter: Craft nook → Pantry shelf/.test(c4.say || ''), c4.say);
+      check('S4', 'Q3: the saved card says it too', /Kitchen counter: Craft nook → Pantry shelf/.test((rec.saved || {}).text || ''), (rec.saved || {}).text);
     });
     // S5 — a place inside a box: known place > known box.
-    await scen('S5', 'Log: known place (Linen closet) > known box (tin box)', async (rec) => {
+    await scen('S5', 'Q4: outside a place there are only places (Linen closet, then tier 2)', async (rec) => {
       await newThing('stapler');
       await plus(); rec.steps.push(await pickWhere('Linen closet'));
-      await plus(); rec.steps.push(await pickWhere('Tin box'));
-      await snapCam(rec, 'place > box'); await save(); await after(rec, 'stapler');
-      check('S5', 'Linen closet is in the tin box (as said; Q4 decides if that is allowed)', (await inOf('Linen closet')) === 'thing:tin box', await inOf('Linen closet'));
+      await plus(); const st = await camState();
+      const boxChips = await page.locator('.lc-chip.box').count();
+      await tap('.lc-chip.more', { wait: 600 }); const boxRows = await page.evaluate(() => [...document.querySelectorAll('.wl-row .tx b')].filter((r) => /tin box|tool drawer|filing cabinet|memorabilia/i.test(r.innerText)).length);
+      await snapCam(rec, 'tier 2 after a place: the ••• list');
+      check('S5', 'Q4: no box is offered for where a place is (pills and ••• list)', boxChips === 0 && boxRows === 0, `boxChips=${boxChips} boxRows=${boxRows} chips=${JSON.stringify(st.chips)}`);
+      await tap('.sheet .btn-quiet, .sheet button:has-text("Cancel")', { wait: 400 });
+      await shoot('smallbox.jpg', { name: 'backpack', moves: true });
+      await snapCam(rec, 'photographed at tier 2: the AI says it moves'); await save(); await after(rec, 'stapler');
+      check('S5', 'Q4: photographed outside a place, it is saved as a place (Linen closet in Backpack; no box made)', (await inOf('Linen closet')) === 'place:backpack' && !(await byName('backpack')), await inOf('Linen closet'));
     });
-    // S6 — a known box that already has a place, put somewhere else at tier 2.
     await scen('S6', 'Log: known box (tin box, at Garage) > known place (Craft nook)', async (rec) => {
       await newThing('stapler');
       await plus(); rec.steps.push(await pickWhere('Tin box'));
       await snapCam(rec, 'box selected (its own place shows?)');
       await plus(); rec.steps.push(await pickWhere('Craft nook'));
-      await snapCam(rec, 'box > place'); await save(); await after(rec, 'stapler');
+      const c6 = await snapCam(rec, 'box > place'); await save(); await after(rec, 'stapler');
+      check('S6', 'Q3: a box with a place, given another: "Tin box: Garage → Craft nook" before Save and on the card', /Tin box: Garage → Craft nook/.test(c6.say) && /Tin box: Garage → Craft nook/.test((rec.saved || {}).text || ''), c6.say + ' || ' + ((rec.saved || {}).text || ''));
     });
     // S7 — new box > new place > known place.
     await scen('S7', 'Log: new box > new place > known place (Linen closet)', async (rec) => {
@@ -302,6 +319,8 @@ async function runLook(look) {
       await snapCam(rec, 'new box > new place > known'); await save(); await after(rec, 'stapler');
       check('S7', 'the new Top shelf is in the Linen closet (an edge, not a field nothing reads)', (await inOf('Top shelf')) === 'place:linen closet', await inOf('Top shelf'));
       check('S7', 'the shoe box is at Top shelf', /top shelf/i.test(((await byName('shoe box')) || {}).location || ''), '');
+      const tp = rec.thingPage || { text: '' };
+      check('S7', 'Q1: a box then two places: "In the shoe box | Top shelf · Linen closet"', /In the shoe box/.test(tp.text) && /Top shelf · Linen closet/.test(tp.text), tp.text);
     });
     // S8 — the AI can't name two different new places, in two separate saves → both "A place"?
     await scen('S8', 'Two unnamed new places in two saves', async (rec) => {
@@ -360,6 +379,15 @@ async function runLook(look) {
       await snapCam(rec, 'loop: is Kitchen counter offered for where Pantry shelf is?');
       check('S13', 'a circle is not offered: Kitchen counter (inside Pantry shelf) is not a choice for where Pantry shelf is', !chips.some((c) => /kitchen/i.test(c)) && rows === 0, `chips=${JSON.stringify(chips)} rows=${rows}`);
     });
+    // S14b — Q4: photographing a known BOX's name as where a place is: no "Yes, that one" (a place is never in a box); it
+    // needs its own name.
+    await scen('S14b', 'Q4: a box name on a tier outside a place', async (rec) => {
+      await newThing('glue'); await plus(); await shoot('drawer.jpg', { name: 'Drawer 5', moves: false });
+      await plus(); await shoot('closet.jpg', { name: 'Filing cabinet', moves: true });
+      const st = await snapCam(rec, 'filing cabinet (a box) outside a place');
+      const askN = await page.locator('.lc-ask').count();
+      check('S14b', 'Q4: no "Your filing cabinet?" ask; Save waits for its own name', askN === 0 && st.saveDis === true && /needs its own name/.test(st.say), `ask=${askN} saveDis=${st.saveDis} say=${st.say}`);
+    });
     // S16 — Ravi 09-28: the build name is the last line of Settings → Version, the same as the ☰ menu's.
     await scen('S16', 'Settings → Version ends with the build name', async (rec) => {
       await home(); await tap('.menu-btn', { wait: 400 }); const menu = await text('.drawer-build'); await page.keyboard.press('Escape').catch(() => {});
@@ -381,9 +409,16 @@ async function runLook(look) {
     await scen('S14', 'An ask for tier 2 arrives while tier 3 is selected', async (rec) => {
       await newThing('stapler');
       await plus(); await shoot('drawer.jpg', { name: 'Drawer 3', moves: false });
-      await plus(); WHERE.push({ name: 'Filing cabinet', moves: true, sure: false }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 150 });
+      await plus(); WHERE.push({ name: 'Craft nook', moves: false, sure: false }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 150 });
       await plus(); await shoot('real_desk.jpg', { name: 'Office', moves: false });
       await snapCam(rec, 'ask for tier 2 shown while tier 3 is selected');
+      const ask = await page.evaluate(() => { const a = document.querySelector('.lc-ask'); return a ? { t: a.innerText, sq: !!a.querySelector('.lc-ask-sq') } : null; });
+      check('S14', 'Q5: the question about tier 2 shows tier 2\'s photo ("Is this your craft nook?")', !!ask && ask.sq && /Is this your craft nook\?/i.test(ask.t), JSON.stringify(ask));
+      await page.locator('.lv-sq').nth(2).click(); await page.waitForTimeout(500);
+      if (await page.locator('.sheet-back').count()) { await page.mouse.click(195, 60); await page.waitForTimeout(400); }
+      const ask2 = await page.evaluate(() => { const a = document.querySelector('.lc-ask'); return a ? { t: a.innerText, sq: !!a.querySelector('.lc-ask-sq') } : null; });
+      check('S14', 'Q5: with tier 2 selected, the question is the usual "Your craft nook?" (D4)', !!ask2 && !ask2.sq && /Your craft nook\?/i.test(ask2.t), JSON.stringify(ask2));
+      await shot('S14', 'tier 2 selected: the usual ask');
     });
   }
 

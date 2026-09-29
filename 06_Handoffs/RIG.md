@@ -100,7 +100,7 @@ the functions: `./rules-test/run_ai_test.sh`.
 ## The bug-fix loop (2026-09-29)
 
 - **Suites and the baseline at `20260929c`:** repro_f3 50 · audit 100 · audit_roles 44 · audit_graph 66 ·
-  audit_label 14 · audit_private 34 · audit_d 117 · audit_where 63 · audit_tiers 26. (It said audit_where 83 at `b`; the suite has 63 checks.) Some take several minutes: run them in the
+  audit_label 14 · audit_private 34 · audit_d 117 · audit_where 63 · audit_tiers 40 (at `20260929d`). (It said audit_where 83 at `b`; the suite has 63 checks.) Some take several minutes: run them in the
   background with `timeout 900`.
 - **The rig bundles from its own copy of `src`.** Copy the edited `src` and `styles.css` in, then run `./build.sh`,
   before every run.
@@ -116,7 +116,7 @@ the functions: `./rules-test/run_ai_test.sh`.
 
 ## Multi-tier places (2026-09-29, evening)
 
-- `audit_tiers.js` (26 checks, rules ON): every tier combination — known/new place, known/new box, the current place in Move
+- `audit_tiers.js` (40 checks at `d`, rules ON; Q1–Q5 rulings included): every tier combination — known/new place, known/new box, the current place in Move
   it, the same place twice, a circle, two unnamed places, old `parent` data, Settings → Version. Records what was stored
   (open edges from places) and what the screens say; `node audit_tiers.js b [S1,S2…]` runs a subset; `PORT=` picks the port.
   Shots in `shots_tiers/`, a JSON record per run in `tiers_<look>.json`.

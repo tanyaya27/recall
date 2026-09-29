@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, removePlacePhoto, placeNamed, placeThumb, allPlaces, changeLocation, logEvent, PLACE_PHOTOS } from '../lib/db.js';
 import { compressPlacePhoto } from '../lib/img.js';
 import { CameraIcon, ChevronIcon, PencilIcon, TrashIcon, NoteIcon } from './Icons.jsx';
-import { timeAgo } from '../lib/format.js';
+import { timeAgo, cap } from '../lib/format.js';
 import { getPrefs, savePrefs, THEMES, SIZES } from '../lib/prefs.js';
 import Header from './Header.jsx';
+import { placeOuter } from '../lib/graph.js';
 import Confirm from './Confirm.jsx';
 import SwipeRow from './SwipeRow.jsx';
 
@@ -93,7 +94,9 @@ export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd
       {rows.length === 0 && <div className="card"><p className="sub" style={{ margin: 0 }}>No places yet. Add one with a photo, or they appear here as things are logged.</p></div>}
       {rows.map((r) => {
         const pic = placeThumb(r.name, places, items);
-        const sub = r.count ? `${r.count} thing${r.count === 1 ? '' : 's'} here` : 'nothing here now';
+        // Q2 · A (Ravi 09-29): a place that is in something says so first — "in Oak cabinet · 1 thing here".
+        const inW = placeOuter(r.name)[0];
+        const sub = (inW ? `in ${inW.t === 'thing' ? cap(inW.item.name) : inW.name} · ` : '') + (r.count ? `${r.count} thing${r.count === 1 ? '' : 's'} here` : 'nothing here now');
         const pics = r.saved && r.saved.photos ? r.saved.photos.length : 0;
         return (
           <button type="button" className="loc-row" key={r.name} onClick={() => onOpen(r.name)}>

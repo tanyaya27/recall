@@ -858,6 +858,7 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .lc-ask { padding: 0.625rem 0.75rem; border-radius: 0.875rem; color: #fff; background: rgba(22,22,22,0.55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.14); }
 .lc-card .lc-ask { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: 0; padding: 0; margin: 0.75rem 0.125rem 0; } /* D4: no panel inside the card (the card is the panel) */
 .lc-ask b { display: flex; align-items: center; gap: 0.5rem; font-size: 1.0625rem; } .lc-ask b svg { flex: none; width: 1.15rem; height: 1.15rem; } /* D4: the pin at the start of the line */ .lc-ask div { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+.lc-ask b .lc-ask-sq { flex: none; width: 2.125rem; height: 2.125rem; border-radius: 0.5rem; border: 2.5px solid; object-fit: cover; } /* Q5 · A: the tier's own photo */
 .lc-ask button { min-height: 44px; padding: 0 1rem; border-radius: 999px; background: #2F6B5E; color: #fff; font-weight: 700; font-size: 0.9375rem; }
 .lc-ask button.o { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.5); }
 .lc-priv { font-size: 0.875rem; color: #D6D0C6; margin: 0.375rem 0.125rem 0; } .lc-priv svg { width: 0.9rem; height: 0.9rem; vertical-align: -0.12em; }
@@ -926,6 +927,7 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .saved-card .trail .in { flex: none; font-size: 0.75rem; font-weight: 800; color: #bbb; }
 .saved-card .s { margin-top: 0.5rem; font-size: 1rem; font-weight: 700; line-height: 1.3; }
 .saved-card .s small { display: block; font-weight: 500; color: #ccc; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.saved-card .s small.sc-move { white-space: normal; } /* Q3: what moved with this save, always whole */
 .saved-card .s svg { width: 0.9rem; height: 0.9rem; vertical-align: -0.1em; }
 .saved-card .u { position: absolute; right: 0.5rem; top: 0.5rem; background: none; color: #fff; font-weight: 700; text-decoration: underline; font-size: 1rem; min-height: 2.75rem; padding: 0 0.5rem; }
 /* bug #29 (walk 09-27): a row of buttons wider than the phone widened the page, and every sheet ran off the edge. */
@@ -992,6 +994,11 @@ html, body { overflow-x: hidden; }
 .tp-wh .ch img, .tp-wh .ch .no { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; flex: none; }
 .tp-wh .ch .no { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
 .tp-wh .ch .no svg { width: 20px; height: 20px; }
+/* Q1 (Ravi 09-29): three tiers or more — the squares scroll sideways (about two and a half show, the fade says there is more);
+   the words beside them show every tier, wrapping. */
+.tp-wh .ch.scroll { flex: 0 1 auto; max-width: 9.5rem; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 78%, transparent); mask-image: linear-gradient(90deg, #000 78%, transparent); padding-right: 0.75rem; }
+.tp-wh .ch.scroll::-webkit-scrollbar { display: none; }
+.tp-wh .ch .st { flex: none; }
 .tp-wh .in { font-size: 0.6875rem; font-weight: 800; color: var(--ink-soft); }
 .tp-wh .no-pin { flex: none; display: flex; color: var(--amber); } .tp-wh .no-pin svg { width: 1.5rem; height: 1.5rem; }
 .tp-wh .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }

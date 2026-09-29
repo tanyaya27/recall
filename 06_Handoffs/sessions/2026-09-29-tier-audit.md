@@ -26,3 +26,9 @@ audit_where 63 (A5 now asserts the edge, not `parent`) · audit_tiers 26.
 ## Open
 - Ravi/Tanya: Q1–Q5. Until Q1, the stored tiers show in the camera only (thing page, Find, Places show tier 1).
 - Ravi's phone check of `20260929c`. His "In air" from `b` is an orphan place; re-doing the move fixes it.
+
+## Later the same night: Ravi's rulings → `20260929d`
+Ravi pushed `c`, then ruled: Q1 A with the squares scrolling and the words wrapping (a separator between tiers), Q2 A, Q5 A.
+Q3 and Q4 he found cryptic; re-explained in plain words with one recommendation each ("say it, don't ask"; "outside a place,
+only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eight suites green again
+(50 · 100 · 44 · 66 · 14 · 34 · 117 · 63). Screens: `design/mockups/BUILD_2026-09-29d_tier-rulings.jpg`.

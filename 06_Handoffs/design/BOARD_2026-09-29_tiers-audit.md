@@ -164,3 +164,12 @@ U4 (the "Current place" words) follows whichever of these is chosen.
 - Helpers can say where a shared place is (the real rules allow it: `canEdit` on the place). A viewer and a stranger can't.
   Proven on the emulator.
 - The handoff's baseline listed audit_where as 83. The suite has 63 checks, and ran 63/63 at the start of this session.
+
+## Rulings (Ravi, 09-29 night) — built as `20260929d`
+
+- **Q1 · A, with Ravi's change:** the squares scroll sideways; the words show every tier, wrapping, one separator between tiers.
+- **Q2 · A.**
+- **Q3 · say it, don't ask** (explained in plain words; Ravi: OK). The camera line and the card say "Kitchen counter:
+  Craft nook → Pantry shelf"; Undo puts it back.
+- **Q4 · outside a place there are only places** (Ravi: OK). A pocket moves with the backpack, so it is a box.
+- **Q5 · A.**

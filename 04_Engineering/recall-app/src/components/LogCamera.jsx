@@ -186,7 +186,10 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     logEvent('camera_where_named', { named: !!(r && r.name), moves: !!(r && r.moves), known: !!hit });
     // REQUIREMENTS_2026-09-27 R3.2: a name she typed before the AI answered WINS — the late result
     // only ever fills `moves`/`ask`, never the name itself, once `userName` is set.
-    setLevels((ls) => ls.map((l) => (l.key !== key ? l : { ...l, status: r ? 'named' : 'failed', name: l.userName ? l.name : ((r && r.name) || ''), moves: !!(r && r.moves), ask: hit })));
+    // Q4 (Ravi 09-29): outside a place there are only places — a tier photographed there is a place even if the AI calls it
+    // something that moves, and a box is never its match.
+    setLevels((ls) => ls.map((l, j) => { if (l.key !== key) return l; const outP = placeBelow(ls, j);
+      return { ...l, status: r ? 'named' : 'failed', name: l.userName ? l.name : ((r && r.name) || ''), moves: !outP && !!(r && r.moves), ask: outP && hit && hit.t === 'thing' ? null : hit }; }));
   }
 
   // ---- what the screen says
@@ -219,8 +222,11 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   // counter in Pantry shelf). Hidden from the pills and the ••• list, and refused by pickKnown.
   const tierKey = (k) => (k.t === 'thing' ? 't:' + k.item.id : 'p:' + (k.name || '').toLowerCase());
   const levelKey = (l) => { const k = known(l); if (k) return tierKey(k); const n = (l.userName || l.name || '').toLowerCase(); return n ? (l.moves ? 'n:' : 'p:') + n : null; };
+  // Q4: is the tier just inside level j a place (known, or new and not a box)?
+  function placeBelow(ls, j) { const inner = j >= 1 ? ls[j - 1] : null; if (!inner || !(inner.photos.length || inner.known)) return false; const ik = inner.known || (inner.ask && !inner.no ? inner.ask : null); return ik ? ik.t === 'place' : !inner.moves; }
   function blockedAt(k, tier) {
     if (!k || tier < 1) return false;
+    if (k.t === 'thing' && placeBelow(levels, tier - 1)) return true; // Q4 (Ravi 09-29): a box is never outside a place
     if (levels.some((l, j) => j !== tier - 1 && filled(l) && levelKey(l) === tierKey(k))) return true;
     const inner = tier >= 2 ? levels[tier - 2] : null;
     if (!inner || !filled(inner)) return false;
@@ -228,6 +234,25 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (ik && ik.t === 'thing') return k.t === 'thing' ? wouldLoop(ik.item, k.item) : placeOuter(k.name).some((x) => x.t === 'thing' && x.item.id === ik.item.id);
     const pn = ik ? ik.name : (!inner.moves ? (inner.userName || inner.name) : '');
     return pn ? placeWouldLoop(pn, k.t === 'thing' ? { t: 'thing', item: k.item } : k) : false;
+  }
+  // Q3 (Ravi 09-29, "say it, don't ask"): a place or box on the chain that already has a where, given a DIFFERENT one by the
+  // next tier, is moved — everything in it goes along. Said before Save ("Kitchen counter: Craft nook → Pantry shelf") and
+  // again on the card; Undo puts it back.
+  function whereNow(k) {
+    if (!k) return '';
+    if (k.t === 'place') { const o = placeOuter(k.name)[0]; return o ? (o.t === 'thing' ? cap(o.item.name) : o.name) : ''; }
+    const h = holderOf(k.item); return h ? cap(h.name) : (k.item.location || '');
+  }
+  function changes() {
+    const out = [];
+    const fl = levels.filter(filled);
+    fl.forEach((l, j) => {
+      const k = known(l); const next = fl[j + 1];
+      if (!k || !next) return;
+      const was = whereNow(k); const now = linkName(next);
+      if (was && now && was.toLowerCase() !== now.toLowerCase()) out.push(`${k.t === 'thing' ? cap(k.item.name) : k.name}: ${was} → ${now}`);
+    });
+    return out;
   }
   function sentence() {
     if (!links.length) return { l1: 'No place yet', l2: started ? 'Tap ＋ to add where it is' : '', none: true };
@@ -243,6 +268,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     return { l1, l2: rest.length ? rest.join(' · ') : (first.why ? WHY[first.why] || first.why : ''), none: false, label };
   }
   const say = sentence();
+  const moving = real.length ? changes() : [];
 
   // ---- levels: pick, add, fill from a chip
   const lastFilled = levels.length === 0 || filled(levels[levels.length - 1]);
@@ -396,7 +422,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         // 09-29: tier 1 kept as the current place (only a deeper tier changed) — the thing itself did not move.
         const ok = location && !(use[0] && use[0].current) ? await changeLocation(moveItem, location, 'chosen', dest) : true;
         logEvent('camera_move', { itemId: moveItem.id, ok, depth: resolved.length });
-        onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2, none: say.none, moved: true, refused: ok === false, unnamed,
+        onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2, none: say.none, moved: true, refused: ok === false, unnamed, moving,
           undo: mine ? { itemId: moveItem.id, isNew: false, prev, made } : null });
         return;
       }
@@ -425,7 +451,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         }
       }
       logEvent('capture', { initiatedBy: 'camera', itemId, merged: !!match, depth: resolved.length, photos: thing.photos.length, made: made.items.length + made.places.length, next: !!next, look, beforeName: tag === undefined });
-      const card = { itemId, where: location, name: cap(name) || 'Saved', lock: startPrivate || (match && match.private), thumbs, l1: say.l1, l2, none: say.none, unnamed,
+      const card = { itemId, where: location, name: cap(name) || 'Saved', lock: startPrivate || (match && match.private), thumbs, l1: say.l1, l2, none: say.none, unnamed, moving,
         undo: mine ? { itemId, isNew, prev, made } : null };
       if (next) {
         onSaved({ ...card, next: true });
@@ -486,6 +512,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const nm = resolvedLevelName(l) || (unnamedNew(l) ? 'A place' : '');
     return nm ? collisionFor(nm) : null;
   };
+  // Q4: a name that is a BOX, on a tier outside a place, can't be "Yes, that one" (a place is never in a box) — it just
+  // needs its own name, like any taken name.
+  const boxOutsidePlace = (l, c) => !!c && c.t === 'thing' && placeBelow(levels, levels.findIndex((x) => x.key === l.key));
   // R4.4 (kills F7): at most one level ask at a time, in chain order — a visual sure-match ask
   // (already stored on the level as `ask`) takes priority over a same-name collision found here.
   const levelAsks = [];
@@ -493,7 +522,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (l.ask && !l.no && !l.yes && l.status === 'named') { levelAsks.push({ l, target: l.ask, byName: false }); return; }
     if (!l.ask || l.no) {
       const col = levelCollision(l);
-      if (col && !unnamedNew(l) && l.collisionNo !== resolvedLevelName(l)) levelAsks.push({ l, target: col, byName: true });
+      if (col && !unnamedNew(l) && !boxOutsidePlace(l, col) && l.collisionNo !== resolvedLevelName(l)) levelAsks.push({ l, target: col, byName: true });
     }
   });
   const askLevel = levelAsks[0] || null;
@@ -518,9 +547,16 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   // on it, in the colour of the level it asks about (amber for level 1) — then Yes / No, a new one. While it is up, the
   // sentence line under it is not shown (it would only say the same place again).
   const askColour = askLevel ? LEVEL_COLOURS[Math.min(Math.max(1, levels.findIndex((l) => l.key === askLevel.l.key) + 1), LEVEL_COLOURS.length - 1)] : '#fff';
+  const askIdx = askLevel ? levels.findIndex((l) => l.key === askLevel.l.key) : -1;
+  const askOther = askIdx >= 0 && askIdx + 1 !== sel;
+  const askThumb = askOther ? linkThumb(askLevel.l) : null;
   const whereAsk = askLevel ? (
     <div className="lc-ask" role="group" aria-label="Is this the one you have?">
-      <b style={{ color: askColour }}><PinIcon /><span>Your {own(askLevel.target.t === 'thing' ? askLevel.target.item.name : askLevel.target.name)}?</span></b>
+      {/* Q5 · A (Ravi 09-29): a question about a tier that is NOT the one selected (the AI answered tier 2 after ＋ moved on
+          to tier 3) shows that tier's own photo in its colour ring, so it never relies on colour alone. */}
+      {askOther
+        ? <b style={{ color: askColour }}>{askThumb ? <img className="lc-ask-sq" src={askThumb} alt="" style={{ borderColor: askColour }} /> : <PinIcon />}<span>Is this your {own(askLevel.target.t === 'thing' ? askLevel.target.item.name : askLevel.target.name)}?</span></b>
+        : <b style={{ color: askColour }}><PinIcon /><span>Your {own(askLevel.target.t === 'thing' ? askLevel.target.item.name : askLevel.target.name)}?</span></b>}
       <div><button type="button" onClick={() => {
           convertLevelToKnown(askLevel.l.key, askLevel.target);
           logEvent('camera_where_collision', { answer: 'yes', byName: !!askLevel.byName });
@@ -586,7 +622,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       {/* 09-29 (Ravi): the pin takes the colour of level 1's border; a label ("Current place" / "New place") is a different
           colour from the place's name. */}
       {/* 09-29b: the pin lives INSIDE line 1's own row and is centred on it by flex — never a margin guess. */}
-      <span className="tx"><span className="l1"><span className="lc-pin" style={{ color: LEVEL_COLOURS[1] }}><PinIcon /></span><b>{say.label && <span className="lab" style={{ color: LEVEL_COLOURS[1] }}>{say.label}: </span>}{say.l1}</b></span>{say.l2 && <span className="soft">{say.l2}</span>}</span>
+      <span className="tx"><span className="l1"><span className="lc-pin" style={{ color: LEVEL_COLOURS[1] }}><PinIcon /></span><b>{say.label && <span className="lab" style={{ color: LEVEL_COLOURS[1] }}>{say.label}: </span>}{say.l1}</b></span>{say.l2 && <span className="soft">{say.l2}</span>}{moving.map((m) => <span key={m} className="soft lc-move">{m}</span>)}</span>
       {links.length > 0 && !moveItem && <button type="button" className="lc-chg" aria-label="Change where it goes" onClick={() => setSheet('chain')}><PencilIcon /></button>}
     </div>) : null;
   // 09-29 (Ravi): the current place is not a pill while it IS the selection (it's in the ••• list, tagged). Once a new

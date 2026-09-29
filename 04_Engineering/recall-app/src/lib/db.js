@@ -564,6 +564,8 @@ const capName = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 async function placeOuterLink(place, outer, inChain, made) {
   if (!place || !place.id) return;
   const key = 'p:' + (place.name || '').toLowerCase();
+  // Q4 (Ravi 09-29): a place is never inside something that moves — the camera doesn't offer it; this is the backstop.
+  if (outer && outer.dest && outer.dest.t === 'thing') { logEvent('place_in_box_refused', { placeId: place.id }); inChain.add(key); return; }
   if (outer && !inChain.has(key)) { const r = await placeIn(place, outer.dest); if (r) made.placeMoves.push(r); }
   inChain.add(key);
 }

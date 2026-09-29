@@ -357,7 +357,7 @@ export default function App() {
     if (card.moved) {
       setLog(null);
       if (card.refused) { say('Not moved · it can’t go inside something that is inside it'); return; }
-      say(card.none ? 'No place yet' : `${card.name} · ${card.l1}${card.l2 ? ` · ${card.l2}` : ''}`, card.undo ? async () => { await undoChain(card.undo); logEvent('move_undo', { itemId: card.itemId }); } : null);
+      say(card.none ? 'No place yet' : `${card.name} · ${card.l1}${card.l2 ? ` · ${card.l2}` : ''}${(card.moving || []).length ? ` · ${card.moving.join(' · ')}` : ''}`, card.undo ? async () => { await undoChain(card.undo); logEvent('move_undo', { itemId: card.itemId }); } : null);
       return;
     }
     if (card.where) notePlace(card.where); // Write it down offers the place used a moment ago

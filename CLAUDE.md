@@ -69,7 +69,9 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-29 (evening) — `20260929c` built (NOT pushed): places can be "in" something (an edge from the place); tier 2+ is stored; adversarial tier audit `06_Handoffs/design/BOARD_2026-09-29_tiers-audit.md`; Q1–Q5 await Ravi/Tanya. Suites + `rig/audit_tiers.js` in `06_Handoffs/RIG.md`.**
+> **2026-09-29 (night) — `20260929d` built (NOT pushed): Ravi's tier rulings Q1–Q5 (DECISIONS 09-29 night). `20260929c` is pushed.**
+>
+> **2026-09-29 (evening) — `20260929c`: places can be "in" something (an edge from the place); tier 2+ is stored; adversarial tier audit `06_Handoffs/design/BOARD_2026-09-29_tiers-audit.md`; Q1–Q5 await Ravi/Tanya. Suites + `rig/audit_tiers.js` in `06_Handoffs/RIG.md`.**
 >
 > **2026-09-24 (latest) — Step 2 complete as `20260924d` (NOT pushed): + label text (#9) and Write it down (#10). `20260924c` (capture modes) is LIVE.**
 > **2026-09-24 (later) — Step 2 part 1 built as `20260924c`: capture modes One thing · Several (DECISIONS 09-24); deploy rules before pushing (OPEN_ITEMS).** Audits: `rig/audit.js`, `audit_roles.js`, `audit_modes.js`.

@@ -3,7 +3,7 @@ import { hasSecret } from '../lib/sensitive.js';
 import { renameItem, loadSnaps, removeSnap, setMainPhoto, setSnapCaption, setPlaceMainPhoto, removePlacePhoto, updateItem, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { photoStamp, cap } from '../lib/format.js';
-import { contentsOf, chainOf, outerPlace, inPhrase, isContainer } from '../lib/graph.js';
+import { contentsOf, chainOf, outerPlace, inPhrase, isContainer, whereChain } from '../lib/graph.js';
 import { getPrefs } from '../lib/prefs.js';
 import { own } from './PhotoCard.jsx';
 import Confirm from './Confirm.jsx';
@@ -170,8 +170,13 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   const outer = outerPlace(item);
   const placePic = (n) => { const p = placeNamed(n, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; };
   const hasPlace = chain.length > 0 || !!item.location;
-  const whereB = chain.length ? inPhrase(chain[0]) : item.location;
-  const whereS = chain.length ? [chain.slice(1, 2).map((c) => inPhrase(c).replace(/^In /, 'in ')).join(''), outer].filter(Boolean).join(' · ') || 'Where the box is: not said yet'
+  // Q1 (Ravi 09-29, tier audit): every tier, boxes then places (Drawer 3 › Oak cabinet › Office). The squares scroll
+  // sideways; the words show every tier at once, wrapping, one separator between tiers.
+  const tiers = whereChain(item);
+  const tierName = (t, i) => (t.t === 'thing' ? (i === 0 ? inPhrase(t.item) : inPhrase(t.item).replace(/^In /, 'in ')) : t.name);
+  const whereB = tiers.length ? tierName(tiers[0], 0) : item.location;
+  const whereS = tiers.length > 1 ? tiers.slice(1).map((t, i) => tierName(t, i + 1)).join(' · ')
+    : chain.length ? 'Where the box is: not said yet'
     : `seen ${photoStamp(item.lastSeenAt).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}`;
   const container = isContainer(item);
   const inside = contentsOf(item);
@@ -232,13 +237,12 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         <h2 id="tp-where">Where it is</h2>
         <div className={'tp-wh' + (hasPlace ? '' : ' none')}>
           {hasPlace ? (
-            <div className="ch">
-              {chain.slice(0, 3).map((c, i) => (
-                <span key={c.id} className="st">{i > 0 && <span className="in">in</span>}
-                  {c.thumb ? <img src={c.thumb} alt="" /> : <span className="no"><BoxIcon /></span>}</span>))}
-              {outer && <span className="st">{chain.length > 0 && <span className="in">at</span>}{placePic(outer)
-                  ? <button type="button" className="ph-open" aria-label={`Photos of ${outer}`} onClick={() => setViewer({ kind: 'place', name: outer, start: 0, nonce: 0 })}><img src={placePic(outer)} alt="" /></button>
-                  : <span className="no"><PinIcon /></span>}</span>}
+            <div className={'ch' + (tiers.length > 2 ? ' scroll' : '')}>
+              {tiers.map((t, i) => (
+                <span key={(t.t === 'thing' ? 't' + t.item.id : 'p' + t.name) + i} className="st">{i > 0 && <span className="in">{t.t === 'place' && tiers[i - 1].t === 'thing' ? 'at' : 'in'}</span>}
+                  {t.t === 'thing' ? (t.item.thumb ? <img src={t.item.thumb} alt="" /> : <span className="no"><BoxIcon /></span>)
+                    : placePic(t.name) ? <button type="button" className="ph-open" aria-label={`Photos of ${t.name}`} onClick={() => setViewer({ kind: 'place', name: t.name, start: 0, nonce: 0 })}><img src={placePic(t.name)} alt="" /></button>
+                    : <span className="no"><PinIcon /></span>}</span>))}
             </div>
           ) : <span className="no-pin"><PinIcon /></span>}
           <div className="tx">

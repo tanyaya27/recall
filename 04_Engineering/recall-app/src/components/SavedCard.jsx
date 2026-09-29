@@ -23,6 +23,7 @@ export default function SavedCard({ card, onUndo, onDone, onShare, onRenameLink 
       </div>
       <div className="s">{card.name}{card.lock ? <> · <LockIcon /> only you</> : null}
         <small>{card.none ? 'No place yet · put it away later' : [card.l1, card.l2].filter(Boolean).join(' · ')}</small>
+        {(card.moving || []).map((m) => <small key={m} className="sc-move">{m}</small>)/* Q3: a place or box that moved with this save */}
         {card.priv && <small className="sc-priv">Kept private · {card.priv} · <button type="button" className="sc-share" onClick={() => onShare && onShare(card)}>Share it</button></small>}
         {card.shared && <small className="sc-priv">Shared · everyone in your ReCall sees it</small>}
         {/* REQUIREMENTS_2026-09-27 R3.3: a where-link saved with a placeholder name — never blocks the

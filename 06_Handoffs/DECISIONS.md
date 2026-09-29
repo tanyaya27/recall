@@ -6,6 +6,25 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-29 (night) — Tier rulings Q1–Q5 (Ravi, on BOARD_2026-09-29_tiers-audit.md) — built as `20260929d`
+
+- **Q1 · A, Ravi's version:** the thing's page shows every tier as a square; at three or more the squares scroll sideways
+  (about two and a half show, with a fade) while the words beside them show every tier at once, wrapping, one " · "
+  between tiers. Why: A read best, but many levels would be unwieldy — Ravi's fix keeps the height and loses no words.
+- **Q2 · A:** the Places list says what a place is in, first: "in Oak cabinet · 1 thing here".
+- **Q3 · "say it, don't ask"** (Claude's recommendation, Ravi: OK): a place or box on the chain that already has a where
+  and is given a different one is moved (everything in it goes along), and the camera says so BEFORE Save — "Kitchen
+  counter: Craft nook → Pantry shelf" — then the saved card (or the Move toast) says it again; Undo puts it back. No extra
+  question, no extra tap, nothing changed behind her back. Mei wanted a question; Frank would have tapped through it.
+- **Q4 · outside a place there are only places** (Claude's recommendation, Ravi: OK). A box is anything that moves; a
+  place stays put; a pocket moves with the backpack, so it's a box. Once a tier is a place, the tiers outside it offer only
+  places (pills and •••); a photo there is saved as a place even if the AI says it moves; a BOX's name there needs its own
+  name (no "Your filing cabinet?" Yes); saveChain refuses a place-in-box link as a backstop. One kind of place in the data.
+- **Q5 · A:** a question about a tier that isn't the selected one shows that tier's photo in its colour ring — "Is this
+  your craft nook?" — so colour is never the only signal. With that tier selected it's D4's "📍 Your craft nook?".
+- **Ravi on the write-up:** "your scenarios are so cryptic, I can't really figure out what you are asking me" (Q3–Q5).
+  See LESSONS 09-29 (night).
+
 ## 2026-09-29 (evening) — A place is "in" something by the same edge a thing has; tier-2 questions go to Ravi (tier audit)
 
 - **Where a place is = an edge `from` the place doc** (`kind:'edge', rel:'in', to: {t:'place'|'thing'}`), not the `parent`
