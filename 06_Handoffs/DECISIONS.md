@@ -6,6 +6,18 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-29 (evening) — A place is "in" something by the same edge a thing has; tier-2 questions go to Ravi (tier audit)
+
+- **Where a place is = an edge `from` the place doc** (`kind:'edge', rel:'in', to: {t:'place'|'thing'}`), not the `parent`
+  field reserved on 09-15. Not a new ruling: it applies Ravi's 09-25 rule ("is in" is an edge, never a field) to places,
+  which the camera has let people stack since 09-27 without anything storing it. `parent` is no longer written; old values
+  become edges once on the owner's phone. The real rules already allow it (owner; a whole-ReCall editor on a shared place),
+  proven on the emulator. What would change our mind: place edges crowding the snapshot at thousands of places.
+- **Unnamed places don't merge.** A second "A place" meets the existing name gate. Objection: Frank ("I'll never name
+  anything") — kept, because two spots in one record breaks Find.
+- **Pending Ravi/Tanya (renders `design/mockups/TIERS_Q1..Q5_*.jpg`, positions in `design/BOARD_2026-09-29_tiers-audit.md`):**
+  Q1 thing page · Q2 Places list · Q3 re-parenting a place · Q4 place inside a box · Q5 a question about another tier.
+
 ## 2026-09-29 — Moving a thing starts from where it is now; the step prompt lives in the card (Ravi)
 
 - **Move it opens on the current place** (level 1 filled, "Current place: X"; a different pick reads "New place: Y"; the

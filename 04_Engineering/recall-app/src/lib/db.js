@@ -77,7 +77,7 @@ export async function moveToTop(item, items) {
 //      ("glasses" ↔ "reading glasses"); a wrong soft match costs one tap on the card.
 // Names are normalised: lowercase, "your/the/my" dropped, trailing s dropped.
 import { normName } from './names.js';
-import { setGraph, graph, openEdge, destOf, wouldLoop, contentsOf } from './graph.js';
+import { setGraph, graph, openEdge, destOf, wouldLoop, contentsOf, placeWouldLoop } from './graph.js';
 export { normName };
 function namesOf(it) { return [it.name, ...(it.aliases || [])].map(normName).filter(Boolean); }
 export function findByName(items, name, { strict = false } = {}) {
@@ -152,7 +152,7 @@ export function watchAll(cb) {
     out.routines.sort((a, b) => (a.order || 0) - (b.order || 0));
     out.checks.sort((a, b) => (b.at || 0) - (a.at || 0));
     out.places.sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
-    setGraph(out.items, out.edges); // the pure graph module reads the same snapshot (lib/graph.js)
+    setGraph(out.items, out.edges, out.places); // the pure graph module reads the same snapshot (lib/graph.js)
     cb(out);
   };
   const listen = (key, q) => {
@@ -493,6 +493,40 @@ async function writeMove(item, location, how, dest) {
     owner, by: me(), private: !!item.private && owner === me(), roles: {}, sharedWith: [] });
   return ref.id;
 }
+// 09-29 (Ravi: "I added the next tier … when I hit save, it doesn't store that next tier"). Where a PLACE is — the
+// same "is in" edge a thing has, from the place doc's id (DECISIONS 2026-09-25: "is in" is an edge, never a field).
+// Closes the place's open edge when it changes; `to` null just closes it. Refuses a circle. Returns what it replaced
+// (for Undo) or undefined when nothing changed.
+export async function placeIn(place, to) {
+  if (!place || !place.id) return undefined;
+  const cur = openEdge(place.id);
+  if (to && to.t === 'place' && !(to.name || '').trim()) to = null;
+  if (to && placeWouldLoop(place.name, to)) { logEvent('loop_refused', { placeId: place.id, at: 'place' }); return undefined; }
+  const same = cur && to && cur.to && cur.to.t === to.t && (to.t === 'thing' ? cur.to.id === to.id : (cur.to.name || '').toLowerCase() === (to.name || '').toLowerCase());
+  if (same || (!cur && !to)) return undefined;
+  const now = Date.now();
+  if (cur) await updateDoc(doc(col, cur.id), { until: now, closedBy: me() });
+  if (to) {
+    const t = to.t === 'thing' ? { t: 'thing', id: to.id || (to.item && to.item.id), name: to.name || (to.item && to.item.name) || '' } : { t: 'place', name: to.name };
+    await addDoc(col, { kind: 'edge', rel: 'in', from: place.id, to: t, since: now, until: null, how: 'chosen', owner: place.owner || me(), by: me(), private: false, roles: {}, sharedWith: [] });
+  }
+  logEvent('place_in', { placeId: place.id, to: to ? to.t : null, replaced: !!cur });
+  return { place: { id: place.id, name: place.name, owner: place.owner }, prev: cur ? cur.to : null };
+}
+// Places made before 09-29 by a new-place chain carry `parent` (a place id) that nothing read. The owner's phone turns
+// each into the edge above, once (a place that already has an open edge is left alone). Returns how many.
+export async function repairPlaceParents(data) {
+  const uid = me(); if (!uid) return 0;
+  const g = graph(); let n = 0;
+  for (const p of data.places || []) {
+    if (!p.parent || p.owner !== uid || openEdge(p.id, g)) continue;
+    const par = (data.places || []).find((x) => x.id === p.parent);
+    if (!par || par.id === p.id) continue;
+    try { if (await placeIn(p, { t: 'place', name: par.name })) n++; } catch (err) { console.error('repairPlaceParents', p.id, err); }
+  }
+  if (n) logEvent('repair_place_parents', { n });
+  return n;
+}
 // "What is it in?" → a box not logged yet (Ravi 09-27: "I need the option to create it … right at the top").
 // It is made as a written thing with no place (so it shows under "Not put away" until it has one), and the
 // caller links the item to it by id — never by a name that could match something else.
@@ -524,8 +558,18 @@ export async function putInto(things, container, how = 'put') {
 //   { photo, thumb, placePhoto, name, moves }   new from a photo: a box (moves) or a place (fixed)
 // Written outermost first, so every new box has its place the moment it exists. Returns what Undo needs.
 const capName = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+// 09-29: a place on the chain with a link outside it is IN that link (an edge from the place). Before this, only a
+// brand-new place got a `parent` (read by nothing) and a known place's outer tier was dropped. Never the same place
+// twice on one chain, never a circle (placeIn checks the saved graph; `inChain` the links outside this one).
+async function placeOuterLink(place, outer, inChain, made) {
+  if (!place || !place.id) return;
+  const key = 'p:' + (place.name || '').toLowerCase();
+  if (outer && !inChain.has(key)) { const r = await placeIn(place, outer.dest); if (r) made.placeMoves.push(r); }
+  inChain.add(key);
+}
 export async function saveChain(chain = [], { owner = me(), places = [] } = {}) {
-  const made = { items: [], places: [], moved: [], links: [] };
+  const made = { items: [], places: [], moved: [], links: [], placeMoves: [] };
+  const inChain = new Set(); // the places already on this chain, outside the link being saved
   let outer = null; // { text, dest, placeId } — where the link just outside this one is
   for (let i = chain.length - 1; i >= 0; i--) {
     const l = chain[i];
@@ -546,8 +590,9 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
       // on the item — same call the photographed branch below makes, so it nests (parent) the same way.
       const name = l.known.name;
       const known = placeNamed(name, places);
-      const id = await addPlace(name, places, l.placePhotos || [], owner, outer && outer.placeId ? outer.placeId : null);
+      const id = await addPlace(name, places, l.placePhotos || [], owner, null);
       if (!known && id) made.places.push(id);
+      await placeOuterLink(known || { id, name, owner }, outer, inChain, made);
       here = { text: name, dest: { t: 'place', name }, placeId: id };
       made.links[i] = null;
     } else if (l.moves) {
@@ -562,8 +607,9 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
     } else {
       const name = capName(l.name || 'A place');
       const known = placeNamed(name, places);
-      const id = await addPlace(name, places, l.placePhotos || (l.placePhoto ? [l.placePhoto] : []), owner, outer && outer.placeId ? outer.placeId : null);
+      const id = await addPlace(name, places, l.placePhotos || (l.placePhoto ? [l.placePhoto] : []), owner, null);
       if (!known && id) made.places.push(id);
+      await placeOuterLink(known || { id, name, owner }, outer, inChain, made);
       here = { text: name, dest: { t: 'place', name }, placeId: id };
       made.links[i] = { id, kind: 'place', unnamed: !!l.unnamed };
     }
@@ -591,7 +637,8 @@ export async function undoChain({ itemId = null, isNew = false, prev = null, mad
   else if (itemId && prev) { const it = g.byId.get(itemId); if (it) await changeLocation(it, prev.location || '', 'chosen', prev.dest || null); }
   for (const m of made.moved || []) { const it = g.byId.get(m.item.id) || m.item; await changeLocation(it, m.location, 'chosen', m.dest); }
   for (const id of made.items || []) await drop(id);
-  for (const id of made.places || []) await deleteDoc(doc(col, id)).catch(() => {});
+  for (const pm of [...(made.placeMoves || [])].reverse()) await placeIn(pm.place, pm.prev).catch(() => {});
+  for (const id of made.places || []) { for (const e of graph().edges.filter((x) => x.from === id && !x.until)) await deleteDoc(doc(col, e.id)).catch(() => {}); await deleteDoc(doc(col, id)).catch(() => {}); }
   logEvent('camera_undo', { isNew, made: (made.items || []).length + (made.places || []).length });
 }
 

@@ -386,3 +386,16 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   must be tested once with `__rig.rules(true)`; (3) a write that can be refused must never fail silently on screen.
 
 - 2026-09-29 — **Check icon/text alignment on the pixels, not the boxes.** The camera pin was "centred" by its box three builds running and Ravi kept seeing it low: a font with deep descender space puts the capitals above the middle of the line. Fix = stand the icon on the baseline and lift it by half the capital height (`1cap`); the check (`rig/repro_f3.js` H) compares the ink centre of the icon with the ink centre of the capitals.
+
+- **2026-09-29 (evening) — A field that is written and never read is a bug that looks like storage.** Places got `parent`
+  on 09-27 ("reserved; nothing reads it yet") and the save card read the chain back from the camera, not from the store —
+  so Ravi's tier 2 "saved" on screen and was gone. When a flow writes something, some screen must read it back from the
+  store, and the audit must check the store, not the card.
+- **2026-09-29 (evening) — The audit encoded the bug.** `audit_where` A5 asserted `drawer.parent === office.id` — the
+  write-only field — so the suite was green over the exact defect. Assert the behaviour (the edge exists; a screen shows
+  it), not the mechanism.
+- **2026-09-29 (evening) — Take a baseline number from the suite's own output, never from a handoff.** The prompt said
+  audit_where 83; the suite has 63 checks. Copying a number forward turned a typo into a "regression" to chase.
+- **2026-09-29 (evening) — Multi-tier needs its own walk.** The 09-27 walk wrote "＋ (blue, level 2) — would add a further
+  level" and stopped there; no suite ever saved a place at tier 2. Every combination (known/new × place/box × Log/Move),
+  saved with the rules on, then read back on every screen: `rig/audit_tiers.js`.

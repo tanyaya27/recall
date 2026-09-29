@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { compressPhoto, compressPlacePhoto, shrink } from '../lib/img.js';
 import { addItem, nameItem, resnapItem, changeLocation, findMatch, knownLocations, placeNamed, noteAlias, logEvent,
   applyVerdict, saveChain, PLACE_PHOTOS } from '../lib/db.js';
 import { verdictOf, hasSecret } from '../lib/sensitive.js';
 import { normName } from '../lib/names.js';
 import { me } from '../lib/auth.js';
-import { containers, holderOf, chainOf, openEdge, inPhrase, graph, wouldLoop, isContainer } from '../lib/graph.js';
+import { containers, holderOf, chainOf, openEdge, inPhrase, graph, wouldLoop, isContainer, placeOuter, placeWouldLoop } from '../lib/graph.js';
 import { matchThings } from '../lib/speech.js';
 import WhereList from './WhereList.jsx';
 import PrivNote from './PrivNote.jsx';
@@ -214,6 +214,21 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const linkThumb = (l) => (l.photos && l.photos.length ? l.photos[0].thumb : (() => { const k = known(l); return !k ? null : k.t === 'thing' ? k.item.thumb : placePic(k.name); })());
   const isBox = (l) => { const k = known(l); return k ? k.t === 'thing' : l.moves; };
 
+  // 09-29 (tier audit T5/T6): what the selected tier may NOT be — a place or box already on this chain at another tier
+  // ("Craft nook · Craft nook"), or one that would make a circle with the tier just inside it (Pantry shelf in Kitchen
+  // counter in Pantry shelf). Hidden from the pills and the ••• list, and refused by pickKnown.
+  const tierKey = (k) => (k.t === 'thing' ? 't:' + k.item.id : 'p:' + (k.name || '').toLowerCase());
+  const levelKey = (l) => { const k = known(l); if (k) return tierKey(k); const n = (l.userName || l.name || '').toLowerCase(); return n ? (l.moves ? 'n:' : 'p:') + n : null; };
+  function blockedAt(k, tier) {
+    if (!k || tier < 1) return false;
+    if (levels.some((l, j) => j !== tier - 1 && filled(l) && levelKey(l) === tierKey(k))) return true;
+    const inner = tier >= 2 ? levels[tier - 2] : null;
+    if (!inner || !filled(inner)) return false;
+    const ik = known(inner);
+    if (ik && ik.t === 'thing') return k.t === 'thing' ? wouldLoop(ik.item, k.item) : placeOuter(k.name).some((x) => x.t === 'thing' && x.item.id === ik.item.id);
+    const pn = ik ? ik.name : (!inner.moves ? (inner.userName || inner.name) : '');
+    return pn ? placeWouldLoop(pn, k.t === 'thing' ? { t: 'thing', item: k.item } : k) : false;
+  }
   function sentence() {
     if (!links.length) return { l1: 'No place yet', l2: started ? 'Tap ＋ to add where it is' : '', none: true };
     const first = links[0];
@@ -222,6 +237,8 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const rest = links.slice(1).map(linkName);
     const lk = known(lastLink);
     if (lk && lk.t === 'thing') { const outer = chainOf(lk.item); rest.push(...outer.map((c) => cap(c.name))); const tail = outer.length ? outer[outer.length - 1] : lk.item; if (tail.location && !rest.includes(tail.location)) rest.push(tail.location); }
+    // 09-29: a known PLACE at the end says where it is too, the same way a box does (Desk drawer · In air).
+    else if (lk && lk.t === 'place') rest.push(...placeOuter(lk.name).map((x) => (x.t === 'thing' ? cap(x.item.name) : x.name)).filter((n) => !rest.includes(n)));
     const label = moveItem ? (first.current ? 'Current place' : 'New place') : ''; // 09-29 (Ravi)
     return { l1, l2: rest.length ? rest.join(' · ') : (first.why ? WHY[first.why] || first.why : ''), none: false, label };
   }
@@ -248,6 +265,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const i = sel === 0 ? Math.max(0, levels.findIndex((l) => !filled(l))) : sel - 1;
     const target = sel === 0 && levels.findIndex((l) => !filled(l)) === -1 ? levels.length : i;
     if (k.t === 'thing' && self && (k.item.id === self.id || wouldLoop(self, k.item))) return;
+    if (blockedAt(k, target + 1)) return;
     setLevels((ls) => { const c = [...ls]; while (c.length <= target) c.push(emptyLevel()); c[target] = { ...c[target], photos: c[target].photos || [], known: k, status: 'known', ask: null, no: false, yes: false, collisionNo: '', current: !!moveItem && target === 0 && sameKnown(k, hereKnown(moveItem)) }; return c; });
     setSel(target + 1);
     logEvent('camera_where_chip', { t: k.t, level: target + 1 });
@@ -375,7 +393,8 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       if (lastIsNewBox && !l2) l2 = `You haven't said where the ${linkName(lastReal)} is — its page can, any time.`;
       if (moveItem) {
         const prev = { location: moveItem.location || '', dest: openEdge(moveItem.id) ? openEdge(moveItem.id).to : null };
-        const ok = location ? await changeLocation(moveItem, location, 'chosen', dest) : true;
+        // 09-29: tier 1 kept as the current place (only a deeper tier changed) — the thing itself did not move.
+        const ok = location && !(use[0] && use[0].current) ? await changeLocation(moveItem, location, 'chosen', dest) : true;
         logEvent('camera_move', { itemId: moveItem.id, ok, depth: resolved.length });
         onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2, none: say.none, moved: true, refused: ok === false, unnamed,
           undo: mine ? { itemId: moveItem.id, isNew: false, prev, made } : null });
@@ -458,9 +477,13 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (b) return { t: 'thing', item: b };
     return null;
   }
+  // 09-29 (tier audit T4): a new place the AI couldn't name is saved as "A place" — and a second one merged into the
+  // first (two different spots, one record, both photos). An unnamed level now meets the same gate as any name that's
+  // already taken, but only when an "A place" already exists: the first one still saves unnamed (R3.3).
+  const unnamedNew = (l) => filled(l) && !known(l) && !l.moves && l.status !== 'naming' && !(l.userName || l.name);
   const levelCollision = (l) => {
     if (known(l)) return null;
-    const nm = resolvedLevelName(l);
+    const nm = resolvedLevelName(l) || (unnamedNew(l) ? 'A place' : '');
     return nm ? collisionFor(nm) : null;
   };
   // R4.4 (kills F7): at most one level ask at a time, in chain order — a visual sure-match ask
@@ -470,7 +493,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (l.ask && !l.no && !l.yes && l.status === 'named') { levelAsks.push({ l, target: l.ask, byName: false }); return; }
     if (!l.ask || l.no) {
       const col = levelCollision(l);
-      if (col && l.collisionNo !== resolvedLevelName(l)) levelAsks.push({ l, target: col, byName: true });
+      if (col && !unnamedNew(l) && l.collisionNo !== resolvedLevelName(l)) levelAsks.push({ l, target: col, byName: true });
     }
   });
   const askLevel = levelAsks[0] || null;
@@ -479,7 +502,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   // renaming it, or answering the ask, all clear the gate; nothing else about the save is blocked.
   const collidingLevel = levels.find((l) => levelCollision(l));
   // R4.2: the sentence explains the gate instead of showing its usual second line.
-  if (collidingLevel) say.l2 = `'${resolvedLevelName(collidingLevel)}' needs its own name — tap it.`;
+  if (collidingLevel) say.l2 = `'${resolvedLevelName(collidingLevel) || linkName(collidingLevel)}' needs its own name — tap it.`;
   function retake() { logEvent('privacy_retake', { via: 'camera' }); setThing({ photos: [], tag: undefined, match: null, answer: null }); setLevels([]); setSel(0); setNameOverride(''); setShareAnyway(false); tagP.current = null; }
   const privLine = started && !moveItem ? (
     <PrivNote v={v} mine={mine} ownerName={ownerName} isNew={!match} shared={shareAnyway}
@@ -543,6 +566,20 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       <div className="lv-tile"><button type="button" className="lv-sq empty plus" style={{ borderColor: LEVEL_COLOURS[Math.min(levels.length + 1, LEVEL_COLOURS.length - 1)], color: LEVEL_COLOURS[Math.min(levels.length + 1, LEVEL_COLOURS.length - 1)] }}
         aria-label="Add where it is: the next level" onClick={addLevel}><PlusIcon /></button>{big && <div className="lc-nm">Where?</div>}</div></div>) : null);
   const many = squares.length + (canAdd ? 1 : 0);
+  // 09-29 (tier audit T8): at three tiers the row is wider than the card (390 px phone: the 4th square cut, ＋ out of
+  // sight) and the fade only switched on above 5 squares. Measure instead: fade when there is more to the right, and keep
+  // the selected square — and ＋ right after a new level — scrolled into view.
+  const stripRef = useRef(null);
+  const [stripMore, setStripMore] = useState(false);
+  useLayoutEffect(() => {
+    const el = stripRef.current; if (!el) return;
+    const on = el.querySelector('.lv-sq.sel'); const pl = el.querySelector('.lv-sq.plus');
+    const want = [on, sel === levels.length && pl ? pl : null].filter(Boolean);
+    const box = el.getBoundingClientRect();
+    want.forEach((t) => { const r = t.getBoundingClientRect(); if (r.right > box.right - 2) el.scrollLeft += r.right - box.right + 8; else if (r.left < box.left + 2) el.scrollLeft -= box.left - r.left + 8; });
+    const more = el.scrollWidth - el.clientWidth - el.scrollLeft > 2; if (more !== stripMore) setStripMore(more);
+  });
+  const onStripScroll = (e) => { const el = e.currentTarget; const more = el.scrollWidth - el.clientWidth - el.scrollLeft > 2; if (more !== stripMore) setStripMore(more); };
 
   const sentenceEl = started ? (
     <div className="lc-say">
@@ -562,7 +599,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   // wrapping: at most two place pills and •••, long names cut with an ellipsis. The bar above the shutter row is gone.
   const pillsEl = showChips ? (
     <div className="lc-chips" aria-label="Or tap a place">
-      {pillList.filter((c) => !real.some((l) => l.known && ((l.known.t === 'thing' && c.known.t === 'thing' && l.known.item.id === c.known.item.id) || (l.known.t === 'place' && c.known.t === 'place' && l.known.name === c.known.name)))).slice(0, 2).map((c) => (
+      {pillList.filter((c) => !blockedAt(c.known, sel || 1)).filter((c) => !real.some((l) => l.known && ((l.known.t === 'thing' && c.known.t === 'thing' && l.known.item.id === c.known.item.id) || (l.known.t === 'place' && c.known.t === 'place' && l.known.name === c.known.name)))).slice(0, 2).map((c) => (
         <button key={c.key} type="button" className={'lc-chip' + (c.known.t === 'thing' ? ' box' : '')} onClick={() => pickKnown(c.known)}>
           {c.thumb ? <img src={c.thumb} alt="" /> : <span className="ic">{c.known.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}<span>{c.label}</span></button>))}
       <button type="button" className="lc-chip more" aria-label="Every place and box" onClick={() => setSheet('more')}><span className="ic">•••</span></button>
@@ -593,13 +630,13 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         {/* Type it instead: inside the picture, before the first photo (Ravi 09-27). */}
         {!started && onWrite && <div className="lc-typeit"><button type="button" onClick={onWrite}><PencilIcon />Type it instead</button></div>}
         {look === 'a' && started && (<>
-          <div className="lc-bstack">{promptEl}<div className={'lv-chain' + (many > 3 ? ' more' : '')}>{squares.map((s) => sq(s, true))}{plus(true)}</div></div>
+          <div className="lc-bstack">{promptEl}<div ref={stripRef} onScroll={onStripScroll} className={'lv-chain' + (stripMore ? ' more' : '')}>{squares.map((s) => sq(s, true))}{plus(true)}</div></div>
           {(pillsEl || privLine || identity || whereAsk) && <div className="lc-float">{pillsEl && <div className="lc-pills-a">{pillsEl}</div>}{identity || whereAsk}{privLine}</div>}
         </>)}
         {look === 'b' && started && (
           <div className="lc-card">
             {promptEl}
-            <div className={'lv-strip' + (many > 5 ? ' more' : '')}>{squares.map((s) => sq(s, false))}{plus(false)}</div>
+            <div ref={stripRef} onScroll={onStripScroll} className={'lv-strip' + (stripMore ? ' more' : '')}>{squares.map((s) => sq(s, false))}{plus(false)}</div>
             <button type="button" className="lc-name" disabled={!!moveItem} onClick={() => { setDraft(name); setSheet('rename'); }}>{cap(name) || 'Naming…'}{startPrivate && <LockIcon />}</button>
             {pillsEl}
             {identity || whereAsk}
@@ -650,7 +687,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           onCancel={() => setSheet(null)} />)}
       {sheet === 'chain-clear' && <Confirm title="Clear where it goes?" body="Every level you've photographed or picked so far goes." keepLabel="Keep it" actionLabel="Clear"
         onKeep={() => setSheet('chain')} onAction={chainClearConfirmed} />}
-      {sheet === 'more' && <WhereList item={self} items={items} places={places} title={whereQ(name)}
+      {sheet === 'more' && <WhereList item={self} items={items} places={places} title={whereQ(name)} exclude={(k) => blockedAt(k, sel || 1)}
         onCancel={() => setSheet(null)} onPick={(k) => { setSheet(null); pickKnown(k); }}
         onPhotograph={() => { setSheet(null); if (sel === 0 || filled(selLevel)) addLevel(); }} />}
       {/* R3: one rename sheet serves both the thing (sheet === 'rename', nameOverride) and any WHERE

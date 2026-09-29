@@ -111,10 +111,12 @@ async function main() {
   check('A4 picking the SAME known place again makes no second doc', (await places()).length === before && r.made.places.length === 0, `places=${(await places()).length}`);
 
   // A two-level known-place chain (chain[0] innermost, chain[last] outermost, DECISIONS 2026-09-25):
-  // the inner one's place doc gets the outer one's id as `parent` — the hierarchy note in db.js (R2).
+  // 09-29 (tier audit): the inner place is IN the outer one by an edge from the place doc (DECISIONS 09-25: "is in" is an
+  // edge, never a field). This check used to assert the `parent` field, which nothing read — the audit encoded the bug.
   r = await rigdb('saveChain', [{ known: { t: 'place', name: 'Top drawer' } }, { known: { t: 'place', name: 'Office' } }], { owner: 'dad', places: [] });
   const office = await placeByName('Office'); const drawer = await placeByName('Top drawer');
-  check('A5 nested known places: the inner one is parented to the outer one', !!office && !!drawer && drawer.parent === office.id, JSON.stringify({ office: office && office.id, parent: drawer && drawer.parent }));
+  const dEdge = drawer ? (await page.evaluate(() => window.__rig.dump())).find((e) => e.kind === 'edge' && e.from === drawer.id && !e.until) : null;
+  check('A5 nested known places: the inner one is IN the outer one (an edge from the place)', !!office && !!drawer && !!dEdge && dEdge.to.t === 'place' && dEdge.to.name === 'Office', JSON.stringify({ office: office && office.id, edge: dEdge && dEdge.to }));
 
   // A known place link with a photo the camera attached at that level (l.placePhotos, Stage 2) — the
   // photo lands on the place doc through the same addPlace call, not lost.

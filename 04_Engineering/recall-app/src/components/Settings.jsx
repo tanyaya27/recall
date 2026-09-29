@@ -5,6 +5,7 @@ import { currentUser, isAnonymous, signIn, lastSignIn } from '../lib/auth.js';
 import { legacyCount, logEvent } from '../lib/db.js';
 import { getPrefs, savePrefs, CAMERA_LOOKS, EXPERIMENTS } from '../lib/prefs.js';
 import { APPLE_SIGNIN } from './People.jsx';
+import { BUILD_ID } from './MenuScreens.jsx';
 
 // Settings — reduced to what setup needs. Board decision 2026-09-05, screen 6; platform
 // audit V5: this is the one screen where "looks like the phone's Settings" is exactly
@@ -170,6 +171,8 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
           {lastBoot && (
             <p className="note-quiet left">Last open: {lastBoot}</p>
           )}
+          {/* Ravi 09-28: the build name (the ☰ menu's stamp) as the box's last line, so the time and the name sit together. */}
+          {BUILD_ID && <p className="note-quiet left version-build" aria-label="App build">Build {BUILD_ID}</p>}
         </div>
       </div>
 

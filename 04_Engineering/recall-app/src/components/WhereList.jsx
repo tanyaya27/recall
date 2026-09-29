@@ -16,18 +16,19 @@ import { PinIcon, BoxIcon, SearchIcon, CameraIcon, PlusIcon } from './Icons.jsx'
 // A box keeps its box icon; its second line is "a box · in Garage" / "a box · no place yet".
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-export default function WhereList({ item = null, items = [], places = [], title = 'Where does it go?', onPick, onPhotograph = null, onCancel }) {
+export default function WhereList({ item = null, items = [], places = [], title = 'Where does it go?', onPick, onPhotograph = null, onCancel, exclude = null }) {
   const [q, setQ] = useState('');
   const g = graph();
   // "in the wooden box" searches for "wooden box": the little words in front are how people say where, not part of the name.
   const bare = q.trim().replace(/^(in|inside|into|on|at|under)\s+/i, '').replace(/^(the|my|a|an|our)\s+/i, '');
   const words = bare.toLowerCase().split(/\s+/).filter(Boolean);
   const hit = (s) => !words.length || words.every((w) => (s || '').toLowerCase().includes(w));
-  const placeList = knownLocations(items, 999, places).filter(hit);
-  const boxList = containers(g, 999).filter((b) => (!item || (b.id !== item.id && !wouldLoop(item, b, g))) && hit(b.name));
+  const placeAll = knownLocations(items, 999, places).filter(hit);
+  const placeList = placeAll.filter((n) => !exclude || !exclude({ t: 'place', name: n })); // 09-29: not one already on this chain, not a circle
+  const boxList = containers(g, 999).filter((b) => (!item || (b.id !== item.id && !wouldLoop(item, b, g))) && hit(b.name) && (!exclude || !exclude({ t: 'thing', item: b })));
   const typed = q.trim();
   // A typed name that IS a box (or a place) is offered as that one, never as a new place with the same name (G23).
-  const exists = typed && [...placeList, ...boxList.map((b) => b.name)].some((n) => normName(n || '') === normName(bare));
+  const exists = typed && [...placeAll, ...containers(g, 999).map((b) => b.name)].some((n) => normName(n || '') === normName(bare));
   const placePic = (n) => { const p = placeNamed(n, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; };
   const placeSub = (n) => { const here = atPlace(n, g).filter((x) => !item || x.id !== item.id); return here.length ? here.slice(0, 2).map((x) => cap(x.name)).join(', ') + (here.length > 2 ? ` +${here.length - 2}` : '') : 'nothing here yet'; };
   // fix 2026-09-29 (Ravi): the place the thing is in right now is listed, and says so.

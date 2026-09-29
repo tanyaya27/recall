@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
 import { watchUser, finishSignIn } from './lib/auth.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, repairPencilCabinet, wantNames, watchNames, firstName, possessive, roleOn, putInto, changeLocation, setPromoted, undoChain, renameItem, renamePlace } from './lib/db.js';
+import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, repairPencilCabinet, repairPlaceParents, wantNames, watchNames, firstName, possessive, roleOn, putInto, changeLocation, setPromoted, undoChain, renameItem, renamePlace } from './lib/db.js';
 import { me } from './lib/auth.js';
 import { getPrefs, savePrefs, openingMode } from './lib/prefs.js';
 import SeveralCamera from './components/SeveralCamera.jsx';
@@ -20,7 +20,7 @@ import Settings, { takeReturnRoute, noteInstalled } from './components/Settings.
 import Toast from './components/Toast.jsx';
 import PutInSheet from './components/PutInSheet.jsx';
 import NotPutAway from './components/NotPutAway.jsx';
-import { holderOf, contentsOf, isContainer, chainOf } from './lib/graph.js';
+import { holderOf, contentsOf, isContainer, chainOf, graph } from './lib/graph.js';
 import ItemSheet from './components/ItemSheet.jsx';
 import Camera, { MAX_SHOTS, MODE_LABEL } from './components/Camera.jsx';
 import { MenuDrawer, LookScreen, LocationsScreen, PlaceScreen, NewPlaceScreen, DeletedScreen, ResearchScreen } from './components/MenuScreens.jsx';
@@ -127,6 +127,9 @@ export default function App() {
   // Ravi 09-27: take the filing cabinet out of the pencil (lib/db.js repairPencilCabinet) — once the things and edges have arrived.
   const pencilFixed = useRef(false);
   useEffect(() => { if (pencilFixed.current || !ready || !data.items.length) return; pencilFixed.current = true; repairPencilCabinet().then((r) => { if (r === null) pencilFixed.current = false; }).catch((e) => console.error('repairPencilCabinet', e)); }, [ready, data.items.length, data]); // eslint-disable-line
+  // 09-29: places made by a chain before today carry a `parent` nothing read — turn each into its edge, once (lib/db.js).
+  const parentsFixed = useRef(false);
+  useEffect(() => { if (parentsFixed.current || !ready || !data.places.some((p) => p.parent)) return; if (!graph().edges.length) return; parentsFixed.current = true; repairPlaceParents(data).catch((e) => console.error('repairPlaceParents', e)); }, [ready, data]); // eslint-disable-line
 
   // Thumbnails made before 2026-09-14 are 220 px and blur on a tile (lib/img.js). Rebuild
   // each old one from its stored photo, one at a time, once per item per session. The
@@ -354,7 +357,7 @@ export default function App() {
     if (card.moved) {
       setLog(null);
       if (card.refused) { say('Not moved · it can’t go inside something that is inside it'); return; }
-      say(card.none ? 'No place yet' : `${card.name} · ${card.l1}`, card.undo ? async () => { await undoChain(card.undo); logEvent('move_undo', { itemId: card.itemId }); } : null);
+      say(card.none ? 'No place yet' : `${card.name} · ${card.l1}${card.l2 ? ` · ${card.l2}` : ''}`, card.undo ? async () => { await undoChain(card.undo); logEvent('move_undo', { itemId: card.itemId }); } : null);
       return;
     }
     if (card.where) notePlace(card.where); // Write it down offers the place used a moment ago

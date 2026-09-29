@@ -1,7 +1,33 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-29.
+*Done* when closed. Updated 2026-09-29 (evening).
+
+## NOW — `20260929c`: tier 2 and beyond are stored (Ravi 09-29: "it doesn't store that next tier") — adversarial audit
+
+- [x] Ravi 09-29 (phone on `20260929b`): Move it → Desk drawer kept at tier 1 → ＋ → 2 photos named "In air" → Save: tier 2 not
+  stored. **Root cause: a place could not say where it is.** A known place's outer tier was dropped; a new place got a
+  `parent` field that nothing read; the save card claimed both. Audit with the adversarial board (Grace, Tomás, Frank, Mei,
+  Sunil): `design/BOARD_2026-09-29_tiers-audit.md` — T1–T8 logic, U1–U4 screens.
+- [x] Fixed in `20260929c` (all with the real rules on; `rig/audit_tiers.js` 26 checks, 16 fail on `20260929b`):
+  a place's "is in" is an EDGE from the place doc (every tier, known or new, Log and Move); old `parent` values become edges
+  once at boot; the camera shows a known place's own where (Move it opens on "Current place: Desk drawer / In air"); the
+  Move toast carries the second line; Move with tier 1 kept writes nothing to the thing; a second unnamed place waits for a
+  name instead of merging into "A place"; a place/box already on the chain, or a circle, is not offered or saved; the row
+  keeps the selected square and ＋ in view at 3+ tiers; Undo also undoes the place links.
+- [x] Real rules engine (the emulator now runs in the cloud container): `firebase/rules-test/test_place_edges.mjs` 10/10;
+  `test_edges.mjs` still green. **No rules deploy.**
+- [x] Next build item: Settings → Version ends with "Build 20260929c" (the ☰ menu's stamp). Check S16.
+- [x] Suites: repro_f3 50 · audit 100 · audit_roles 44 · audit_graph 66 · audit_label 14 · audit_private 34 · audit_d 117 ·
+  audit_where 63 · **audit_tiers 26**. (The handoff said audit_where 83; the suite has 63 checks and was 63/63 at the start.)
+- [ ] **Ravi + Tanya: rule on Q1–Q5** (renders `design/mockups/TIERS_Q1..Q5_*.jpg`; board positions in the audit file):
+  Q1 how the thing's page shows the tiers (A row · B words · C ladder) — until then the tiers are stored and shown in the
+  camera only; Q2 Places list (A "in the …" line · B nested); Q3 a place that already has a where is said to be elsewhere
+  (A it comes in as tier 2 · B last word wins, said on the card · C ask) — today B without the words; Q4 a place inside a box
+  (A allowed, today · B places only); Q5 a question about another tier (A the ask shows its square · B jump to that tier).
+- [ ] **Ravi: phone check of `20260929c`** (menu → Build 20260929c; Settings → Version's last line says the same): on the
+  plant sensor, Move it → ＋ → photograph the drawer's surroundings → Save → Move it again: the line under "Current place:
+  Desk drawer" names tier 2. Your earlier "In air" is an orphan place from `20260929b` — re-do the move and pick it from •••.
 
 ## NOW — `20260929b`: Move it opens on the current place; the pin lines up; the prompt sits with the card (Ravi 09-29)
 
@@ -19,8 +45,8 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   above the chain in look A. Before the first photo there is no card, so it stays at the top then.
 - [x] Suites: 50 · 100 · 44 · 66 · 14 · 34 · 117 · 83. Screens: `design/mockups/MOVE_2026-09-29b_prompt-in-card.jpg`,
   `PIN_2026-09-29b_before-after.jpg`.
-- [ ] **Next build (Ravi 09-28):** Settings → Version box: add the build name ("Build 20260929b", the same stamp as the ☰ menu) as the last line of the box, so the time-stamp and the name are in one place.
-- [ ] **Ravi 09-29: more bugs found on the phone after `20260929b`** → the next session: `PROMPT_2026-09-29_bugfix.md` (he sends the list there).
+- [x] (`20260929c`) **Next build (Ravi 09-28):** Settings → Version box: add the build name ("Build 20260929b", the same stamp as the ☰ menu) as the last line of the box, so the time-stamp and the name are in one place.
+- [x] **Ravi 09-29: more bugs found on the phone after `20260929b`** → this session (the tier bug; see the section above).
 - [ ] **Ravi: phone check of `20260929b`** (menu → Build 20260929b): Move it on a thing that has a place — the pin sits in
   line with "Current place: …", the question sits in the card above the squares.
 

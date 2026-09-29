@@ -16,11 +16,67 @@ import { normName } from './names.js';
 let G = { items: [], edges: [], byId: new Map(), open: new Map() };
 
 // Called by watchAll on every snapshot. `open`: thing id → its open "in" edge (the newest if two raced).
-export function setGraph(items = [], edges = []) {
+// 09-29 (Ravi, tier 2 lost): places are nodes too. A place's own "is in" is the same edge record, `from` the place doc's
+// id (Desk drawer → In air; Top shelf → the linen closet). `places` are the place docs from the same snapshot.
+export function setGraph(items = [], edges = [], places = []) {
   const byId = new Map(items.map((it) => [it.id, it]));
   const open = new Map();
   edges.filter((e) => e.rel === 'in' && !e.until).sort((a, b) => (a.since || 0) - (b.since || 0)).forEach((e) => open.set(e.from, e));
-  G = { items, edges, byId, open };
+  const placeByName = new Map(); places.forEach((p) => { const k = (p.name || '').trim().toLowerCase(); if (k && !placeByName.has(k)) placeByName.set(k, p); });
+  G = { items, edges, byId, open, places, placeByName };
+}
+export function placeDoc(name, g = G) { return (g.placeByName && g.placeByName.get((name || '').trim().toLowerCase())) || null; }
+
+// Outward from a PLACE: [{t:'place', name, id} | {t:'thing', item}, …] — what the place is in, and what that is in,
+// through places and boxes alike, never round in a circle, at most `max` steps.
+export function placeOuter(name, g = G, max = 8) {
+  const out = []; const seen = new Set();
+  let cur = placeDoc(name, g); if (cur) seen.add('p:' + cur.id);
+  while (cur && out.length < max) {
+    const e = openEdge(cur.id, g);
+    if (!e || !e.to) break;
+    if (e.to.t === 'thing') {
+      const h = g.byId.get(e.to.id); if (!h || h.deleted || seen.has('t:' + h.id)) break;
+      out.push({ t: 'thing', item: h }); seen.add('t:' + h.id);
+      for (const c of chainOf(h, g)) { if (seen.has('t:' + c.id)) return out; out.push({ t: 'thing', item: c }); seen.add('t:' + c.id); }
+      const last = out[out.length - 1].item; const loc = (last.location || '').trim();
+      const nx = loc ? placeDoc(loc, g) : null;
+      if (!loc) break;
+      if (!nx) { out.push({ t: 'place', name: loc, id: null }); break; }
+      if (seen.has('p:' + nx.id)) break;
+      out.push({ t: 'place', name: nx.name, id: nx.id }); seen.add('p:' + nx.id); cur = nx; continue;
+    }
+    const nx = placeDoc(e.to.name, g);
+    if (!nx) { out.push({ t: 'place', name: e.to.name, id: null }); break; }
+    if (seen.has('p:' + nx.id)) break;
+    out.push({ t: 'place', name: nx.name, id: nx.id }); seen.add('p:' + nx.id); cur = nx;
+  }
+  return out;
+}
+// Would saying "place `name` is in `dest`" make a circle? dest: {t:'place', name} | {t:'thing', item|id}.
+export function placeWouldLoop(name, dest, g = G) {
+  const n = (name || '').trim().toLowerCase(); if (!n || !dest) return false;
+  if (dest.t === 'place') {
+    if ((dest.name || '').trim().toLowerCase() === n) return true;
+    return placeOuter(dest.name, g).some((x) => x.t === 'place' && x.name.toLowerCase() === n);
+  }
+  const it = dest.item || g.byId.get(dest.id); if (!it) return false;
+  const chain = [it, ...chainOf(it, g)]; const tail = chain[chain.length - 1];
+  const loc = (tail.location || '').trim().toLowerCase();
+  if (!loc) return false;
+  if (loc === n) return true;
+  return placeOuter(loc, g).some((x) => x.t === 'place' && x.name.toLowerCase() === n);
+}
+// The whole "where", outward, for a thing: the boxes it is in, the place at the end, then where THAT place is.
+// [{t:'thing', item} …, {t:'place', name, id} …]
+export function whereChain(item, g = G) {
+  if (!item) return [];
+  const boxes = chainOf(item, g).map((c) => ({ t: 'thing', item: c }));
+  const last = boxes.length ? boxes[boxes.length - 1].item : item;
+  const loc = (last.location || '').trim();
+  if (!loc) return boxes;
+  const p = placeDoc(loc, g);
+  return [...boxes, { t: 'place', name: p ? p.name : loc, id: p ? p.id : null }, ...placeOuter(loc, g)];
 }
 export const graph = () => G;
 

@@ -26,7 +26,7 @@ export const MENU_ITEMS = [
 // 09-27 trim, and the very next phone check had no way to tell old build from new — that cost a
 // debugging round. The ?v= stamp on our own script tag is the deploy stamp; the bundle's build time
 // is the fallback (the rig loads app.js without ?v=).
-const BUILD_ID = (() => {
+export const BUILD_ID = (() => {
   try {
     const s = [...document.querySelectorAll('script[src]')].find((x) => /app\.js/.test(x.src));
     const m = s && s.src.match(/[?&]v=([\w.-]+)/);
