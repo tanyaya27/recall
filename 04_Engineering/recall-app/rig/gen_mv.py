@@ -109,7 +109,7 @@ sheet5 = f'''<div class="dim"></div><div class="sheet">
 <div class="cancel">Close</div></div>'''
 page('5_tier_sheet', TOP_T2, '', card3.replace('<div class="card">', '<div class="card" style="opacity:.0">'), BLU, sheet5)
 # F6: Log item, first photo taken: the thing sits top-left; the usual place is offered as tier 1 (dashed = suggested)
-top6 = f'<div class="x">{X} Cancel</div><div class="ttl"><span class="q">New thing</span><b>Spare batteries</b></div>'
+top6 = f'<div class="x">{X} Cancel</div><div class="ttl"><span class="q">New item</span><b>Spare batteries</b></div>'
 card6 = f'''<div class="card"><div class="pr">{dot(AMB)}Save it here, photograph another place, or tap + to choose.</div>
 <div class="strip">{sq(AMB, P['tool'], sugg=True)}<div class="plus">{PLUS}</div></div>
 {status(AMB, 'Usual place:', 'Tool drawer', 'tap Save to keep it there')}</div>'''
@@ -137,7 +137,7 @@ TOPB = f'<div class="ttl2"><img src="{THING}"><div><small>Where is the</small><b
 SH = lambda c: f'<div class="sh" style="border-color:{c}"><span></span></div>'
 CXL = f'<div class="cx">{X} Cancel</div>'; CXI = f'<div class="cxi">{X}</div>'
 page2('1_move_B_cancel_bottom', TOPB, '', card1, f'<div class="l">{CXL}</div>{SH(AMB)}<div class="r"><div class="sv">{SAVE} Save</div></div>')
-topL = f'<div class="ttl2"><img src="{img("charger.jpg")}"><div><small>New thing</small><b>Spare batteries</b></div></div>'
+topL = f'<div class="ttl2"><img src="{img("charger.jpg")}"><div><small>New item</small><b>Spare batteries</b></div></div>'
 cardL = card6
 page2('2_log_L1_no_next', topL, '', cardL, f'<div class="l">{CXL}</div>{SH(AMB)}<div class="r"><div class="sv">{SAVE} Save</div></div>')
 page2('3_log_L2_compact', topL, '', cardL, f'<div class="l">{CXI}</div>{SH(AMB)}<div class="r"><div class="nx">+ Next</div><div class="sv">{SAVE} Save</div></div>')

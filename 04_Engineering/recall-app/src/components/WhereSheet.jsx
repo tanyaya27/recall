@@ -17,7 +17,7 @@ export default function WhereSheet({ count = 0, items = [], places = [], onPick,
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet place-sheet" role="dialog" aria-modal="true" aria-labelledby="ws-title" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-title" id="ws-title">Put away {count} thing{count === 1 ? '' : 's'}</div>
+        <div className="sheet-title" id="ws-title">Put away {count} item{count === 1 ? '' : 's'}</div>
         <div className="putin-sub">Where are they going?</div>
         <div className="guesses">
           {boxes.map((b) => (

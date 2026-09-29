@@ -18,6 +18,30 @@ Running list of outstanding to-dos. Newest at the top of each section; strike or
   no P1/P2. **Open:** Cancel at the bottom left (Ravi 09-29 — needs B) — in Log item it collides with **+ Next**: L1 drops
   + Next (the saved card offers "Log another"), L2 squeezes ✕ | shutter | + Next | Save (cramped; + Next wraps at Largest).
 - [ ] Ravi: phone check of `20260929e` (menu → Build 20260929e): a thing with a long caption, at Largest text too.
+- [ ] **Ravi: the "set a level" sequence** (`design/mockups/MV_2026-09-29_set-a-level.jpg`, Ravi 09-29: "+ … conflated adding
+  a tier with picking the place for the tier in focus"): **+ only ADDS a level** (shown once the last level is set); the level
+  in focus is set by **the shutter** (the photo is recognised, everything waits ≤~4 s, then "Is this the Desk drawer?" Yes →
+  photo added to that place / No or not recognised → the one popup: name it, or pick one) or by **Choose a place** (the list).
+  Old place photos are removed in the viewer (tap the square → See its photos → Remove). **Hold Save = Save + Next** (Ravi's
+  pick; 0.6 s, a buzz, a toast saying so). Open for Ravi: the wait (3 s vs 4 s, log real timings); a place's photos are capped
+  at 6 and today a 7th is DROPPED silently — should the newest replace the oldest?
+  Round 2 (Ravi 09-29, `MV_2026-09-29_set-a-level-r2.jpg`): no colour dot before the prompt; no pin before the status;
+  one label **"Place:"** (replaces Current/New place — reverses the 09-29 Move-it wording); "Place: not defined" for an
+  empty level; "No, ☰ Choose a place" opens the SAME Choose-a-place sheet as the button (after a photo it adds "A new
+  place? Name it" on top); no "Save, or…" and no "your photo was added" (the count on the square shows it).
+  Round 3 (Ravi 09-29, `MV_2026-09-29_set-a-level-r3.jpg`): the chain text uses the same **"in" pill** as the squares
+  (not "›"); **hold Save** → the button itself turns into **"Save + Next"** (let go then = save and next; let go sooner =
+  plain Save; slide off = nothing) → a short flash "✓ Spare batteries saved" → the camera for the next thing.
+  Also: "Save + Next" has no disk icon (one line); the "+" in "Tap + to add…" is drawn as the same white plus as the
+  button — not in quotes, not a pill (a pill reads as pressable). `MV_2026-09-29_plus-glyph-and-save-next.jpg`.
+- [x] `20260929f` Ravi 09-29 "Change things to items": every user-facing "thing(s)" → "item(s)" (≈45 strings in 19 files:
+  "No, a new item", "It holds items", "Put items in", "Your items are saved", "One item", …). "something/nothing/everything"
+  stay. The suites that matched the old words were updated (audit, audit_graph, audit_private, audit_roles, verify/walks).
+- [ ] **Ravi: phone check of `20260929f`** (menu → Build 20260929f): no "thing" left on any screen he sees.
+- Mockups ruled 09-29 (camera card), all on one sheet: `design/mockups/MV_2026-09-29_camera-card-all-rulings.jpg` —
+  "Choose place" (one line, the list icon) everywhere incl. "No, ☰ Choose place"; "Spare batteries ✓ saved" (✓ saved in
+  green) on a translucent blurred panel; a thin translucent line above the chain text (it is about the whole card, not one
+  square). Still open: the recognise wait (3 s / 4 s) and the 6-photo cap (newest replaces oldest?).
 
 ## NOW — `20260929d`: Ravi's tier rulings Q1–Q5 built (09-29 night)
 

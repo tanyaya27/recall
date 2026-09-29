@@ -11,13 +11,13 @@ export default function ItemSheet({ item, role = 'owner', container = false, pla
   const cancelRef = useRef(null);
   useEffect(() => { cancelRef.current && cancelRef.current.focus(); }, []);
   if (role === 'viewer') return null; // Can see: nothing to do on a hold (MU2·5)
-  const label = item.name ? item.name : 'This thing';
+  const label = item.name ? item.name : 'This item';
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet item-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-title" id="sheet-title">{label.charAt(0).toUpperCase() + label.slice(1)}</div>
         {onMove && <button className={'sheet-row' + (placed ? '' : ' amber')} onClick={onMove}><PinIcon /> {placed ? 'Move it' : 'Put it somewhere'}</button>}
-        {container && onPutIn && <button className="sheet-row" onClick={onPutIn}><PlusIcon /> Put things in</button>}
+        {container && onPutIn && <button className="sheet-row" onClick={onPutIn}><PlusIcon /> Put items in</button>}
         {(item.photoCount || 1) < LOG_MAX && <button className="sheet-row" onClick={onAdd}><CameraIcon /> Add a photo</button>}
         {onPromote && <button className="sheet-row" onClick={onPromote}><StarIcon /> {promoted ? 'Take it off Home' : 'Show on Home too'}</button>}
         {onPrivate && <button className="sheet-row" onClick={onPrivate}>{isPrivate(item) ? <UnlockIcon /> : <LockIcon />} {isPrivate(item) ? 'Share with the household' : 'Make private'}</button>}

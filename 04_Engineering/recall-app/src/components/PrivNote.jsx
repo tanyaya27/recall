@@ -27,7 +27,7 @@ export default function PrivNote({ v, mine, ownerName = '', typedSecret = false,
   if (typedSecret) {
     return (
       <div className="privnote stop" role="status">
-        <LockIcon /><span><b>ReCall remembers where things are.</b>Take the PIN or password itself out, then save.</span>
+        <LockIcon /><span><b>ReCall remembers where items are.</b>Take the PIN or password itself out, then save.</span>
       </div>
     );
   }

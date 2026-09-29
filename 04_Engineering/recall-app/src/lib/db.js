@@ -273,7 +273,7 @@ export async function createInvite(role, itemId = null) {
 export function inviteText(role, url, myName) {
   const who = myName || 'Someone';
   const verb = role === 'editor' ? 'help with' : 'see';
-  return `${who} has invited you to ${verb} ${myName ? 'their' : 'a'} ReCall — the photos of where ${myName ? 'their' : 'the'} things are. Open this on your phone: ${url}\nIt works for 7 days.`;
+  return `${who} has invited you to ${verb} ${myName ? 'their' : 'a'} ReCall — the photos of where ${myName ? 'their' : 'the'} items are. Open this on your phone: ${url}\nIt works for 7 days.`;
 }
 // Whoever holds the link may read the invitation (the code is the secret); the join page
 // needs the inviter's uid for the name and the role for its sentence.
@@ -290,7 +290,7 @@ export async function cancelInvite(code) { await deleteDoc(doc(invitesCol, code)
 // ReCall by deleting the same grant (rules: grantor or grantee may delete).
 export async function setGrantRole(grant, role) { await updateDoc(doc(grantsCol, grant.id), { role }); }
 export async function removeGrant(grant) { await deleteDoc(doc(grantsCol, grant.id)); }
-export const ROLE_BLURB = { viewer: 'Sees your things and where they are. Cannot change anything.', editor: 'Can also add photos, move things and fix names.' };
+export const ROLE_BLURB = { viewer: 'Sees your items and where they are. Cannot change anything.', editor: 'Can also add photos, move items and fix names.' };
 // The board only shows items whose `kind` is item and that are not removed. Routines
 // and checks are still read (they exist in test data) but the 09-05 board does not
 // render them; they return with the helper's device.

@@ -13,7 +13,7 @@ export default function SessionReview({ things = [], items = [], onOpen, onFinis
   const unplaced = rows.filter((r) => !r.location).length;
   return (
     <div className="screen with-footer review">
-      <Header title={`${rows.length} thing${rows.length === 1 ? '' : 's'} saved`} onBack={onFinish} />
+      <Header title={`${rows.length} item${rows.length === 1 ? '' : 's'} saved`} onBack={onFinish} />
       <div className="rv-sub"><PinIcon /> {placesUsed.length ? placesUsed.join(' · ') : 'No place yet'} · just now</div>
       <div className="rv">
         {rows.map((it) => (
@@ -23,7 +23,7 @@ export default function SessionReview({ things = [], items = [], onOpen, onFinis
           </button>
         ))}
       </div>
-      <p className="rv-note">All saved. Tap a thing only if its name{unplaced ? ' or place' : ''} is wrong{unplaced ? `; ${unplaced} still ${unplaced === 1 ? 'has' : 'have'} no place` : ''}.</p>
+      <p className="rv-note">All saved. Tap an item only if its name{unplaced ? ' or place' : ''} is wrong{unplaced ? `; ${unplaced} still ${unplaced === 1 ? 'has' : 'have'} no place` : ''}.</p>
       <div className="footer"><div className="footer-inner"><button className="btn-primary" onClick={onFinish}><CheckIcon /><span className="lbl">Finished</span></button></div></div>
     </div>
   );

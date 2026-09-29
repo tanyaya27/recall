@@ -61,7 +61,7 @@ export default function PeopleScreen({ people = [], invites = [], grants = [], w
 
       {people.length === 0 && invites.length === 0 && (
         <div className="card">
-          <p className="sub" style={{ margin: 0 }}><b>Nobody else can see your things yet.</b><br />Anyone you invite will see the photos of your things and where they are — except things you mark <b>Only me</b>.</p>
+          <p className="sub" style={{ margin: 0 }}><b>Nobody else can see your items yet.</b><br />Anyone you invite will see the photos of your items and where they are — except items you mark <b>Only me</b>.</p>
         </div>
       )}
       {people.map((g) => (
@@ -135,7 +135,7 @@ export default function PeopleScreen({ people = [], invites = [], grants = [], w
         <div className="sheet-back" onClick={() => setShared(null)} role="presentation">
           <div className="sheet item-sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-title">{possessive(nameOf(shared.grantor))} ReCall</div>
-            <p className="sheet-body">You {shared.role === 'editor' ? 'can help' : 'can see'}: {shared.role === 'editor' ? 'add photos, move things and fix names' : 'the photos of the things and where they are'}.</p>
+            <p className="sheet-body">You {shared.role === 'editor' ? 'can help' : 'can see'}: {shared.role === 'editor' ? 'add photos, move items and fix names' : 'the photos of the items and where they are'}.</p>
             {whose !== shared.grantor && <button className="sheet-row" onClick={() => { setShared(null); onOpenRecall && onOpenRecall(shared.grantor); }}>Open it</button>}
             <button className="sheet-row amber" onClick={() => { setConfirm({ kind: 'leave', grant: shared }); setShared(null); }}>Leave {possessive(nameOf(shared.grantor))} ReCall</button>
             <button className="btn-primary alt" onClick={() => setShared(null)}>Cancel</button>
@@ -143,12 +143,12 @@ export default function PeopleScreen({ people = [], invites = [], grants = [], w
         </div>
       )}
       {confirm && confirm.kind === 'remove' && (
-        <Confirm title={`Remove ${nameOf(confirm.grant.grantee)}?`} body="They will no longer see your things. Nothing they added is removed." keepLabel="Keep them" actionLabel="Remove"
+        <Confirm title={`Remove ${nameOf(confirm.grant.grantee)}?`} body="They will no longer see your items. Nothing they added is removed." keepLabel="Keep them" actionLabel="Remove"
           onKeep={() => setConfirm(null)}
           onAction={async () => { const g = confirm.grant; setConfirm(null); await removeGrant(g); logEvent('person_removed', {}); onToast && onToast(`Removed · ${nameOf(g.grantee)}`); }} />
       )}
       {confirm && confirm.kind === 'leave' && (
-        <Confirm title={`Leave ${possessive(nameOf(confirm.grant.grantor))} ReCall?`} body="You will no longer see their things. They can invite you again." keepLabel="Stay" actionLabel="Leave"
+        <Confirm title={`Leave ${possessive(nameOf(confirm.grant.grantor))} ReCall?`} body="You will no longer see their items. They can invite you again." keepLabel="Stay" actionLabel="Leave"
           onKeep={() => setConfirm(null)}
           onAction={async () => { const g = confirm.grant; setConfirm(null); await removeGrant(g); logEvent('recall_left', {}); onToast && onToast(`Left · ${possessive(nameOf(g.grantor))} ReCall`); onLeft && onLeft(g.grantor); }} />
       )}
@@ -177,7 +177,7 @@ export function InviteSheet({ onSend, onCancel }) {
             </button>
           ))}
         </div>
-        <p className="consent">They will see the photos of your things and where they are — except things you mark <b>Only me</b>.</p>
+        <p className="consent">They will see the photos of your items and where they are — except items you mark <b>Only me</b>.</p>
         <button className="btn-primary" disabled={!role} onClick={() => onSend(role)}>Send a link…</button>
         <button className="btn-primary alt" onClick={onCancel}>Cancel</button>
       </div>
@@ -187,7 +187,7 @@ export function InviteSheet({ onSend, onCancel }) {
 
 // MU1·8: the upgrade moment — asked once, at her first Send a link…; one sentence, no
 // password; Not now costs nothing (no link is made; nothing else changes).
-export function SignInSheet({ onPick, onCancel, title = 'Sign in to share', body = 'So your things stay yours on any phone, sign in once. Everything you have logged stays.' }) {
+export function SignInSheet({ onPick, onCancel, title = 'Sign in to share', body = 'So your items stay yours on any phone, sign in once. Everything you have logged stays.' }) {
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet join-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>

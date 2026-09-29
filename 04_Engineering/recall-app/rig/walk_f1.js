@@ -239,11 +239,11 @@ function mdRow(n, state, file, controls, notes) {
   await tap('.tile:has-text("Memorabilia box")', { wait: 700 });
   await step('a container’s page: In it', [
     ['In it grid (tp-grid buttons: Wooden box, ...)', "each opens that thing's own page"],
-    ['Put things in (tp-btn)', 'opens PutInSheet for this box (dest = this box)'],
+    ['Put items in (tp-btn)', 'opens PutInSheet for this box (dest = this box)'],
     ['Log something in (tp-btn)', 'openLog({t:"thing", item:box}) → LogCamera, level 1 preset to this box'],
     ['Move it (tp-btn, since it also has a place)', 'openMove(item)'],
   ], '');
-  await tap('.tp-btn:has-text("Put things in")', { wait: 700 });
+  await tap('.tp-btn:has-text("Put items in")', { wait: 700 });
 
   start('putin');
   await step('Put-in sheet for the memorabilia box', [
@@ -388,7 +388,7 @@ function mdRow(n, state, file, controls, notes) {
     await home(); await cam('real_desk.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
     await step('first thing photographed', [['+ Next (lc-k.sn)', 'save(true): saves this thing, then RESETS the camera to step 1 for another']], '');
     await tap('.lc-k.sn', { wait: 1300 });
-    await step('camera reset to "Photograph the thing" — the toast for #1 shows on Home underneath (not visible: camera is modal)', [], (await count('.lc-view')) ? '' : 'DEFECT: +Next did not keep the camera open');
+    await step('camera reset to "Photograph the item" — the toast for #1 shows on Home underneath (not visible: camera is modal)', [], (await count('.lc-view')) ? '' : 'DEFECT: +Next did not keep the camera open');
     AI = { name: 'second thing' }; await cam('real_slippers.jpg'); await tap('.lc-shutter', { wait: 1300 });
     await step('second thing photographed in the same sweep', [['Save', 'save(false): saves #2 and closes the camera']], '');
     await tap('.lc-k.sv', { wait: 1300 });

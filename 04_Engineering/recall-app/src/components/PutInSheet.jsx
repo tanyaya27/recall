@@ -23,7 +23,7 @@ export default function PutInSheet({ container = null, dest = null, items = [], 
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet putin-sheet" role="dialog" aria-modal="true" aria-labelledby="putin-title" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-title" id="putin-title">{box ? `Put things ${where}` : `Put away ${where}`}</div>
+        <div className="sheet-title" id="putin-title">{box ? `Put items ${where}` : `Put away ${where}`}</div>
         <div className="putin-sub">{!onlyUnplaced && notPut ? `${notPut} not put away yet, first · ` : ''}tap each one that goes {box ? 'in' : 'there'}</div>
         {cands.length === 0 ? <p className="empty">{onlyUnplaced ? 'Everything has a place.' : 'Everything is already in here.'}</p> : (
           <div className="board putin-grid">
@@ -43,7 +43,7 @@ export default function PutInSheet({ container = null, dest = null, items = [], 
         )}
         <div className="putin-foot">
           {/* One verb per button (09-27): what it does is the sentence above it. */}
-          <div className="lc-say"><span className="tx"><span className="l1"><span className="lc-pin"><PinIcon /></span><b>{picked.length ? `${picked.length} thing${picked.length === 1 ? '' : 's'}` : 'Tap each one that goes ' + (box ? 'in' : 'there')}</b></span><span className="soft">{box ? `into the ${(box.name || 'box').replace(/^(my|the)\s+/i, '')}` : `at ${d ? d.name : ''}`}</span></span></div>
+          <div className="lc-say"><span className="tx"><span className="l1"><span className="lc-pin"><PinIcon /></span><b>{picked.length ? `${picked.length} item${picked.length === 1 ? '' : 's'}` : 'Tap each one that goes ' + (box ? 'in' : 'there')}</b></span><span className="soft">{box ? `into the ${(box.name || 'box').replace(/^(my|the)\s+/i, '')}` : `at ${d ? d.name : ''}`}</span></span></div>
           <button type="button" className="btn-primary" disabled={!picked.length} onClick={() => onDone(cands.filter((x) => picked.includes(x.id)))}>
             <CheckIcon /><span>{box ? 'Put in' : 'Put away'}</span>
           </button>

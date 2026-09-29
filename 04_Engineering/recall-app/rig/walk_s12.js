@@ -183,7 +183,7 @@ const walk = []; const errors = [];
   const cc = await byName('coffee can');
   check('P3 4 taps from Home: the can is at that place; the page says so; Undo on the toast', taps === 4 && cc.location === chipPlace && new RegExp(chipPlace).test(await text('.tp-wh b')) && await count('.toast-undo') === 1, `taps ${taps} · ${chipPlace}`);
 
-  // ===== W4 · a box's page: In it, Put things in, Log something in; Back returns
+  // ===== W4 · a box's page: In it, Put items in, Log something in; Back returns
   start('w4'); AI = { name: 'ticket stubs' }; WHERE = [];
   await home(); await tap('.tile:has-text("Memorabilia box")', { wait: 700 }); await step('The memorabilia box\'s page: In it');
   check('B1 a box\'s page lists what is in it; each opens its own page', await count('.tp-grid button') === 2);
@@ -192,7 +192,7 @@ const walk = []; const errors = [];
   await step('Log something in: "In the wooden box" already');
   check('B2 Log something in: the box is already level 1', /In the wooden box/.test(await text('.lc-say')), await text('.lc-say'));
   await tap('.lc-k.sn', { wait: 1500 }); await step('+ Next: saved, camera open for the next thing');
-  check('N1 + Next saves and keeps the camera open at step 1', await count('.lc') === 1 && /Photograph the thing/.test(await text('.lc-prompt')) && !!(await byName('ticket stubs')));
+  check('N1 + Next saves and keeps the camera open at step 1', await count('.lc') === 1 && /Photograph the item/.test(await text('.lc-prompt')) && !!(await byName('ticket stubs')));
   AI = { name: 'old letters' }; await cam('book.jpg'); await tap('.lc-shutter', { wait: 1500 });
   check('N2 the next thing goes in the same box unless she changes it', /In the wooden box/.test(await text('.lc-say')));
   await tap('.lc-k.sv', { wait: 1500 }); await step('Save: back on the wooden box\'s page');
@@ -208,7 +208,7 @@ const walk = []; const errors = [];
   check('R0b …nothing else moved: the baseball card is still in the wooden box, the wooden box in the memorabilia box', (await openTo('c'))[0].to.id === 'w' && (await openTo('w'))[0].to.id === 'm');
   await tap('.tile:has-text("Pencil")', { wait: 700 }); await step('The pencil\'s page: it holds nothing');
   check('R1 "In the photo:" is under the photo, never where the place goes (#22)', /In the photo: Cream-colored/.test(await text('.seen-line')) && /No place yet/.test(await text('.tp-wh b')));
-  check('R2 the pencil holds nothing, so it is not a container: no In it, no Put things in (#12)', await count('#tp-in') === 0 && !/Put things in/.test(await text('.thing-page')));
+  check('R2 the pencil holds nothing, so it is not a container: no In it, no Put items in (#12)', await count('#tp-in') === 0 && !/Put items in/.test(await text('.thing-page')));
   await home();
   check('R3 Home: the pencil tile has no "inside" badge (#16); the cabinet waits under Not put away', await count('.tile:has-text("Pencil") .inbadge') === 0 && /No place yet/.test(await text('.tile:has-text("Pencil")')) && /Not put away · 2/.test(await text(".notput")));
   await tap('.notput', { wait: 600 }); await tap('.np-row:has-text("Filling cabinet")', { wait: 700 }); await step('The cabinet\'s page, from Not put away');

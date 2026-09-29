@@ -156,7 +156,7 @@ export default function SeveralCamera({ engine, items = [], places = [], owner, 
             <div className="nm">Your {own(last.match.name)}?</div>
             <div className="chips">
               <button type="button" onClick={() => answer(last.key, true)}>Yes</button>
-              <button type="button" onClick={() => answer(last.key, false)}>No, a new thing</button>
+              <button type="button" onClick={() => answer(last.key, false)}>No, a new item</button>
             </div>
           </>
         ) : (

@@ -108,7 +108,7 @@ async function main() {
   await shootOne(); await page.waitForSelector('.privnote.stop');
   aiNext = tagOf('recovery sheet', { private: true, privateWhy: 'looks like passwords' });
   await page.click('.pn-link:has-text("Take it closed")'); await page.waitForTimeout(300);
-  check('X3a Take it closed → back to step 1 on the same camera', /Photograph the thing/.test(await text('.lc-prompt')));
+  check('X3a Take it closed → back to step 1 on the same camera', /Photograph the item/.test(await text('.lc-prompt')));
   await page.click('.lc-shutter'); await page.waitForTimeout(1200);
   check('X3 …a new photo, named again, now "Kept private" (photo kept)', /Kept private/.test(await text('.privnote')) && await count('.privnote.stop') === 0 && await count('.lv-s .lv-sq img') === 1);
   await saveAt('Desk'); await page.waitForTimeout(400);
@@ -118,7 +118,7 @@ async function main() {
   // ---- 4. A secret typed into the name blocks saving
   aiNext = tagOf('stapler'); await shootOne(); await page.waitForTimeout(800);
   await page.click('.lc-name'); await page.fill('.sheet .place-input', 'PIN 4821'); await page.waitForTimeout(200);
-  check('T1 typed "PIN 4821" → "ReCall remembers where things are…", the name cannot be used', /ReCall remembers where things are/.test(await text('.sheet .privnote.stop')) && await page.locator('.sheet .btn-primary').isDisabled());
+  check('T1 typed "PIN 4821" → "ReCall remembers where items are…", the name cannot be used', /ReCall remembers where items are/.test(await text('.sheet .privnote.stop')) && await page.locator('.sheet .btn-primary').isDisabled());
   await shot('4-typed-secret');
   await page.fill('.sheet .place-input', 'PIN notebook'); await page.click('.sheet .btn-primary'); await page.waitForTimeout(200);
   check('T2 taken out ("PIN notebook") → allowed again, and the word list makes it private', /Kept private: this looks like passwords/.test(await text('.privnote')));
@@ -151,7 +151,7 @@ async function main() {
   check('W1 a private-looking name turns the switch on, with the reason', await page.locator('.note-card .sw').getAttribute('aria-checked') === 'true' && /Looks like passwords, so it starts private/.test(await text('.note-card .privnote')));
   check('W2 "On this phone only" greyed under the switch; tap → Coming soon', await count('.note-card .phone-only') === 1 && (await page.click('.note-card .phone-only', { force: true }), /Coming soon/.test(await text('.note-card .phone-only'))));
   await page.fill('#note-what', 'bank PIN 4821'); await page.waitForTimeout(100);
-  check('W3 a typed secret blocks Save and says why', await page.locator('.note-card .btn-primary').isDisabled() && /ReCall remembers where things are/.test(await text('.note-card .privnote.stop')));
+  check('W3 a typed secret blocks Save and says why', await page.locator('.note-card .btn-primary').isDisabled() && /ReCall remembers where items are/.test(await text('.note-card .privnote.stop')));
   await shot('10-write-secret');
   await page.fill('#note-what', 'bank PIN notebook'); await page.waitForTimeout(100);
   await page.click('.note-card .guess >> nth=0'); await page.click('.note-card .btn-primary'); await page.waitForSelector('.board'); await page.waitForTimeout(400);

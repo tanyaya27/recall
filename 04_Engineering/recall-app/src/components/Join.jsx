@@ -57,7 +57,7 @@ export default function JoinScreen({ code, onJoined, onDismiss }) {
     <div className="screen">
       <div className="card join">
         <h1>{who ? `${possessive(who)} ReCall` : 'An invitation'}</h1>
-        <p>{who || 'Someone'} has shared the photos of where {who ? 'their' : 'the'} things are, so you can {verb} them.<br />{named ? 'Joining…' : `Sign in so ${who || 'they'} know${who ? 's' : ''} it’s you.`}</p>
+        <p>{who || 'Someone'} has shared the photos of where {who ? 'their' : 'the'} items are, so you can {verb} them.<br />{named ? 'Joining…' : `Sign in so ${who || 'they'} know${who ? 's' : ''} it’s you.`}</p>
         {error && <div className="banner amber">{error}</div>}
         {!named && APPLE_SIGNIN && <button className="btn-primary" disabled={busy} onClick={() => { parkJoin(code); signIn('apple'); }}><AppleIcon /> Continue with Apple</button>}
         {!named && <button className={'btn-primary' + (APPLE_SIGNIN ? ' alt' : '')} disabled={busy} onClick={async () => { parkJoin(code); try { await signIn('google'); } catch (e) { setError(`Sign-in did not start: ${e && (e.code || e.message) || e}`); } }}><GoogleIcon /> Continue with Google</button>}

@@ -111,7 +111,7 @@ async function main() {
     check('D5a icons, text and numbers share a centre line (title, the list rows and switches)', mids.rows < 1.5 && mids.title < 1.5, JSON.stringify(mids));
   }
   check('D6 title: name, lock absent; Where it is says the place; Move it', /Reading glasses/.test(await text('.thing-head .name')) && /Kitchen counter/.test(await text('.tp-wh b')) && await count('.thing-head .lk') === 0 && await count('.tp-btn:has-text("Move it")') === 1);
-  check('D6b build 2: no bottom bar, no Edit, no Move to the top, no Put things in on a thing that holds nothing', await count('.actbar') === 0 && await count('.act') === 0 && !/Move to the top|Put things in|Edit/.test(await text('.thing-page')));
+  check('D6b build 2: no bottom bar, no Edit, no Move to the top, no Put items in on a thing that holds nothing', await count('.actbar') === 0 && await count('.act') === 0 && !/Move to the top|Put items in|Edit/.test(await text('.thing-page')));
   check('D6a Show earlier places row present, count = 1 earlier place', await count('.sw-row') === 3 && /Show earlier places\s*1/.test(await text('.sw-row >> nth=2')));
   await page.click('.sw-row >> nth=2 >> .sw'); await page.waitForTimeout(400);
   check('D7 earlier on → 3 photos; the Bedside one carries its place under it, title unchanged', await count('.dots .dot') === 3 && (await page.locator('.was:not(.empty)').allInnerTexts()).join('|').includes('Bedside table') && /Kitchen counter/.test(await text('.tp-wh b')));
@@ -156,7 +156,7 @@ async function main() {
   // Press-and-hold on the photo → the item sheet with Remove this photo
   const pb = await page.locator('.card.thing img').first().boundingBox();
   await page.mouse.move(pb.x + 60, pb.y + 60); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
-  check('D16 hold on the photo → item sheet, with Remove this photo; trimmed (#28)', await count('.item-sheet') === 1 && /Remove this photo/.test(await text('.item-sheet')) && !/Change the place|Rename|Move to the top|Put things in/.test(await text('.item-sheet')));
+  check('D16 hold on the photo → item sheet, with Remove this photo; trimmed (#28)', await count('.item-sheet') === 1 && /Remove this photo/.test(await text('.item-sheet')) && !/Change the place|Rename|Move to the top|Put items in/.test(await text('.item-sheet')));
   await page.click('.item-sheet .btn-primary.alt'); await page.waitForTimeout(200);
   // Add a photo that is a different thing → guard
   like = { same: false, seen: 'coffee cup' };
@@ -213,8 +213,8 @@ async function main() {
   aiNext = { ...AI, name: 'soda can', alternatives: [], sameAs: 'sparkling soda' };
   await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.waitForTimeout(1500);
   check('C10 the AI says it is the same → asked: Your sparkling soda?', /Your sparkling soda\?/.test(await text('.lc-ask')));
-  await page.click('.lc-ask button:has-text("No, a new thing")'); await page.waitForTimeout(200);
-  check('C11 No, a new thing → the question goes, the AI name stays', await count('.lc-ask') === 0 && /Soda can/.test(await text('.lc-name')));
+  await page.click('.lc-ask button:has-text("No, a new item")'); await page.waitForTimeout(200);
+  check('C11 No, a new item → the question goes, the AI name stays', await count('.lc-ask') === 0 && /Soda can/.test(await text('.lc-name')));
   await page.click('.lc-x'); await page.click('text=Throw away'); await page.waitForTimeout(300);
   // Visual tier: an unsure match is ignored; a sure one is asked
   aiNext = { ...AI, name: 'fizzy drink', alternatives: [], sameAs: '' }; same = { index: 1, sure: false };
@@ -228,7 +228,7 @@ async function main() {
   const tilesBefore = await count('.tile');
   await page.click('.lc-k.sv'); await page.waitForTimeout(400);
   check('C14 Save without answering → Is this your …?', /Is this your/.test(await text('body')));
-  await page.click('text=Yes, the same thing'); await page.waitForSelector('.board', { timeout: 5000 }); await page.waitForTimeout(400);
+  await page.click('text=Yes, the same item'); await page.waitForSelector('.board', { timeout: 5000 }); await page.waitForTimeout(400);
   check('C15 Yes → merged, no extra tile', await count('.tile') === tilesBefore, `${await count('.tile')} vs ${tilesBefore}`);
   aiNext = null; same = null;
   await page.waitForTimeout(8500); // the saved card goes

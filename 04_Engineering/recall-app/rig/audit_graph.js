@@ -88,16 +88,16 @@ async function main() {
   check('G2b "N inside" only on something that holds things (the car keys have none)', await count('.tile:has-text("Car keys") .inbadge') === 0);
   // ---- Only containers hold things (Ravi 09-27): an empty shoe box is a thing until she says it holds things
   await page2('Shoe box');
-  check('J1 a thing that holds nothing: no "In it", no "Put things in" (#12)', await count('#tp-in') === 0 && !/Put things in/.test(await text('.thing-page')));
-  await page.click('.sw[aria-label="It holds things"]'); await page.waitForTimeout(400);
-  check('J1b "It holds things" on → the page shows "In the shoe box · 0" with Put things in and Log something in; the mark is saved', /In the shoe box · 0/i.test(await text('#tp-in')) && await count('.tp-btn:has-text("Put things in")') === 1 && await count('.tp-btn:has-text("Log something in")') === 1 && (await byName('shoe box')).holds === true);
+  check('J1 a thing that holds nothing: no "In it", no "Put items in" (#12)', await count('#tp-in') === 0 && !/Put items in/.test(await text('.thing-page')));
+  await page.click('.sw[aria-label="It holds items"]'); await page.waitForTimeout(400);
+  check('J1b "It holds items" on → the page shows "In the shoe box · 0" with Put items in and Log something in; the mark is saved', /In the shoe box · 0/i.test(await text('#tp-in')) && await count('.tp-btn:has-text("Put items in")') === 1 && await count('.tp-btn:has-text("Log something in")') === 1 && (await byName('shoe box')).holds === true);
   await shot('0a-emptybox');
-  await page.click('.tp-btn:has-text("Put things in")'); await page.waitForSelector('.putin-sheet');
+  await page.click('.tp-btn:has-text("Put items in")'); await page.waitForSelector('.putin-sheet');
   await page.click('.putin-grid .tile:has-text("Reading glasses")'); await page.click('.putin-foot .btn-primary'); await page.waitForTimeout(600);
   const sg = await openTo('g');
   check('J2 …put the reading glasses in: an edge to the shoe box; it shows in the grid', sg.length === 1 && sg[0].to.id === 's' && (await grid()).some((x) => /Reading glasses/.test(x)), JSON.stringify(sg.map((e) => e.to)));
-  await page.click('.sw[aria-label="It holds things"]'); await page.waitForTimeout(300);
-  check('J2a "It holds things" can\'t be switched off while something is inside', /has 1 thing in it/.test(await text('.sheet-title')) && (await byName('shoe box')).holds === true);
+  await page.click('.sw[aria-label="It holds items"]'); await page.waitForTimeout(300);
+  check('J2a "It holds items" can\'t be switched off while something is inside', /has 1 item in it/.test(await text('.sheet-title')) && (await byName('shoe box')).holds === true);
   await page.click('.sheet .btn-secondary, .sheet .btn-primary.alt').catch(() => {}); await page.waitForTimeout(200);
   await page.click('.toast-undo').catch(() => {}); await page.waitForTimeout(600);
   await home();
@@ -145,7 +145,7 @@ async function main() {
   await page.click('.tp-grid button:has-text("Wooden box")'); await page.waitForSelector('.thing-head .name:has-text("Wooden box")');
   check('G4 …the wooden box inside opens its own page ("In the wooden box · 2")', /In the wooden box · 2/i.test(await text('#tp-in')));
   check('G5 its Where it is: "In the memorabilia box" · Crawl space, with the box\'s photo', /In the memorabilia box/.test(await text('.tp-wh b')) && /Crawl space/.test(await text('.tp-wh small')) && await count('.tp-wh .ch img') >= 1);
-  check('G6 a container page offers Put things in and Log something in (and nothing starts a job from a child page\'s footer)', await count('.tp-btn:has-text("Put things in")') === 1 && await count('.tp-btn:has-text("Log something in")') === 1 && await count('.footer') === 0);
+  check('G6 a container page offers Put items in and Log something in (and nothing starts a job from a child page\'s footer)', await count('.tp-btn:has-text("Put items in")') === 1 && await count('.tp-btn:has-text("Log something in")') === 1 && await count('.footer') === 0);
   await shot('3-wood-page');
   await page.click('.thing-head .chev'); await page.waitForSelector('.thing-head .name:has-text("Memorabilia box")');
   await page.click('.thing-head .chev'); await page.waitForSelector('.dayrow');
@@ -155,7 +155,7 @@ async function main() {
   await page.waitForTimeout(300);
   await page2('Baseball card');
   check('G9 the page: "In the wooden box" · in the memorabilia box · Crawl space, with both boxes\' photos', /In the wooden box/.test(await text('.tp-wh b')) && /in the memorabilia box/.test(await text('.tp-wh small')) && /Crawl space/.test(await text('.tp-wh small')) && await count('.tp-wh .ch img') >= 2);
-  check('G9b a thing inside a box, not itself a container, offers no "Put things in" (the pencil case)', await count('#tp-in') === 0);
+  check('G9b a thing inside a box, not itself a container, offers no "Put items in" (the pencil case)', await count('#tp-in') === 0);
   await shot('4-card');
   await home();
   check('G10 promoted: the card is on Home too; line 2 says "In the wooden box"', /In the wooden box/.test(await text('.tile:has-text("Baseball card") .tile-sub.place')));
@@ -163,17 +163,17 @@ async function main() {
   await page.locator('.tile:has-text("Baseball card")').dispatchEvent('pointerdown'); await page.waitForTimeout(750); await page.locator('.tile:has-text("Baseball card")').dispatchEvent('pointerup');
   await page.waitForSelector('.item-sheet', { timeout: 3000 }).catch(() => {});
   const sheetTxt = await text('.item-sheet');
-  check('G11 hold a promoted thing → "Take it off Home"; the sheet is trimmed (no Put things in on a card)', /Take it off Home/.test(sheetTxt) && !/Put things in|Change the place|Move to the top/.test(sheetTxt), sheetTxt.replace(/\n/g, ' / '));
+  check('G11 hold a promoted thing → "Take it off Home"; the sheet is trimmed (no Put items in on a card)', /Take it off Home/.test(sheetTxt) && !/Put items in|Change the place|Move to the top/.test(sheetTxt), sheetTxt.replace(/\n/g, ' / '));
   if (/Take it off Home/.test(sheetTxt)) { await page.click('.sheet-row:has-text("Take it off Home")'); await page.waitForTimeout(300); }
   check('G12 …and taking it off Home works', (await byName('baseball card')).promoted === false);
-  // ---- Put things in (+ Undo), from the box's page
+  // ---- Put items in (+ Undo), from the box's page
   await page2('Memorabilia box'); await page.click('.tp-grid button:has-text("Wooden box")'); await page.waitForSelector('.thing-head .name:has-text("Wooden box")');
-  await page.click('.tp-btn:has-text("Put things in")'); await page.waitForSelector('.putin-sheet');
+  await page.click('.tp-btn:has-text("Put items in")'); await page.waitForSelector('.putin-sheet');
   const cand = await page.locator('.putin-grid .tile-label').allInnerTexts();
-  check('G13 Put things in: things not put away come first; the boxes this one is in are never offered (no circles)', /Coffee can|Blue binders/.test(cand[0] || '') && !cand.some((x) => /Memorabilia box/.test(x)) && !cand.some((x) => /Baseball card|Ticket stubs/.test(x)), cand.slice(0, 5).join(' | '));
+  check('G13 Put items in: things not put away come first; the boxes this one is in are never offered (no circles)', /Coffee can|Blue binders/.test(cand[0] || '') && !cand.some((x) => /Memorabilia box/.test(x)) && !cand.some((x) => /Baseball card|Ticket stubs/.test(x)), cand.slice(0, 5).join(' | '));
   check('G13b every thing offered shows its name (rows never squash)', await page.evaluate(() => [...document.querySelectorAll('.putin-grid .tile')].every((t) => { const l = t.querySelector('.tile-label').getBoundingClientRect(); const r = t.getBoundingClientRect(); return l.height > 10 && l.bottom <= r.bottom + 1; })));
   await page.click('.putin-grid .tile:has-text("Coffee can")'); await page.click('.putin-grid .tile:has-text("Blue binders")');
-  check('G14 one verb on the button ("Put in"); the sentence says "2 things · into the wooden box"', (await text('.putin-foot .btn-primary')).trim() === 'Put in' && /2 things/.test(await text('.putin-foot .lc-say')) && /into the wooden box/.test(await text('.putin-foot .lc-say')));
+  check('G14 one verb on the button ("Put in"); the sentence says "2 items · into the wooden box"', (await text('.putin-foot .btn-primary')).trim() === 'Put in' && /2 items/.test(await text('.putin-foot .lc-say')) && /into the wooden box/.test(await text('.putin-foot .lc-say')));
   await shot('6-putin');
   await page.click('.putin-foot .btn-primary'); await page.waitForTimeout(600);
   const cc = await openTo('u'), bb = await openTo('b');
@@ -225,7 +225,7 @@ async function main() {
   // ---- the camera from Log item
   // The fake AI calls every photo "bottle cap", so from the second one on it is ASKED "Your bottle cap?" — as it must be. Answer no.
   const shootOne = async () => { await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); await page.click('.lc-shutter'); await page.waitForTimeout(1200);
-    if (await count('.lc-ask button:has-text("No, a new thing")')) { await page.click('.lc-ask button:has-text("No, a new thing")'); await page.waitForTimeout(200); } };
+    if (await count('.lc-ask button:has-text("No, a new item")')) { await page.click('.lc-ask button:has-text("No, a new item")'); await page.waitForTimeout(200); } };
   await shootOne();
   const chipLabels = (await page.locator('.lc-chip:not(.more)').allInnerTexts()).map((x) => x.trim());
   const boxChip = (await page.locator('.lc-chip.box').first().innerText().catch(() => '')).trim();
@@ -264,7 +264,7 @@ async function main() {
   await home();
   // ---- a box not logged yet: she photographs it — ＋ first, so the photo goes where she means (Ravi 09-27)
   await shootOne();
-  check('K0 after the first photo the THING stays chosen (a second photo is another photo of it)', /^The thing/.test(await page.locator('.lv-sq.sel').getAttribute('aria-label')));
+  check('K0 after the first photo the THING stays chosen (a second photo is another photo of it)', /^The item/.test(await page.locator('.lv-sq.sel').getAttribute('aria-label')));
   await page.click('.lv-sq.plus'); await page.waitForTimeout(200);
   whereNext = { name: "Dona Homer's tin box", moves: true, index: 0, sure: false };
   await page.click('.lc-shutter'); await page.waitForTimeout(1500);
@@ -289,20 +289,20 @@ async function main() {
   t = await tiles();
   check('G28 helper (Can help): Home shows the box, not what is inside; not the private passport', t.some((x) => /Memorabilia box/.test(x)) && !t.some((x) => /Passport|Baseball card/.test(x)), t.join(' | '));
   await page2('Memorabilia box'); await page.click('.tp-grid button:has-text("Wooden box")'); await page.waitForSelector('.thing-head .name:has-text("Wooden box")');
-  await page.click('.tp-btn:has-text("Put things in")'); await page.waitForSelector('.putin-sheet');
+  await page.click('.tp-btn:has-text("Put items in")'); await page.waitForSelector('.putin-sheet');
   const hc = await page.locator('.putin-grid .tile-label').allInnerTexts();
-  check('G29 helper Put things in: the private passport is never offered', !hc.some((x) => /Passport/.test(x)));
+  check('G29 helper Put items in: the private passport is never offered', !hc.some((x) => /Passport/.test(x)));
   await page.click('.putin-grid .tile:has-text("Blue binders")'); await page.click('.putin-foot .btn-primary'); await page.waitForTimeout(700);
   await page.click('.thing-head .chev'); await page.waitForTimeout(300); await page.click('.thing-head .chev'); await page.waitForTimeout(300);
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   await page2('Coffee can'); const hb = (await byName('coffee can')).holds;
-  await page.click('.sw[aria-label="It holds things"]'); await page.waitForTimeout(600);
+  await page.click('.sw[aria-label="It holds items"]'); await page.waitForTimeout(600);
   const hg = (await byName('coffee can')).holds;
-  await page.click('.sw[aria-label="It holds things"]'); await page.waitForTimeout(600);
+  await page.click('.sw[aria-label="It holds items"]'); await page.waitForTimeout(600);
   const hg2 = (await byName('coffee can')).holds;
   const ke = (await page.evaluate(() => window.__rig.rules(false)), await openTo('b'));
   check('G30 helper put the blue binders in: an edge owned by Dad, made by Ravi', ke.length === 1 && ke[0].to.id === 'w' && ke[0].owner === 'dad' && ke[0].by === 'ravi', JSON.stringify(ke));
-  check('G30b with the rules on, a helper can switch "It holds things" on and off (the rules allow holds)', !hb && hg === true && hg2 === false, JSON.stringify({ hb, hg, hg2 }));
+  check('G30b with the rules on, a helper can switch "It holds items" on and off (the rules allow holds)', !hb && hg === true && hg2 === false, JSON.stringify({ hb, hg, hg2 }));
   // ---- Largest
   await boot('dad'); await setPrefs({ size: 'largest' }); await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.board');
   await page2('Memorabilia box'); await page.click('.tp-grid button:has-text("Wooden box")'); await page.waitForSelector('.thing-head .name:has-text("Wooden box")');

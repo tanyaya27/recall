@@ -40,3 +40,9 @@ only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eig
   Cancel moves beside the shutter → `MV_2026-09-29_cancel-bottom.jpg`. Awaiting his call on + Next (L1/L2).
 - Fixed in `e`: caption/Add photo top alignment + 2-line cap (probe_cap 14/14), pin placeholder not in button colours.
   Suites: 50 · 100 · 44 · 66 · 14 · 34 · 117 · 63 · tiers 40.
+
+## 09-29 (evening): `20260929f` and the camera card rulings
+- Ravi worked the camera-card mockups through four rounds (set a level; formatting; "in" pills + hold Save; Choose button
+  and the saved flash). All rulings on one sheet: `design/mockups/MV_2026-09-29_camera-card-all-rulings.jpg`; DECISIONS.
+- `f`: "thing" → "item" everywhere. Suites: 50 · 100 · 44 · 66 · 14 · 34 · 117 · 63 · tiers 40 · probe_cap 14.
+- Next: build the camera card once the recognise wait and the 6-photo cap are answered.

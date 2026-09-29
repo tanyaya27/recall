@@ -200,7 +200,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const v = moveItem || !thing.photos.length || (tag === undefined && !nameOverride) ? null : verdictOf(tag || null, nameOverride);
   const dropPhoto = !!(v && v.secret);
   const startPrivate = !!(v && v.private && mine && !shareAnyway && !match);
-  const WHY = { 'in the photo': 'The photo shows where it is.', 'usual place': 'Where it usually lives.', 'just used': 'Where the last thing went.' };
+  const WHY = { 'in the photo': 'The photo shows where it is.', 'usual place': 'Where it usually lives.', 'just used': 'Where the last item went.' };
   const guess = !moveItem && tag && tag.placeCertain && tag.placeGuesses && tag.placeGuesses[0] && placeNames.some((n) => n.toLowerCase() === tag.placeGuesses[0].toLowerCase())
     ? { known: { t: 'place', name: placeNames.find((n) => n.toLowerCase() === tag.placeGuesses[0].toLowerCase()) }, why: 'in the photo' } : null;
   const usual = match ? (() => { const h = holderOf(match); return h ? { known: { t: 'thing', item: h }, why: 'usual place' } : match.location ? { known: { t: 'place', name: match.location }, why: 'usual place' } : null; })() : null;
@@ -475,15 +475,15 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
 
   // ---- drawing
   const colour = LEVEL_COLOURS[Math.min(sel, LEVEL_COLOURS.length - 1)];
-  const lvName = (i) => (i === 0 ? (cap(name) || 'the thing') : linkName(levels[i - 1] || links[i - 1] || {}));
+  const lvName = (i) => (i === 0 ? (cap(name) || 'the item') : linkName(levels[i - 1] || links[i - 1] || {}));
   const selLevel = sel > 0 ? levels[sel - 1] : null;
   // REQUIREMENTS_2026-09-27 R2.4 (kills the b-f dead end): a level that is already KNOWN (chip,
   // WhereList pick — typed-new or existing) but has no photo of its OWN yet gets its own prompt, so
   // the typed path can photograph right away instead of looking like a dead end.
-  const prompt = !started ? { b: 'Photograph the thing', s: 'Take as many photos of it as you like.' }
+  const prompt = !started ? { b: 'Photograph the item', s: 'Take as many photos of it as you like.' }
     : (moveItem && sel === 1 && selLevel && selLevel.current) ? { b: whereQ(name), parts: whereParts(name), s: 'Photograph the new place or what it is in. Or tap one.' }
     : (moveItem && sel === 1 && selLevel && selLevel.known && !selLevel.photos.length) ? { b: whereQ(name), parts: whereParts(name), s: 'Save to move it there, or photograph another place.' }
-    : sel === 0 ? { b: `${cap(name) || 'The thing'} · ${thing.photos.length} photo${thing.photos.length === 1 ? '' : 's'}`, s: 'Another photo of it, or tap ＋ to photograph where it goes.' }
+    : sel === 0 ? { b: `${cap(name) || 'The item'} · ${thing.photos.length} photo${thing.photos.length === 1 ? '' : 's'}`, s: 'Another photo of it, or tap ＋ to photograph where it goes.' }
     : !filled(selLevel) ? (moveItem && sel === 1 ? { b: whereQ(name), parts: whereParts(name), s: 'Photograph the place or what it is in. Or tap one.' }
       : sel === 1 ? { b: 'Where it goes', s: `Photograph what ${own(name) ? 'the ' + own(name) : 'it'} is in, or where it is. Or tap a place.` }
       : { b: whereQ(lvName(sel - 1)), parts: whereParts(lvName(sel - 1)), s: 'Photograph what it is in, or where it is. Or tap a place.' })
@@ -538,10 +538,10 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       onShare={(x) => { setShareAnyway(x); logEvent('privacy_share', { to: x ? 'shared' : 'private', mode: 'camera' }); }}
       onRetake={retake} onDontSave={() => { logEvent('capture_leave', { reason: 'helper_private', via: 'camera' }); onCancel(); }} />) : null;
   const identity = !moveItem && thing.match && !thing.answer ? (
-    <div className="lc-ask" role="group" aria-label="Is this the same thing?">
+    <div className="lc-ask" role="group" aria-label="Is this the same item?">
       <b>Your {own(thing.match.name)}?</b>
       <div><button type="button" onClick={() => setThing((t) => ({ ...t, answer: 'yes' }))}>Yes</button>
-        <button type="button" className="o" onClick={() => setThing((t) => ({ ...t, answer: 'no' }))}>No, a new thing</button></div>
+        <button type="button" className="o" onClick={() => setThing((t) => ({ ...t, answer: 'no' }))}>No, a new item</button></div>
     </div>) : null;
   // D4 (Ravi 09-28, mockup D4_where-card A): the ask reads "📍 Your desk drawer?" — the pin at the START of the line, centred
   // on it, in the colour of the level it asks about (amber for level 1) — then Yes / No, a new one. While it is up, the
@@ -588,7 +588,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         {s.i > 0 && <span className="lc-in">in</span>}
         <div className="lv-tile">
           <button type="button" className={'lv-sq' + (on ? ' sel' : '') + (s.empty ? ' empty' : '')} style={on || s.empty ? { borderColor: c, color: c } : undefined}
-            aria-label={s.i === 0 ? `The thing: ${s.nm}` : `Level ${s.i}: ${s.nm}`} aria-pressed={on} onClick={() => (s.sugg ? pickKnown(links[0].known) : tapLevel(s.i))}>
+            aria-label={s.i === 0 ? `The item: ${s.nm}` : `Level ${s.i}: ${s.nm}`} aria-pressed={on} onClick={() => (s.sugg ? pickKnown(links[0].known) : tapLevel(s.i))}>
             {s.thumb ? <img src={s.thumb} alt="" /> : s.empty ? <PinAskIcon /> : s.box ? <BoxIcon /> : <PinIcon />}
             {s.n > 1 && <span className="lv-n">{s.n}</span>}
             {s.lock && <span className="lc-lk"><LockIcon /></span>}
@@ -684,7 +684,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         {look === 'a' && !askUp && sentenceEl}
         {saveErr && <div className="lc-err" role="alert">{saveErr}</div>}
         <div className="lc-row">
-          {started && !moveItem ? <button type="button" className="lc-k sn" disabled={busy || !!collidingLevel} onClick={() => save(true)} aria-label="Save and log the next thing"><SaveIcon /><span className="plus">+</span>Next</button> : <span />}
+          {started && !moveItem ? <button type="button" className="lc-k sn" disabled={busy || !!collidingLevel} onClick={() => save(true)} aria-label="Save and log the next item"><SaveIcon /><span className="plus">+</span>Next</button> : <span />}
           <button type="button" className="lc-shutter" style={{ borderColor: colour }} aria-label="Take a photo" disabled={cam !== 'live' || busy} onClick={snap}><span /></button>
           {started ? <button type="button" className="lc-k sv" disabled={busy || (moveItem && !real.length) || !!collidingLevel} onClick={() => save(false)}><SaveIcon />{busy ? 'Saving…' : 'Save'}</button> : <span />}
         </div>
@@ -742,8 +742,8 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         </div>)}
       {sheet && sheet.ask && (
         <Choice title={`Is this your ${own(sheet.ask.name)}?`} options={[
-          { label: 'Yes, the same thing', onClick: () => { const n = sheet.next; setSheet(null); setThing((t) => ({ ...t, answer: 'yes' })); save(n, 'yes'); } },
-          { label: 'No, a new thing', onClick: () => { const n = sheet.next; setSheet(null); setThing((t) => ({ ...t, answer: 'no' })); save(n, 'no'); } },
+          { label: 'Yes, the same item', onClick: () => { const n = sheet.next; setSheet(null); setThing((t) => ({ ...t, answer: 'yes' })); save(n, 'yes'); } },
+          { label: 'No, a new item', onClick: () => { const n = sheet.next; setSheet(null); setThing((t) => ({ ...t, answer: 'no' })); save(n, 'no'); } },
           { label: 'Cancel', onClick: () => setSheet(null) }]} onCancel={() => setSheet(null)} />)}
       {sheet === 'cancel' && <Confirm title="Throw these photos away?" body="Nothing from this item is saved." keepLabel="Keep going" actionLabel="Throw away"
         onKeep={() => setSheet(null)} onAction={() => { logEvent('capture_leave', { reason: 'cancel', via: 'camera' }); onCancel(); }} />}

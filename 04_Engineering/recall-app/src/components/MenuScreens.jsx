@@ -91,7 +91,7 @@ export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd
   return (
     <div className="screen settings">
       <Header title="Places" onBack={onBack} />
-      {rows.length === 0 && <div className="card"><p className="sub" style={{ margin: 0 }}>No places yet. Add one with a photo, or they appear here as things are logged.</p></div>}
+      {rows.length === 0 && <div className="card"><p className="sub" style={{ margin: 0 }}>No places yet. Add one with a photo, or they appear here as items are logged.</p></div>}
       {rows.map((r) => {
         const pic = placeThumb(r.name, places, items);
         // Q2 · A (Ravi 09-29): a place that is in something says so first — "in Oak cabinet · 1 thing here".
@@ -158,7 +158,7 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
           <button type="button" className="field-value" onClick={() => setEditing(true)}><span className="field-text">{name}</span><PencilIcon /></button>
         )}
 
-        <div className="field-label">{things.length ? 'Things here now' : 'Nothing here now'}</div>
+        <div className="field-label">{things.length ? 'Items here now' : 'Nothing here now'}</div>
         {things.length > 0 && (
           <div className="things-here">
             {things.map((it) => <button type="button" className="thing-mini" key={it.id} onClick={() => onOpenThing(it)}>{it.thumb ? <img src={it.thumb} alt={it.name || ''} /> : <span className="tile-written" aria-label={it.name || ''}><NoteIcon /></span>}</button>)}
@@ -169,12 +169,12 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
       </div>
       {confirming === 'place' && (
         <Confirm title={`Remove ${name}?`} image={photos[0] ? photos[0].thumb : undefined}
-          body={things.length ? `${things.length} thing${things.length === 1 ? ' keeps' : 's keep'} "${name}" as ${things.length === 1 ? 'its' : 'their'} place; only the saved place and its photos go.` : 'The saved place and its photos go.'}
+          body={things.length ? `${things.length} item${things.length === 1 ? ' keeps' : 's keep'} "${name}" as ${things.length === 1 ? 'its' : 'their'} place; only the saved place and its photos go.` : 'The saved place and its photos go.'}
           actionLabel="Remove" onKeep={() => setConfirming(null)}
           onAction={async () => { setConfirming(null); if (saved) await removePlace(saved); logEvent('place_removed', { name, things: things.length }); onToast && onToast(`Removed · ${name}`); onBack(); }} />
       )}
       {confirming && confirming.photo !== undefined && (
-        <Confirm title="Remove this photo?" image={photos[confirming.photo].thumb} body="The place keeps its name and its things." actionLabel="Remove"
+        <Confirm title="Remove this photo?" image={photos[confirming.photo].thumb} body="The place keeps its name and its items." actionLabel="Remove"
           onKeep={() => setConfirming(null)} onAction={async () => { const i = confirming.photo; setConfirming(null); await removePlacePhoto(saved, i); }} />
       )}
     </div>

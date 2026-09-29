@@ -175,7 +175,7 @@ const walk = []; const errors = [];
   check('I2 …and its usual place is the suggestion', /Hall table/.test(await text('.lc-say')), await text('.lc-say'));
   await tap('.lc-k.sv', { wait: 700 }); await step('Save without answering: asked first');
   check('I3 Save never merges silently: it asks', await count('.choice, .sheet') >= 1 && /Is this your reading glasses/.test(await text('body')));
-  await tap('text=Yes, the same thing', { wait: 1500 }); await step('Yes → saved as the same glasses');
+  await tap('text=Yes, the same item', { wait: 1500 }); await step('Yes → saved as the same glasses');
   const gl = (await items()).filter((d) => d.name === 'reading glasses');
   check('I4 still one pair of reading glasses', gl.length === 1);
 
@@ -187,7 +187,7 @@ const walk = []; const errors = [];
   await step('Log here: "In the wooden box · here"');
   check('H1 Log here: the box is already the place', /In the wooden box/.test(await text('.lc-say')), await text('.lc-say'));
   await tap('.lc-k.sn', { wait: 1500 }); await step('+ Next: saved, camera open for the next thing');
-  check('N1 + Next saves and keeps the camera open at step 1', await count('.lc') === 1 && /Photograph the thing/.test(await text('.lc-prompt')) && !!(await byName('ticket stubs')));
+  check('N1 + Next saves and keeps the camera open at step 1', await count('.lc') === 1 && /Photograph the item/.test(await text('.lc-prompt')) && !!(await byName('ticket stubs')));
   AI = { name: 'old letters' }; await cam('book.jpg'); await tap('.lc-shutter', { wait: 1500 });
   await step('The next thing: the box is kept ("just used"… here)');
   check('N2 the next thing goes in the same box unless she changes it', /In the wooden box/.test(await text('.lc-say')));

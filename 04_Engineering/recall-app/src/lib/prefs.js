@@ -22,7 +22,7 @@ export const SIZES = [
 // Capture modes (DECISIONS 2026-09-24): which modes the camera offers, where it opens, the last one used.
 // 'all' (Everything in view) arrives in MVP step 3; until then only these two exist.
 export const CAPTURE_MODES = [
-  { id: 'one', label: 'One thing', blurb: 'Name it and say where, one card at a time' },
+  { id: 'one', label: 'One item', blurb: 'Name it and say where, one card at a time' },
   { id: 'several', label: 'Several', blurb: 'The camera stays open; fix only what’s wrong' },
 ];
 function captureOf(p) {
@@ -52,7 +52,7 @@ function expOf(e) {
 export const exp = (id) => getPrefs().exp[id];
 // The camera's two looks (Ravi 09-27: both pickable; B the default). Same parts, arranged differently.
 export const CAMERA_LOOKS = [
-  { id: 'b', label: 'Answer card', blurb: 'Everything about the thing in one card' },
+  { id: 'b', label: 'Answer card', blurb: 'Everything about the item in one card' },
   { id: 'a', label: 'Photo clear', blurb: 'Big photos on the picture, Save below' },
 ];
 

@@ -6,6 +6,20 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-29 (evening) — "item" everywhere; the camera card for multi-level places (Ravi, on the MV_2026-09-29 mockups)
+
+- **"thing" → "item" in every user-facing string** (Ravi: "Change things to items"; DECISIONS 09-14 said one noun app-wide and
+  the app had drifted back to "thing"). Code identifiers keep `thing`.
+- **The camera card (ruled from mockups, to be built):** the question and the item's photo in the top band; Cancel at the
+  bottom left beside the shutter (the iOS camera-picker layout; pages keep Back at the top); the row holds places only;
+  **+ only adds a level** and shows once the last level is set; a level is set by the shutter (ReCall recognises it and asks
+  "Is this the Desk drawer?" — Yes, or "No, ☰ Choose place") or by the **☰ Choose place** button (one line); one line
+  "Place: …" in the level's colour ("Place: not defined" when empty) — no colour dot, no pin, no Current/New label; the
+  count on the square shows an added photo; the chain "Desk drawer (in) In air (in) Office" under a thin translucent line;
+  **hold Save → the button becomes "Save + Next"** → "Spare batteries ✓ saved" (✓ saved in green, translucent panel) →
+  the camera for the next item. Why: Ravi — "jam packed … very confusing for an elderly person"; "you have conflated adding
+  a location tier with picking the place for the tier in focus". Open: the recognise wait and the 6-photo cap.
+
 ## 2026-09-29 (late) — Caption top meets the Add photo top; captions stop at 2 lines; the accent colour means "you can press it" (Ravi)
 
 - The thing page's caption and the Add photo pill align at the TOP (the capitals' top = the pill's top, on the pixels) — this

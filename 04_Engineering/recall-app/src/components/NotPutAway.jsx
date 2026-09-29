@@ -19,7 +19,7 @@ export default function NotPutAway({ items = [], onBack, onOpen }) {
           <div className="name">Not put away</div>
         </div>
       </div>
-      <p className="np-sub">Things with no place yet. Tap one to put it somewhere.</p>
+      <p className="np-sub">Items with no place yet. Tap one to put it somewhere.</p>
       {list.length === 0 ? <div className="card"><p className="empty">Everything has a place.</p></div> : (
         <div className="tp-blk np-list">
           {list.map((x) => {

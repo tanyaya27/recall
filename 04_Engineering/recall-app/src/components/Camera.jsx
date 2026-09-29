@@ -12,7 +12,7 @@ import { CameraIcon, CloseIcon } from './Icons.jsx';
 //
 // Returns Files (JPEG) through onDone(files); onCancel() returns nothing.
 export const MAX_SHOTS = 4;
-export const MODE_LABEL = { one: 'One thing', several: 'Several', all: 'Everything' };
+export const MODE_LABEL = { one: 'One item', several: 'Several', all: 'Everything' };
 
 // Capture modes (DECISIONS 2026-09-24): `modes` are the ones switched on in Settings. With more
 // than one, a mode row sits under the viewfinder like the iPhone camera's; it disappears once the

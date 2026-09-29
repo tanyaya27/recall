@@ -187,7 +187,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
       <div className="thing-head">
         <div className="row1">
           <button type="button" className="chev" aria-label="Back" onClick={onBack}><ChevronLeftIcon /></button>
-          <div className="name">{cap(item.name) || 'This thing'}</div>
+          <div className="name">{cap(item.name) || 'This item'}</div>
           {isPrivate(item) && <span className="lk" aria-label="Private"><LockIcon /></span>}
         </div>
       </div>
@@ -269,7 +269,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             </div>)}
           {inside.length > 12 && <p className="tp-empty">and {inside.length - 12} more · Find item finds them</p>}
           {canEdit && <div className="tp-two">
-            <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('put_in_open', { from: 'page', itemId: item.id }); onPutIn(item); }}><PlusIcon /><span>Put things in</span></button>
+            <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('put_in_open', { from: 'page', itemId: item.id }); onPutIn(item); }}><PlusIcon /><span>Put items in</span></button>
             <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('log_into_open', { itemId: item.id }); onLogInto(item); }}><CameraIcon /><span>Log something in</span></button>
           </div>}
         </section>
@@ -280,12 +280,12 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         {!isOwner && <div className="sw-row"><span className="lab"><PeopleIcon /> Shared by {firstName(item.owner) || 'someone'}</span></div>}
         {canEdit && (
           <div className="sw-row">
-            <span className="lab"><BoxIcon /> It holds things</span>
-            <button type="button" role="switch" aria-checked={container} className={'sw' + (container ? ' on' : '')} aria-label="It holds things"
+            <span className="lab"><BoxIcon /> It holds items</span>
+            <button type="button" role="switch" aria-checked={container} className={'sw' + (container ? ' on' : '')} aria-label="It holds items"
               onClick={async () => {
                 if (container && inside.length) { setConfirming('holds'); return; }
                 const ok = await setHolds(item, !container);
-                if (ok && !container) onToast && onToast(`The ${short} holds things now`);
+                if (ok && !container) onToast && onToast(`The ${short} holds items now`);
               }} />
           </div>
         )}
@@ -353,7 +353,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         </div>
       )}
       {tidying && (
-        <TidySheet name={item.name ? own(item.name) : 'this thing'} dupCount={dupCount} earlierPlaces={earlierCount} earlierPhotos={earlierPhotos}
+        <TidySheet name={item.name ? own(item.name) : 'this item'} dupCount={dupCount} earlierPlaces={earlierCount} earlierPhotos={earlierPhotos}
           onCancel={() => setTidying(false)} onKeepNewest={() => tidy('newest')} onForgetEarlier={() => tidy('earlier')} />
       )}
       {sheet && (
@@ -367,7 +367,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
           onCancel={() => setSheet(false)} />
       )}
       {confirming === 'holds' && (
-        <Confirm title={`The ${short} has ${inside.length} thing${inside.length === 1 ? '' : 's'} in it.`}
+        <Confirm title={`The ${short} has ${inside.length} item${inside.length === 1 ? '' : 's'} in it.`}
           body={`Move ${inside.length === 1 ? 'it' : 'them'} somewhere else first: open ${inside.length === 1 ? 'it' : 'each one'} and tap Move it.`}
           keepLabel="OK" actionLabel="OK" onKeep={() => setConfirming(null)} onAction={() => setConfirming(null)} />
       )}
@@ -378,7 +378,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             keepLabel="Keep it" actionLabel="Remove item" onKeep={() => setConfirming(null)}
             onAction={async () => { setConfirming(null); await softDeleteItem(item); logEvent('item_removed', { itemId: item.id, itemName: item.name || null, via: 'last_photo' }); onRemoved(item); }} />
         ) : (
-          <Confirm title={`This is the only photo of ${label}.`} image={confirming.snap.photo} body={`Only ${firstName(item.owner) || 'the owner'} can remove the thing itself.`} keepLabel="OK" actionLabel="Keep it" onKeep={() => setConfirming(null)} onAction={() => setConfirming(null)} />
+          <Confirm title={`This is the only photo of ${label}.`} image={confirming.snap.photo} body={`Only ${firstName(item.owner) || 'the owner'} can remove the item itself.`} keepLabel="OK" actionLabel="Keep it" onKeep={() => setConfirming(null)} onAction={() => setConfirming(null)} />
         )) : (
           <Confirm title="Remove this photo?" image={confirming.snap.photo}
             body={confirming.snap.cover ? 'The next photo becomes the one on the tile.' : 'The other photos stay.'}
@@ -387,7 +387,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
       )}
       {confirming && confirming.placePhoto !== undefined && (
         <Confirm title="Remove this photo?" image={confirming.place.photos[confirming.placePhoto] ? confirming.place.photos[confirming.placePhoto].thumb : undefined}
-          body="The place keeps its name and its things." actionLabel="Remove" onKeep={() => setConfirming(null)}
+          body="The place keeps its name and its items." actionLabel="Remove" onKeep={() => setConfirming(null)}
           onAction={async () => {
             const { place, placePhoto: k } = confirming; setConfirming(null);
             await removePlacePhoto(place, k); logEvent('place_photo_removed', { via: 'viewer' });

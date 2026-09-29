@@ -409,3 +409,9 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   box; only glyphs need the ink scan.
 - **2026-09-29 (late) — A colour that means "press me" must only be used on things that can be pressed.** The pin placeholder
   shared the Move it button's colours; Ravi pressed it.
+- **2026-09-29 (evening) — repro_f3's visual-ask checks (A/B) are timing-sensitive under heavy parallel load** (the fake
+  naming call plus thumbnail shrinking can pass 2 s when ten suites share the CPU). Failed with 10 suites running, 50/50
+  alone. Rerun it alone before calling it a regression.
+- **2026-09-29 (evening) — A copy change breaks the audits that match words.** The things→items sweep failed six checks that
+  matched "No, a new thing", "Put things in", "2 things", "The thing", "where things are". Grep the audits for the old words
+  in the same change.

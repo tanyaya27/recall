@@ -186,7 +186,7 @@ export default function Settings({ onBack, onConfigSaved, justReloaded = false }
       <div className="group"><div className="grow account">
         {isAnonymous() ? (
           <>
-            <p className="sub">You’re using ReCall without an account. Your things are saved and will be here when you come back.<br />Sign in to share with someone or to use ReCall on a second phone.</p>
+            <p className="sub">You’re using ReCall without an account. Your items are saved and will be here when you come back.<br />Sign in to share with someone or to use ReCall on a second phone.</p>
             <div className="seg">
               {APPLE_SIGNIN && <button onClick={() => trySignIn('apple')}>Sign in with Apple</button>}
               <button onClick={() => trySignIn('google')}>Sign in with Google</button>

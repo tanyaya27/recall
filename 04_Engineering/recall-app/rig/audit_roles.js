@@ -90,7 +90,7 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   check('P1 grant viewer lands in Margaret\'s ReCall: title, role line, 2 tiles (no private)', /Margaret’s ReCall/.test(await text('.title-owner')) && /Can see/.test(await text('.status8')) && await count('.tile') === 2, `${await text('.title-owner')} · ${await count('.tile')}`);
   check('P2 viewer footer: Find item alone', await count('.footer .btn-primary') === 1 && /Find item/.test(await text('.footer .btn-primary')));
   await page.click('.tile:has-text("Reading glasses")'); await page.waitForSelector('.card.thing'); await page.waitForTimeout(400);
-  check('P3 viewer page: Shared by Margaret · no trash · nothing to do (no Move it, no rows, no It holds things) · no Keep this private', await count('.sw-row:has-text("Shared by Margaret")') === 1 && await count('.photo-trash') === 0 && await count('.tp-row') === 0 && await count('.tp-btn') === 0 && await count('.sw[aria-label="It holds things"]') === 0 && await count('.sw-row:has-text("Keep this private")') === 0);
+  check('P3 viewer page: Shared by Margaret · no trash · nothing to do (no Move it, no rows, no It holds items) · no Keep this private', await count('.sw-row:has-text("Shared by Margaret")') === 1 && await count('.photo-trash') === 0 && await count('.tp-row') === 0 && await count('.tp-btn') === 0 && await count('.sw[aria-label="It holds items"]') === 0 && await count('.sw-row:has-text("Keep this private")') === 0);
   check('P4 viewer sees the roll (both photos)', await count('.strip-page') === 2, String(await count('.strip-page')));
   await page.goBack(); await page.waitForSelector('.board');
   await page.click('.menu-btn'); await page.click('.drawer-row:has-text("Places")'); await page.waitForSelector('.screen .header');
@@ -100,7 +100,7 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   await boot('robert', { whose: 'margaret' });
   check('R1 grant editor: Log item says in Margaret\'s ReCall · Find item', /in Margaret’s ReCall/.test(await text('.footer .btn-primary.whose')) && await count('.footer .btn-primary') === 2);
   await page.click('.tile:has-text("Reading glasses")'); await page.waitForSelector('.card.thing');
-  check('R2 editor page: Add a photo · Rename · Move it · It holds things; no Remove, no Keep this private; Shared by Margaret', await count('.tp-row:has-text("Add a photo")') === 1 && await count('.tp-row:has-text("Rename")') === 1 && await count('.tp-btn:has-text("Move it")') === 1 && await count('.sw[aria-label="It holds things"]') === 1 && await count('.tp-row.red') === 0 && await count('.sw-row:has-text("Keep this private")') === 0 && await count('.sw-row:has-text("Shared by Margaret")') === 1);
+  check('R2 editor page: Add a photo · Rename · Move it · It holds items; no Remove, no Keep this private; Shared by Margaret', await count('.tp-row:has-text("Add a photo")') === 1 && await count('.tp-row:has-text("Rename")') === 1 && await count('.tp-btn:has-text("Move it")') === 1 && await count('.sw[aria-label="It holds items"]') === 1 && await count('.tp-row.red') === 0 && await count('.sw-row:has-text("Keep this private")') === 0 && await count('.sw-row:has-text("Shared by Margaret")') === 1);
   await rename('spectacles');
   check('R3 editor CAN rename', (await dump()).find((d) => d.id === 'g').name === 'spectacles' && denied.length === 0, `denied=${denied.length}`);
   denied.length = 0; await page.click('.tp-row:has-text("Add a photo")'); await shoot(); await page.waitForTimeout(1200);
@@ -123,7 +123,7 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   // Build 2: every where photo goes where HE says — ＋ picks the next level before each one.
   await page.click('.lc-shutter'); await page.waitForTimeout(1200); await page.click('.lv-sq.plus'); await page.click('.lc-shutter'); await page.waitForTimeout(1500); await page.click('.lv-sq.plus'); await page.click('.lc-shutter'); await page.waitForTimeout(1500);
   denied.length = 0; await page.click('.lc-k.sv'); await page.waitForTimeout(500);
-  if (await count('.item-sheet button:has-text("No, a new thing")')) { await page.click('.item-sheet button:has-text("No, a new thing")'); } // the AI named it "thing" again: asked, never assumed
+  if (await count('.item-sheet button:has-text("No, a new item")')) { await page.click('.item-sheet button:has-text("No, a new item")'); } // the AI named it "thing" again: asked, never assumed
   await page.waitForTimeout(2500);
   const d2 = await dump(); const byRob = d2.filter((d) => d.by === 'robert' && d.createdAt > Date.now() - 20000);
   check('R7b helper: a new box and a new shelf from photos, all owned by margaret, edges allowed, nothing denied',

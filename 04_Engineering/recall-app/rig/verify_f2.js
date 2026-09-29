@@ -347,7 +347,7 @@ async function runLook(look) {
     const askText = await text('.lc-ask b').catch(() => '');
     const s23 = await shot('R4', 'a level ask is ALSO now pending (Kitchen counter) — only one should render');
     check('R4.4', 'only ONE ask renders at a time, and it is the thing-identity ask (priority order)', askCount === 1 && /reading glasses/i.test(askText), `count=${askCount} text="${askText}"`, s23);
-    await tap('.lc-ask button:has-text("No, a new thing")', { wait: 700 });
+    await tap('.lc-ask button:has-text("No, a new item")', { wait: 700 });
     const s24 = await shot('R4', 'answered the thing ask — the level ask should now surface');
     check('R4.4', 'once the thing ask is answered, the level ask surfaces (still only one at a time)', (await count('.lc-ask')) === 1 && /kitchen counter/i.test(await text('.lc-ask b')), '', s24);
     await tap('.lc-x', { wait: 500 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 500 });

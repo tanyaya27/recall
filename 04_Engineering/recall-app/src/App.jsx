@@ -233,7 +233,7 @@ export default function App() {
     return (
       <>
         <JoinScreen code={join}
-          onJoined={(r, who) => { setJoin(null); if (!r.itemId) setWhose(r.grantor); say(`You can now see ${who ? possessive(who) : 'their'} things`); }}
+          onJoined={(r, who) => { setJoin(null); if (!r.itemId) setWhose(r.grantor); say(`You can now see ${who ? possessive(who) : 'their'} items`); }}
           onDismiss={() => setJoin(null)} />
         {log && (
         <LogCamera key={log.key} engine={engine} items={items} places={places} owner={whose || undefined} ownerName={whose ? firstName(whose) : ''}
@@ -543,11 +543,11 @@ export default function App() {
       )}
       {mismatch && (
         <Choice
-          title={`This looks like ${mismatch.seen ? `a ${mismatch.seen}` : 'something else'}, not ${mismatch.item.name ? `your ${own(mismatch.item.name)}` : 'this thing'}.`}
-          body="A photo of a different thing belongs on its own tile."
+          title={`This looks like ${mismatch.seen ? `a ${mismatch.seen}` : 'something else'}, not ${mismatch.item.name ? `your ${own(mismatch.item.name)}` : 'this item'}.`}
+          body="A photo of a different item belongs on its own tile."
           options={[
             { label: `Log it as a new item`, onClick: () => { const m = mismatch; setMismatch(null); go('photo', { files: m.files, key: Date.now() }); } },
-            { label: `Add it to ${mismatch.item.name ? own(mismatch.item.name) : 'this thing'} anyway`, amber: true, onClick: () => { const m = mismatch; setMismatch(null); addPhotosTo(m.item.id, m.files, { checked: true }); } },
+            { label: `Add it to ${mismatch.item.name ? own(mismatch.item.name) : 'this item'} anyway`, amber: true, onClick: () => { const m = mismatch; setMismatch(null); addPhotosTo(m.item.id, m.files, { checked: true }); } },
             { label: "Don't add it", onClick: () => setMismatch(null) },
           ]}
           onCancel={() => setMismatch(null)} />

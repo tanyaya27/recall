@@ -470,8 +470,8 @@ export default function PhotoCard({ files = [], engine, items = [], places = [],
           <div className="ask-place">
             <div className="ask-q">Is this your {own(match.name)}?</div>
             <div className="guesses">
-              <button type="button" className="guess fixed" disabled={busy || typedSecret} onClick={mergeYes}>Yes, the same thing</button>
-              <button type="button" className="guess other" disabled={busy || typedSecret} onClick={mergeNo}>No, a different thing</button>
+              <button type="button" className="guess fixed" disabled={busy || typedSecret} onClick={mergeYes}>Yes, the same item</button>
+              <button type="button" className="guess other" disabled={busy || typedSecret} onClick={mergeNo}>No, a different item</button>
             </div>
           </div>
         )}
