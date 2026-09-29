@@ -69,7 +69,7 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-29 (night) — `20260929d` built (NOT pushed): Ravi's tier rulings Q1–Q5 (DECISIONS 09-29 night). `20260929c` is pushed.**
+> **2026-09-29 (late) — `20260929e` built (NOT pushed): caption/Add photo alignment + 2-line cap, neutral pin placeholder. Camera-card redesign in mockups, awaiting Ravi (OPEN_ITEMS). `d` (tier rulings Q1–Q5) is pushed.**
 >
 > **2026-09-29 (evening) — `20260929c`: places can be "in" something (an edge from the place); tier 2+ is stored; adversarial tier audit `06_Handoffs/design/BOARD_2026-09-29_tiers-audit.md`; Q1–Q5 await Ravi/Tanya. Suites + `rig/audit_tiers.js` in `06_Handoffs/RIG.md`.**
 >

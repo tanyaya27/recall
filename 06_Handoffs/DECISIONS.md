@@ -6,6 +6,14 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-29 (late) — Caption top meets the Add photo top; captions stop at 2 lines; the accent colour means "you can press it" (Ravi)
+
+- The thing page's caption and the Add photo pill align at the TOP (the capitals' top = the pill's top, on the pixels) — this
+  replaces D1's "centred on the caption's first line" (09-28). Captions show 2 lines with "…".
+- A placeholder that can't be pressed (the pin square for a place with no photo) is neutral grey; the accent colour is for
+  buttons. Ravi: "I found myself pressing the location icon to realize it is not a button."
+- Pending (mockups sent): the camera card redesign for multi-tier places, and Cancel at the bottom left (see OPEN_ITEMS).
+
 ## 2026-09-29 (night) — Tier rulings Q1–Q5 (Ravi, on BOARD_2026-09-29_tiers-audit.md) — built as `20260929d`
 
 - **Q1 · A, Ravi's version:** the thing's page shows every tier as a square; at three or more the squares scroll sideways

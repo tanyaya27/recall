@@ -32,3 +32,11 @@ Ravi pushed `c`, then ruled: Q1 A with the squares scrolling and the words wrapp
 Q3 and Q4 he found cryptic; re-explained in plain words with one recommendation each ("say it, don't ask"; "outside a place,
 only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eight suites green again
 (50 · 100 · 44 · 66 · 14 · 34 · 117 · 63). Screens: `design/mockups/BUILD_2026-09-29d_tier-rulings.jpg`.
+
+## 09-29 (late): `20260929e` and the camera card redesign
+- Ravi (phone, `d`): the camera card is "jam packed" for an elderly person — proposed: question in the empty band beside
+  Cancel, the thing's photo out of the row, a borderless +, + as the only chooser (no pills), a status line and a text chain.
+  Mockups `design/mockups/MV_2026-09-29_camera-card-redesign.jpg` (gen_mv.py/render_mv.js/compose_mv.py); he likes B if
+  Cancel moves beside the shutter → `MV_2026-09-29_cancel-bottom.jpg`. Awaiting his call on + Next (L1/L2).
+- Fixed in `e`: caption/Add photo top alignment + 2-line cap (probe_cap 14/14), pin placeholder not in button colours.
+  Suites: 50 · 100 · 44 · 66 · 14 · 34 · 117 · 63 · tiers 40.

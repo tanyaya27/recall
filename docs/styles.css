@@ -992,7 +992,7 @@ html, body { overflow-x: hidden; }
 .tp-wh .ch { flex: none; display: flex; align-items: center; gap: 0.3rem; }
 .tp-wh .st { display: flex; align-items: center; gap: 0.3rem; }
 .tp-wh .ch img, .tp-wh .ch .no { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; flex: none; }
-.tp-wh .ch .no { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+.tp-wh .ch .no { display: flex; align-items: center; justify-content: center; background: transparent; border: 1.5px solid var(--line); color: var(--ink-soft); } /* Ravi 09-29: a placeholder is not a button — the button colour (accent) is kept for things you can press */
 .tp-wh .ch .no svg { width: 20px; height: 20px; }
 /* Q1 (Ravi 09-29): three tiers or more — the squares scroll sideways (about two and a half show, the fade says there is more);
    the words beside them show every tier, wrapping. */
@@ -1069,7 +1069,10 @@ html, body { overflow-x: hidden; }
 
 /* D1: the Add photo pill on the caption line, right-aligned; the caption keeps the left and may wrap. */
 .d1-cap { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.625rem; margin-top: 0.5rem; }
-.d1-cap .seen-line { flex: 1; min-width: 0; margin: 0 0 0 0.125rem; padding-top: calc((44px - 1.35em) / 2); } /* first line centred on the pill */
+.d1-cap .seen-line { flex: 1; min-width: 0; margin: 0 0 0 0.125rem; padding-top: 0;
+  /* Ravi 09-29: the TOP of the caption's letters meets the top of the Add photo pill (measured on the pixels, probe_cap.js),
+     and the caption stops at two lines with "…" — the whole caption is in the photo viewer (tap the photo). */
+  text-box: trim-start cap alphabetic; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .d1-pill { flex: none; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0 0.875rem; margin-left: auto; border-radius: 999px;
   background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 0.9375rem; white-space: nowrap; }
 .d1-pill svg { width: 1.1rem; height: 1.1rem; }

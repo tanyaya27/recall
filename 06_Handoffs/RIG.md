@@ -127,3 +127,7 @@ the functions: `./rules-test/run_ai_test.sh`.
   `04_Engineering/firebase`, `cd rules-test && npm install`, then `./rules-test/node_modules/.bin/firebase emulators:exec
   --config firebase.test.json --only firestore --project recall-test "cd rules-test && RULES=../firestore.rules node
   test_place_edges.mjs && RULES=../firestore.rules node test_edges.mjs"`.
+- `probe_cap.js` (14 checks): the thing page's caption vs the Add photo pill — ink top of the caption vs the pill's box top,
+  2-line cap, Normal/Large/Largest × both themes; and the no-photo pin square not in button colours. `PORT=8420 node probe_cap.js`.
+- `gen_mv.py` → `mock/mv_*.html`, `mock/mc_*.html`; `node render_mv.js` → `shots_mv/`; `compose_mv.py` — the camera-card
+  redesign mockups (09-29).

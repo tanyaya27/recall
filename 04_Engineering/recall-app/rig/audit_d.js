@@ -119,13 +119,15 @@ async function main() {
     const pb = await box('.d1-pill'); const cardB = await box('.card.thing');
     check('D1 it is under the photo strip, on the caption line, right-aligned in the card', pb.y > (await box('.strip')).b - 1 && Math.abs(cardB.r - 12 - pb.r) <= 6, JSON.stringify({ pillRight: pb.r, cardRight: cardB.r }));
     check('D1 the pill is at least 44 px tall', pb.h >= 43.5, 'h=' + pb.h);
-    const cy = await page.evaluate(() => { const l = document.querySelector('.d1-cap .seen-line'); if (!l) return null; const rg = document.createRange(); rg.selectNodeContents(l); const r = rg.getClientRects()[0]; const p = document.querySelector('.d1-pill').getBoundingClientRect(); return { line: r.top + r.height / 2, pill: p.top + p.height / 2 }; });
-    check('D1 the pill is centred on the caption\'s FIRST line', !!cy && Math.abs(cy.line - cy.pill) <= 3, JSON.stringify(cy));
+    // 09-29 (Ravi, reverses "centred on the first line"): the TOP of the caption's letters meets the TOP of the pill. The
+    // caption box is trimmed to the capitals (text-box), so its top IS the ink top; probe_cap.js checks it on the pixels.
+    const cy = await page.evaluate(() => { const l = document.querySelector('.d1-cap .seen-line'); if (!l) return null; const p = document.querySelector('.d1-pill').getBoundingClientRect(); return { line: l.getBoundingClientRect().top, pill: p.top }; });
+    check('D1 the caption\'s top meets the pill\'s top', !!cy && Math.abs(cy.line - cy.pill) <= 1, JSON.stringify(cy));
     await shot('D1_add-photo-pill');
     // a long caption wraps on the left and the pill keeps its place
     await page.evaluate(() => { const l = document.querySelector('.d1-cap .seen-line'); l.textContent = 'In this photo: on the long orange carpet next to the white desk leg and the black wheel of the chair'; });
     const wrap = await page.evaluate(() => { const l = document.querySelector('.d1-cap .seen-line').getBoundingClientRect(); const p = document.querySelector('.d1-pill').getBoundingClientRect(); return { lineH: l.height, lineR: l.right, pillL: p.left, pillW: p.width }; });
-    check('D1 a long caption wraps on the left and never runs under the pill', wrap.lineH > 30 && wrap.lineR <= wrap.pillL + 1 && wrap.pillW > 90, JSON.stringify(wrap));
+    check('D1 a long caption wraps on the left (two lines at most) and never runs under the pill', wrap.lineH > 30 && wrap.lineH < 50 && wrap.lineR <= wrap.pillL + 1 && wrap.pillW > 90, JSON.stringify(wrap));
     await shot('D1_add-photo-pill-wrapped');
     check('D1 the "Add a photo" row is kept', await count('.tp-row:has-text("Add a photo")') === 1);
     await tap('.d1-pill', { wait: 700 });

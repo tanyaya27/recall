@@ -3,6 +3,22 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-29 (evening).
 
+## NOW — `20260929e`: the item page's caption and pin (Ravi 09-29) · the camera card redesign (mockups, awaiting Ravi)
+
+- [x] Ravi 09-29 (phone, `d`): "In this photo: …" and **Add photo** were not aligned — now the TOP of the caption's letters
+  meets the TOP of the pill (pixels; `rig/probe_cap.js`, Normal/Large/Largest × both themes, 14 checks). The caption stops
+  at **2 lines** with "…" (the whole caption: tap the photo → Edit). Uses CSS `text-box` trimming (iOS 18.2+; older iOS:
+  the caption sits ~4 px low). audit_d D1 now asserts the new rule (it asserted "centred on the first line", the 09-28 D1).
+- [x] Ravi 09-29: the pin square in **Where it is** (a place with no photo) looked like the Move it button and he pressed
+  it — now a plain grey outline; the button colour is kept for things you can press.
+- [ ] **Ravi: the camera card redesign** (`design/mockups/MV_2026-09-29_camera-card-redesign.jpg`,
+  `MV_2026-09-29_cancel-bottom.jpg`): the question in the top band with the thing's photo (B); the row is places only; a
+  plain white + that opens the chooser (no pills, no •••); tap a selected square → its sheet (photos, change, rename, add a
+  place between, remove); one status line for the selected square; the chain "Desk drawer › In air › Office" at 2+ levels;
+  no P1/P2. **Open:** Cancel at the bottom left (Ravi 09-29 — needs B) — in Log item it collides with **+ Next**: L1 drops
+  + Next (the saved card offers "Log another"), L2 squeezes ✕ | shutter | + Next | Save (cramped; + Next wraps at Largest).
+- [ ] Ravi: phone check of `20260929e` (menu → Build 20260929e): a thing with a long caption, at Largest text too.
+
 ## NOW — `20260929d`: Ravi's tier rulings Q1–Q5 built (09-29 night)
 
 - [x] Q1 thing page: every tier; squares scroll sideways at 3+, words show all tiers with " · ". Q2 Places: "in Oak cabinet

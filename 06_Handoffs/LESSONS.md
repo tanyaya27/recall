@@ -404,3 +404,8 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   What worked: two short paragraphs each — what happens today in plain words (Kitchen counter, Craft nook, the glue), why
   it matters, and one recommendation — and he answered "OK to both" in one line. Explain the words "box" and "place"
   every time they carry the question.
+- **2026-09-29 (late) — Measure a solid button by its box, text by its ink.** probe_cap first read the pill's top from pixels
+  at a low-contrast edge (dark theme) and reported the text 3.5 px high when it was level. A filled pill's visible top IS its
+  box; only glyphs need the ink scan.
+- **2026-09-29 (late) — A colour that means "press me" must only be used on things that can be pressed.** The pin placeholder
+  shared the Move it button's colours; Ravi pressed it.
