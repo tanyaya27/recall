@@ -30,6 +30,10 @@ export default function WhereList({ item = null, items = [], places = [], title 
   const exists = typed && [...placeList, ...boxList.map((b) => b.name)].some((n) => normName(n || '') === normName(bare));
   const placePic = (n) => { const p = placeNamed(n, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; };
   const placeSub = (n) => { const here = atPlace(n, g).filter((x) => !item || x.id !== item.id); return here.length ? here.slice(0, 2).map((x) => cap(x.name)).join(', ') + (here.length > 2 ? ` +${here.length - 2}` : '') : 'nothing here yet'; };
+  // fix 2026-09-29 (Ravi): the place the thing is in right now is listed, and says so.
+  const curHolder = item ? holderOf(item, g) : null;
+  const isCurPlace = (n) => !!item && !curHolder && (item.location || '').toLowerCase() === (n || '').toLowerCase();
+  const isCurBox = (b) => !!curHolder && curHolder.id === b.id;
   const boxSub = (b) => { const h = holderOf(b, g); return `a box · ${h ? `in the ${h.name}` : b.location ? `in ${b.location}` : 'no place yet'}`; };
   const shown = placeList.length + boxList.length;
   return (
@@ -44,12 +48,12 @@ export default function WhereList({ item = null, items = [], places = [], title 
           {placeList.map((n) => { const t = placePic(n); return (
             <button type="button" key={'p' + n} className="wl-row" onClick={() => onPick({ t: 'place', name: n })}>
               {t ? <img src={t} alt="" /> : <span className="no"><PinIcon /></span>}
-              <span className="tx"><b>{n}</b><small>{placeSub(n)}</small></span>
+              <span className="tx"><b>{n}{isCurPlace(n) && <span className="wl-cur">Current place</span>}</b><small>{placeSub(n)}</small></span>
             </button>); })}
           {boxList.map((b) => (
             <button type="button" key={b.id} className="wl-row" onClick={() => onPick({ t: 'thing', item: b })}>
               {b.thumb ? <img src={b.thumb} alt="" /> : <span className="no"><BoxIcon /></span>}
-              <span className="tx"><b>{cap(b.name)}</b><small>{boxSub(b)}</small></span>
+              <span className="tx"><b>{cap(b.name)}{isCurBox(b) && <span className="wl-cur">Current place</span>}</b><small>{boxSub(b)}</small></span>
             </button>))}
           {!placeList.length && !boxList.length && !typed && <p className="empty">No places yet. Photograph one, or type its name.</p>}
         </div>

@@ -52,6 +52,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const [nameOverride, setNameOverride] = useState('');
   const [shareAnyway, setShareAnyway] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saveErr, setSaveErr] = useState(''); // fix 2026-09-29: a failed save says so (it used to blink and sit)
   const [sheet, setSheet] = useState(null);  // 'more' | 'change' | 'rename' | 'cancel' | { ask } | { preview: level index }
   const [pvIndex, setPvIndex] = useState(0);
   const [draft, setDraft] = useState('');
@@ -100,6 +101,10 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const pc = placeNames.slice(0, 4).map((n) => ({ key: 'p' + n, label: n, thumb: placePic(n), known: { t: 'place', name: n } }));
   const bc = boxes.slice(0, 4).map((b) => ({ key: 'b' + b.id, label: cap(b.name), thumb: b.thumb, known: { t: 'thing', item: b } }));
   const chips = []; for (let i = 0; i < 4; i++) { if (pc[i]) chips.push(pc[i]); if (bc[i]) chips.push(bc[i]); }
+  // fix 2026-09-29 (Ravi): moving a thing FROM a place — that place is not offered as a pill (it's where it already
+  // is). It stays in the ••• list, marked "Current place".
+  const hereNow = moveItem ? (() => { const h = holderOf(moveItem); return h ? { t: 'thing', id: h.id } : moveItem.location ? { t: 'place', name: moveItem.location.toLowerCase() } : null; })() : null;
+  const isHereNow = (c) => !!hereNow && (hereNow.t === 'thing' ? c.known.t === 'thing' && c.known.item.id === hereNow.id : c.known.t === 'place' && c.known.name.toLowerCase() === hereNow.name);
 
   // ---- a photo goes to the chosen level
   async function shot(file) {
@@ -315,7 +320,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const match = !moveItem && thing.match && answer === 'yes' ? thing.match : null;
     const name = moveItem ? moveItem.name : nameOverride || (match ? match.name : (tag && tag.name) || '');
     const startPrivate = !!(v && v.private && mine && !shareAnyway && !match);
-    setBusy(true);
+    setBusy(true); setSaveErr('');
     try {
       let cur = levelsRef.current;
       const t0 = Date.now();
@@ -395,7 +400,15 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         return;
       }
       onSaved(card);
-    } catch (err) { console.error('camera save', err); setBusy(false); }
+    } catch (err) {
+      // fix 2026-09-29 (phone): never fail silently. Ravi's move "just sat there" — the write was refused by the rules
+      // and nothing on screen said so. Say it, keep the photos, and let Save be tried again.
+      console.error('camera save', err);
+      const denied = /permission|insufficient/i.test(String(err && (err.code || err.message)));
+      setSaveErr(denied ? 'Couldn’t save — this ReCall didn’t allow that change. Your photos are still here.' : 'Couldn’t save — check the connection and tap Save again. Your photos are still here.');
+      logEvent('camera_save_failed', { code: String((err && err.code) || ''), move: !!moveItem });
+      setBusy(false);
+    }
   }
   function tryCancel() { if (thing.photos.length || real.some((l) => l.photos.length)) setSheet('cancel'); else onCancel(); }
 
@@ -524,7 +537,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   // wrapping: at most two place pills and •••, long names cut with an ellipsis. The bar above the shutter row is gone.
   const pillsEl = showChips ? (
     <div className="lc-chips" aria-label="Or tap a place">
-      {chips.filter((c) => !real.some((l) => l.known && ((l.known.t === 'thing' && c.known.t === 'thing' && l.known.item.id === c.known.item.id) || (l.known.t === 'place' && c.known.t === 'place' && l.known.name === c.known.name)))).slice(0, 2).map((c) => (
+      {chips.filter((c) => !isHereNow(c) && !real.some((l) => l.known && ((l.known.t === 'thing' && c.known.t === 'thing' && l.known.item.id === c.known.item.id) || (l.known.t === 'place' && c.known.t === 'place' && l.known.name === c.known.name)))).slice(0, 2).map((c) => (
         <button key={c.key} type="button" className={'lc-chip' + (c.known.t === 'thing' ? ' box' : '')} onClick={() => pickKnown(c.known)}>
           {c.thumb ? <img src={c.thumb} alt="" /> : <span className="ic">{c.known.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}<span>{c.label}</span></button>))}
       <button type="button" className="lc-chip more" aria-label="Every place and box" onClick={() => setSheet('more')}><span className="ic">•••</span></button>
@@ -566,6 +579,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       </div>
       <div className="lc-bot">
         {look === 'a' && !askUp && sentenceEl}
+        {saveErr && <div className="lc-err" role="alert">{saveErr}</div>}
         <div className="lc-row">
           {started && !moveItem ? <button type="button" className="lc-k sn" disabled={busy || !!collidingLevel} onClick={() => save(true)} aria-label="Save and log the next thing"><SaveIcon /><span className="plus">+</span>Next</button> : <span />}
           <button type="button" className="lc-shutter" style={{ borderColor: colour }} aria-label="Take a photo" disabled={cam !== 'live' || busy} onClick={snap}><span /></button>

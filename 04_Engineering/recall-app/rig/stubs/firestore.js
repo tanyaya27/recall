@@ -57,7 +57,10 @@ const EDITOR_KEYS = new Set(['name', 'aliases', 'location', 'history', 'photo', 
 const grantRole = (owner, me) => { const g = S('recall_grants').get(`${owner}_${me}`); return g ? g.role : null; };
 const canRead = (d, me) => d.owner === me || ['viewer', 'editor'].includes((d.roles || {})[me]) || (d.sharedWith || []).includes(me) || (d.private === false && !!grantRole(d.owner, me));
 const canEdit = (d, me) => d.owner === me || (d.roles || {})[me] === 'editor' || (d.private === false && grantRole(d.owner, me) === 'editor');
-const consistent = (d) => { const keys = Object.keys(d.roles || {}).sort().join(','); const arr = [...(d.sharedWith || [])].sort().join(','); return keys === arr && (!d.private || keys === ''); };
+// fix 2026-09-29: mirror the REAL rule exactly. consistent() in firestore.rules reads d.sharedWith and d.roles; a doc
+// without them makes the rule error, and an erroring rule DENIES. The stub used to default them to empty and allow —
+// which is how "every owner update to a place is refused" reached the phone with the rig all green.
+const consistent = (d) => { if (!Array.isArray(d.sharedWith) || !d.roles || typeof d.roles !== 'object') return false; const keys = Object.keys(d.roles).sort().join(','); const arr = [...d.sharedWith].sort().join(','); return keys === arr && (!d.private || keys === ''); };
 const itemOf = (s) => S('recall_items').get(s.itemId) || null;
 function checkCreate(colName, data, me) {
   if (!enforce) return;

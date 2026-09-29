@@ -235,6 +235,37 @@ async function runLook(look) {
       check(T, 'at least 10 px between "What is it?" and the text box', gap >= 10, 'gap=' + Math.round(gap), await shot(T, 'rename sheet spacing'));
       await tap('.sheet .btn-quiet, .sheet button:has-text("Cancel")', { wait: 300 }).catch(() => {});
     }
+    // ---------- 09-29 phone: Ravi's move got stuck (rules refused the place update) ----------
+    // Move a thing → tap a place pill → take 2 photos on that tier → Save, with the REAL permission rules on.
+    {
+      const T = `${L}-G-move-photos-rules`;
+      await seedHouse(); AI = { name: 'x' }; WHERE = []; SAME = { index: -1, sure: false };
+      await home(); await page.evaluate(() => window.__rig.rules(true));
+      await tap('.tile:has-text("Spare batteries")', { wait: 700 });
+      await tap('button:has-text("Move it")', { wait: 900 });
+      const pills = await page.locator('.lc-chip:not(.more)').allInnerTexts().catch(() => []);
+      check(T, 'the current place (Kitchen counter) is NOT offered as a pill', !pills.some((x) => /kitchen/i.test(x)), 'pills=' + JSON.stringify(pills), await shot(T, 'move: pills without the current place'));
+      await tap('.lc-chip.more', { wait: 600 });
+      const cur = await page.locator('.wl-row:has(.wl-cur)').allInnerTexts().catch(() => []);
+      check(T, 'the ••• list marks Kitchen counter "Current place"', cur.length === 1 && /kitchen counter/i.test(cur[0]), JSON.stringify(cur), await shot(T, '••• list with Current place'));
+      await tap('.sheet .btn-quiet, .sheet button:has-text("Cancel")', { wait: 400 });
+      const pick = (pills[0] || '').split('\n')[0].replace(/…$/, '');
+      await tap('.lc-chip:not(.more):has-text("Craft nook")', { wait: 500 });
+      const placeName = 'Craft nook';
+      const before = (await placeByName(placeName)) || { photos: [] };
+      await cam('real_desk.jpg'); await tap('.lc-shutter', { wait: 1200 });
+      await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1200 });
+      await shot(T, 'two photos on the picked place');
+      await tap('.lc-k.sv', { wait: 3000 });
+      const st = await camState();
+      const err = await text('.lc-err').catch(() => '');
+      check(T, 'Save CLOSES the camera (the phone stuck here)', st.open === false, 'open=' + st.open + ' err="' + err + '"', await shot(T, 'after Save'));
+      const it = await byName('spare batteries');
+      check(T, 'the thing moved to the picked place', !!it && (it.location || '').toLowerCase() === placeName.toLowerCase(), 'loc=' + (it && it.location) + ' picked=' + placeName, '');
+      const after = await placeByName(placeName);
+      check(T, 'the 2 photos are on that place', !!after && (after.photos || []).length === Math.min(6, (before.photos || []).length + 2), `before=${(before.photos || []).length} after=${after && (after.photos || []).length}`, '');
+      await page.evaluate(() => window.__rig.rules(false));
+    }
     // E: the menu's build stamp (Ravi 09-28) - the deploy stamp must be readable by a person.
     await home(); await tap('.menu-btn', { wait: 400 });
     const bld = await text('.drawer-build');

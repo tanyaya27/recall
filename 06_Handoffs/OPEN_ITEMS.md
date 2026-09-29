@@ -3,6 +3,26 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-27 (late).
 
+## NOW — `20260929a`: the move got stuck again (Ravi 09-29) — root cause found in the RULES, fixed
+
+- [x] 09-29 **Root cause:** the real Firestore rules let an owner update a doc only if `consistent()` holds, and
+  `consistent()` reads `sharedWith` + `roles`. **Place records never had those fields, so every update to an
+  existing place was refused in production** (add a photo, Make main, remove a photo, rename, the boot-time
+  private-flag repair). Moving the lint roller into *White cardboard box* with 2 photos = an update to that place →
+  refused → caught → nothing on screen. The rig never saw it: its permission stub treated missing fields as empty,
+  and most rig runs have permissions OFF.
+- [x] Fix (no rules deploy needed): place records carry `sharedWith: []`, `roles: {}` (owner writes only, so a helper's
+  rename still passes); the boot repair backfills them on the owner's places/routines/checks; a failed camera save
+  now SAYS so above the buttons and keeps the photos (never silent again).
+- [x] The rig's stub now mirrors the real rule exactly (missing fields = refused). New check in `rig/repro_f3.js`
+  (G): move → pill → 2 photos → Save **with permissions ON** — proven to fail on the old code (camera stays open,
+  nothing moves) and pass on the new. All suites: 100 · 44 · 66 · 14 · 34 · 117 · 83 · 36.
+- [x] Ravi 09-29: when moving a thing, its **current place is not offered as a pill**; in the ••• list it's there,
+  tagged **Current place**.
+- [ ] **Ravi: phone check of `20260929a`** (menu → Build 20260929a): Move it → pick a place → 2 photos → Save must
+  close and the photos appear on the place; the current place isn't among the pills; ••• shows "Current place".
+- [ ] Still open (rules): helpers can't change place photos or photo captions (the rules' editor keys). Owner-only for now.
+
 ## NOW — Ravi's phone list (09-28, build 20260928b) — triage
 
 **Bugs — all four fixed in `20260928c`; regression checks in `rig/repro_f3.js` (31 checks):**

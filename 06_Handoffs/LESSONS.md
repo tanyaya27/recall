@@ -377,3 +377,10 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   Settings on 09-27; the next phone test ran on a stale bundle (the app was open across the push) and an hour went
   into "debugging" code that was fine. The menu drawer now shows *Build <stamp>*; read it before trusting anything
   a phone shows. And a home-screen web app that is already open keeps its old JS across a push — close it fully.
+
+- **2026-09-29 — the rig's permission stub must fail the way the real rules fail, and the phone-path tests must run
+  with permissions ON.** `consistent()` in firestore.rules reads `sharedWith`/`roles`; a doc without them makes the
+  rule error, and an erroring rule DENIES. The stub defaulted missing fields to empty and allowed, and most rig runs
+  had rules off — so "every owner update to a place is refused" shipped with every suite green, twice looking like a
+  UI freeze on Ravi's phone. Rules: (1) every new doc kind gets the fields the rules read; (2) any flow that writes
+  must be tested once with `__rig.rules(true)`; (3) a write that can be refused must never fail silently on screen.

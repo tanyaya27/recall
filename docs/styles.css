@@ -1093,3 +1093,7 @@ html, body { overflow-x: hidden; }
 .d2-pill.star { background: rgba(245,185,66,0.22); color: #F5B942; border: 1.5px solid rgba(245,185,66,0.5); }
 .d2-pill.star.off { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.35); }
 .d2-pill.rm { background: rgba(180,83,47,0.28); color: #F2A28F; border: 1.5px solid rgba(242,162,143,0.4); }
+/* fix 2026-09-29 (Ravi): "Current place" tag on the ••• list row where the thing is now. */
+.wl-row .wl-cur { display: inline-block; margin-left: 0.5rem; padding: 0.05rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; vertical-align: middle; background: rgba(245,185,66,0.18); color: #F5B942; }
+/* fix 2026-09-29: a failed camera save is said, above the buttons, dark glass, never white-on-white. */
+.lc .lc-err { margin: 0 0.75rem 0.5rem; padding: 0.6rem 0.8rem; border-radius: 0.75rem; background: rgba(120,30,24,0.82); color: #fff; font-size: 0.95rem; line-height: 1.3; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }

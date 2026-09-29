@@ -221,8 +221,15 @@ export async function repairPencilCabinet() {
 
 export async function repairPrivateFlags(data) {
   const uid = me(); if (!uid) return 0;
-  const todo = [...(data.places || []), ...(data.routines || []), ...(data.checks || [])].filter((d) => d.owner === uid && d.private === undefined);
-  for (const d of todo) await updateDoc(doc(col, d.id), { private: false });
+  // fix 2026-09-29: the real rules' consistent() needs `sharedWith` + `roles` on any owner update, so this repair was
+  // itself refused in production on every place (the rig's old stub allowed it). It now writes the pair too, and also
+  // backfills the owner's places/routines/checks that lack it — so every later write to them (a photo, a rename) passes.
+  const noPair = (d) => !(Array.isArray(d.sharedWith) && d.roles);
+  const todo = [...(data.places || []), ...(data.routines || []), ...(data.checks || [])].filter((d) => d.owner === uid && (d.private === undefined || noPair(d)));
+  for (const d of todo) {
+    try { await updateDoc(doc(col, d.id), { ...(d.private === undefined ? { private: false } : {}), ...(noPair(d) ? { sharedWith: [], roles: {} } : {}) }); }
+    catch (err) { console.error('repairPrivateFlags', d.id, err); } // one refused doc must not stop the rest (or the boot)
+  }
   return todo.length;
 }
 export async function legacyCount() {
@@ -782,13 +789,23 @@ export const PLACE_PHOTOS = 6;
 // per-doc size in practice. Approximate, not exact — good enough to keep a place doc small.
 const PLACE_PHOTOS_BYTES = 700 * 1024;
 const photoBytes = (p) => (p ? (p.photo || '').length + (p.thumb || '').length : 0);
+// fix 2026-09-29 (phone): the real Firestore rules let an owner update a doc only when consistent() holds, and
+// consistent() reads `sharedWith` and `roles`. Place docs never had either field, so EVERY update to a place was
+// refused in production — adding a photo, Make main, removing a photo, renaming — while the rig's stub treated
+// the missing fields as empty and passed. Ravi's move got stuck on exactly this (photos onto White cardboard box:
+// refused, caught, nothing on screen). A place is never shared on its own, so it carries the empty pair; old
+// places gain it on their first write. No rules deploy needed.
+const PLACE_SHARE = { sharedWith: [], roles: {} };
+// Only the owner adds the pair: a helper may change just the editor keys, and on an old place the pair would be a
+// change of two more keys, which the rules refuse for a helper (a helper's rename must keep working).
+const placeShare = (place) => (place && place.owner === me() && !(Array.isArray(place.sharedWith) && place.roles) ? PLACE_SHARE : {});
 export async function addPlace(name, places = [], photos = [], owner = me(), parent = null) {
   const n = name.trim();
   if (!n) return null;
   const dup = places.find((p) => p.name.toLowerCase() === n.toLowerCase());
   if (dup) { if (photos.length && (dup.photos || []).length < PLACE_PHOTOS && dup.owner === me()) await addPlacePhotos(dup, photos); return dup.id; }
   const now = Date.now();
-  const ref = await addDoc(col, { kind: 'place', owner, by: me(), private: false, name: n, order: now, createdAt: now, parent,
+  const ref = await addDoc(col, { kind: 'place', owner, by: me(), private: false, ...PLACE_SHARE, name: n, order: now, createdAt: now, parent,
     photos: photos.slice(0, PLACE_PHOTOS).map((p) => ({ ...p, at: now })) });
   return ref.id;
 }
@@ -804,18 +821,18 @@ export async function addPlacePhotos(place, photos) {
     room.push(p); total += b;
   }
   const next = [...have, ...room.map((p) => ({ ...p, at: now }))].slice(0, PLACE_PHOTOS);
-  await updateDoc(doc(col, place.id), { photos: next, updatedAt: now });
+  await updateDoc(doc(col, place.id), { photos: next, updatedAt: now, ...placeShare(place) });
   return next.length - have.length;
 }
 export async function removePlacePhoto(place, index) {
   const next = (place.photos || []).filter((_, i) => i !== index);
-  await updateDoc(doc(col, place.id), { photos: next, updatedAt: Date.now() });
+  await updateDoc(doc(col, place.id), { photos: next, updatedAt: Date.now(), ...placeShare(place) });
 }
 // D2 (Ravi 09-28): "Make main" on a place photo puts it first — first is the one shown as the place's picture.
 export async function setPlaceMainPhoto(place, index) {
   const have = place.photos || [];
   if (index <= 0 || index >= have.length) return false;
-  await updateDoc(doc(col, place.id), { photos: [have[index], ...have.filter((_, i) => i !== index)], updatedAt: Date.now() });
+  await updateDoc(doc(col, place.id), { photos: [have[index], ...have.filter((_, i) => i !== index)], updatedAt: Date.now(), ...placeShare(place) });
   return true;
 }
 // The saved place with this name, if any (case-insensitive).
@@ -846,7 +863,7 @@ export function allPlaces(items = [], places = []) {
 export async function renamePlace(place, name, items = []) {
   const n = name.trim();
   if (!n || n === place.name) return;
-  await updateDoc(doc(col, place.id), { name: n });
+  await updateDoc(doc(col, place.id), { name: n, ...placeShare(place) });
   const hits = items.filter((it) => (it.location || '').toLowerCase() === place.name.toLowerCase());
   await Promise.all(hits.map((it) => updateDoc(doc(col, it.id), {
     location: n, updatedAt: Date.now(),
