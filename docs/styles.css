@@ -927,7 +927,9 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .saved-card .trail .in { flex: none; font-size: 0.75rem; font-weight: 800; color: #bbb; }
 .saved-card .s { margin-top: 0.5rem; font-size: 1rem; font-weight: 700; line-height: 1.3; }
 .saved-card .s small { display: block; font-weight: 500; color: #ccc; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.saved-card .s small.sc-move { white-space: normal; } /* Q3: what moved with this save, always whole */
+.saved-card .s small.sc-move { white-space: normal; }
+.saved-card .s small.sc-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.375rem; white-space: normal; } /* 09-29h: the chain with "in" pills */
+.saved-card .s small.sc-chain .in { display: inline-flex; align-items: center; height: 18px; padding: 0 0.4rem; border-radius: 999px; background: rgba(255,255,255,0.22); color: #fff; font-size: 0.6875rem; font-weight: 800; } /* Q3: what moved with this save, always whole */
 .saved-card .s svg { width: 0.9rem; height: 0.9rem; vertical-align: -0.1em; }
 .saved-card .u { position: absolute; right: 0.5rem; top: 0.5rem; background: none; color: #fff; font-weight: 700; text-decoration: underline; font-size: 1rem; min-height: 2.75rem; padding: 0 0.5rem; }
 /* bug #29 (walk 09-27): a row of buttons wider than the phone widened the page, and every sheet ran off the edge. */
@@ -999,7 +1001,13 @@ html, body { overflow-x: hidden; }
 .tp-wh .ch.scroll { flex: 0 1 auto; max-width: 9.5rem; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 78%, transparent); mask-image: linear-gradient(90deg, #000 78%, transparent); padding-right: 0.75rem; }
 .tp-wh .ch.scroll::-webkit-scrollbar { display: none; }
 .tp-wh .ch .st { flex: none; }
-.tp-wh .in { font-size: 0.6875rem; font-weight: 800; color: var(--ink-soft); }
+.tp-wh .in { flex: none; display: inline-flex; align-items: center; height: 20px; padding: 0 0.45rem; border-radius: 999px; background: var(--line); color: var(--ink-soft); font-size: 0.6875rem; font-weight: 800; line-height: 1; } /* 09-29h: the same "in" pill as the camera */
+.tp-wh .tx b.tp-chain { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.375rem; row-gap: 0.125rem; }
+.tp-chain .cp { display: inline-flex; align-items: center; gap: 0.375rem; min-width: 0; }
+.tp-chain .n2 { font-weight: 600; color: var(--ink-soft); }
+/* 09-29h: two tiers or more — the squares on their own row (they scroll), the words under them at full width */
+.tp-wh.multi { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+.tp-wh.multi .ch.scroll { max-width: 100%; }
 .tp-wh .no-pin { flex: none; display: flex; color: var(--amber); } .tp-wh .no-pin svg { width: 1.5rem; height: 1.5rem; }
 .tp-wh .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
 .tp-wh .tx b { font-size: min(1.0625rem, 4.6vw); overflow-wrap: anywhere; }
@@ -1196,3 +1204,9 @@ html, body { overflow-x: hidden; }
   padding: 0.875rem 1rem; min-height: 3.5rem; background: var(--accent-soft); color: var(--accent); font-size: min(1.1875rem, 5vw); font-weight: 600; border-radius: var(--radius); }
 .tier-sheet .sheet-row svg { width: 1.2em; height: 1.2em; flex: none; }
 .tier-sheet .sheet-row.danger { background: var(--amber-bg); color: var(--amber); }
+
+/* 09-29h (Ravi): the iPhone keyboard covers the bottom of the screen; a sheet sits on top of it, and fits in what's left
+   (src/lib/kb.js sets --kb / --vvh and .kb-up). The field you type into and what it offers stay in sight. */
+.kb-up .sheet-back { bottom: var(--kb, 0px); top: auto; height: var(--vvh, 100dvh); }
+.kb-up .sheet { max-height: calc(var(--vvh, 100dvh) - 0.75rem); overflow-y: auto; padding-bottom: 0.75rem; }
+.kb-up .where-list { max-height: calc(var(--vvh, 100dvh) - 0.75rem); overflow-y: hidden; }

@@ -51,6 +51,26 @@ let KEY = 0;
 // gets overwritten by one. collisionNo: the resolved name she last said "No, a new one" to (R4.2) —
 // kept as the STRING, not a flag, so renaming to a DIFFERENT colliding name can ask again.
 const emptyLevel = () => ({ key: ++KEY, photos: [], known: null, name: '', userName: '', moves: false, status: 'empty', ask: null, collisionNo: '' });
+// 09-29h (Ravi, phone: "it does not remember the IKEA bookshelf"): the squares show the WHOLE chain that is already known —
+// White cardboard box, then the Ikea shelving unit it's in, then the room that's in — so + always adds on top of it. Those
+// outer squares are `inherited`: they say what's already saved. When the square inside them changes (another place picked,
+// a new place photographed), they go, because they were about the old one; the new place's own known chain comes in.
+const outerKnowns = (k) => {
+  if (!k) return [];
+  const conv = (x) => (x.t === 'thing' ? { t: 'thing', item: x.item } : { t: 'place', name: x.name });
+  if (k.t === 'place') return placeOuter(k.name).map(conv);
+  const bx = chainOf(k.item); const tail = bx.length ? bx[bx.length - 1] : k.item; const loc = (tail.location || '').trim();
+  return [...bx.map((b) => ({ t: 'thing', item: b })), ...(loc ? [{ t: 'place', name: loc }, ...placeOuter(loc).map(conv)] : [])];
+};
+const tierKeyOf = (k) => (k.t === 'thing' ? 't:' + k.item.id : 'p:' + (k.name || '').toLowerCase());
+function withTail(ls, idx) {
+  if (ls[idx + 1] && !ls[idx + 1].inherited) return ls; // she already said what it is in: leave that to her (Q3 says it)
+  const c = ls.slice(0, idx + 1);
+  const k = c[idx] && c[idx].known; if (!k) return c;
+  const seen = new Set(c.filter((x) => x.known).map((x) => tierKeyOf(x.known)));
+  for (const o of outerKnowns(k)) { const key = tierKeyOf(o); if (seen.has(key) || c.length >= MAX_LEVELS) break; seen.add(key); c.push({ ...emptyLevel(), known: o, status: 'known', inherited: true }); }
+  return c;
+}
 
 export default function LogCamera({ engine, items = [], places = [], owner = undefined, ownerName = '', look = 'b', preset = null, moveItem = null,
   onSaved, onCancel, onWrite, onNotice = () => {} }) {
@@ -63,8 +83,8 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   // "Current place: White cardboard box" below — not a false "No place yet". Pick or photograph a new place and it is
   // replaced ("New place: …"); tap the current one again and it's back. Save with nothing changed moves nothing.
   const [levels, setLevels] = useState(() => {
-    if (moveItem) { const k = hereKnown(moveItem); return [k ? { ...emptyLevel(), known: k, status: 'known', current: true } : emptyLevel()]; }
-    return preset ? [{ ...emptyLevel(), known: preset, status: 'known' }] : [];
+    if (moveItem) { const k = hereKnown(moveItem); return k ? withTail([{ ...emptyLevel(), known: k, status: 'known', current: true }], 0) : [emptyLevel()]; }
+    return preset ? withTail([{ ...emptyLevel(), known: preset, status: 'known' }], 0) : [];
   });
   const [sel, setSel] = useState(moveItem ? 1 : 0);
   const [nameOverride, setNameOverride] = useState('');
@@ -144,12 +164,12 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     // confirmed "Yes" on an ask, or given a name of her own — keeps it. The shutter only ever ADDS a
     // photo to it; it never wipes `known`, never re-enters the naming pass. Only a level with no
     // identity yet behaves as before: first photo starts the naming pass, later ones just join it.
-    const identified = !cur.current && (!!cur.known || (!!cur.ask && !cur.no) || !!cur.userName); // 09-29: a shot on the current place photographs a NEW place
+    const identified = !cur.current && !cur.inherited && (!!cur.known || (!!cur.ask && !cur.no) || !!cur.userName); // 09-29: a shot on the current place photographs a NEW place (09-29h: or on a square that says what's already saved — if it IS that place, ReCall asks "Is this the …?")
     const firstOfLevel = !identified && cur.photos.length === 0;
     const next = identified
       ? { ...cur, photos: [...cur.photos, { ...s, file }] }
-      : { ...cur, photos: [...cur.photos, { ...s, file }], known: null, current: false, ...(firstOfLevel ? { status: 'naming', name: '', ask: null, no: false, yes: false, collisionNo: '' } : {}) };
-    setLevels((ls) => { const c = [...ls]; while (c.length <= i) c.push(emptyLevel()); c[i] = next; return c; });
+      : { ...cur, photos: [...cur.photos, { ...s, file }], known: null, current: false, inherited: false, ...(firstOfLevel ? { status: 'naming', name: '', ask: null, no: false, yes: false, collisionNo: '' } : {}) };
+    setLevels((ls) => { const c = [...ls]; while (c.length <= i) c.push(emptyLevel()); c[i] = next; return identified ? c : withTail(c, i); });
     logEvent('camera_where_shot', { level: sel, n: next.photos.length, identified });
     if (firstOfLevel) nameWhere(next.key, s.photo);
   }
@@ -307,7 +327,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const target = at !== null ? at : sel === 0 && levels.findIndex((l) => !filled(l)) === -1 ? levels.length : i;
     if (k.t === 'thing' && self && (k.item.id === self.id || wouldLoop(self, k.item))) return;
     if (blockedAt(k, target + 1)) return;
-    setLevels((ls) => { const c = [...ls]; while (c.length <= target) c.push(emptyLevel()); c[target] = { ...c[target], photos: c[target].photos || [], known: k, status: 'known', ask: null, no: false, yes: false, collisionNo: '', current: !!moveItem && target === 0 && sameKnown(k, hereKnown(moveItem)) }; return c; });
+    setLevels((ls) => { const c = [...ls]; while (c.length <= target) c.push(emptyLevel()); c[target] = { ...c[target], photos: c[target].photos || [], known: k, status: 'known', ask: null, no: false, yes: false, collisionNo: '', inherited: false, current: !!moveItem && target === 0 && sameKnown(k, hereKnown(moveItem)) }; return withTail(c, target); });
     setSel(target + 1);
     logEvent('camera_where_chip', { t: k.t, level: target + 1 });
   }
@@ -317,7 +337,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   // targets an empty level — this level already has the photo(s) that triggered the ask, so they stay
   // (never wiped): one path, both ask kinds (visual sure-match and byName collision), places and boxes.
   function convertLevelToKnown(key, target) {
-    setLevels((ls) => ls.map((l, j) => (l.key === key ? { ...l, known: target, status: 'known', ask: null, no: false, yes: false, collisionNo: '', current: !!moveItem && j === 0 && sameKnown(target, hereKnown(moveItem)) } : l)));
+    setLevels((ls) => { const c = ls.map((l, j) => (l.key === key ? { ...l, known: target, status: 'known', ask: null, no: false, yes: false, collisionNo: '', inherited: false, current: !!moveItem && j === 0 && sameKnown(target, hereKnown(moveItem)) } : l)); const at = c.findIndex((l) => l.key === key); return at < 0 ? c : withTail(c, at); });
   }
   function removePhoto(li, pi) {
     if (li === 0) {
@@ -360,7 +380,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   function chainRemove(idx) {
     if (!levels[idx]) { setLevels([]); setLastWhere(null); setSel(0); setSheet(null); logEvent('camera_where_change', { how: 'remove' }); return; }
     const removedNum = idx + 1;
-    setLevels((ls) => ls.filter((_, j) => j !== idx));
+    setLevels((ls) => { const c = ls.filter((_, j) => j !== idx); return c[idx] && c[idx].inherited ? c.slice(0, idx) : c; }); // what was known about the removed square goes with it
     setSel((s) => (s === removedNum ? Math.max(0, idx) : s > removedNum ? s - 1 : s));
     setSheet(null);
     logEvent('camera_where_change', { how: 'remove', level: removedNum });
@@ -390,7 +410,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   async function save(next, answer = thing.answer) {
     if (busy || !started || collidingLevel) return;
     // 09-29: moving, but level 1 is still the current place (and nothing deeper) — nothing to move; close like Cancel.
-    if (moveItem && levelsRef.current.filter(filled).length === 1 && levelsRef.current[0] && levelsRef.current[0].current) { logEvent('camera_move', { itemId: moveItem.id, ok: true, unchanged: true }); onCancel(); return; }
+    if (moveItem && levelsRef.current[0] && levelsRef.current[0].current && levelsRef.current.filter(filled).every((l) => l.current || (l.inherited && !l.photos.length))) { logEvent('camera_move', { itemId: moveItem.id, ok: true, unchanged: true }); onCancel(); return; }
     if (!moveItem && thing.match && !answer) { setSheet({ ask: thing.match, next }); return; }
     const match = !moveItem && thing.match && answer === 'yes' ? thing.match : null;
     const name = moveItem ? moveItem.name : nameOverride || (match ? match.name : (tag && tag.name) || '');
@@ -431,13 +451,14 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       const lastReal = links.length ? links[links.length - 1] : null;
       const lastIsNewBox = !moveItem && lastReal && !known(lastReal) && lastReal.moves;
       let l2 = say.none ? '' : say.l2;
-      if (lastIsNewBox && !l2) l2 = `You haven't said where the ${linkName(lastReal)} is — its page can, any time.`;
+      const nudge = lastIsNewBox && !l2 ? `You haven't said where the ${linkName(lastReal)} is — its page can, any time.` : '';
+      const chain = chainParts.map((p) => p.n); // 09-29h: the card says the chain the way the camera did, with "in" pills
       if (moveItem) {
         const prev = { location: moveItem.location || '', dest: openEdge(moveItem.id) ? openEdge(moveItem.id).to : null };
         // 09-29: tier 1 kept as the current place (only a deeper tier changed) — the thing itself did not move.
         const ok = location && !(use[0] && use[0].current) ? await changeLocation(moveItem, location, 'chosen', dest) : true;
         logEvent('camera_move', { itemId: moveItem.id, ok, depth: resolved.length });
-        onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2, none: say.none, moved: true, refused: ok === false, unnamed, moving,
+        onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2, chain, nudge, none: say.none, moved: true, refused: ok === false, unnamed, moving,
           undo: mine ? { itemId: moveItem.id, isNew: false, prev, made } : null });
         return;
       }
@@ -466,7 +487,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         }
       }
       logEvent('capture', { initiatedBy: 'camera', itemId, merged: !!match, depth: resolved.length, photos: thing.photos.length, made: made.items.length + made.places.length, next: !!next, look, beforeName: tag === undefined });
-      const card = { itemId, where: location, name: cap(name) || 'Saved', lock: startPrivate || (match && match.private), thumbs, l1: say.l1, l2, none: say.none, unnamed, moving,
+      const card = { itemId, where: location, name: cap(name) || 'Saved', lock: startPrivate || (match && match.private), thumbs, l1: say.l1, l2, chain, nudge, none: say.none, unnamed, moving,
         undo: mine ? { itemId, isNew, prev, made } : null };
       if (next) {
         onSaved({ ...card, next: true });
@@ -810,7 +831,8 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
             {(tierL.photos.length > 0 || linkThumb(tierL)) && <button type="button" className="sheet-row" onClick={() => { setSheet({ preview: tierIdx + 1 }); setPvIndex(0); }}>See its photos</button>}
             <button type="button" className="sheet-row" onClick={() => setSheet({ choose: tierIdx, withPhoto: false })}><ListIcon /> Choose place</button>
             {filled(tierL) && !known(tierL) && <button type="button" className="sheet-row" onClick={() => chainRename(tierIdx)}><PencilIcon /> Rename</button>}
-            <button type="button" className="sheet-row danger" onClick={() => chainRemove(tierIdx)}><TrashIcon /> Remove this level</button>
+            {/* an inherited square says what's already saved — change it with Choose place; removing it would say nothing */}
+            {!tierL.inherited && <button type="button" className="sheet-row danger" onClick={() => chainRemove(tierIdx)}><TrashIcon /> Remove this level</button>}
             <button type="button" className="btn-quiet" onClick={() => setSheet(null)}>Close</button>
           </div>
         </div>)}

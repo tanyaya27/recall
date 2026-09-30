@@ -56,3 +56,10 @@ only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eig
 - New suites: audit_card 31, probe_row 9. Suites: audit 100 · roles 44 · graph 66 · label 14 · private 34 · d 83 ·
   where 53 · repro_f3 45 · tiers 43 · probe_cap 14 · card 31 · row 9 = 536, all green.
 - Screens: `design/mockups/BUILD_2026-09-29g_camera-card.jpg`.
+
+## 09-29 (night): Ravi's phone test of `g` → `20260929h`
+- Move it on "3D model of plant sensor": the Ikea shelf (tier 2) was not shown on the next Move it, so tier 3 couldn't be
+  added on top; typing a new tier's name, the keyboard hid the field and the "A new place called …" row (the tier was never
+  picked, and closing the sheet removed it); the item page had no "in" pill. All three reproduced in the rig
+  (`audit_chain.js`, failing first), fixed, and the page shows the chain with "in" pills. Screens:
+  `design/mockups/BUILD_2026-09-29h_move-chain.jpg`. Suites 551 green.

@@ -64,7 +64,7 @@ async function main() {
   // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
   const settleWhere = async (fallback = '') => {
     for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-    await page.waitForTimeout(300);
+    for (let k = 0; k < 8 && !(await page.locator('.wl-pend .btn-primary').count()) && !(await page.locator('.lc-ask2').count()); k++) await page.waitForTimeout(150); // the sheet can open a beat after the look ends
     if (await page.locator('.wl-pend .btn-primary').count()) {
       if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
       await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
@@ -428,7 +428,7 @@ async function main() {
   await home(); await cam('real_desk.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
   await tap('.lv-sq.plus', { wait: 300 }); await cam('box.jpg'); await tap('.lc-shutter', { wait: 300 }); await settleWhere();
   await tap('.lc-k.sv', { wait: 1500 });
-  const cardL2 = await text('.saved-card .s small');
+  const cardL2 = (await page.locator('.saved-card .s small').allInnerTexts().catch(() => [])).join(' | ');
   check('K1 R6.4: outermost NEW box, no outer level → the card\'s l2 is the soft nudge, not a blank',
     /haven.t said where the tackle box is/i.test(cardL2), cardL2);
 
@@ -439,7 +439,7 @@ async function main() {
   await tap('.lv-sq.plus', { wait: 300 });
   await pickPlace('Hall table');
   await tap('.lc-k.sv', { wait: 1500 });
-  const cardL2b = await text('.saved-card .s small');
+  const cardL2b = (await page.locator('.saved-card .s small').allInnerTexts().catch(() => [])).join(' | ');
   check('K2 …but when l2 already names the outer place, no nudge is appended', !/haven.t said where/i.test(cardL2b), cardL2b);
 
   // L (look A parity) retired 09-29g: the camera has one look now.

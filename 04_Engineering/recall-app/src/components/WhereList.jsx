@@ -56,7 +56,7 @@ export default function WhereList({ item = null, items = [], places = [], title 
             <div className="wl-pend-h">{pending.thumb ? <img src={pending.thumb} alt="" style={{ borderColor: pending.colour }} /> : null}<span><b>A new place?</b><small>Name the place in your photo</small></span></div>
             <input className="place-input" value={draft} onChange={(e) => { setTouched(true); setDraft(e.target.value); }} placeholder="What is it called?" aria-label="What is this place called?" enterKeyHint="done"
               onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim() && !taken && !hasSecret(draft)) pending.onUse(draft.trim()); }} />
-            {taken ? <p className="wl-taken">{taken}</p> : <p className="wl-hint">{pending.guessed ? 'ReCall’s guess — type to change it.' : ' '}</p>}
+            {taken ? <p className="wl-taken">{taken}</p> : <p className="wl-hint">{pending.guessed && !touched ? 'ReCall’s guess — type to change it.' : ' '}</p>}
             <button type="button" className="btn-primary" disabled={!draft.trim() || !!taken || hasSecret(draft)} onClick={() => pending.onUse(draft.trim())}>Use this name</button>
           </div>)}
         {suggest && (
@@ -64,7 +64,10 @@ export default function WhereList({ item = null, items = [], places = [], title 
             {suggest.thumb ? <img src={suggest.thumb} alt="" /> : <span className="no"><PinIcon /></span>}
             <span className="tx"><b>Is it the {suggest.name}?</b><small>ReCall thinks so, from the photo</small></span>
           </button>)}
-        <div className="wl-search"><SearchIcon /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your places" aria-label="Search your places" enterKeyHint="search" /></div>
+        <div className="wl-search"><SearchIcon /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your places" aria-label="Search your places" enterKeyHint="go"
+          onKeyDown={(e) => { if (e.key !== 'Enter' || !typed) return; e.preventDefault(); /* 09-29h: Go picks what the list shows — the one match, or the new place */
+            const one = placeList.length + boxList.length === 1 ? (placeList.length ? { t: 'place', name: placeList[0] } : { t: 'thing', item: boxList[0] }) : null;
+            if (one) onPick(one); else if (!exists) onPick({ t: 'place', name: cap(typed) }); }} /></div>
         {onPhotograph && !pending && <button type="button" className="wl-new" onClick={onPhotograph}><CameraIcon /><span>Photograph a new place</span></button>}
         {typed && !exists && <button type="button" className="wl-new typed" onClick={() => onPick({ t: 'place', name: cap(typed) })}><PlusIcon /><span>A new place called “{cap(typed)}”</span></button>}
         <div className="wl-scroll">

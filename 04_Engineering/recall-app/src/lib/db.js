@@ -578,7 +578,12 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
     let here;
     if (l.known && l.known.t === 'thing') {
       const it = l.known.item;
-      if (outer && !(outer.dest && outer.dest.t === 'thing' && outer.dest.id === it.id)) {
+      // 09-29h: a box already where the next tier says (the camera shows the known chain as squares) is left alone — no
+      // second "moved" line in its history for staying put.
+      const e0 = openEdge(it.id); const d0 = outer && outer.dest;
+      const already = !!d0 && (e0 && e0.to ? e0.to.t === d0.t && (d0.t === 'thing' ? e0.to.id === d0.id : (e0.to.name || '').toLowerCase() === (d0.name || '').toLowerCase())
+        : d0.t === 'place' && (it.location || '').toLowerCase() === (d0.name || '').toLowerCase());
+      if (outer && !already && !(outer.dest && outer.dest.t === 'thing' && outer.dest.id === it.id)) {
         made.moved.push({ item: it, location: it.location || '', dest: openEdge(it.id) ? openEdge(it.id).to : null });
         await changeLocation(it, outer.text, 'chosen', outer.dest);
       }

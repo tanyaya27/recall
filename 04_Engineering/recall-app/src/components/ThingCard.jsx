@@ -175,8 +175,10 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   const tiers = whereChain(item);
   const tierName = (t, i) => (t.t === 'thing' ? (i === 0 ? inPhrase(t.item) : inPhrase(t.item).replace(/^In /, 'in ')) : t.name);
   const whereB = tiers.length ? tierName(tiers[0], 0) : item.location;
-  const whereS = tiers.length > 1 ? tiers.slice(1).map((t, i) => tierName(t, i + 1)).join(' · ')
-    : chain.length ? 'Where the box is: not said yet'
+  // 09-29h (Ravi: "Keep it consistent!!!"): every tier in words with the same "in" pill as the camera and the squares —
+  // "White cardboard box (in) Ikea shelving unit (in) Office" — so the line under it is just when it was seen.
+  const chainWords = tiers.map((t) => (t.t === 'thing' ? cap(t.item.name) : t.name));
+  const whereS = chain.length && tiers.length === chain.length ? 'Where the box is: not said yet'
     : `seen ${photoStamp(item.lastSeenAt).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}`;
   const container = isContainer(item);
   const inside = contentsOf(item);
@@ -235,18 +237,20 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
       {/* Where it is (#16, #22, #24): the chain as photos and the words; one way to change it, the camera. */}
       <section className="tp-blk" aria-labelledby="tp-where">
         <h2 id="tp-where">Where it is</h2>
-        <div className={'tp-wh' + (hasPlace ? '' : ' none')}>
+        <div className={'tp-wh' + (hasPlace ? '' : ' none') + (hasPlace && tiers.length > 1 ? ' multi' : '')}>
           {hasPlace ? (
             <div className={'ch' + (tiers.length > 2 ? ' scroll' : '')}>
               {tiers.map((t, i) => (
-                <span key={(t.t === 'thing' ? 't' + t.item.id : 'p' + t.name) + i} className="st">{i > 0 && <span className="in">{t.t === 'place' && tiers[i - 1].t === 'thing' ? 'at' : 'in'}</span>}
+                <span key={(t.t === 'thing' ? 't' + t.item.id : 'p' + t.name) + i} className="st">{i > 0 && <span className="in">in</span>}
                   {t.t === 'thing' ? (t.item.thumb ? <img src={t.item.thumb} alt="" /> : <span className="no"><BoxIcon /></span>)
                     : placePic(t.name) ? <button type="button" className="ph-open" aria-label={`Photos of ${t.name}`} onClick={() => setViewer({ kind: 'place', name: t.name, start: 0, nonce: 0 })}><img src={placePic(t.name)} alt="" /></button>
                     : <span className="no"><PinIcon /></span>}</span>))}
             </div>
           ) : <span className="no-pin"><PinIcon /></span>}
           <div className="tx">
-            <b>{hasPlace ? whereB : 'No place yet'}</b>
+            {hasPlace && tiers.length > 1
+              ? <b className="tp-chain">{chainWords.map((n, i) => <span key={i} className="cp">{i > 0 && <span className="in">in</span>}<span className={i ? 'n2' : 'n1'}>{n}</span></span>)}</b>
+              : <b>{hasPlace ? whereB : 'No place yet'}</b>}
             <small>{hasPlace ? whereS : 'Put it away so you can find it'}</small>
           </div>
         </div>

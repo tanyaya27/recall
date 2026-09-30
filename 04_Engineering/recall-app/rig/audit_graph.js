@@ -32,7 +32,7 @@ async function main() {
   // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
   const settleWhere = async (fallback = '') => {
     for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-    await page.waitForTimeout(300);
+    for (let k = 0; k < 8 && !(await page.locator('.wl-pend .btn-primary').count()) && !(await page.locator('.lc-ask2').count()); k++) await page.waitForTimeout(150); // the sheet can open a beat after the look ends
     if (await page.locator('.wl-pend .btn-primary').count()) {
       if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
       await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
@@ -156,7 +156,7 @@ async function main() {
   await shot('2-memo-page');
   await page.click('.tp-grid button:has-text("Wooden box")'); await page.waitForSelector('.thing-head .name:has-text("Wooden box")');
   check('G4 …the wooden box inside opens its own page ("In the wooden box · 2")', /In the wooden box · 2/i.test(await text('#tp-in')));
-  check('G5 its Where it is: "In the memorabilia box" · Crawl space, with the box\'s photo', /In the memorabilia box/.test(await text('.tp-wh b')) && /Crawl space/.test(await text('.tp-wh small')) && await count('.tp-wh .ch img') >= 1);
+  check('G5 its Where it is: "Memorabilia box (in) Crawl space" (09-29h: the "in" pill), with the box\'s photo', /^Memorabilia box\s*in\s*Crawl space$/.test((await text('.tp-wh .tp-chain')).replace(/\n/g, ' ').trim()) && await count('.tp-wh .tp-chain .in') === 1 && await count('.tp-wh .ch img') >= 1, await text('.tp-wh .tx'));
   check('G6 a container page offers Put items in and Log something in (and nothing starts a job from a child page\'s footer)', await count('.tp-btn:has-text("Put items in")') === 1 && await count('.tp-btn:has-text("Log something in")') === 1 && await count('.footer') === 0);
   await shot('3-wood-page');
   await page.click('.thing-head .chev'); await page.waitForSelector('.thing-head .name:has-text("Memorabilia box")');
@@ -166,7 +166,7 @@ async function main() {
   await page.evaluate(() => { const fs = window.__rigfs; return fs.updateDoc(fs.doc(fs.collection(null, 'recall_items'), 'c'), { promoted: true }); });
   await page.waitForTimeout(300);
   await page2('Baseball card');
-  check('G9 the page: "In the wooden box" · in the memorabilia box · Crawl space, with both boxes\' photos', /In the wooden box/.test(await text('.tp-wh b')) && /in the memorabilia box/.test(await text('.tp-wh small')) && /Crawl space/.test(await text('.tp-wh small')) && await count('.tp-wh .ch img') >= 2);
+  check('G9 the page: "Wooden box (in) Memorabilia box (in) Crawl space", with both boxes\' photos', /^Wooden box\s*in\s*Memorabilia box\s*in\s*Crawl space$/.test((await text('.tp-wh .tp-chain')).replace(/\n/g, ' ').trim()) && await count('.tp-wh .ch img') >= 2, await text('.tp-wh .tx'));
   check('G9b a thing inside a box, not itself a container, offers no "Put items in" (the pencil case)', await count('#tp-in') === 0);
   await shot('4-card');
   await home();

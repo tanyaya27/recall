@@ -22,7 +22,10 @@ export default function SavedCard({ card, onUndo, onDone, onShare, onRenameLink 
           </span>))}
       </div>
       <div className="s">{card.name}{card.lock ? <> · <LockIcon /> only you</> : null}
-        <small>{card.none ? 'No place yet · put it away later' : [card.l1, card.l2].filter(Boolean).join(' · ')}</small>
+        {card.chain && card.chain.length > 1 && !card.none
+          ? <small className="sc-chain">{card.chain.map((n, i) => <span key={i} style={{ display: 'contents' }}>{i > 0 && <span className="in">in</span>}<span>{n}</span></span>)}</small>
+          : <small>{card.none ? 'No place yet · put it away later' : [card.l1, card.l2].filter(Boolean).join(' · ')}</small>}
+        {card.nudge && <small className="sc-move">{card.nudge}</small>}
         {(card.moving || []).map((m) => <small key={m} className="sc-move">{m}</small>)/* Q3: a place or box that moved with this save */}
         {card.priv && <small className="sc-priv">Kept private · {card.priv} · <button type="button" className="sc-share" onClick={() => onShare && onShare(card)}>Share it</button></small>}
         {card.shared && <small className="sc-priv">Shared · everyone in your ReCall sees it</small>}

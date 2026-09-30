@@ -6,6 +6,18 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-29 (night, after Ravi's phone test of `g`) — The camera shows the whole known chain; sheets ride above the keyboard; "in" everywhere — `20260929h`
+
+- **The squares always show what's already known above a place** (Ravi: "it does not remember the IKEA bookshelf").
+  Opening Move it, or picking a known place/box, brings its saved chain in as squares, so + always adds on top. Those
+  squares are "what's saved": changing the square inside them drops them (they were about the old one). The rejected
+  alternative — keep the outer chain as grey words only — is what `g` did, and + then silently re-parented the box.
+- **No "Remove this level" on a saved outer square** (it would change nothing at Save). Change it with Choose place.
+  *Would change:* Ravi wanting "the shelf is in nothing now" → a real detach.
+- **Every sheet with a text field sits above the iPhone keyboard** (visual viewport → `--kb`/`--vvh`), and Go on the keyboard
+  picks from Choose place. Not tested on an iPhone by the rig — Chromium has no on-screen keyboard; audit_chain stands one in.
+- **"in" pill, everywhere a chain is written:** camera, item page (words and squares; "at" retired), saved card.
+
 ## 2026-09-29 (late night) — Recognise wait 3 s; a place's 7th photo replaces the oldest; one camera look (Ravi) — built as `20260929g`
 
 - **ReCall looks at a place photo for up to 3 s, then Choose place opens by itself** (Ravi: "go with 3 seconds"). Everything

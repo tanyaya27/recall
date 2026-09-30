@@ -33,7 +33,7 @@ async function main() {
   // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
   const settleWhere = async (fallback = '') => {
     for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-    await page.waitForTimeout(300);
+    for (let k = 0; k < 8 && !(await page.locator('.wl-pend .btn-primary').count()) && !(await page.locator('.lc-ask2').count()); k++) await page.waitForTimeout(150); // the sheet can open a beat after the look ends
     if (await page.locator('.wl-pend .btn-primary').count()) {
       if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
       await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);

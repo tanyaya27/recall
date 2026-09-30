@@ -3,6 +3,29 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-29 (late).
 
+## NOW — `20260929h`: Ravi's phone test of `g` (Move it on "3D model of plant sensor")
+
+- [x] **Move it forgot the tiers above the current place** ("it does not remember the IKEA bookshelf"): Move it opened
+  with White cardboard box only, so + asked what the BOX is in (and would have replaced the Ikea shelf). Now the squares
+  show every tier already known (White cardboard box in Ikea shelving unit in Office…) and + adds on TOP. Picking a known
+  place anywhere does the same (Kitchen counter brings the place it's already in). Change a square → the tiers above it
+  that were about the old one go. Photographing a known outer square asks "Is this the …?" (Yes = same place + photo).
+- [x] **The popup covered the box he was typing in; the 3rd tier vanished.** The iPhone keyboard slides over the page
+  and every bottom sheet stayed under it — the search field and the "A new place called …" row were hidden, so the new
+  tier was never picked and closing the sheet removed the empty tier. Now every sheet with a text field rides above the
+  keyboard (`src/lib/kb.js`, visual viewport), and **Go** on the keyboard picks the one match or the new place.
+- [x] **Item page: the tiers had no "in" pill** — the words are now "Desk drawer (in) Ikea shelving unit (in) Office"
+  with the same pill as the camera; 2+ tiers put the squares on their own row and the words under them at full width;
+  the squares use "in" (never "at"). The saved card after Save says the chain the same way.
+- [x] Also: a box already where the next tier says is no longer "moved" again at Save (no extra history line).
+- [ ] Open: an outer square that says what's already saved has no "Remove this level" (removing it would say nothing);
+  to change it, Choose place on it. Say if you want a way to say "the shelf is in nothing now".
+- [ ] Open: with 3+ tiers on Move it, the + is off to the right of the squares (they scroll; the chain line shows all).
+- [ ] **Ravi: phone check of `20260929h`**: Move it on the 3D model → the Ikea shelf is there as tier 2 → + → the room
+  → Save; type a place name with the keyboard up; the item page's "in" pills.
+- Suites (all green): audit 100 · roles 44 · graph 66 · label 14 · private 34 · d 83 · where 53 · repro_f3 45 ·
+  tiers 45 · probe_cap 14 · audit_card 31 · probe_row 9 · **audit_chain 13 (new: his exact case)** = **551**.
+
 ## NOW — `20260929g`: the camera card, built to Ravi's rulings (09-29 late)
 
 - [x] Built as ruled (all-rulings sheet `design/mockups/MV_2026-09-29_camera-card-all-rulings.jpg`): the item's photo and

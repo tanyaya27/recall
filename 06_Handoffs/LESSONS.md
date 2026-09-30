@@ -423,3 +423,12 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-29 (late night) — Look at the built screen at 2+ levels and at Largest, not just the first state.** Every check
   passed while ☰ Choose place had dropped under the squares at 2 levels (and the selected square was clipped 3 px at
   Largest). `rig/probe_row.js` now measures the row.
+- **2026-09-29 (night) — Test the second visit, not just the first.** Every tier suite built a chain and saved it; none
+  opened Move it again on that item. The camera then showed only tier 1, and Ravi's next tier re-parented the box.
+  `rig/audit_chain.js` runs his exact sequence: build → Save → Move it again → add on top → Save → read it back.
+- **2026-09-29 (night) — A bottom sheet with a text field needs the keyboard in the test.** On an iPhone the keyboard
+  covers the bottom ~380 pt; the rig's Chromium has none, so every sheet "passed" while the field was hidden on the
+  phone. audit_chain installs a stand-in visual viewport and checks the field and what it offers sit above it.
+- **2026-09-29 (night) — "Settle" helpers must wait for what they settle.** `settleWhere` waited a fixed 300 ms after the
+  look; under load the Choose place sheet opened later and the next step clicked into it (audit_graph K1, flaky). It now
+  polls for the sheet or the question.

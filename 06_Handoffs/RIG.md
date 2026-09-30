@@ -139,6 +139,12 @@ the functions: `./rules-test/run_ai_test.sh`.
 - **Camera helpers for suites** (09-29g, pasted after `const page = await ctx.newPage();`): `settleWhere()` waits out the
   look and accepts ReCall's name in the Choose place sheet; `pickPlace(name)` goes through ☰ Choose place; `saveNext()`
   holds Save for 0.8 s. The pills (`.lc-chip`), the chain sheet (`.chain-sheet`) and look A are gone.
+- `audit_chain.js` (13 checks, = `tiers_head.js` + `chain_body.js`): Ravi's 09-29 phone case — Move it, tier 2 and 3 in one
+  go, Save, **Move it again shows every tier**, + on top with the keyboard up (a stand-in visual viewport: `__kb(380)`),
+  Save unchanged writes nothing, another tier 1 drops the old outer tiers, the rename sheet above the keyboard, the item
+  page's "in" pills. Shots in `shots_h/`. `PORT=8606`.
+- **Full run (09-29h): 551 checks** (the 536 below + tiers 45 + audit_chain 13). Six plain suites in parallel can flake
+  audit D9 (a timing check) — rerun alone.
 - **Full run (09-29g): 536 checks.** audit 100 · audit_roles 44 · audit_graph 66 · audit_label 14 · audit_private 34 ·
   audit_d 83 · audit_where 53 · repro_f3 45 · audit_tiers 43 · probe_cap 14 · audit_card 31 · probe_row 9. Run the six
   plain suites together, then the browser-heavy ones **three at a time** (five at once ran the container out of memory).

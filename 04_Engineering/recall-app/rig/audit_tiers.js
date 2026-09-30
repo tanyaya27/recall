@@ -192,9 +192,10 @@ async function runLook(look) {
       await tap('.wl-new.typed', { wait: 500 }); return 'typed';
     };
     // after a where photo: wait while ReCall looks; if Choose place opened to name it, take ReCall's name (or `fallback`).
+    const openTier = async (i) => { const sq = page.locator('.lv-strip .lv-sq').nth(i); if (!/\bsel\b/.test(await sq.getAttribute('class'))) { await sq.click(); await page.waitForTimeout(300); } await sq.click(); await page.waitForTimeout(400); };
     const settleWhere = async (fallback = '') => {
       for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-      await page.waitForTimeout(300);
+      for (let k = 0; k < 8 && !(await page.locator('.wl-pend .btn-primary').count()) && !(await page.locator('.lc-ask2').count()); k++) await page.waitForTimeout(150); // the sheet can open a beat after the look ends
       if (await page.locator('.wl-pend .btn-primary').count()) {
         if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
         await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
@@ -267,7 +268,7 @@ async function runLook(look) {
       // Q1 · Ravi 09-29: every tier on the thing's page — squares scroll sideways, the words show every tier with a separator.
       const tp = rec.thingPage || { text: '', squares: 0 };
       check('S2', 'Q1: the thing\'s page shows all 3 tiers as squares', tp.squares === 3, JSON.stringify(tp));
-      check('S2', 'Q1: the words show every tier, separated: "Drawer 3 | Oak cabinet · Office"', /Drawer 3/.test(tp.text) && /Oak cabinet · Office/.test(tp.text), tp.text);
+      check('S2', 'Q1 (09-29h): the words show every tier with the "in" pill: "Drawer 3 in Oak cabinet in Office"', /Drawer 3 \| in \| Oak cabinet \| in \| Office/.test(tp.text), tp.text);
       check('S2', 'Q2: Places says "in Oak cabinet" under Drawer 3', (rec.placesList || []).some((r) => /^Drawer 3 \| in Oak cabinet · /.test(r)), JSON.stringify((rec.placesList || []).slice(0, 3)));
     });
     // S3 — a new thing: known place > known place.
@@ -288,7 +289,10 @@ async function runLook(look) {
       rec.mid = await store();
       await home(); await newThing('tape');
       await plus(); rec.steps.push(await pickWhere('Kitchen counter'));
-      await plus(); rec.steps.push(await pickWhere('Pantry shelf'));
+      // 09-29h: picking Kitchen counter brings what it's already in (Craft nook) as tier 2 — change THAT square to re-parent.
+      const sq4 = await page.evaluate(() => [...document.querySelectorAll('.lv-strip .lv-sq:not(.plus)')].map((b) => b.getAttribute('aria-label')));
+      check('S4', '09-29h: picking Kitchen counter shows where it already is as tier 2 (Craft nook)', sq4.length === 2 && /Craft nook/.test(sq4[1] || ''), JSON.stringify(sq4));
+      await openTier(1); await tap('.tier-sheet .sheet-row:has-text("Choose place")', { wait: 500 }); rec.steps.push(await pickWhere('Pantry shelf'));
       await snapCam(rec, 'known > different known'); await save(); await after(rec, 'tape');
       check('S4', 'Kitchen counter has exactly one "where" (the last one said)', (await inOf('Kitchen counter')) === 'place:pantry shelf', await inOf('Kitchen counter'));
       const c4 = rec.cam[rec.cam.length - 1] || {};
@@ -313,8 +317,8 @@ async function runLook(look) {
     await scen('S6', 'Log: known box (tin box, at Garage) > known place (Craft nook)', async (rec) => {
       await newThing('stapler');
       await plus(); rec.steps.push(await pickWhere('Tin box'));
-      await snapCam(rec, 'box selected (its own place shows?)');
-      await plus(); rec.steps.push(await pickWhere('Craft nook'));
+      await snapCam(rec, 'box selected (its own place shows as tier 2)');
+      await openTier(1); await tap('.tier-sheet .sheet-row:has-text("Choose place")', { wait: 500 }); rec.steps.push(await pickWhere('Craft nook'));
       const c6 = await snapCam(rec, 'box > place'); await save(); await after(rec, 'stapler');
       check('S6', 'Q3: a box with a place, given another: "Tin box: Garage → Craft nook" before Save and on the card', /Tin box: Garage → Craft nook/.test(c6.say) && /Tin box: Garage → Craft nook/.test((rec.saved || {}).text || ''), c6.say + ' || ' + ((rec.saved || {}).text || ''));
     });
@@ -328,7 +332,7 @@ async function runLook(look) {
       check('S7', 'the new Top shelf is in the Linen closet (an edge, not a field nothing reads)', (await inOf('Top shelf')) === 'place:linen closet', await inOf('Top shelf'));
       check('S7', 'the shoe box is at Top shelf', /top shelf/i.test(((await byName('shoe box')) || {}).location || ''), '');
       const tp = rec.thingPage || { text: '' };
-      check('S7', 'Q1: a box then two places: "In the shoe box | Top shelf · Linen closet"', /In the shoe box/.test(tp.text) && /Top shelf · Linen closet/.test(tp.text), tp.text);
+      check('S7', 'Q1 (09-29h): a box then two places: "Shoe box in Top shelf in Linen closet"', /Shoe box \| in \| Top shelf \| in \| Linen closet/.test(tp.text), tp.text);
     });
     // S8 — the AI can't name two different new places, in two separate saves → both "A place"?
     await scen('S8', 'Two unnamed new places in two saves', async (rec) => {
@@ -360,7 +364,10 @@ async function runLook(look) {
     // S10 — Move a thing whose current place is a BOX; tier 2 new place.
     await scen('S10', 'Move: current = wooden box (in memorabilia box) + new place at tier 2', async (rec) => {
       await move('baseball card'); await snapCam(rec, 'move opens on a box');
-      await plus(); await snapCam(rec, 'tier 2 selected (box already has an outer chain)');
+      // 09-29h: the box's own chain (memorabilia box, Crawl space) shows as tiers 2–3; select tier 2 and photograph where the box is now.
+      const sq10 = await page.evaluate(() => [...document.querySelectorAll('.lv-strip .lv-sq:not(.plus)')].map((b) => b.getAttribute('aria-label')));
+      check('S10', '09-29h: Move it opens with the whole known chain: Wooden box, Memorabilia box, Crawl space', sq10.length === 3 && /Memorabilia box/i.test(sq10[1]) && /Crawl space/i.test(sq10[2]), JSON.stringify(sq10));
+      await page.locator('.lv-strip .lv-sq').nth(1).click(); await page.waitForTimeout(300); await snapCam(rec, 'tier 2 selected (the box\'s own where)');
       await shoot('closet.jpg', { name: 'Hall closet', moves: false });
       await snapCam(rec, 'box + new place'); await save(); await after(rec, 'baseball card');
       check('S10', 'the wooden box moved to Hall closet (a box keeps its own edge)', /hall closet/i.test(((await byName('wooden box')) || {}).location || ''), '');
