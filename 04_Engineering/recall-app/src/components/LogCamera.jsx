@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { compressPhoto, compressPlacePhoto, shrink } from '../lib/img.js';
 import { addItem, nameItem, resnapItem, changeLocation, findMatch, knownLocations, placeNamed, noteAlias, logEvent,
-  applyVerdict, saveChain, PLACE_PHOTOS } from '../lib/db.js';
+  applyVerdict, saveChain, undoChain, PLACE_PHOTOS } from '../lib/db.js';
 import { verdictOf, hasSecret } from '../lib/sensitive.js';
 import { normName } from '../lib/names.js';
 import { me } from '../lib/auth.js';
@@ -28,7 +28,7 @@ import { CameraIcon, CloseIcon, PinIcon, LockIcon, PencilIcon, SaveIcon, PinAskI
 //   moveItem: "Put it somewhere" / "Move it" from a thing's page — level 0 is that thing (already photographed), level 1
 //   is chosen; Save moves it. preset: "Log something into the tin" — level 1 is that box.
 export const LEVEL_COLOURS = ['#FFFFFF', '#F5B942', '#4DB6F5', '#F2766B', '#A98BF7', '#5BD08D', '#F57EC0', '#3FD0C9', '#C5E35A', '#F79A45', '#E3C9A0'];
-const MAX_LEVELS = 10;
+const MAX_LEVELS = 12; // 09-30: the same limit as the chain readers (graph.js)
 // 09-29 (Ravi): after the shutter photographs a place, ReCall looks at it and EVERYTHING waits — at most this long. Then it
 // counts as not recognised and "Choose place" opens to name it (a late answer still shows there). Timings are logged.
 export const RECOG_MS = 3000;
@@ -96,11 +96,22 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const [draft, setDraft] = useState('');
   const [lastWhere, setLastWhere] = useState(null); // + Next: the where of the thing saved a moment ago
   const [savedFlash, setSavedFlash] = useState(''); // 09-29: "Spare batteries ✓ saved", after Save + Next
+  // 09-30 (Ravi: the "✓ saved" flash gets an Undo): after the flash, a small line at the top of the picture keeps
+  // "✓ Spare batteries saved · Undo" until the next item's first photo (or 10 s) — the flash itself is too quick to tap.
+  const [nextUndo, setNextUndo] = useState(null);
+  useEffect(() => { if (!nextUndo || nextUndo.done) return; const t = setTimeout(() => setNextUndo(null), 10000); return () => clearTimeout(t); }, [nextUndo]);
+  async function undoLast() {
+    const u = nextUndo; if (!u || u.done || !u.undo) return;
+    setNextUndo({ ...u, done: true }); setLastWhere(null);
+    await undoChain(u.undo); logEvent('camera_next_undo', { itemId: u.undo.itemId });
+    setTimeout(() => { if (mounted.current) setNextUndo(null); }, 1800);
+  }
   const [holdNext, setHoldNext] = useState(false);  // 09-29: Save held long enough → "Save + Next"
   const holdT = useRef(null); const holdLive = useRef(false);
   const tagP = useRef(null);
   const mounted = useRef(true);
   const openedAt = useRef(Date.now());
+  const shotAt = useRef(0);
   const levelsRef = useRef(levels); levelsRef.current = levels;
   const mine = !owner || owner === me();
   const started = moveItem || thing.photos.length > 0;
@@ -123,6 +134,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   async function snap() {
     const v = videoRef.current;
     if (!v || cam !== 'live' || busy) return;
+    // 09-30 (independent test, round 2): a double tap on the shutter saved the same photo twice
+    if (Date.now() - shotAt.current < 450) return;
+    shotAt.current = Date.now(); // …and the 3 s count from the tap, not from after the photo is drawn and shrunk (WebKit: 4.0 s)
     const w = v.videoWidth, h = v.videoHeight; if (!w || !h) return;
     const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(v, 0, 0, w, h);
     setFlash(true); setTimeout(() => setFlash(false), 120);
@@ -149,10 +163,12 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
 
   // ---- a photo goes to the chosen level
   async function shot(file) {
+    if (Date.now() - shotAt.current > 5000) shotAt.current = Date.now(); // 09-30: the 3 s count from the tap (snap sets it)
     const s = await compressPhoto(file);
     if (!mounted.current) return;
     if (sel === 0 && !moveItem) {
       const first = thing.photos.length === 0;
+      if (first && nextUndo && !nextUndo.done) setNextUndo(null);
       setThing((t) => ({ ...t, photos: [...t.photos, { ...s, file }] }));
       logEvent('camera_thing_shot', { n: thing.photos.length + 1 });
       if (first) nameThing(s);
@@ -189,9 +205,10 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       const cands = []; [...byWords, ...recent].forEach((it) => { if (cands.length < 6 && !cands.includes(it) && it.thumb) cands.push(it); });
       if (!cands.length) return;
       try {
-        const small = await Promise.all(cands.map((c) => shrink(c.thumb, 320)));
-        const r = await engine.sameThing([s.photo], cands.map((c, i) => ({ name: c.name, thumb: small[i] })), { subject: tag.name, sensitivity: 'personal' });
-        const hit = r.index >= 0 && r.sure ? cands[r.index] : null;
+        const small0 = await Promise.all(cands.map((c) => shrink(c.thumb, 320).catch(() => null))); // one unreadable photo doesn't sink the check
+        const sentT = cands.filter((_, i) => small0[i]); const small = small0.filter(Boolean);
+        const r = await engine.sameThing([s.photo], sentT.map((c, i) => ({ name: c.name, thumb: small[i] })), { subject: tag.name, sensitivity: 'personal' });
+        const hit = r.index >= 0 && r.sure && sentT[r.index] ? sentT[r.index] : null;
         logEvent('identity_check', { candidates: cands.length, hit: hit ? hit.id : null, via: 'camera' });
         if (hit && mounted.current) setThing((t) => ({ ...t, match: hit }));
       } catch (err) { console.error(err); }
@@ -202,20 +219,37 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     // REQUIREMENTS_2026-09-27 R4.3 (kills F8): 4 boxes + 4 places (was 2) — still one whereIs call.
     // A place-starved pool was making recognition BY SIGHT fail routinely, pushing every photographed
     // place onto the silent-merge path that R4.2's name-collision ask now also catches.
-    const cands = [...boxes.filter((b) => b.thumb).slice(0, 4).map((b) => ({ c: { name: b.name, thumb: b.thumb }, known: { t: 'thing', item: b } })),
-      ...places.filter((p) => p.photos && p.photos.length).slice(0, 4).map((p) => ({ c: { name: p.name, thumb: p.photos[0].thumb }, known: { t: 'place', name: p.name } }))].slice(0, 8);
-    let r = null; const t0 = Date.now(); let settled = false;
+    // 09-30 (independent test #2): the 4 places were the 4 OLDEST, so a drawer made last week was never recognised and
+    // Move it → photograph your own drawer offered to make a second one. Now: what's on this chain first (Move it: where it
+    // is now and what that is in), then the places and boxes used most recently, then the newest.
+    const onChain = [...levelsRef.current.map((l) => l.known).filter(Boolean), ...(moveItem ? (() => { const h = hereKnown(moveItem); return h ? [h, ...outerKnowns(h)] : []; })() : [])];
+    const pickP = []; const pByName = new Map(places.filter((p) => p.photos && p.photos.length).map((p) => [p.name.toLowerCase(), p]));
+    const addP = (n) => { const p = pByName.get((n || '').toLowerCase()); if (p && !pickP.includes(p)) pickP.push(p); };
+    onChain.forEach((k) => { if (k.t === 'place') addP(k.name); });
+    const usedAt = new Map(); items.forEach((it) => { const k = (it.location || '').toLowerCase(); if (k) usedAt.set(k, Math.max(usedAt.get(k) || 0, it.lastSeenAt || 0)); });
+    [...pByName.values()].map((p) => ({ p, t: Math.max(p.updatedAt || p.createdAt || 0, usedAt.get(p.name.toLowerCase()) || 0) }))
+      .sort((x, y) => y.t - x.t).forEach((x) => addP(x.p.name)); // the most recently made, photographed or used
+    const pickB = [];
+    const addB = (b) => { if (b && b.thumb && !pickB.some((x) => x.id === b.id) && okBox(b)) pickB.push(b); };
+    onChain.forEach((k) => { if (k.t === 'thing') addB(k.item); });
+    boxes.forEach(addB);
+    const cands = [...pickB.slice(0, 4).map((b) => ({ c: { name: b.name, thumb: b.thumb }, known: { t: 'thing', item: b } })),
+      ...pickP.slice(0, 4).map((p) => ({ c: { name: p.name, thumb: p.photos[0].thumb }, known: { t: 'place', name: p.name } }))].slice(0, 8);
+    let r = null; const t0 = Date.now(); let settled = false; let sent = [];
     // 09-29 (Ravi): the wait is capped. Past RECOG_MS the level stops "looking" (not recognised) and Choose place opens.
     const timer = setTimeout(() => { if (settled || !mounted.current) return;
       setLevels((ls) => ls.map((l) => (l.key === key && l.status === 'naming' ? { ...l, status: 'named', timedOut: true } : l)));
-      logEvent('camera_where_timeout', { ms: RECOG_MS }); }, RECOG_MS);
+      logEvent('camera_where_timeout', { ms: RECOG_MS }); }, Math.max(400, RECOG_MS - (Date.now() - (shotAt.current || Date.now()))));
     try {
-      const small = await Promise.all(cands.map((x) => shrink(x.c.thumb, 320)));
-      r = await engine.whereIs(photo, cands.map((x, i) => ({ name: x.c.name, thumb: small[i] })), { thing: nameNow(), sensitivity: 'personal' });
+      // 09-30 (found by audit_chain): one photo that won't open used to sink the whole look — every place went unrecognised.
+      // A candidate whose photo can't be read is left out instead.
+      const small0 = await Promise.all(cands.map((x) => shrink(x.c.thumb, 320).catch(() => null)));
+      sent = cands.filter((_, i) => small0[i]); const small = small0.filter(Boolean);
+      r = await engine.whereIs(photo, sent.map((x, i) => ({ name: x.c.name, thumb: small[i] })), { thing: nameNow(), sensitivity: 'personal' });
     } catch (err) { console.error(err); }
     settled = true; clearTimeout(timer);
     if (!mounted.current) return;
-    const hit = r && r.index >= 0 && r.sure ? cands[r.index].known : null;
+    const hit = r && r.index >= 0 && r.sure && sent[r.index] ? sent[r.index].known : null;
     logEvent('camera_where_named', { named: !!(r && r.name), moves: !!(r && r.moves), known: !!hit, ms: Date.now() - t0, late: Date.now() - t0 > RECOG_MS });
     // REQUIREMENTS_2026-09-27 R3.2: a name she typed before the AI answered WINS — the late result
     // only ever fills `moves`/`ask`, never the name itself, once `userName` is set.
@@ -410,7 +444,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   async function save(next, answer = thing.answer) {
     if (busy || !started || collidingLevel) return;
     // 09-29: moving, but level 1 is still the current place (and nothing deeper) — nothing to move; close like Cancel.
-    if (moveItem && levelsRef.current[0] && levelsRef.current[0].current && levelsRef.current.filter(filled).every((l) => l.current || (l.inherited && !l.photos.length))) { logEvent('camera_move', { itemId: moveItem.id, ok: true, unchanged: true }); onCancel(); return; }
+    if (moveItem && levelsRef.current[0] && levelsRef.current[0].current && levelsRef.current.filter(filled).every((l) => (l.current || l.inherited) && !l.photos.length)) { logEvent('camera_move', { itemId: moveItem.id, ok: true, unchanged: true }); onCancel(); return; }
     if (!moveItem && thing.match && !answer) { setSheet({ ask: thing.match, next }); return; }
     const match = !moveItem && thing.match && answer === 'yes' ? thing.match : null;
     const name = moveItem ? moveItem.name : nameOverride || (match ? match.name : (tag && tag.name) || '');
@@ -492,6 +526,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       if (next) {
         onSaved({ ...card, next: true });
         setSavedFlash(cap(name) || 'Item'); setTimeout(() => { if (mounted.current) setSavedFlash(''); }, 1500);
+        setNextUndo(card.undo ? { name: cap(name) || 'Item', undo: card.undo } : null);
         setThing({ photos: [], tag: undefined, match: null, answer: null }); setLevels([]); setSel(0); setNameOverride(''); setShareAnyway(false); openedAt.current = Date.now(); tagP.current = null;
         setLastWhere(dest ? (dest.t === 'thing' ? { t: 'thing', item: { ...(graph().byId.get(dest.id) || {}), id: dest.id, name: dest.name, thumb: thumbs[1] || (graph().byId.get(dest.id) || {}).thumb } } : dest) : null);
         setBusy(false);
@@ -667,7 +702,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const focusColour = lvColour(focusIdx + 1);
   const focusLooking = focus && focus.status === 'naming' && !focus.timedOut && !focus.known;
   const placeLine = !started ? null : focusLooking ? { look: true }
-    : { name: focus && filled(focus) ? (isBox(focus) ? inPhrase({ name: linkName(focus) }) : linkName(focus)) : 'not defined', empty: !(focus && filled(focus)) };
+    : { name: focus && filled(focus) ? linkName(focus) : 'not defined', empty: !(focus && filled(focus)) }; // 09-30: the name, as in the chain line (not "In the white shoebox")
   // The chain, under a thin line: every level set so far, then what the outermost is already known to be in (grey).
   const chainParts = (() => {
     const out = shownLevels.map((l, j) => ({ n: !filled(l) ? '?' : l.status === 'naming' && !l.userName && !known(l) ? '…' : linkName(l), c: lvColour(j + 1) }));
@@ -690,6 +725,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       : <>What is {theOf(levels[focusIdx - 1])} in? Photograph it, or choose one.</>)
     : (moveItem && focusIdx === 0 && focus.current) ? <>Moved it? Photograph the new place, or choose one.</>
     : focusIdx + 1 >= MAX_LEVELS ? null
+    : focusIdx < levels.length - 1 ? <>Tap it again to change it. {plusGlyph} adds a level on top.</> // 09-30 (independent test #10): a middle level is already in the next one
     : <>Tap {plusGlyph} to add what {theOf(focus)} is in.</>;
   const chooseAt = sel > 0 ? sel - 1 : Math.max(0, levels.findIndex((l) => !filled(l)) === -1 ? levels.length : levels.findIndex((l) => !filled(l)));
   const openChoose = () => { if (locked) return; if (chooseAt >= levels.length) { setLevels((ls) => [...ls, emptyLevel()]); } setSel(chooseAt + 1); setSheet({ choose: chooseAt, withPhoto: false }); logEvent('camera_choose_open', { why: 'button', level: chooseAt + 1 }); };
@@ -761,6 +797,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         {/* Type it instead: inside the picture, before the first photo (Ravi 09-27). */}
         {!started && onWrite && <div className="lc-typeit"><button type="button" onClick={onWrite}><PencilIcon />Type it instead</button></div>}
         {savedFlash && <div className="lc-saved" role="status">{savedFlash} <span className="ok">✓ saved</span></div>}
+        {!savedFlash && nextUndo && (
+          <div className="lc-undo" role="status">{nextUndo.done ? <span>{nextUndo.name} undone</span>
+            : <><span className="ok">✓</span><span className="nm">{nextUndo.name} saved</span><button type="button" onClick={undoLast}>Undo</button></>}</div>)}
         {started && (
           <div className="lc-card">
             {identity}
@@ -769,8 +808,10 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
               <div className="lc-row2">
                 <div ref={stripRef} onScroll={onStripScroll} className={'lv-strip' + (stripMore ? ' more' : '')}>
                   {shownLevels.map((l, j) => sq(l, j))}
-                  {plusOk && <div className="lv-s" key="plus"><div className="lv-tile"><button type="button" className="lv-sq plus" aria-label="Add a level: what it is in" onClick={addLevel}><PlusIcon /></button></div></div>}
                 </div>
+                {/* 09-30 (WebKit run): + sits OUTSIDE the scrolling squares — with 3+ tiers it had scrolled out of sight (on
+                    Safari a tap there missed), and + is how you add on top. */}
+                {plusOk && <button type="button" className="lv-sq plus lc-plus-out" aria-label="Add a level: what it is in" onClick={addLevel}><PlusIcon /></button>}
                 <button type="button" className="lc-choose" disabled={locked} onClick={openChoose}><ListIcon />Choose place</button>
               </div>
               {placeLine && (
@@ -831,8 +872,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
             {(tierL.photos.length > 0 || linkThumb(tierL)) && <button type="button" className="sheet-row" onClick={() => { setSheet({ preview: tierIdx + 1 }); setPvIndex(0); }}>See its photos</button>}
             <button type="button" className="sheet-row" onClick={() => setSheet({ choose: tierIdx, withPhoto: false })}><ListIcon /> Choose place</button>
             {filled(tierL) && !known(tierL) && <button type="button" className="sheet-row" onClick={() => chainRename(tierIdx)}><PencilIcon /> Rename</button>}
-            {/* an inherited square says what's already saved — change it with Choose place; removing it would say nothing */}
-            {!tierL.inherited && <button type="button" className="sheet-row danger" onClick={() => chainRemove(tierIdx)}><TrashIcon /> Remove this level</button>}
+            {/* an inherited square says what's already saved — change it with Choose place; removing it would say nothing. Nor level 1
+                in Move it (09-30 independent test #6: it emptied the whole chain and turned Save off without a word). */}
+            {!tierL.inherited && !(moveItem && tierIdx === 0) && <button type="button" className="sheet-row danger" onClick={() => chainRemove(tierIdx)}><TrashIcon /> Remove this level</button>}
             <button type="button" className="btn-quiet" onClick={() => setSheet(null)}>Close</button>
           </div>
         </div>)}
@@ -840,7 +882,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         <WhereList item={self} items={items} places={places} chooser exclude={(k) => blockedAt(k, chooseIdx + 1)}
           pending={sheet.withPhoto && chooseL.photos.length && !chooseL.known ? { thumb: chooseL.photos[0].thumb, colour: lvColour(chooseIdx + 1), draft: cap(chooseL.userName || chooseL.name || ''), guessed: !!(chooseL.name && !chooseL.userName),
             taken: takenMsg, onUse: (n) => useName(chooseIdx, n) } : null}
-          suggest={sheet.withPhoto && chooseL.ask && !chooseL.known ? { known: chooseL.ask, name: chooseL.ask.t === 'thing' ? own(chooseL.ask.item.name) : chooseL.ask.name, thumb: chooseL.ask.t === 'thing' ? chooseL.ask.item.thumb : placePic(chooseL.ask.name) } : null}
+          suggest={sheet.withPhoto && chooseL.ask && !chooseL.known && !chooseL.no && !chooseL.collisionNo ? { known: chooseL.ask, name: chooseL.ask.t === 'thing' ? own(chooseL.ask.item.name) : chooseL.ask.name, thumb: chooseL.ask.t === 'thing' ? chooseL.ask.item.thumb : placePic(chooseL.ask.name) } : null}
           onCancel={() => { setSheet(null); if (!filled(chooseL)) chainRemove(chooseIdx); }}
           onPick={(k) => { setSheet(null); pickKnown(k, chooseIdx); }}
           onPhotograph={() => setSheet(null)} />)}

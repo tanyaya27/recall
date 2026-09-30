@@ -97,7 +97,7 @@ export default function Ask({ engine, items, onResult, onPhoto, onBack }) {
                 {it.thumb ? <img src={it.thumb} alt={it.name || ''} /> : <span className="tile-written" aria-label="Written down, no photo"><NoteIcon /></span>}
                 <div className="tile-label">
                   {cap(it.name) || ' '}
-                  {it.location && <span className="tile-sub place">{(placeWords(it) || {}).lead || it.location}</span>}
+                  {it.location && <span className="tile-sub place">{(placeWords(it) || {}).first || it.location}</span>}
                 </div>
               </button>
             ))}

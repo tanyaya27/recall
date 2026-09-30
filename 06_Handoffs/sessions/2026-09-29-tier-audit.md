@@ -63,3 +63,18 @@ only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eig
   picked, and closing the sheet removed it); the item page had no "in" pill. All three reproduced in the rig
   (`audit_chain.js`, failing first), fixed, and the page shows the chain with "in" pills. Screens:
   `design/mockups/BUILD_2026-09-29h_move-chain.jpg`. Suites 551 green.
+
+## 09-30: a new way of testing → `20260930a`
+- Ravi asked why the audits keep missing bugs; he approved `06_Handoffs/TESTING.md` (all but the iPhone Simulator and a paid
+  device service). Built the oracle, journeys, monkey, WebKit runs, the house copy, `run_all.sh`, and ran an independent
+  tester twice (it read only the rulings). They found ~20 real bugs, one of which deleted an item; all fixed with failing
+  checks first. Screens: `design/mockups/BUILD_2026-09-30a_testing-fixes.jpg`. 728 checks green (incl. WebKit).
+- Open for Ravi: 4 design questions (OPEN_ITEMS), and his house copy for the rig.
+
+## 09-30 (later): Ravi's answers → `20260930b`, `20260930c`
+- `b`: Save + Next gets an Undo (a line at the top of the picture). J14.
+- `c`: Ravi agreed with Claude's picks (mockups `OPTIONS_2026-09-30_move-card-remove-merge.jpg`) and added a photo review
+  for "merge · keep all photos". Built: the Move note on the item page (no card), the place page as the worklist (Move /
+  Move all; Remove waits), merge with a photo check (`engine.samePlace`) and the review with a confirmed ✕ per photo.
+  Screens: `design/mockups/BUILD_2026-09-30c_move-note-remove-merge.jpg`. 745 checks green (incl. WebKit).
+- `a`, `b`, `c` not pushed — one push covers them.

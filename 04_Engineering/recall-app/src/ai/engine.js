@@ -201,6 +201,20 @@ Reply with ONLY a JSON object, no other text:
   // "the person has forgotten they already logged it"). candidates: [{ name, thumb }].
   // Returns { index: n | -1, sure: bool }. Told to answer -1 unless it is the same
   // individual object — two similar mugs are two mugs.
+  // 09-30 (Ravi, merging places): are two saved place photos the same SPOT? (sameThing is about one object in front of a
+  // background; for a place the whole scene is the subject.) → 'same' | 'different' | 'unknown'
+  async samePlace(photoA, photoB, { sensitivity = 'personal' } = {}) {
+    if (!this.provider.visionJSONMulti) return 'unknown';
+    const segments = [{ text: 'PHOTO A:' }, { image: photoA }, { text: 'PHOTO B:' }, { image: photoB }, { text:
+`Both photos were saved as a PLACE in someone's home where they keep things — a shelf, a drawer, a cupboard, a table, a
+corner. Are they the SAME place: the same spot, perhaps from another angle, distance or light, with different things on it
+now? Not merely the same kind of place — two different shelves are two places.
+
+Reply with ONLY a JSON object, no other text:
+{"same": <true or false>, "sure": <true only if you are confident>}` }];
+    const out = parseJSON(await this.provider.visionJSONMulti(this.cfg, segments, { sensitivity }));
+    return out.sure !== true ? 'unknown' : out.same === true ? 'same' : 'different';
+  }
   async sameThing(photoDataUrl, candidates, { subject = '', sensitivity = 'personal' } = {}) {
     if (!candidates.length || !this.provider.visionJSONMulti) return { index: -1, sure: false };
     const photos = Array.isArray(photoDataUrl) ? photoDataUrl : [photoDataUrl];

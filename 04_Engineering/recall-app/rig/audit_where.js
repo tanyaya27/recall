@@ -304,7 +304,7 @@ async function main() {
   await shot('g5-before-remove');
   check('G5a its photos open from the level\'s sheet, with the one attached photo removable', await count('.pv-rm') === 1);
   await tap('.pv-rm', { wait: 500 });
-  check('G5b R1.3: removing the last attached photo KEEPS the identity — still "Place: In the wooden box"', /^in the wooden box$/i.test(await sayT()), await sayT());
+  check('G5b R1.3: removing the last attached photo KEEPS the identity — still "Place: Wooden box"', /^(in the )?wooden box$/i.test(await sayT()), await sayT());
   await tap('.lc-x', { wait: 400 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 400 });
 
   // R1.4 (regression guard): a level with NO identity still runs the naming pass.

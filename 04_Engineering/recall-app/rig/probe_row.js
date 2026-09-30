@@ -31,8 +31,8 @@ function check(req, name, ok, note = '', shotFile = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  [${req}] ${name}${note ? ' — ' + note : ''}`);
 }
 
-let AI = { name: 'thing' }; let WHERE = []; let SAME = { index: -1, sure: false };
-let NEXT_WHERE_DELAY = 0; let NEXT_WHERE_BADJSON = false; let lastPool = null;
+let AI = { name: 'thing' }; let WHERE = []; let SAME = { index: -1, sure: false }; let SAME_PLACE = { same: true, sure: true };
+let NEXT_WHERE_DELAY = 0; let NEXT_WHERE_BADJSON = false; let lastPool = null; let lastPoolNames = [];
 
 // Each look gets its OWN browser (closed and relaunched in between) — two full runs (90+ steps each,
 // a live fake-camera canvas painting the whole time) in a single browser accumulated enough memory to
@@ -57,13 +57,14 @@ async function runLook(look) {
     const images = content.filter((b) => b.type === 'image').length;
     let out; let delay = 220; let badjson = false;
     if (/MOVES:/.test(texts)) {
-      lastPool = [...texts.matchAll(/SAVED (\d+) —/g)].length;
+      lastPool = [...texts.matchAll(/SAVED (\d+) —/g)].length; lastPoolNames = [...texts.matchAll(/SAVED (\d+) — "([^"]*)"/g)].map((x) => x[2]);
       const w = WHERE.shift() || { name: 'shelf', moves: false };
       let index = 0; if (w.known) { const m = [...texts.matchAll(/SAVED (\d+) — "([^"]*)"/g)].find((x) => x[2].toLowerCase() === w.known.toLowerCase()); index = m ? Number(m[1]) : 0; }
       out = { name: w.name, moves: !!w.moves, index: (w.known && index === 0 && !w.nohit) ? 0 : index, sure: w.sure !== undefined ? !!w.sure : !!index };
       if (NEXT_WHERE_DELAY) { delay = NEXT_WHERE_DELAY; NEXT_WHERE_DELAY = 0; }
       if (NEXT_WHERE_BADJSON) { badjson = true; NEXT_WHERE_BADJSON = false; }
-    } else if (/NEW PHOTO/.test(texts)) out = SAME;
+    } else if (/PHOTO A:/.test(texts)) out = SAME_PLACE; // 09-30: two place photos — the same spot?
+    else if (/NEW PHOTO/.test(texts)) out = SAME;
     else if (images) out = { name: AI.name, sameAs: AI.sameAs || '', alternatives: [], restingOn: AI.restingOn || '', placeCertain: !!AI.placeCertain, placeGuesses: AI.placeGuesses || [], description: '', details: AI.details || '', private: !!AI.private, privateWhy: AI.privateWhy || '', secretVisible: false };
     else out = { matches: [], message: '' };
     await new Promise((r) => setTimeout(r, delay));
@@ -165,22 +166,27 @@ async function runLook(look) {
 
   // probe_row — 09-29g: "☰ Choose place" stays on the squares' row at every text size; the squares scroll, and the
   // selected square and ＋ stay in view. Normal / Large / Largest, 1–3 tiers.
+  const window_w = (vw) => vw;
   async function runSuite() {
     fs.mkdirSync(path.join(__dirname, 'shots_row'), { recursive: true });
     const pickWhere = async (name) => { if (!(await page.locator('.where-list').count())) await tap('.lc-choose', { wait: 600 });
       await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.locator(`.where-list .wl-row:not(.wl-sugg):has-text("${name}")`).first().click(); await page.waitForTimeout(500); };
-    for (const size of ['normal', 'large', 'largest']) {
+    for (const vw of [390, 375]) for (const size of ['normal', 'large', 'largest']) {
+      await page.setViewportSize(vw === 390 ? { width: 390, height: 844 } : { width: 375, height: 667 });
       await seedHouse(); await setPrefs({ size }); await home();
       AI = { name: 'stapler' }; await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
       const tiers = ['Kitchen counter', 'Craft nook', 'Pantry shelf'];
       for (let k = 0; k < tiers.length; k++) {
         await tap('.lv-sq.plus', { wait: 350 }); await pickWhere(tiers[k]);
         const m = await page.evaluate(() => { const r = (q) => { const e = document.querySelector(q); return e ? e.getBoundingClientRect() : null; };
-          const st = r('.lc-card .lv-strip'), ch = r('.lc-choose'), cd = r('.lc-card'), sel = r('.lv-strip .lv-sq.sel'), pl = r('.lv-strip .lv-sq.plus');
-          const inView = (b) => !b || (b.left >= st.left - 1 && b.right <= st.right + 1);
-          const selCut = sel ? Math.round(st.left - sel.left) : 0; return { selCut, stripW: Math.round(st.width), sameRow: Math.abs((ch.top + ch.bottom) / 2 - (st.top + st.bottom) / 2) <= 4, chooseIn: ch.right <= cd.right + 0.5, selIn: inView(sel), plusIn: inView(pl), cardH: Math.round(cd.height) }; });
-        await page.locator('.lc-card').screenshot({ path: path.join(__dirname, 'shots_row', `row-${size}-${k + 1}.png`) });
-        check('ROW', `${size}, ${k + 1} tier${k ? 's' : ''}: Choose place on the squares' row, inside the card; selected square and ＋ in view`, m.sameRow && m.chooseIn && m.selIn && m.plusIn, JSON.stringify(m));
+          const st = r('.lc-card .lv-strip'), ch = r('.lc-choose'), cd = r('.lc-card'), sel = r('.lv-strip .lv-sq.sel'), pl = r('.lc-row2 .lv-sq.plus');
+          const inView = (b) => !b || (b.left >= st.left - 1.5 && b.right <= st.right + 1.5); // a 1 px sliver is not visible
+          const inCard = (b) => !!b && b.left >= cd.left && b.right <= cd.right;
+          const selCut = sel ? Math.round(st.left - sel.left) : 0; return { selCut, stripW: Math.round(st.width), sameRow: Math.abs((ch.top + ch.bottom) / 2 - (st.top + st.bottom) / 2) <= 4, chooseIn: ch.right <= cd.right + 0.5, selIn: inView(sel), plusIn: inCard(pl), cardH: Math.round(cd.height) }; });
+        await page.locator('.lc-card').screenshot({ path: path.join(__dirname, 'shots_row', `row-${vw}-${size}-${k + 1}.png`) });
+        const btns = await page.evaluate(() => [...document.querySelectorAll('.lc-row .lc-x, .lc-row .lc-k.sv')].map((b) => { const r = b.getBoundingClientRect(); return { t: b.innerText.trim(), l: Math.round(r.left), r: Math.round(r.right), clip: b.scrollWidth > b.clientWidth + 1 }; }));
+        check('ROW', `${vw} wide, ${size}, ${k + 1} tier${k ? 's' : ''}: Cancel and Save whole and on screen (09-30 independent test #3)`, btns.length === 2 && btns.every((b) => b.l >= 0 && b.r <= window_w(vw) && !b.clip), JSON.stringify(btns));
+        check('ROW', `${vw} wide, ${size}, ${k + 1} tier${k ? 's' : ''}: Choose place on the squares' row, inside the card; selected square and ＋ in view`, m.sameRow && m.chooseIn && m.selIn && m.plusIn, JSON.stringify(m));
       }
       await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
     }

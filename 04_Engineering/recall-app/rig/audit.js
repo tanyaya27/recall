@@ -142,6 +142,7 @@ async function main() {
   await page.click('.lc-choose'); await page.waitForSelector('.where-list');
   check('D15p ☰ Choose place → every place and box, with search; no thing that holds nothing', await count('.where-list .wl-search input') === 1 && await count('.where-list .wl-row') >= 1 && !/Boxes and containers/i.test(await text('.where-list')) && await count('.where-list .wl-g') === 1);
   await page.fill('.wl-search input', 'sofa'); await page.click('.wl-new.typed'); await page.waitForTimeout(300); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(500);
+  if (await count('.saved-card')) { await page.waitForTimeout(600); await page.click('.saved-card .s'); await page.waitForTimeout(300); } // 09-30: the Move's card, tapped away
   const i1b = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D15a edit place → history entry + lastSeenAt now', i1b.location === 'Sofa' && i1b.history.length === 3 && Date.now() - i1b.lastSeenAt < 5000);
   check('D15b Where it is says Sofa; the move wrote a sighting (1 photo at Sofa); earlier counts 2 PLACES', /Sofa/.test(await text('.tp-wh b')) && await count('.strip-page') === 1 && /Show earlier places\s*2/.test(await text('.sw-row >> nth=2')));
@@ -154,6 +155,7 @@ async function main() {
   check('D15e Undo → earlier places back (2)', /Show earlier places\s*2/.test(await text('.sw-row >> nth=2')));
   check('D15 build 2: no Edit panel, no Done, no second Done', await count('.fix') === 0 && !/\bDone\b/.test(await text('.thing-page')));
   // Press-and-hold on the photo → the item sheet with Remove this photo
+  await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200); // 09-30: the Move's note makes the page longer; the photo is at the top
   const pb = await page.locator('.card.thing img').first().boundingBox();
   await page.mouse.move(pb.x + 60, pb.y + 60); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); await page.waitForTimeout(200);
   check('D16 hold on the photo → item sheet, with Remove this photo; trimmed (#28)', await count('.item-sheet') === 1 && /Remove this photo/.test(await text('.item-sheet')) && !/Change the place|Rename|Move to the top|Put items in/.test(await text('.item-sheet')));

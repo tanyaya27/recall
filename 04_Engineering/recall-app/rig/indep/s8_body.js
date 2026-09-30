@@ -1,0 +1,7 @@
+    await seedHouse();
+    const V = process.env.V || 'a';
+    const g = async (l) => { try { await home(); console.log('ok', l); } catch (e) { console.log('CRASH at', l, e.message.slice(0, 60)); throw e; } };
+    if (V === 'a') { for (let i = 0; i < 8; i++) await g('plain reload ' + i); }
+    if (V === 'b') { await g('start'); await tap('.menu-btn', { wait: 500 }); await tap('.drawer-row:has-text("Places")', { wait: 800 }); await g('after places'); await tap('.menu-btn', { wait: 500 }); await tap('.drawer-row:has-text("Places")', { wait: 800 }); await page.locator('.loc-row').first().click(); await page.waitForTimeout(600); await g('after place page'); }
+    if (V === 'c') { await g('start'); await page.click(LOG); await page.waitForTimeout(900); AI = { name: 'x' }; await cam('keys.jpg'); await tap('.lc-shutter', { wait: 1800 }); await tap('.lc-k.sv', { wait: 2000 }); await g('after one log'); await page.click(LOG); await page.waitForTimeout(900); await cam('keys.jpg'); await tap('.lc-shutter', { wait: 1800 }); await tap('.lc-k.sv', { wait: 2000 }); await g('after two logs');
+      for (let i = 0; i < 4; i++) { await page.click(LOG); await page.waitForTimeout(900); await cam('box.jpg'); await tap('.lc-shutter', { wait: 1500 }); await tap('.lc-x', { wait: 400 }); if (await page.locator('button:has-text("Throw away")').count()) await tap('button:has-text("Throw away")'); await g('after cancel ' + i); } }

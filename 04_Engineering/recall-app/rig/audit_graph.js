@@ -144,8 +144,8 @@ async function main() {
   await pickPlace('Hall table');
   check('J7b one verb on the button ("Save"); the sentence above says "Hall table"', (await text('.lc-k.sv')).trim() === 'Save' && /Hall table/.test(await text('.lc-say')));
   await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(600);
-  check('J8 saved: at the Hall table (a place edge); the page says so; a toast with Undo', (await byName('coffee can')).location === 'Hall table' && (await openTo('u'))[0].to.name === 'Hall table' && /Hall table/.test(await text('.tp-wh b')) && await count('.toast-undo') === 1);
-  await page.click('.toast-undo'); await page.waitForTimeout(700);
+  check('J8 saved: at the Hall table (a place edge); the page says so, with Undo', (await byName('coffee can')).location === 'Hall table' && (await openTo('u'))[0].to.name === 'Hall table' && /Hall table/.test(await text('.tp-wh b')) && /Put away just now/.test(await text('.tp-moved')) && await count('.tp-moved .u') === 1); // 09-30 (Ravi 2C): said on the page, with Undo
+  await page.waitForTimeout(600); await page.click('.tp-moved .u'); await page.waitForTimeout(900);
   check('J9 Undo: no place again', !(await byName('coffee can')).location && /No place yet/.test(await text('.tp-wh b')));
   await home();
   await shot('1-home');
@@ -199,7 +199,7 @@ async function main() {
   // ---- Log something in: the camera with the box as level 1
   await page.click('.tp-btn:has-text("Log something in")'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
   await page.click('.lc-shutter'); await page.waitForTimeout(1200);
-  check('G18 Log something in: the camera already says "In the wooden box"', /In the wooden box/.test(await text('.lc-say')), await text('.lc-say'));
+  check('G18 Log something in: the camera already says "Place: Wooden box" (09-30: the name, as in the chain)', /Place:\s*Wooden box/i.test(await text('.lc-say')), await text('.lc-say'));
   await page.click('.lc-k.sv'); await page.waitForTimeout(1500);
   const stub = await byName('bottle cap'); const se = stub ? await openTo(stub.id) : [];
   check('G19 …Save: the new thing is in the wooden box (an edge to it), and we are back on the box\'s page', se.length === 1 && se[0].to.t === 'thing' && se[0].to.id === 'w' && /Wooden box/.test(await text('.thing-head .name')), JSON.stringify(se.map((e) => e.to)));
@@ -248,7 +248,7 @@ async function main() {
   check('I2 the camera: "Place: not defined" until a place is given; Save is always one word, beside the shutter', /Place:\s*not defined/.test(await text('.lc-say')) && (await text('.lc-k.sv')).trim() === 'Save');
   await shot('14-camera-chips');
   await pickPlace(boxChip);
-  check('I3 choose the box: "Place: In the …" above Save', new RegExp('In the ' + boxChip.toLowerCase()).test(await text('.lc-say')), boxChip + ' / ' + await text('.lc-say'));
+  check('I3 choose the box: "Place: <box>" above Save', new RegExp('Place:\\s*' + boxChip, 'i').test(await text('.lc-say')), boxChip + ' / ' + await text('.lc-say'));
   await page.click('.lc-k.sv'); await page.waitForTimeout(1500);
   const boxDoc = await byName(boxChip.toLowerCase());
   let bc = (await items()).find((d) => d.name === 'bottle cap' && d.location === boxChip);

@@ -51,7 +51,7 @@
     check('H2', '+ is there to add what the Office is in', s.plus, '');
 
     // ---- 3: + a 4th tier by typing its name, with the keyboard up ----
-    await tap('.lv-sq.plus', { wait: 350 }); await tap('.lc-choose', { wait: 500 });
+    await tap('.lv-sq.plus', { wait: 350 }); s = await st(); console.log('after +', JSON.stringify(s)); await snap('plus tapped for tier 4'); await tap('.lc-choose', { wait: 500 });
     await page.locator('.wl-search input').click(); await kbUp(); await page.waitForTimeout(200);
     await page.keyboard.type('Upstairs', { delay: 40 }); await page.waitForTimeout(250);
     const f1 = await inView('.wl-search input'), f2 = await inView('.wl-new.typed');
@@ -83,6 +83,50 @@
     await tap('.lc-k.sv', { wait: 2600 });
     const ps = await page.evaluate(() => window.__rig.dump().find((x) => x.id === 'ps'));
     check('H5', 'saved: the item is at Kitchen counter; the drawer is still in the Ikea shelving unit', /kitchen counter/i.test(ps.location) && (await inOf('Desk drawer')) === 'Ikea shelving unit', ps.location);
+
+    // ---- 5b (09-30 independent test #2): photographing the place it's in now — ReCall must be able to recognise it ----
+    await openThing('passport'); await tap('button:has-text("Move it")', { wait: 900 }); // the passport is in the Desk drawer (not one of the 4 oldest places)
+    WHERE.push({ name: 'drawer', moves: false }); await cam('drawer.jpg'); await tap('.lc-shutter', { wait: 1800 });
+    check('H8', 'Move it → photograph where it is now: that place (Desk drawer) is among the places ReCall compares with', lastPoolNames.some((n) => /desk drawer/i.test(n)), JSON.stringify(lastPoolNames));
+    if (await page.locator('.where-list').count()) await tap('.where-list .btn-quiet', { wait: 400 });
+    await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
+    // a place made today is recognisable too (not only the 4 oldest)
+    // Studio wall: made a moment ago, with a real photo. Broken shelf: a place whose photo won't open (09-30: one bad photo
+    // used to make every place unrecognisable).
+    await page.evaluate((im) => { const t = Date.now(); window.__rig.seed([
+      { id: 'newp', kind: 'place', owner: 'margaret', by: 'margaret', private: false, name: 'Studio wall', order: t, createdAt: t, updatedAt: t, parent: null, photos: [{ photo: im, thumb: im, at: t }] },
+      { id: 'badp', kind: 'place', owner: 'margaret', by: 'margaret', private: false, name: 'Broken shelf', order: t - 1, createdAt: t - 1, updatedAt: t - 1, parent: null, photos: [{ photo: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', thumb: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', at: t }] }]); }, img('closet.jpg'));
+    await home(); AI = { name: 'glue stick' }; await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
+    lastPoolNames = []; await snap('log glue stick'); await tap('.lv-sq.plus', { wait: 300 }); WHERE.push({ name: 'wall', moves: false }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1800 }); await snap('glue stick where shot');
+    check('H8', 'a place made today (Studio wall) is among the places ReCall compares with', lastPoolNames.some((n) => /studio wall/i.test(n)), JSON.stringify(lastPoolNames));
+    check('H8', 'a place whose photo won\'t open doesn\'t stop ReCall looking (it used to give up on every place)', lastPoolNames.length >= 4, JSON.stringify(lastPoolNames));
+    if (await page.locator('.where-list').count()) await tap('.where-list .btn-quiet', { wait: 400 });
+    await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
+
+    // ---- 5c (09-30 independent test #4): renaming a box leaves no ghost place with its old name ----
+    await home(); AI = { name: 'blue scissors' }; await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
+    await tap('.lv-sq.plus', { wait: 300 }); WHERE.push({ name: 'White shoebox', moves: true }); await cam('box.jpg'); await tap('.lc-shutter', { wait: 1800 });
+    if (await page.locator('.wl-pend .btn-primary').count()) await tap('.wl-pend .btn-primary', { wait: 500 });
+    await snap('scissors before save'); await tap('.lc-k.sv', { wait: 2500 }); await snap('scissors after save');
+    await openThing('White shoebox'); await tap('.tp-row:has-text("Rename")', { wait: 500 }); await page.locator('.sheet input').first().fill('Shoebox'); await tap('.sheet .btn-primary', { wait: 900 });
+    await home(); await tap('.menu-btn', { wait: 400 }); await tap('.drawer-row:has-text("Places")', { wait: 700 });
+    const plRows = await page.evaluate(() => [...document.querySelectorAll('.loc-row')].map((r) => r.innerText.replace(/\n/g, ' | ')));
+    const sc = await page.evaluate(() => window.__rig.dump().find((d) => d.kind === 'item' && /blue scissors/i.test(d.name || '')));
+    await snap('places after renaming the box');
+    check('H9', 'renaming the White shoebox to Shoebox: no "White shoebox" left in Places; the scissors say Shoebox', !plRows.some((r) => /white shoebox/i.test(r)) && /^shoebox$/i.test((sc || {}).location || ''), JSON.stringify({ rows: plRows.filter((r) => /shoebox/i.test(r)), loc: (sc || {}).location }));
+
+    // ---- 5d (09-30 independent tests #1 #5 #6 #7): the card after a Move, level 1's sheet, a double tap on Save ----
+    await openThing('3D model of plant sensor'); await tap('button:has-text("Move it")', { wait: 900 });
+    await page.locator('.lv-strip .lv-sq').nth(0).click(); await page.waitForTimeout(400); // level 1 is selected → its sheet
+    const sheet1 = await page.evaluate(() => (document.querySelector('.tier-sheet') || {}).innerText || '');
+    check('H10', 'Move it: level 1\'s sheet has no "Remove this level" (it emptied the chain and turned Save off)', /Choose place/.test(sheet1) && !/Remove this level/.test(sheet1), sheet1.replace(/\n/g, ' | '));
+    await tap('.tier-sheet .sheet-row:has-text("Choose place")', { wait: 400 }); await page.fill('.wl-search input', 'Pantry shelf'); await page.waitForTimeout(150);
+    await tap('.where-list .wl-row:has-text("Pantry shelf")', { wait: 500 });
+    await page.locator('.lc-k.sv').dblclick(); await page.waitForTimeout(1500);
+    const afterDbl = await page.evaluate(() => ({ remove: [...document.querySelectorAll('.sheet-title')].some((t) => /remove/i.test(t.innerText)), card: document.querySelectorAll('.saved-card').length, note: (document.querySelector('.tp-moved') || {}).innerText || '' }));
+    await snap('after a move: the note on the page');
+    check('H10', 'a double tap on Save does not open "Remove this item?" underneath', !afterDbl.remove, JSON.stringify(afterDbl));
+    check('H10', '09-30 (Ravi 2C): a Move from the item page is said ON the page — "✓ Moved just now · Before: …" with Undo and ✕; no card over the page', afterDbl.card === 0 && /Moved just now/.test(afterDbl.note) && /Before: Kitchen counter/.test(afterDbl.note) && /Undo/.test(afterDbl.note), JSON.stringify(afterDbl));
 
     // ---- 6: the rename sheet (a sheet with a text field) rides above the keyboard too ----
     await openThing('3D model of plant sensor'); await tap('.tp-row:has-text("Rename")', { wait: 500 });

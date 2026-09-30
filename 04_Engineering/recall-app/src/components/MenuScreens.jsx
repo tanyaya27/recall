@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, removePlacePhoto, placeNamed, placeThumb, allPlaces, changeLocation, logEvent, PLACE_PHOTOS } from '../lib/db.js';
+import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, removePlacePhoto, placeNamed, placeThumb, allPlaces, changeLocation, logEvent, PLACE_PHOTOS, placeIn, mergePlace } from '../lib/db.js';
+import WhereList from './WhereList.jsx';
 import { compressPlacePhoto } from '../lib/img.js';
-import { CameraIcon, ChevronIcon, PencilIcon, TrashIcon, NoteIcon } from './Icons.jsx';
+import { CameraIcon, ChevronIcon, PencilIcon, TrashIcon, NoteIcon, PinIcon } from './Icons.jsx';
 import { timeAgo, cap } from '../lib/format.js';
 import { getPrefs, savePrefs, THEMES, SIZES } from '../lib/prefs.js';
 import Header from './Header.jsx';
-import { placeOuter } from '../lib/graph.js';
+import { placeOuter, graph } from '../lib/graph.js';
+import { me } from '../lib/auth.js';
 import Confirm from './Confirm.jsx';
 import SwipeRow from './SwipeRow.jsx';
 
@@ -96,7 +98,7 @@ export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd
         const pic = placeThumb(r.name, places, items);
         // Q2 · A (Ravi 09-29): a place that is in something says so first — "in Oak cabinet · 1 thing here".
         const inW = placeOuter(r.name)[0];
-        const sub = (inW ? `in ${inW.t === 'thing' ? cap(inW.item.name) : inW.name} · ` : '') + (r.count ? `${r.count} thing${r.count === 1 ? '' : 's'} here` : 'nothing here now');
+        const sub = (inW ? `in ${inW.t === 'thing' ? cap(inW.item.name) : inW.name} · ` : '') + (r.count ? `${r.count} item${r.count === 1 ? '' : 's'} here` : 'nothing here now');
         const pics = r.saved && r.saved.photos ? r.saved.photos.length : 0;
         return (
           <button type="button" className="loc-row" key={r.name} onClick={() => onOpen(r.name)}>
@@ -114,16 +116,61 @@ export function LocationsScreen({ places = [], items = [], onBack, onOpen, onAdd
 // One place: its photos (add / remove), its name (rename updates every thing there), the
 // things there now, and Remove at the bottom (things keep their place text; only the saved
 // place and its photos go).
-export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto, onOpenThing, onToast, owner }) {
+export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto, onOpenThing, onToast, owner, samePlace = null }) {
   const saved = placeNamed(name, places);
   const photos = (saved && saved.photos) || [];
   const things = items.filter((it) => (it.location || '').toLowerCase() === name.toLowerCase());
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const [confirming, setConfirming] = useState(null); // 'place' | { photo: index }
+  // 09-30 (Ravi, 3B): a place can't be removed while anything is in it. This page is the list to work through: each item
+  // (and each place inside this one) has its own Move, and "Move all to…" moves everything at once.
+  const lower = (x) => (x || '').trim().toLowerCase();
+  const subPlaces = (graph().edges || []).filter((e) => !e.until && e.to && e.to.t === 'place' && lower(e.to.name) === lower(name))
+    .map((e) => places.find((p) => p.id === e.from)).filter(Boolean);
+  const [moving, setMoving] = useState(null); // { it } | { p } | 'all'
+  const busyLeft = things.length + subPlaces.length;
+  async function moveTo(k) {
+    const what = moving; setMoving(null);
+    const list = what === 'all' ? [...things.map((it) => ({ it })), ...subPlaces.map((p) => ({ p }))] : [what];
+    if (k.t === 'place' && !placeNamed(k.name, places)) await addPlace(k.name, places, [], owner);
+    let n = 0;
+    for (const x of list) {
+      if (x.it) { const ok = await changeLocation(x.it, k.t === 'thing' ? cap(k.item.name) : k.name, 'chosen', k.t === 'thing' ? { t: 'thing', id: k.item.id, name: k.item.name } : { t: 'place', name: k.name }); if (ok !== false) n++; }
+      else if (x.p && k.t === 'place') { const r = await placeIn(x.p, { t: 'place', name: k.name }); if (r) n++; } // a place is never inside a box (Q4); a circle is refused
+    }
+    logEvent('place_emptying', { from: name, to: k.t === 'thing' ? k.item.name : k.name, n, all: what === 'all' });
+    onToast && onToast(`Moved ${n === 1 ? (list[0].it ? cap(list[0].it.name) : list[0].p.name) : `${n} items`} · ${k.t === 'thing' ? cap(k.item.name) : k.name}`);
+  }
+  // 09-30 (independent test, round 2): a name you already have (another place, or a box) was taken silently — two places
+  // with one name, and one of them vanished from Places. Refused here, the way the camera refuses it.
+  const taken = (() => { const n = draft.trim().toLowerCase(); if (!n || n === name.toLowerCase()) return '';
+    const b = items.find((x) => !x.deleted && x.holds && (x.name || '').toLowerCase() === n); if (b) return `“${cap(b.name)}” is a box you have — give this place its own name.`;
+    return ''; })();
+  // 09-30 (Ravi, 4): a name you already have for another PLACE offers to merge the two (a box's name is still refused).
+  const dupOf = (n) => places.find((x) => (x.name || '').toLowerCase() === n.toLowerCase() && (!saved || x.id !== saved.id)) || null;
+  const [merge, setMerge] = useState(null); // { into, status: 'comparing'|'same'|'different'|'unknown', review?: [photos], drop?: index }
+  const itemsAt = (nm) => items.filter((it) => (it.location || '').toLowerCase() === (nm || '').toLowerCase()).length;
+  async function openMerge(into) {
+    const a = photos[0] && photos[0].thumb; const b = into.photos && into.photos[0] && into.photos[0].thumb;
+    setMerge({ into, status: a && b && samePlace ? 'comparing' : 'unknown' });
+    if (!(a && b && samePlace)) return;
+    const verdict = await Promise.race([samePlace(a, b), new Promise((r) => setTimeout(() => r('unknown'), 8000))]);
+    setMerge((m) => (m && m.into.id === into.id ? { ...m, status: verdict } : m));
+    logEvent('place_merge_compare', { from: name, into: into.name, verdict });
+  }
+  async function doMerge(keep) {
+    const into = merge.into; setMerge(null); setEditing(false);
+    if (!saved) { await Promise.all(things.map((it) => changeLocation(it, into.name))); }
+    else await mergePlace(saved, into, keep, items);
+    onToast && onToast(`Merged into ${into.name}`); onBack();
+  }
   const rename = async () => {
-    const n = draft.trim(); setEditing(false);
-    if (!n || n === name) return;
+    const n = draft.trim();
+    if (taken || !n) return;
+    const d = dupOf(n); if (d) { await openMerge(d); return; }
+    setEditing(false);
+    if (n === name) return;
     if (saved) await renamePlace(saved, n, items);
     else { const id = await addPlace(n, places, [], owner); await Promise.all(things.map((it) => changeLocation(it, n))); void id; }
     logEvent('place_renamed', { from: name, to: n, things: things.length });
@@ -148,25 +195,77 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
         {photos.length === 0 && <p className="note-quiet left">A photo of the exact spot — "drawer 2, at the very back" — says more than words, and it is what the app will use to recognise the place.</p>}
 
         <div className="field-label">Name</div>
-        {editing ? (
+        {editing ? (<>
           <div className="row" style={{ padding: 0, borderBottom: 'none' }}>
             <input className="place-input" autoFocus value={draft} enterKeyHint="done" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') rename(); }} />
-            <button onClick={rename}>Save</button>
+            <button onClick={rename} disabled={!!taken || !draft.trim()}>Save</button>
             <button onClick={() => { setEditing(false); setDraft(name); }}>Cancel</button>
           </div>
-        ) : (
+          {taken && <p className="wl-taken place-taken">{taken}</p>}
+        </>) : (
           <button type="button" className="field-value" onClick={() => setEditing(true)}><span className="field-text">{name}</span><PencilIcon /></button>
         )}
 
-        <div className="field-label">{things.length ? 'Items here now' : 'Nothing here now'}</div>
-        {things.length > 0 && (
-          <div className="things-here">
-            {things.map((it) => <button type="button" className="thing-mini" key={it.id} onClick={() => onOpenThing(it)}>{it.thumb ? <img src={it.thumb} alt={it.name || ''} /> : <span className="tile-written" aria-label={it.name || ''}><NoteIcon /></span>}</button>)}
-          </div>
-        )}
+        <div className="field-label pl-here">{busyLeft ? `Here now · ${busyLeft}` : 'Nothing here now'}
+          {busyLeft > 1 && <button type="button" className="pl-all" onClick={() => setMoving('all')}>Move all to…</button>}</div>
+        {things.map((it) => (
+          <div className="wl-row pl-row" key={it.id}>
+            <button type="button" className="pl-open" onClick={() => onOpenThing(it)}>{it.thumb ? <img src={it.thumb} alt="" /> : <span className="no"><NoteIcon /></span>}
+              <span className="tx"><b>{cap(it.name) || 'An item'}</b><small>in {name}</small></span></button>
+            <button type="button" className="pl-move" onClick={() => setMoving({ it })}>Move</button>
+          </div>))}
+        {subPlaces.map((p) => (
+          <div className="wl-row pl-row" key={p.id}>
+            <span className="pl-open">{p.photos && p.photos.length ? <img src={p.photos[0].thumb} alt="" /> : <span className="no"><PinIcon /></span>}
+              <span className="tx"><b>{p.name}</b><small>a place in {name}</small></span></span>
+            <button type="button" className="pl-move" onClick={() => setMoving({ p })}>Move</button>
+          </div>))}
 
-        <button className="btn-secondary amber" onClick={() => setConfirming('place')}><TrashIcon /> Remove this place</button>
+        <button className="btn-secondary amber" disabled={busyLeft > 0} onClick={() => setConfirming('place')}><TrashIcon /> Remove this place</button>
+        {busyLeft > 0 && <p className="note-quiet left">Move {busyLeft === 1 ? 'the item' : `the ${busyLeft} items`} first — then the place can go.</p>}
       </div>
+      {merge && !merge.review && (
+        <div className="sheet-back" onClick={() => setMerge(null)} role="presentation">
+          <div className="sheet merge-sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-title">You already have the {merge.into.name}</div>
+            <div className="mg-pair">
+              {[{ nm: name, ph: photos, n: things.length }, { nm: merge.into.name, ph: merge.into.photos || [], n: itemsAt(merge.into.name) }].map((x) => (
+                <div key={x.nm} className="mg-one">{x.ph[0] ? <img src={x.ph[0].thumb} alt="" /> : <span className="no"><PinIcon /></span>}
+                  <b>{x.nm}</b><small>{x.ph.length} photo{x.ph.length === 1 ? '' : 's'} · {x.n} item{x.n === 1 ? '' : 's'}</small></div>))}
+            </div>
+            {merge.status === 'comparing' && <p className="sheet-body">ReCall is comparing the photos…</p>}
+            {merge.status === 'same' && <p className="sheet-body">ReCall thinks these are <b>the same place</b>. Merge them: one {merge.into.name}, with everything in both.</p>}
+            {merge.status === 'different' && <p className="sheet-body mg-warn"><b>These look like different places.</b> Mixed photos make it harder for ReCall to recognise the place from a photo.</p>}
+            {merge.status === 'unknown' && <p className="sheet-body">ReCall can't compare them{photos.length && (merge.into.photos || []).length ? '' : ' (one has no photo)'}. Merge them into one {merge.into.name}?</p>}
+            {merge.status === 'same' && <button className="btn-primary" onClick={() => doMerge([...(merge.into.photos || []), ...photos])}>Merge into the {merge.into.name}</button>}
+            {(merge.status === 'different' || merge.status === 'unknown') && <>
+              <button className="btn-primary" onClick={() => doMerge(merge.into.photos || [])}>Merge · keep the {merge.into.name}’s photos</button>
+              <button className="btn-secondary" onClick={() => setMerge((m) => ({ ...m, review: [...(m.into.photos || []), ...photos] }))}>Merge · keep all photos…</button></>}
+            <button className="btn-secondary" disabled={merge.status === 'comparing'} onClick={() => { setMerge(null); }}>Give it its own name</button>
+          </div>
+        </div>)}
+      {merge && merge.review && (
+        <div className="sheet-back" role="presentation">
+          <div className="sheet merge-sheet" role="dialog" aria-modal="true">
+            <div className="sheet-title">The {merge.into.name}’s photos</div>
+            <p className="sheet-body">Remove the ones that aren’t this place — ReCall recognises a place by its photos.{merge.review.length > PLACE_PHOTOS ? ` A place keeps ${PLACE_PHOTOS}: remove ${merge.review.length - PLACE_PHOTOS} more, or the oldest go.` : ''}</p>
+            <div className="mg-grid">
+              {merge.review.map((p, i) => (
+                <div key={i} className="mg-ph"><img src={p.thumb} alt="" />{i === 0 && <span className="mg-main">Main</span>}
+                  {merge.review.length > 1 && <button type="button" className="mg-rm" aria-label="Remove this photo" onClick={() => setMerge((m) => ({ ...m, drop: i }))}><TrashIcon /></button>}</div>))}
+            </div>
+            <button className="btn-primary" onClick={() => doMerge(merge.review)}>Merge into the {merge.into.name}</button>
+            <button className="btn-quiet" onClick={() => setMerge((m) => ({ ...m, review: null }))}>Back</button>
+          </div>
+        </div>)}
+      {merge && merge.review && merge.drop !== undefined && merge.drop !== null && (
+        <Confirm title="Remove this photo?" image={merge.review[merge.drop].thumb} body="It won’t be one of this place’s photos." actionLabel="Remove"
+          onKeep={() => setMerge((m) => ({ ...m, drop: null }))}
+          onAction={() => setMerge((m) => ({ ...m, review: m.review.filter((_, j) => j !== m.drop), drop: null }))} />)}
+      {moving && (
+        <WhereList chooser item={moving.it || null} items={items} places={places}
+          exclude={(k) => (k.t === 'place' && lower(k.name) === lower(name)) || (!!moving.p && k.t === 'thing')}
+          onPick={moveTo} onCancel={() => setMoving(null)} />)}
       {confirming === 'place' && (
         <Confirm title={`Remove ${name}?`} image={photos[0] ? photos[0].thumb : undefined}
           body={things.length ? `${things.length} item${things.length === 1 ? ' keeps' : 's keep'} "${name}" as ${things.length === 1 ? 'its' : 'their'} place; only the saved place and its photos go.` : 'The saved place and its photos go.'}
@@ -265,12 +364,29 @@ export function ResearchScreen({ onBack }) {
     a.download = `recall-events-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
   }
+  // 09-30 (TESTING.md #6, Ravi: "your real house as test data"): a copy of what this phone can see — items, places and
+  // their "is in" links, with small photos only — so every build can be tested on the real house, not the rig's sample.
+  // It is saved on this phone; nothing is sent anywhere.
+  function downloadHouse() {
+    const g = graph();
+    const slim = (d) => { const { photo, ...rest } = d; return rest; };
+    const docs = [
+      ...g.items.filter((d) => !d.deleted).map(slim),
+      ...g.edges.map((e) => ({ ...e })),
+      ...(g.places || []).map((p) => ({ ...p, photos: (p.photos || []).map((x) => ({ thumb: x.thumb, photo: x.thumb, at: x.at })) })),
+    ];
+    const blob = new Blob([JSON.stringify({ kind: 'recall-house', me: me(), exportedAt: new Date().toISOString(), docs })], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `recall-house-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+    logEvent('house_export', { docs: docs.length });
+  }
   return (
     <div className="screen settings">
       <Header title="Research log" onBack={onBack} />
       <div className="group"><div className="grow">
         <p className="sub">Every photo, question and correction is logged silently with exact times. Nothing is ever shown to the person as a number.</p>
         <button className="btn-secondary" onClick={downloadEvents}>Download usage log (JSON)</button>
+        <button className="btn-secondary" onClick={downloadHouse}>Download a copy of my house (for testing)</button>
+        <p className="sub">Your items, places and what is in what, with small photos — so each new build can be tested on your real house. It is saved on this phone; you choose where it goes.</p>
       </div></div>
     </div>
   );

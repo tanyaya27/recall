@@ -29,7 +29,7 @@ export function placeDoc(name, g = G) { return (g.placeByName && g.placeByName.g
 
 // Outward from a PLACE: [{t:'place', name, id} | {t:'thing', item}, …] — what the place is in, and what that is in,
 // through places and boxes alike, never round in a circle, at most `max` steps.
-export function placeOuter(name, g = G, max = 8) {
+export function placeOuter(name, g = G, max = 12) { // 09-30: one limit (12) for every chain reader — the monkey found the page dropping the 10th tier
   const out = []; const seen = new Set();
   let cur = placeDoc(name, g); if (cur) seen.add('p:' + cur.id);
   while (cur && out.length < max) {
@@ -91,7 +91,7 @@ export function holderOf(item, g = G) {
 }
 
 // Outward: [wooden box, memorabilia box, …], at most six steps, never round in a circle.
-export function chainOf(item, g = G, max = 6) {
+export function chainOf(item, g = G, max = 12) {
   const out = []; const seen = new Set([item && item.id]);
   let cur = item;
   while (cur && out.length < max) {
@@ -113,7 +113,9 @@ export function wouldLoop(item, dest, g = G) {
 // What a thing holds: things whose open edge points at it, newest first.
 export function contentsOf(thing, g = G) {
   if (!thing) return [];
-  return g.items.filter((x) => !x.deleted && x.id !== thing.id && holderOf(x, g) === thing)
+  // 09-30: by id — a screen's copy of the box is not the graph's object, and `===` found nothing in it (a box could be
+  // switched off "holds items" with things inside; a rename missed its items).
+  return g.items.filter((x) => !x.deleted && x.id !== thing.id && (holderOf(x, g) || {}).id === thing.id)
     .sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
 }
 // Everything inside, at any depth (the count on a box tile says what's directly in it; this is for Find).
@@ -154,7 +156,9 @@ export function placeWords(item, g = G) {
   const chain = chainOf(item, g);
   if (!chain.length) return null;
   const lead = chain.slice(0, 2).map((c, i) => (i === 0 ? inPhrase(c) : inPhrase(c).replace(/^In /, 'in '))).join(', ');
-  return { lead, where: outerPlace(item, g), chain };
+  // `first`: the tier it is directly in — what a small tile shows (09-30: the tile joined two tiers with ", in the", the one
+  // place a chain was written without the "in" pill; the item's page has the whole chain).
+  return { lead, first: inPhrase(chain[0]), where: outerPlace(item, g), chain };
 }
 
 // Where typed or picked words point: a THING (exact name or a name it was called) or a place by name.

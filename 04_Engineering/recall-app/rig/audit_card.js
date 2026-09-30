@@ -31,8 +31,8 @@ function check(req, name, ok, note = '', shotFile = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  [${req}] ${name}${note ? ' — ' + note : ''}`);
 }
 
-let AI = { name: 'thing' }; let WHERE = []; let SAME = { index: -1, sure: false };
-let NEXT_WHERE_DELAY = 0; let NEXT_WHERE_BADJSON = false; let lastPool = null;
+let AI = { name: 'thing' }; let WHERE = []; let SAME = { index: -1, sure: false }; let SAME_PLACE = { same: true, sure: true };
+let NEXT_WHERE_DELAY = 0; let NEXT_WHERE_BADJSON = false; let lastPool = null; let lastPoolNames = [];
 
 // Each look gets its OWN browser (closed and relaunched in between) — two full runs (90+ steps each,
 // a live fake-camera canvas painting the whole time) in a single browser accumulated enough memory to
@@ -57,13 +57,14 @@ async function runLook(look) {
     const images = content.filter((b) => b.type === 'image').length;
     let out; let delay = 220; let badjson = false;
     if (/MOVES:/.test(texts)) {
-      lastPool = [...texts.matchAll(/SAVED (\d+) —/g)].length;
+      lastPool = [...texts.matchAll(/SAVED (\d+) —/g)].length; lastPoolNames = [...texts.matchAll(/SAVED (\d+) — "([^"]*)"/g)].map((x) => x[2]);
       const w = WHERE.shift() || { name: 'shelf', moves: false };
       let index = 0; if (w.known) { const m = [...texts.matchAll(/SAVED (\d+) — "([^"]*)"/g)].find((x) => x[2].toLowerCase() === w.known.toLowerCase()); index = m ? Number(m[1]) : 0; }
       out = { name: w.name, moves: !!w.moves, index: (w.known && index === 0 && !w.nohit) ? 0 : index, sure: w.sure !== undefined ? !!w.sure : !!index };
       if (NEXT_WHERE_DELAY) { delay = NEXT_WHERE_DELAY; NEXT_WHERE_DELAY = 0; }
       if (NEXT_WHERE_BADJSON) { badjson = true; NEXT_WHERE_BADJSON = false; }
-    } else if (/NEW PHOTO/.test(texts)) out = SAME;
+    } else if (/PHOTO A:/.test(texts)) out = SAME_PLACE; // 09-30: two place photos — the same spot?
+    else if (/NEW PHOTO/.test(texts)) out = SAME;
     else if (images) out = { name: AI.name, sameAs: AI.sameAs || '', alternatives: [], restingOn: AI.restingOn || '', placeCertain: !!AI.placeCertain, placeGuesses: AI.placeGuesses || [], description: '', details: AI.details || '', private: !!AI.private, privateWhy: AI.privateWhy || '', secretVisible: false };
     else out = { matches: [], message: '' };
     await new Promise((r) => setTimeout(r, delay));
@@ -215,17 +216,18 @@ async function runLook(look) {
     check('C4', 'Save (rules on): Kitchen counter is now in Pantry shelf (with the new photo); the camera closed', !(await st()).open && (await page.evaluate(() => { const d = window.__rig.dump(); const p = d.find((x) => x.kind === 'place' && x.name === 'Kitchen counter'); return d.some((e) => e.kind === 'edge' && e.from === p.id && !e.until && e.to.name === 'Pantry shelf'); })) && ((await placeByName('Pantry shelf')).photos || []).length === 2, '');
 
     // ---------- C5: not recognised in time (3 s) → Choose place opens itself; the late answer shows there ----------
+    // 09-30: ReCall compares with the places used most recently (the Desk drawer holds the 3D model), not the 4 oldest.
     await fresh(); await move('Spare batteries'); await tap('.lv-sq.plus', { wait: 300 });
-    NEXT_WHERE_DELAY = 4200; WHERE.push({ name: 'Hall shelf', moves: false, known: 'Linen closet', sure: true });
+    NEXT_WHERE_DELAY = 4200; WHERE.push({ name: 'Hall shelf', moves: false, known: 'Desk drawer', sure: true });
     await cam('closet.jpg'); const t0 = Date.now(); await tap('.lc-shutter', { wait: 200 });
     await page.waitForSelector('.where-list', { timeout: 6000 }); const opened = Date.now() - t0; s = await st(); await snapC('timeout opens choose place');
     check('C5', 'after ~3 s with no answer, ☰ Choose place opens by itself with the photo: "A new place?"', opened >= 2800 && opened < 4000 && /Choose place/.test(s.sheet) && /A new place\?/.test(s.sheet), `opened after ${opened} ms`);
     for (let k = 0; k < 20 && !/Is it the/.test((await st()).sheet); k++) await page.waitForTimeout(200);
     await page.waitForTimeout(300); s = await st(); await snapC('late answer shows in the sheet');
     const draft1 = await page.locator('.wl-pend input').inputValue();
-    check('C5', 'the late answer shows up in the sheet: "Is it the Linen closet?" first, and ReCall\'s name in the field', /Is it the Linen closet\?/.test(s.sheet) && /hall shelf/i.test(draft1), `draft="${draft1}"`);
+    check('C5', 'the late answer shows up in the sheet: "Is it the Desk drawer?" first, and ReCall\'s name in the field', /Is it the Desk drawer\?/.test(s.sheet) && /hall shelf/i.test(draft1), `draft="${draft1}"`);
     await tap('.wl-sugg', { wait: 500 }); s = await st();
-    check('C5', 'tapping it sets level 2 = Linen closet', /^Place:\s*Linen closet/.test(s.place), s.place);
+    check('C5', 'tapping it sets level 2 = Desk drawer', /^Place:\s*Desk drawer/.test(s.place), s.place);
 
     // ---------- C6: "No, ☰ Choose place" → name it ----------
     await fresh(); await move('Spare batteries'); await tap('.lv-sq.plus', { wait: 300 });

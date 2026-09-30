@@ -1,0 +1,12 @@
+    await seedHouse(); await page.evaluate(() => window.__rig.rules(true));
+    await home(); await page.click(LOG); await page.waitForTimeout(900);
+    AI = { name: 'lamp' }; await cam('real_desk.jpg'); await tap('.lc-shutter', { wait: 1800 });
+    await tap('.lv-sq.plus', { wait: 400 }); WHERE.push({ name: 'nightstand', moves: false }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 3800 });
+    await tap('.wl-pend .btn-primary', { wait: 600 });
+    await page.locator('.lv-sq[aria-label^="Level 1"]').click(); await page.waitForTimeout(500);
+    const rows = await page.locator('.tier-sheet button').allInnerTexts(); console.log('new photo-named level sheet:', rows.map(r => r.replace(/\s+/g, ' ')).join(' | ')); await shot('new level sheet');
+    await tap('.tier-sheet .btn-quiet:has-text("Close")');
+    await tap('.lv-sq.plus', { wait: 400 }); await tap('.lc-choose', { wait: 400 }); await page.locator('.wl-search input').fill('Bedroom'); await page.keyboard.press('Enter'); await page.waitForTimeout(500);
+    await page.locator('.lv-sq[aria-label^="Level 2"]').click(); await page.waitForTimeout(500);
+    const rows2 = await page.locator('.tier-sheet button').allInnerTexts(); console.log('new typed level sheet:', rows2.map(r => r.replace(/\s+/g, ' ')).join(' | '));
+    check('RN', 'a new level\'s sheet offers Rename (g ruling: photos, Choose place, Rename, Remove)', rows.some(r => /Rename/.test(r)) || rows2.some(r => /Rename/.test(r)), '');

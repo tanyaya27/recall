@@ -360,6 +360,15 @@ function withAlias(item, name) {
 export async function renameItem(item, name) {
   // Compare the OLD name against the NEW one (audit D13: it was compared with itself and never kept).
   await updateItem(item.id, { name, aliases: withAlias({ ...item, name }, item.name) });
+  // 09-30 (independent test #4): the items IN a renamed box carry its name as their place text; left alone, the old name
+  // turned up in Places as a ghost place. They follow the box, the same way renamePlace updates a place's items.
+  const old = (item.name || '').toLowerCase();
+  if (!old || old === (name || '').toLowerCase()) return;
+  const inIt = contentsOf(graph().byId.get(item.id) || item).filter((it) => (it.location || '').toLowerCase() === old && it.owner === me());
+  await Promise.all(inIt.map((it) => updateDoc(doc(col, it.id), {
+    location: capName(name), updatedAt: Date.now(),
+    history: (it.history || []).map((h) => ((h.location || '').toLowerCase() === old ? { ...h, location: capName(name) } : h)),
+  })));
 }
 // The AI called it something on a later photo: remember that too.
 export async function noteAlias(item, aiName) {
@@ -821,6 +830,8 @@ export function knownLocations(items, limit = 5, places = []) {
   // A name that IS a thing (the wooden box) is offered as that thing — by its photo, "In the wooden box" —
   // never a second time as a place of the same name (09-27: both showed, both ticked).
   const thingNames = new Set(items.filter((x) => !x.deleted && x.name).map((x) => normName(x.name)));
+  // …nor a box's OLD name (09-30: after a rename, older history lines still say it — not a place either).
+  items.filter((x) => !x.deleted && x.holds).forEach((x) => (x.aliases || []).forEach((a) => thingNames.add(normName(a))));
   return [...counts.entries()]
     .filter(([loc]) => !thingNames.has(normName(loc)))
     .sort((a, b) => ((b[1].saved ? 1 : 0) - (a[1].saved ? 1 : 0)) || (b[1].last - a[1].last) || (b[1].n - a[1].n))
@@ -935,11 +946,45 @@ export async function renamePlace(place, name, items = []) {
     location: n, updatedAt: Date.now(),
     history: (it.history || []).map((h) => (h.location || '').toLowerCase() === place.name.toLowerCase() ? { ...h, location: n } : h),
   })));
+  // 09-30 (found by the journeys' oracle, J4): the "is in" links still named the old place, so the item's words said
+  // Counter while its link — and anything reading the chain — said Kitchen counter. The open links follow the rename.
+  const old = place.name.toLowerCase();
+  const links = graph().edges.filter((e) => !e.until && e.to && e.to.t === 'place' && (e.to.name || '').toLowerCase() === old && e.owner === me());
+  await Promise.all(links.map((e) => updateDoc(doc(col, e.id), { to: { ...e.to, name: n } })));
 }
 // One toast shape for both directions (Ravi 09-15: the two were 'terrible and inconsistent';
 // and 'only this phone' was wrong — private means private to the person, on every device).
 export const VISIBILITY_TOAST = { private: 'Now private · only you see it', household: 'Now shared · everyone at home sees it' };
 export async function removePlace(place) { await deleteDoc(doc(col, place.id)); }
+// 09-30 (Ravi, 4): the photos a place keeps — the first stays (it's the one shown for the place), then the newest others, up
+// to 6 and under the ~700 KB guard. Used when two places merge.
+export function fitPlacePhotos(list = []) {
+  const main = list[0] || null; if (!main) return [];
+  let rest = list.slice(1).sort((a, b) => (a.at || 0) - (b.at || 0));
+  const bytes = (l) => l.reduce((n, p) => n + photoBytes(p), 0);
+  while (rest.length && (rest.length + 1 > PLACE_PHOTOS || bytes([main, ...rest]) > PLACE_PHOTOS_BYTES)) rest.shift();
+  return [main, ...rest];
+}
+// 09-30 (Ravi, 4): "Kitchen counter" renamed to "Pantry shelf", which you already have → one Pantry shelf. Everything that
+// said Kitchen counter (items, links, places inside it) now says Pantry shelf; the Pantry shelf keeps `keep` as its photos
+// (chosen on the merge sheet); where the Kitchen counter was is kept only if the shelf had no where of its own.
+export async function mergePlace(from, into, keep, items = []) {
+  const old = (from.name || '').toLowerCase(); const n = into.name;
+  const hits = items.filter((it) => (it.location || '').toLowerCase() === old);
+  await Promise.all(hits.map((it) => updateDoc(doc(col, it.id), {
+    location: n, updatedAt: Date.now(),
+    history: (it.history || []).map((h) => ((h.location || '').toLowerCase() === old ? { ...h, location: n } : h)),
+  })));
+  const links = graph().edges.filter((e) => !e.until && e.to && e.to.t === 'place' && (e.to.name || '').toLowerCase() === old && e.owner === me() && e.from !== into.id);
+  await Promise.all(links.map((e) => updateDoc(doc(col, e.id), { to: { ...e.to, name: n } })));
+  const fromEdge = openEdge(from.id); const intoEdge = openEdge(into.id);
+  if (fromEdge) await updateDoc(doc(col, fromEdge.id), { until: Date.now(), closedBy: me() });
+  if (fromEdge && !intoEdge && !(fromEdge.to.t === 'place' && (fromEdge.to.name || '').toLowerCase() === n.toLowerCase())) await placeIn(into, fromEdge.to);
+  await updateDoc(doc(col, into.id), { photos: fitPlacePhotos(keep), updatedAt: Date.now(), ...placeShare(into) });
+  await deleteDoc(doc(col, from.id));
+  logEvent('place_merged', { from: from.name, into: n, items: hits.length, links: links.length, photos: (keep || []).length });
+  return { items: hits.length };
+}
 
 // ---------- routines (what the app asks for, and when) ----------
 

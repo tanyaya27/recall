@@ -432,3 +432,16 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-29 (night) — "Settle" helpers must wait for what they settle.** `settleWhere` waited a fixed 300 ms after the
   look; under load the Choose place sheet opened later and the next step clicked into it (audit_graph K1, flaky). It now
   polls for the sheet or the question.
+- **2026-09-30 — The rig can lie.** Its store silently stopped persisting past ~5 MB, so an item saved before a reload
+  "vanished" — it looked exactly like an app bug. Test tools must fail loudly (the store now dedupes photos and logs an
+  error if a save ever fails, which every suite's error check catches).
+- **2026-09-30 — Run the phone's engine.** WebKit found three things Chromium hid: + scrolled out of reach (a tap
+  missed), the caption 4–5 px low (Safari ignores `text-box` on a clamped box), the 3 s wait running 4 s. Chromium passing
+  is not the phone passing.
+- **2026-09-30 — An independent tester finds what the builder can't.** A separate agent that read only the rulings
+  found 9 bugs in a build that passed 551 checks, including one that deleted an item. Every build gets one.
+- **2026-09-30 — Check screens against the store, not against each other.** Renaming a place updated every screen's
+  words, so they all agreed — and all were wrong about the link underneath. Only the oracle (truth from the store) saw it.
+- **2026-09-30 — A check that visits every screen leaves you somewhere else.** The oracle opens the item page, Find and
+  Move it; a journey that then clicked on "the place page" was on another page (J15). After an oracle run, open the
+  screen you mean again — and scroll to the top before measuring (audit D16 failed on a scrolled page, not on the app).

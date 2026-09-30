@@ -7,12 +7,15 @@ import { PinIcon, LockIcon } from './Icons.jsx';
 export default function SavedCard({ card, onUndo, onDone, onShare, onRenameLink }) {
   useEffect(() => {
     if (!card) return;
-    const t = setTimeout(onDone, card.undo ? 8000 : 5000);
+    // 09-30: the card lasts 8 s from the SAVE, not from when it last appeared (it hides while the camera is open and used to
+    // start again on return — an Undo from minutes ago was still there).
+    const t = setTimeout(onDone, Math.max(0, (card.undo ? 8000 : 5000) - (Date.now() - (card.key || Date.now()))));
     return () => clearTimeout(t);
   }, [card && card.key]); // eslint-disable-line -- the same card re-rendered (a late name, a late verdict) keeps its timer
   if (!card) return null;
   return (
-    <div className="saved-card" role="status" aria-live="polite">
+    // 09-30: after a Move the card sits over the item page — a tap on it (not on a button) puts it away.
+    <div className="saved-card" role="status" aria-live="polite" onClick={(e) => { if (!e.target.closest('button')) onDone(); }}>
       {card.undo && <button type="button" className="u" onClick={() => { onUndo(card.undo); onDone(); }}>Undo</button>}
       <div className="trail">
         {card.thumbs.map((t, i) => (

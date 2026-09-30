@@ -69,7 +69,13 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-29 (night) — `20260929h` built (NOT pushed): Move it shows every tier already known (+ adds on top); sheets with a text field ride above the iPhone keyboard; "in" pills on the item page and saved card. 551 checks green. `g` is pushed.**
+> **2026-09-30 (evening) — `20260930c` built (NOT pushed): after a Move, a note on the item page (no card); a place's page lists what's in it with Move / Move all, and Remove waits until it's empty; renaming a place to a name you have merges it, with a photo check and a photo review. 745 checks green. `a`, `b` not pushed either.**
+>
+> **2026-09-30 (later) — `20260930b` built (NOT pushed): Save + Next gets an Undo. Three design picks await Ravi (OPEN_ITEMS). `a` not yet pushed.**
+>
+> **2026-09-30 — `20260930a` built (NOT pushed): a new way of testing (`06_Handoffs/TESTING.md`: oracle, journeys, monkey, WebKit, the house copy, an independent tester per build) and the ~20 bugs it found, fixed. 728 checks green. `h` is pushed.**
+>
+> **2026-09-29 (night) — `20260929h` built (pushed): Move it shows every tier already known (+ adds on top); sheets with a text field ride above the iPhone keyboard; "in" pills on the item page and saved card. 551 checks green. `g` is pushed.**
 >
 > **2026-09-29 (late night) — `20260929g` built (pushed): the camera card as Ravi ruled it (3 s look, ☰ Choose place, + adds a level, hold Save = Save + Next, a place's 7th photo replaces the oldest). 536 checks green. `f` is pushed.**
 >

@@ -1,0 +1,11 @@
+    await kbInit();
+    await seedHouse(); await page.evaluate(() => window.__rig.rules(true));
+    await home(); await shot('home'); await ui('home');
+    await page.click('.footer .btn-primary.alt'); await page.waitForTimeout(500); await shot('find'); await ui('find');
+    await page.keyboard.type('plant', { delay: 30 }); await page.waitForTimeout(500); await shot('find-plant'); await ui('find plant');
+    await page.locator('.ask .tile').first().click(); await page.waitForTimeout(700); await shot('item page'); await ui('item page');
+    await page.locator('button:has-text("Move it")').first().click(); await page.waitForTimeout(1000); await shot('move it'); await ui('move it');
+    await page.locator('.lv-sq.plus').first().click().catch(e => console.log('noplus', e.message)); await page.waitForTimeout(500); await shot('plus'); await ui('after plus');
+    await page.locator('.lc-choose').first().click().catch(e => console.log('nochoose', e.message)); await page.waitForTimeout(600); await shot('choose sheet'); await ui('choose sheet');
+    await home(); await page.click(LOG); await page.waitForTimeout(900); await shot('log item'); await ui('log item');
+    AI = { name: 'blue scissors' }; await cam('scissors.jpg'); await page.locator('.lc-shutter').first().click(); await page.waitForTimeout(2000); await shot('log item shot'); await ui('after item shot');

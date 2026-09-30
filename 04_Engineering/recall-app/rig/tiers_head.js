@@ -31,8 +31,8 @@ function check(req, name, ok, note = '', shotFile = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  [${req}] ${name}${note ? ' — ' + note : ''}`);
 }
 
-let AI = { name: 'thing' }; let WHERE = []; let SAME = { index: -1, sure: false };
-let NEXT_WHERE_DELAY = 0; let NEXT_WHERE_BADJSON = false; let lastPool = null;
+let AI = { name: 'thing' }; let WHERE = []; let SAME = { index: -1, sure: false }; let SAME_PLACE = { same: true, sure: true };
+let NEXT_WHERE_DELAY = 0; let NEXT_WHERE_BADJSON = false; let lastPool = null; let lastPoolNames = [];
 
 // Each look gets its OWN browser (closed and relaunched in between) — two full runs (90+ steps each,
 // a live fake-camera canvas painting the whole time) in a single browser accumulated enough memory to
@@ -57,13 +57,14 @@ async function runLook(look) {
     const images = content.filter((b) => b.type === 'image').length;
     let out; let delay = 220; let badjson = false;
     if (/MOVES:/.test(texts)) {
-      lastPool = [...texts.matchAll(/SAVED (\d+) —/g)].length;
+      lastPool = [...texts.matchAll(/SAVED (\d+) —/g)].length; lastPoolNames = [...texts.matchAll(/SAVED (\d+) — "([^"]*)"/g)].map((x) => x[2]);
       const w = WHERE.shift() || { name: 'shelf', moves: false };
       let index = 0; if (w.known) { const m = [...texts.matchAll(/SAVED (\d+) — "([^"]*)"/g)].find((x) => x[2].toLowerCase() === w.known.toLowerCase()); index = m ? Number(m[1]) : 0; }
       out = { name: w.name, moves: !!w.moves, index: (w.known && index === 0 && !w.nohit) ? 0 : index, sure: w.sure !== undefined ? !!w.sure : !!index };
       if (NEXT_WHERE_DELAY) { delay = NEXT_WHERE_DELAY; NEXT_WHERE_DELAY = 0; }
       if (NEXT_WHERE_BADJSON) { badjson = true; NEXT_WHERE_BADJSON = false; }
-    } else if (/NEW PHOTO/.test(texts)) out = SAME;
+    } else if (/PHOTO A:/.test(texts)) out = SAME_PLACE; // 09-30: two place photos — the same spot?
+    else if (/NEW PHOTO/.test(texts)) out = SAME;
     else if (images) out = { name: AI.name, sameAs: AI.sameAs || '', alternatives: [], restingOn: AI.restingOn || '', placeCertain: !!AI.placeCertain, placeGuesses: AI.placeGuesses || [], description: '', details: AI.details || '', private: !!AI.private, privateWhy: AI.privateWhy || '', secretVisible: false };
     else out = { matches: [], message: '' };
     await new Promise((r) => setTimeout(r, delay));

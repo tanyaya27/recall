@@ -50,17 +50,18 @@
     check('C4', 'Save (rules on): Kitchen counter is now in Pantry shelf (with the new photo); the camera closed', !(await st()).open && (await page.evaluate(() => { const d = window.__rig.dump(); const p = d.find((x) => x.kind === 'place' && x.name === 'Kitchen counter'); return d.some((e) => e.kind === 'edge' && e.from === p.id && !e.until && e.to.name === 'Pantry shelf'); })) && ((await placeByName('Pantry shelf')).photos || []).length === 2, '');
 
     // ---------- C5: not recognised in time (3 s) → Choose place opens itself; the late answer shows there ----------
+    // 09-30: ReCall compares with the places used most recently (the Desk drawer holds the 3D model), not the 4 oldest.
     await fresh(); await move('Spare batteries'); await tap('.lv-sq.plus', { wait: 300 });
-    NEXT_WHERE_DELAY = 4200; WHERE.push({ name: 'Hall shelf', moves: false, known: 'Linen closet', sure: true });
+    NEXT_WHERE_DELAY = 4200; WHERE.push({ name: 'Hall shelf', moves: false, known: 'Desk drawer', sure: true });
     await cam('closet.jpg'); const t0 = Date.now(); await tap('.lc-shutter', { wait: 200 });
     await page.waitForSelector('.where-list', { timeout: 6000 }); const opened = Date.now() - t0; s = await st(); await snapC('timeout opens choose place');
     check('C5', 'after ~3 s with no answer, ☰ Choose place opens by itself with the photo: "A new place?"', opened >= 2800 && opened < 4000 && /Choose place/.test(s.sheet) && /A new place\?/.test(s.sheet), `opened after ${opened} ms`);
     for (let k = 0; k < 20 && !/Is it the/.test((await st()).sheet); k++) await page.waitForTimeout(200);
     await page.waitForTimeout(300); s = await st(); await snapC('late answer shows in the sheet');
     const draft1 = await page.locator('.wl-pend input').inputValue();
-    check('C5', 'the late answer shows up in the sheet: "Is it the Linen closet?" first, and ReCall\'s name in the field', /Is it the Linen closet\?/.test(s.sheet) && /hall shelf/i.test(draft1), `draft="${draft1}"`);
+    check('C5', 'the late answer shows up in the sheet: "Is it the Desk drawer?" first, and ReCall\'s name in the field', /Is it the Desk drawer\?/.test(s.sheet) && /hall shelf/i.test(draft1), `draft="${draft1}"`);
     await tap('.wl-sugg', { wait: 500 }); s = await st();
-    check('C5', 'tapping it sets level 2 = Linen closet', /^Place:\s*Linen closet/.test(s.place), s.place);
+    check('C5', 'tapping it sets level 2 = Desk drawer', /^Place:\s*Desk drawer/.test(s.place), s.place);
 
     // ---------- C6: "No, ☰ Choose place" → name it ----------
     await fresh(); await move('Spare batteries'); await tap('.lv-sq.plus', { wait: 300 });

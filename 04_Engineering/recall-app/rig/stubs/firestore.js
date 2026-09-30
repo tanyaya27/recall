@@ -8,8 +8,27 @@ let seq = 0;
 // The store survives a page reload (localStorage) so the audit can boot the app "as" several
 // people over ONE store — two phones, one Firestore. `__rig.reset()` clears it.
 const LS = 'rig-store';
-function load() { try { const raw = localStorage.getItem(LS); if (!raw) return; const obj = JSON.parse(raw); Object.entries(obj.cols).forEach(([n, m]) => stores.set(n, new Map(Object.entries(m)))); seq = obj.seq || 0; } catch { /* fresh */ } }
-function save() { try { const cols = {}; stores.forEach((m, n) => { cols[n] = Object.fromEntries(m); }); localStorage.setItem(LS, JSON.stringify({ cols, seq })); } catch { /* quota: the rig's photos are small */ } }
+// 09-30: long strings (photos) are stored once each in a side table — the rig reuses a few photo files, and the store
+// used to outgrow localStorage (~5 MB) in long runs and SILENTLY stop saving, so an item saved before a reload was gone
+// (it looked like an app bug: audit_chain H9). A save that still fails is now loud (console.error → every suite's Z0).
+const BIG = 2048;
+const hashOf = (str) => { let h = 5381; for (let i = 0; i < str.length; i += 7) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0; return h.toString(36) + ':' + str.length; };
+function pack(v, blobs) {
+  if (typeof v === 'string') { if (v.length < BIG) return v; const k = hashOf(v); blobs[k] = v; return '\u0000blob:' + k; }
+  if (Array.isArray(v)) return v.map((x) => pack(x, blobs));
+  if (v && typeof v === 'object') { const o = {}; for (const [k, x] of Object.entries(v)) o[k] = pack(x, blobs); return o; }
+  return v;
+}
+function unpack(v, blobs) {
+  if (typeof v === 'string') return v.startsWith('\u0000blob:') ? (blobs[v.slice(6)] ?? '') : v;
+  if (Array.isArray(v)) return v.map((x) => unpack(x, blobs));
+  if (v && typeof v === 'object') { const o = {}; for (const [k, x] of Object.entries(v)) o[k] = unpack(x, blobs); return o; }
+  return v;
+}
+function load() { try { const raw = localStorage.getItem(LS); if (!raw) return; const obj = JSON.parse(raw); const blobs = obj.blobs || {};
+  Object.entries(obj.cols).forEach(([n, m]) => stores.set(n, new Map(Object.entries(m).map(([id, d]) => [id, unpack(d, blobs)])))); seq = obj.seq || 0; } catch { /* fresh */ } }
+function save() { try { const cols = {}; const blobs = {}; stores.forEach((m, n) => { cols[n] = {}; m.forEach((d, id) => { cols[n][id] = pack(d, blobs); }); }); localStorage.setItem(LS, JSON.stringify({ cols, seq, blobs })); }
+  catch (e) { console.error('[rig] the store could not be saved (' + (e && e.name) + ') — a reload will lose recent writes'); } }
 if (typeof window !== 'undefined') load();
 let enforce = (typeof localStorage !== 'undefined' && localStorage.getItem('rig-rules') === '1'); // the audit turns rules on once it seeds; the default rig runs open
 const S = (name) => { if (!stores.has(name)) stores.set(name, new Map()); return stores.get(name); };

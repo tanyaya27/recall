@@ -6,6 +6,47 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-30 (evening) — After a Move, removing a place, merging places (Ravi agreed with Claude's picks) — `20260930c`
+
+- **After a Move from the item page: a note in Where it is, not a card.** The page already shows the new place, so the
+  note says only what changed and offers Undo; no timer (nothing to race), ✕ or leaving the page puts it away. *Why not a
+  card with ✕ (2B):* it still covers the page until closed. A Log and a Move started from Home keep the card — there's no
+  item page behind them. *Would change:* people missing the note because it's inside the page.
+- **Removing a place that has things in it: the place's page is the worklist.** Each item/place has its own Move (Choose
+  place, no camera), "Move all to…" moves everything at once, Remove stays greyed until it's empty. *Why not Ravi's 3A
+  (list in the warning, or a search by place):* the warning becomes a second copy of the place page, and a search is a
+  round trip you have to remember to come back from. *Would change:* people not finding Move on the rows.
+- **Renaming a place to a name you have: merge, with ReCall comparing the photos** (`engine.samePlace`, 8 s timeout → treated
+  as "can't tell"). Same → one tap merge, all photos kept (oldest extras drop past 6 / the size cap, the main photo stays).
+  Different → said plainly; keep the other place's photos, or keep all → **a review of every photo with ✕ (asked first)**
+  (Ravi), or give it its own name. *Why not Ravi's "delete photos before merging":* the choice of photos IS the fix; no
+  dead end. *Why the photos matter:* mismatched photos break camera recognition of the place. A box's name is still
+  refused — a place can't become a box.
+
+## 2026-09-30 (later) — Save + Next gets an Undo (Ravi) — `20260930b`
+
+- After the "✓ saved" flash, "✓ <item> saved · Undo" stays at the top of the picture until the next item's first photo or
+  10 s. *Why not on the flash itself:* 1.5 s is too quick to reach, and a longer flash would sit over the next item.
+- Ravi then agreed with Claude's picks on the Move confirmation, removing a place with items and merging places → `c` (above).
+
+## 2026-09-30 — A new way of testing (Ravi approved; `06_Handoffs/TESTING.md`) — and the rulings it forced — `20260930a`
+
+- **Testing:** one truth for "where is it" checked on every screen after every step (oracle); stories over days
+  (journeys); random sequences (monkey); Safari's engine; the real house; an independent tester per build who reads only
+  the rulings. *Not yet:* the iPhone Simulator and a real-device service (with the native app).
+- **A Move gets the same card as a Log** (the chain with "in" pills, what moved with it, Undo) — the one-line toast cut
+  the "moved" line. Tapping the card puts it away.
+- **Opening the camera ends the last save's card** (its Undo was about that save; after a Move it deleted the item).
+- **Recognition compares with what's on the chain first, then the places made, photographed or used most recently** —
+  not the 4 oldest. A candidate whose photo won't open is left out, not the whole look.
+- **A place can't be renamed to a name you already have** (a place or a box) — refused with the reason. Merging is for Ravi.
+- **Level 1 in Move it has no "Remove this level"** (change it with Choose place).
+- **The Find tile shows the tier it's in** ("In the wooden box"); the item page has the whole chain with "in" pills.
+- **"Place: Wooden box"** in the camera — the name, as in the chain line.
+- **Chains are read to 12 tiers everywhere** (camera, item page, graph) — the item page had dropped the 10th.
+- **The caption's top meets the Add photo pill by the cap height** (`margin-top: (1lh − 1cap)/−2`), not `text-box`:
+  Safari ignores `text-box` on a line-clamped box (4–5 px low on the phone's engine). Exact for SF Pro.
+
 ## 2026-09-29 (night, after Ravi's phone test of `g`) — The camera shows the whole known chain; sheets ride above the keyboard; "in" everywhere — `20260929h`
 
 - **The squares always show what's already known above a place** (Ravi: "it does not remember the IKEA bookshelf").

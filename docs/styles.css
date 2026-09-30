@@ -924,7 +924,7 @@ label.toast-undo { display: inline-flex; align-items: center; border-radius: 0.5
 .saved-card .trail { display: flex; align-items: center; gap: 0.3rem; overflow: hidden; padding-right: 4rem; }
 .saved-card .trail img, .saved-card .trail .ph { flex: none; width: 52px; height: 52px; border-radius: 10px; object-fit: cover; border: 2px solid rgba(255,255,255,0.9); }
 .saved-card .trail .ph { display: flex; align-items: center; justify-content: center; background: #444; } .saved-card .trail .ph svg { width: 22px; height: 22px; }
-.saved-card .trail .in { flex: none; font-size: 0.75rem; font-weight: 800; color: #bbb; }
+.saved-card .trail .in { flex: none; display: inline-flex; align-items: center; height: 20px; padding: 0 0.45rem; border-radius: 999px; background: rgba(255,255,255,0.22); color: #fff; font-size: 0.6875rem; font-weight: 800; } /* 09-30: the same "in" pill as everywhere */
 .saved-card .s { margin-top: 0.5rem; font-size: 1rem; font-weight: 700; line-height: 1.3; }
 .saved-card .s small { display: block; font-weight: 500; color: #ccc; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .saved-card .s small.sc-move { white-space: normal; }
@@ -1080,7 +1080,9 @@ html, body { overflow-x: hidden; }
 .d1-cap .seen-line { flex: 1; min-width: 0; margin: 0 0 0 0.125rem; padding-top: 0;
   /* Ravi 09-29: the TOP of the caption's letters meets the top of the Add photo pill (measured on the pixels, probe_cap.js),
      and the caption stops at two lines with "…" — the whole caption is in the photo viewer (tap the photo). */
-  text-box: trim-start cap alphabetic; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  /* 09-30 (WebKit run): Safari ignores text-box trimming on a line-clamped box — the caption sat 4–5 px low there. Pull it up
+     by the space above the capitals instead: (line height − cap height) / 2, which is exact for SF Pro and the rig's font. */
+  margin-top: calc((1lh - 1cap) / -2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .d1-pill { flex: none; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0 0.875rem; margin-left: auto; border-radius: 999px;
   background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 0.9375rem; white-space: nowrap; }
 .d1-pill svg { width: 1.1rem; height: 1.1rem; }
@@ -1210,3 +1212,56 @@ html, body { overflow-x: hidden; }
 .kb-up .sheet-back { bottom: var(--kb, 0px); top: auto; height: var(--vvh, 100dvh); }
 .kb-up .sheet { max-height: calc(var(--vvh, 100dvh) - 0.75rem); overflow-y: auto; padding-bottom: 0.75rem; }
 .kb-up .where-list { max-height: calc(var(--vvh, 100dvh) - 0.75rem); overflow-y: hidden; }
+
+.lc-row2 .lc-plus-out { flex: none; } /* 09-30: + never scrolls away with the squares */
+/* 09-30 (independent test #3): at Large/Largest the camera's buttons ran off the screen ("Sa"). The camera is a tool screen:
+   its button text grows with the setting but never past what the width allows, and the side columns can shrink. */
+.lc-row { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 0.5rem; }
+.lc-row .lc-x, .lc-row .lc-k.sv { min-width: 0; max-width: 100%; font-size: min(1.0625rem, 4.3vw); padding: 0 min(0.875rem, 3vw); gap: min(0.4rem, 1.2vw); }
+.lc-row .lc-x svg, .lc-row .lc-k.sv svg { width: min(22px, 5.2vw); height: min(22px, 5.2vw); }
+.lc-choose { font-size: min(0.9375rem, 3.9vw); padding: 0 min(0.75rem, 2.6vw); gap: min(0.5rem, 1.6vw); }
+
+.tap-shield { position: fixed; inset: 0; z-index: 90; background: transparent; } /* 09-30: swallows a double tap's second tap after Save */
+.lc-title b, .lc-title .lc-name { padding-left: 3px; margin-left: -3px; } /* 09-30: at Largest the first letter was clipped by the 2-line clamp's edge */
+.lc-card .lc-say .tx .soft { white-space: normal; overflow: visible; } /* 09-30 (independent test #5): the "moved" line (Q3) and the name-gate line wrap, never cut before the arrow */
+.settings .row button:disabled { opacity: 0.4; } /* 09-30: a refused rename shows Save off */
+
+/* 09-30 (Ravi): Save + Next — after the big "✓ saved" flash, a small line at the top of the picture keeps Undo in reach */
+.lc-undo { position: absolute; left: 50%; top: 0.75rem; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 0.5rem; max-width: calc(100% - 1.5rem);
+  padding: 0.25rem 0.375rem 0.25rem 0.875rem; border-radius: 999px; background: rgba(24,22,20,0.72); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.14); color: #fff; font-size: min(0.9375rem, 4vw); font-weight: 700; }
+.lc-undo .ok { color: #7FD1B9; } .lc-undo .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lc-undo button { flex: none; min-height: 40px; padding: 0 0.875rem; border-radius: 999px; background: rgba(255,255,255,0.16); color: #fff; font-weight: 800; }
+.lc-undo > span:only-child { padding: 0.5rem 0.5rem 0.5rem 0; }
+
+/* 09-30 (Ravi, 2C): the Move confirmation lives in Where it is */
+.tp-moved { margin: 0.625rem 0 0.25rem; padding: 0.3rem 0.3rem 0.45rem 0.75rem; border-radius: 14px; background: rgba(47,143,107,0.10); border: 1.5px solid rgba(47,143,107,0.35); }
+.tp-moved .r1, .tp-moved .r2 { display: flex; align-items: center; gap: 0.5rem; }
+.tp-moved .r1 b { flex: 1; color: #2F8F6B; font-weight: 800; }
+.tp-moved .r2 span { flex: 1; min-width: 0; color: var(--ink-soft); font-size: 0.9375rem; }
+.tp-moved .x { flex: none; width: 40px; height: 40px; border-radius: 50%; background: transparent; color: var(--ink-soft); font-size: 1.05rem; font-weight: 800; }
+.tp-moved .u { flex: none; min-height: 40px; padding: 0 1rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 800; }
+.tp-moved .mv { color: var(--ink-soft); font-size: 0.875rem; margin-top: 0.25rem; }
+
+/* 09-30 (Ravi, 3B): a place's page lists what's in it, each with its own Move; Remove waits until it's empty */
+.pl-here { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.pl-all { min-height: 36px; padding: 0 0.875rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 800; font-size: 0.875rem; text-transform: none; letter-spacing: 0; }
+.pl-row { gap: 0.5rem; }
+.pl-row .pl-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.75rem; background: none; padding: 0; color: var(--ink); text-align: left; }
+.pl-move { flex: none; min-height: 40px; padding: 0 0.95rem; border-radius: 999px; border: 1.5px solid var(--accent); background: transparent; color: var(--accent); font-weight: 800; }
+.btn-secondary.amber:disabled { opacity: 0.45; }
+
+/* 09-30 (Ravi, 4): renaming a place to one you have → merge, with the photos side by side; "keep all" → review and remove */
+.merge-sheet { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+.merge-sheet .btn-primary, .merge-sheet .btn-secondary { margin-top: 0.5rem; }
+.mg-pair { display: flex; gap: 0.75rem; margin: 0.75rem 0 0.25rem; }
+.mg-one { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.mg-one img, .mg-one .no { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 14px; }
+.mg-one .no { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+.mg-one b { margin-top: 0.35rem; overflow-wrap: anywhere; } .mg-one small { color: var(--ink-soft); font-size: 0.8125rem; }
+.mg-warn b { color: var(--amber); }
+.mg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin: 0.75rem 0 0.25rem; }
+.mg-ph { position: relative; } .mg-ph img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; display: block; }
+.mg-main { position: absolute; left: 6px; top: 6px; padding: 0.1rem 0.45rem; border-radius: 999px; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.6875rem; font-weight: 800; }
+.mg-rm { position: absolute; right: 6px; bottom: 6px; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; display: flex; align-items: center; justify-content: center; }
+.mg-rm svg { width: 18px; height: 18px; }

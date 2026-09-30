@@ -139,6 +139,13 @@ the functions: `./rules-test/run_ai_test.sh`.
 - **Camera helpers for suites** (09-29g, pasted after `const page = await ctx.newPage();`): `settleWhere()` waits out the
   look and accepts ReCall's name in the Choose place sheet; `pickPlace(name)` goes through ☰ Choose place; `saveNext()`
   holds Save for 0.8 s. The pills (`.lc-chip`), the chain sheet (`.chain-sheet`) and look A are gone.
+- **09-30: the new testing (`06_Handoffs/TESTING.md`).** `./run_all.sh` runs everything in memory-safe batches (summary in
+  `/tmp/runs/SUMMARY.txt`) — **728 checks** at `20260930a`, **745** at `20260930c`. New: `oracle.js` (truth from the store vs every screen),
+  `journeys.js` (= tiers_head + journeys_body; stories in `JOURNEYS.md`, 34 checks; **51 at `c`**, J15–J18: the place worklist, Move all, merge; the stub's `global.SAME_PLACE` = 'same'|'different'|'unknown' answers the "PHOTO A:/PHOTO B:" place check), `monkey.js` (`SEED=… STEPS=…`),
+  `realhouse_suite.js` (`REAL=/path/recall-house-….json`, round-trips the sample house without it), `engine.js`
+  (`ENGINE=webkit node -r ./engine.js <suite>` — WebKit installed with `PLAYWRIGHT_BROWSERS_PATH=/home/claude/pw-webkit npx
+  playwright install webkit`; long WebKit runs can crash the rig, keep them short), `indep/` (the independent tester's
+  scripts and REPORT.md). The rig store now dedupes photos and says loudly if it can't save.
 - `audit_chain.js` (13 checks, = `tiers_head.js` + `chain_body.js`): Ravi's 09-29 phone case — Move it, tier 2 and 3 in one
   go, Save, **Move it again shows every tier**, + on top with the keyboard up (a stand-in visual viewport: `__kb(380)`),
   Save unchanged writes nothing, another tier 1 drops the old outer tiers, the rename sheet above the keyboard, the item

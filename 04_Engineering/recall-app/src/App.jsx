@@ -86,6 +86,14 @@ export default function App() {
   const [here, setHere] = useState('');            // "Log here" from inside a box or place: its name
   const [log, setLog] = useState(null);             // the camera (09-27): { preset, moveItem, key } — Log item · Log something in · Move it
   const [saved, setSaved] = useState(null);         // the Home card after a camera Save (the chain + Undo)
+  // 09-30 (independent test #7): a double tap on Save — the second tap landed on the page under it (the item page's Remove).
+  // For half a second after the camera closes on a Save, taps are swallowed.
+  const [shield, setShield] = useState(0);
+  // 09-30 (Ravi, 2C): a Move made from the item's own page is confirmed ON that page — a note in Where it is ("✓ Moved just
+  // now · Before: Kitchen counter · Undo · ✕"), no card over the page, no timer; it goes when you leave the page.
+  const [moveNote, setMoveNote] = useState(null);
+  useEffect(() => { if (moveNote && !(route.view === 'thing' && route.item && route.item.id === moveNote.itemId)) setMoveNote(null); }, [route]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!shield) return; const t = setTimeout(() => setShield(0), 350); /* 09-30 round 2: long enough for a double tap, short enough that a quick Undo lands */ return () => clearTimeout(t); }, [shield]);
   const [renameLink, setRenameLink] = useState(null); // { id, kind, thumb } from the saved card's "Unnamed" line (R3.3)
   const [renameDraft, setRenameDraft] = useState('');
   const adding = useRef(false); // B4: one add-photo at a time (see addPhotosTo)
@@ -241,9 +249,10 @@ export default function App() {
           onSaved={logSaved} onCancel={() => setLog(null)} onNotice={privacyNotice}
           onWrite={() => { setLog(null); logEvent('capture_write_open', {}); go('write', { key: Date.now() }); }} />
       )}
+      {shield ? <div className="tap-shield" aria-hidden="true" onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }} /> : null}
       {!log && <SavedCard card={saved && { ...saved, name: (() => { const it = items.find((x) => x.id === saved.itemId); return it && it.name ? it.name.charAt(0).toUpperCase() + it.name.slice(1) : saved.name; })() }} onDone={() => setSaved(null)}
         onShare={async (c) => { await setVisibility({ id: c.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: c.itemId, to: 'shared', via: 'saved_card' }); setSaved((x) => (x ? { ...x, lock: false, priv: null, shared: true } : x)); }}
-        onUndo={async (u) => { await undoChain(u); say('Undone · nothing from that photo is kept'); }}
+        onUndo={async (u) => { const mv = !!(saved && saved.moved); await undoChain(u); if (mv) logEvent('move_undo', { itemId: saved.itemId }); say(mv ? 'Undone · back where it was' : 'Undone · nothing from that photo is kept'); }}
         onRenameLink={openRenameLink} />}
       {/* R3.3: the "Unnamed — tap to name" line's rename sheet — renames the place/box saveChain just made. */}
       {renameLink && (
@@ -350,14 +359,29 @@ export default function App() {
   const logTitle = () => (whose ? `Log item · in ${possessive(firstName(whose))} ReCall` : 'Log item');
   // Log item (09-27): one camera asks what, then where — step back for what it's in and where that is.
   // `preset` is Log here: the box or place Home is showing. Several and the mode row went with Q3.
-  const openLog = (preset = null) => { logEvent('capture_open', { look: getPrefs().cameraLook, here: !!preset }); setLog({ preset, key: Date.now() }); };
+  // 09-30 (independent test #1): opening the camera again ends the last save's card — its Undo was about THAT save, and
+  // tapped after a Move it deleted the item.
+  // 09-30 (Ravi, 4): are these two photos the same place? (the merge sheet) — 'same' | 'different' | 'unknown'
+  const samePlace = async (a, b) => {
+    try { return await engine.samePlace(await shrink(a, 480), await shrink(b, 480), { sensitivity: 'personal' }); } catch (err) { console.warn('samePlace', err); return 'unknown'; }
+  };
+  const openLog = (preset = null) => { logEvent('capture_open', { look: getPrefs().cameraLook, here: !!preset }); setSaved(null); setLog({ preset, key: Date.now() }); };
   // Move it / Put it somewhere (09-27): the same camera, the thing already there, level 1 chosen.
-  const openMove = (item) => { logEvent('capture_open', { look: getPrefs().cameraLook, move: true }); setLog({ moveItem: item, key: Date.now() }); };
+  const openMove = (item) => { logEvent('capture_open', { look: getPrefs().cameraLook, move: true }); setSaved(null); setMoveNote(null); setLog({ moveItem: item, key: Date.now() }); };
   const logSaved = (card) => {
+    if (!card.next) setShield(Date.now());
     if (card.moved) {
       setLog(null);
       if (card.refused) { say('Not moved · it can’t go inside something that is inside it'); return; }
-      say(card.none ? 'No place yet' : `${card.name} · ${card.l1}${card.l2 ? ` · ${card.l2}` : ''}${(card.moving || []).length ? ` · ${card.moving.join(' · ')}` : ''}`, card.undo ? async () => { await undoChain(card.undo); logEvent('move_undo', { itemId: card.itemId }); } : null);
+      // 09-30 (independent test #5): a move gets the same card as a Log — the photos with "in" pills, the chain in words, what
+      // moved with it (Q3) on its own line, Undo. The one-line toast cut all of that off with "…".
+      if (card.none) { say('No place yet'); return; }
+      if (route.view === 'thing' && route.item && route.item.id === card.itemId) {
+        const pv = card.undo && card.undo.prev; const was = pv ? (pv.dest && pv.dest.t === 'thing' ? (pv.dest.name ? pv.dest.name.charAt(0).toUpperCase() + pv.dest.name.slice(1) : pv.location) : pv.location) : '';
+        setMoveNote({ itemId: card.itemId, was: was || '', moving: card.moving || [], undo: card.undo, key: Date.now() });
+        return;
+      }
+      setSaved({ ...card, key: Date.now() });
       return;
     }
     if (card.where) notePlace(card.where); // Write it down offers the place used a moment ago
@@ -437,6 +461,8 @@ export default function App() {
           // One page per thing (09-27). Going back to the page you came from is Back, never one page deeper (#24: no circles).
           onOpen={(it) => (route.from && it.id === route.from ? back() : go('thing', { item: it, from: route.item.id }))}
           onPutIn={(it) => setPutIn(it)} onMove={openMove} onLogInto={(it) => openLog({ t: 'thing', item: it })}
+          moveNote={moveNote && moveNote.itemId === route.item.id ? moveNote : null} onCloseNote={() => setMoveNote(null)}
+          onUndoMove={async (n) => { setMoveNote(null); if (n.undo) { await undoChain(n.undo); logEvent('move_undo', { itemId: n.itemId, via: 'page_note' }); } say('Undone · back where it was'); }}
         />
       );
       break;
@@ -471,6 +497,7 @@ export default function App() {
       break;
     case 'place':
       screen = <PlaceScreen name={route.name} places={places} items={items} onBack={back} onToast={say} owner={cur}
+        samePlace={samePlace}
         onAddPhoto={(n) => setCamera({ for: 'place_add', name: route.name, max: n, title: `Photo of ${route.name}` })}
         onOpenThing={(item) => go('thing', { item })} />;
       break;
@@ -554,7 +581,7 @@ export default function App() {
       )}
       {removing && (
         <Confirm title={`Remove ${removing.name ? `your ${own(removing.name)}` : 'this'} from My items?`}
-          body="It goes to Settings → Recently removed, where it can be put back."
+          body="It goes to ☰ menu → Deleted items, where it can be put back."
           keepLabel="Keep it" actionLabel="Remove"
           onKeep={() => setRemoving(null)}
           onAction={() => { const it = removing; setRemoving(null); removeItem(it); }} />
@@ -566,9 +593,10 @@ export default function App() {
           onSaved={logSaved} onCancel={() => setLog(null)} onNotice={privacyNotice}
           onWrite={() => { setLog(null); logEvent('capture_write_open', {}); go('write', { key: Date.now() }); }} />
       )}
+      {shield ? <div className="tap-shield" aria-hidden="true" onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }} /> : null}
       {!log && <SavedCard card={saved && { ...saved, name: (() => { const it = items.find((x) => x.id === saved.itemId); return it && it.name ? it.name.charAt(0).toUpperCase() + it.name.slice(1) : saved.name; })() }} onDone={() => setSaved(null)}
         onShare={async (c) => { await setVisibility({ id: c.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: c.itemId, to: 'shared', via: 'saved_card' }); setSaved((x) => (x ? { ...x, lock: false, priv: null, shared: true } : x)); }}
-        onUndo={async (u) => { await undoChain(u); say('Undone · nothing from that photo is kept'); }}
+        onUndo={async (u) => { const mv = !!(saved && saved.moved); await undoChain(u); if (mv) logEvent('move_undo', { itemId: saved.itemId }); say(mv ? 'Undone · back where it was' : 'Undone · nothing from that photo is kept'); }}
         onRenameLink={openRenameLink} />}
       {/* R3.3: the "Unnamed — tap to name" line's rename sheet — renames the place/box saveChain just made. */}
       {renameLink && (

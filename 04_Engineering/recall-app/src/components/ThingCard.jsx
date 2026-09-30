@@ -31,7 +31,7 @@ import { CameraIcon, TrashIcon, PencilIcon, LockIcon, PinIcon, PinWasIcon, Chevr
 // Roles (MU2·4/5) as before: Can help sees no Keep private and no Remove; Can see gets the photos, where it is and
 // what is in it, and nothing to do.
 export default function ThingCard({ item, items = [], places = [], onBack, onAdd, onRemoved, onToast, showAddedBy = true, peopleCount = 0,
-  onOpen = () => {}, onPutIn = () => {}, onMove = () => {}, onLogInto = () => {} }) {
+  onOpen = () => {}, onPutIn = () => {}, onMove = () => {}, onLogInto = () => {}, moveNote = null, onUndoMove = () => {}, onCloseNote = () => {} }) {
   const role = roleOn(item) || 'viewer';          // owner | editor | viewer
   const isOwner = role === 'owner', canEdit = role !== 'viewer';
   const [, bump] = useState(0);
@@ -254,6 +254,13 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
             <small>{hasPlace ? whereS : 'Put it away so you can find it'}</small>
           </div>
         </div>
+        {/* 09-30 (Ravi, 2C): the Move just made, said here — no card over the page, no timer, gone when you leave. */}
+        {moveNote && (
+          <div className="tp-moved" role="status">
+            <div className="r1"><b>✓ {moveNote.was ? 'Moved just now' : 'Put away just now'}</b><button type="button" className="x" aria-label="Close" onClick={onCloseNote}>✕</button></div>
+            <div className="r2"><span>{moveNote.was ? `Before: ${moveNote.was}` : ' '}</span>{moveNote.undo && <button type="button" className="u" onClick={() => onUndoMove(moveNote)}>Undo</button>}</div>
+            {(moveNote.moving || []).map((m) => <div key={m} className="mv">{m}</div>)}
+          </div>)}
         {canEdit && (hasPlace
           ? <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page' }); onMove(item); }}><PinIcon /><span>Move it</span></button>
           : <button type="button" className="btn-secondary amber tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page', first: true }); onMove(item); }}><PinIcon /><span>Put it somewhere</span></button>)}
@@ -378,7 +385,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
       {confirming && confirming.snap && (
         confirming.last ? (isOwner ? (
           <Confirm title={`This is the only photo of ${label}. Remove the item?`} image={confirming.snap.photo}
-            body="It goes to Settings → Recently removed, where it can be put back."
+            body="It goes to ☰ menu → Deleted items, where it can be put back."
             keepLabel="Keep it" actionLabel="Remove item" onKeep={() => setConfirming(null)}
             onAction={async () => { setConfirming(null); await softDeleteItem(item); logEvent('item_removed', { itemId: item.id, itemName: item.name || null, via: 'last_photo' }); onRemoved(item); }} />
         ) : (
@@ -401,7 +408,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
       )}
       {confirming === 'item' && (
         <Confirm title={`Remove ${label} from My items?`}
-          body={inside.length ? `Move the ${inside.length === 1 ? 'thing' : `${inside.length} things`} in it first, or ${inside.length === 1 ? 'it loses its' : 'they lose their'} place. It goes to Settings → Recently removed, where it can be put back.` : 'It goes to Settings → Recently removed, where it can be put back.'}
+          body={inside.length ? `Move the ${inside.length === 1 ? 'item' : `${inside.length} items`} in it first, or ${inside.length === 1 ? 'it loses its' : 'they lose their'} place. It goes to ☰ menu → Deleted items, where it can be put back.` : 'It goes to ☰ menu → Deleted items, where it can be put back.'}
           keepLabel="Keep it" actionLabel="Remove" onKeep={() => setConfirming(null)}
           onAction={async () => { setConfirming(null); await softDeleteItem(item); logEvent('item_removed', { itemId: item.id, itemName: item.name || null }); onRemoved(item); }} />
       )}

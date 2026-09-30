@@ -1,7 +1,90 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-29 (late).
+*Done* when closed. Updated 2026-09-30.
+
+## NOW — `20260930c`: Ravi's picks on the Move card, removing a place, merging (09-30)
+
+Ravi: "I agree with your recommendations" + the merge "keep all photos" opens a review of the photos, each with a
+one-tap delete (asked first). Screens: `design/mockups/BUILD_2026-09-30c_move-note-remove-merge.jpg`.
+
+- [x] **2C · After a Move from the item page: no card.** A note inside Where it is — "✓ Moved just now · Before: Kitchen
+  counter [Undo] [✕]" — no timer, gone when you leave the page. A Log (and a Move started from Home) keeps its card.
+- [x] **3B · A place's own page is the worklist.** It lists what's in it (items and places), each with Move (Choose place,
+  no camera), and "Move all to…" at the top. **Remove this place** stays greyed — "Move the 2 items first — then the place
+  can go." — until it's empty.
+- [x] **4 · Renaming a place to a name you already have** asks instead of refusing. ReCall compares the two places' photos:
+  - same place → "Merge into the Pantry shelf" (both places' photos kept);
+  - different (or can't tell) → it says so, and offers "Merge · keep the Pantry shelf's photos", "Merge · keep all
+    photos…" and "Give it its own name";
+  - **keep all photos…** opens a review: every photo, the main one marked, each with ✕ → "Remove this photo?" → then
+    "Merge into the Pantry shelf" (or Back).
+  - Merging moves every item and place from one to the other, keeps the "in" of the one you keep, and removes the other.
+    A box's name is still refused (a place can't merge into a box).
+- [ ] **Ravi: phone check of `c`** (with `a`/`b`): Move it from an item page → the note; a place with items → Remove waits,
+  Move / Move all; rename a place to one you have → the merge sheet and, for different photos, the review.
+- Suites (all green, `rig/run_all.sh`): **745 checks** — journeys now 51 (J15 worklist, J16 Move all, J17 merge same, J18
+  merge different + review; J13 asks, "its own name" keeps both).
+
+## NOW — `20260930b`: Ravi's answers on the tester's questions (09-30)
+
+- [x] **Save + Next gets an Undo** (Ravi: yes). After the big "✓ saved" flash, a small line at the top of the picture keeps
+  "✓ Spare batteries saved · Undo" until the next item's first photo (or 10 s) — the flash itself was too quick to tap.
+  Undo takes that item (and any place made for it) back out; the camera stays open. Journey J14.
+- [x] ~~**Ravi: pick on the three below**~~ → Ravi agreed with Claude's picks; built in `c`. — `design/mockups/OPTIONS_2026-09-30_move-card-remove-merge.jpg` (his ideas and
+  Claude's picks, on the real screens):
+  - **2 · After a Move** — 2B the card with ✕ (still covers the page until you close it) vs **2C (Claude): no card; a note
+    inside Where it is** — "✓ Moved just now · It was on the Kitchen counter. [Undo] [✕]", no timer, gone when you leave
+    the page. The page already shows the new place, so the note only says what changed. A Log from Home keeps its card.
+  - **3 · Removing a place that still has items** — both block it until it's empty. 3A (Ravi): the warning sheet lists the
+    items, "Move all to one place…" or "Go through them one by one" (a search by place). **3B (Claude): the place's own
+    page IS that list** — each item with its own Move (Choose place, no camera), "Move all to…" at the top, Remove this
+    place greyed with "Move the 2 items first". Why: no round trip through search and back, nothing to remember to come
+    back for; the place page already is "search by place". Places inside the place get listed the same way.
+  - **4 · Renaming a place to one you have** — refuse, or merge. Ravi's idea: merge only if the photos match; if not, point
+    it out and make you delete photos first. **Claude:** ReCall compares the photos itself. Same place → "Merge into the
+    Pantry shelf" (4A). Different → say so and offer "Merge · keep the shelf's photos" / "Merge · keep all photos" / "Give
+    it its own name" (4B) — the choice of photos IS the fix, so there's no dead end of deleting photos first.
+
+## NOW — `20260930a`: a new way of testing (Ravi 09-30) and what it found
+
+Ravi 09-30: "I keep finding bugs … What do you suggest we do differently?" → approved all of `06_Handoffs/TESTING.md`
+except the iPhone Simulator and a paid device service (later, with the native app).
+
+- [x] **Built:** the consistency oracle (`rig/oracle.js`), the journeys (`rig/JOURNEYS.md`, 13 stories), the monkey
+  (`rig/monkey_body.js`, seeded), WebKit runs (`rig/engine.js`), the house copy (menu → Research log → "Download a copy of
+  my house"; `REAL=… node realhouse_suite.js`), `rig/run_all.sh`, and an independent tester agent per build (reports in
+  `rig/indep/`).
+- [x] **Found and fixed** (each with a failing check first):
+  - Undo on the Log's card, tapped after a quick Move, **deleted the item** (the card outlived the next camera).
+  - Recognition only ever looked at the 4 **oldest** places — your drawer made last week was never recognised.
+  - One place photo that won't open made **every** place unrecognisable.
+  - Save cut off the camera at Largest (and Large on a small iPhone).
+  - Renaming a box left a ghost place with its old name; renaming a place left its links on the old name.
+  - Renaming a place to a name you already have was taken silently (two places, one name; one vanished).
+  - A Move's one-line message cut off the "moved" line → a Move now gets the same card as a Log (tap it to put it away).
+  - Move it: "Remove this level" on level 1 emptied the chain; a photo you said Yes to ("Is this the Desk drawer?") was dropped.
+  - With 3+ tiers the + scrolled out of sight (on Safari a tap there missed) → + no longer scrolls with the squares.
+  - The caption vs Add photo alignment was 4–5 px low **on Safari** (the fix only worked in Chrome) → a Safari-proof fix.
+  - A double tap on Save opened "Remove this item?" underneath; a double tap on the shutter saved the photo twice.
+  - Small: "thing" in Places; plain "in" on the card's squares; "Settings → Recently removed" (it's ☰ → Deleted items);
+    the Find tile's comma chain; "Place: In the …"; a middle level's prompt; the same place suggested again after No;
+    the 3 s now counts from the tap; chains deeper than 9 lost their outermost tier on the item page.
+  - The rig itself: its store silently stopped saving past ~5 MB (a saved item "vanished" after a reload) — fixed, and loud now.
+- [ ] **Ravi — questions from the tester (design, your call):**
+  1. ~~Save + Next has no Undo~~ → built in `b`. **Save + Next has no Undo.** Each next item starts with the last place filled in; a whole run can go into the wrong
+     place and the only fix is Remove on each. Add Undo to the "✓ saved" flash (it's 1.5 s now), or keep a list?
+  2. ~~Card covers the page~~ → `c`: a note on the page. **The card after a Move covers the lower part of the item page** for up to 8 s (tap it to put it away). Shorter
+     for Moves (4 s)? Or shown smaller?
+  3. ~~Remove with items~~ → `c`: the page lists them; Remove waits. **Remove this place on a place that still has items** removes the saved place and its photos, but the name comes
+     straight back in Places (the items still say it). Ask to move the items first, like a box?
+  4. ~~Rename to a name you have~~ → `c`: merge with a photo check. **Renaming a place to one you already have** is refused now. Would you rather it offered to merge the two?
+- [ ] Ravi: "Download a copy of my house" on your phone (menu → Research log) and drop the file in `04_Engineering/recall-app/rig/`
+  — every build then runs the oracle over your real house.
+- [ ] **Ravi: phone check of `20260930a`**: the Move card; Largest text in the camera; Kitchen counter → rename to a
+  name you have; photograph your own drawer in Move it ("Is this the Desk drawer?").
+- Suites (all green, `rig/run_all.sh`): 728 checks — the earlier suites + journeys 34 · monkey 2 seeds · realhouse 4 ·
+  audit_chain 20 · probe_row 36, and in WebKit: chain 20 · card 31 · row 36 · caption 14.
 
 ## NOW — `20260929h`: Ravi's phone test of `g` (Move it on "3D model of plant sensor")
 
