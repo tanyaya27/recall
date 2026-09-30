@@ -27,3 +27,14 @@ Add a story whenever Ravi or Tanya finds a bug a story would have caught. Write 
 | J16 | "Move all to…" the Pantry shelf from the Craft nook's page. | Ravi 3B |
 | J17 | Rename the Kitchen counter to "Pantry shelf" — same photos: merge into one Pantry shelf with both photos. | Ravi 4 |
 | J18 | Rename the Kitchen counter to "Linen closet" — different photos: said so; keep all photos → review, remove one (asked first), merge. | Ravi 4 |
+
+## Also run as their own suite: `audit_p30d.js` (= `tiers_head.js` + `p30d_body.js`) — Ravi's phone test of `c`
+
+| # | Story | Came from |
+|---|---|---|
+| P1 | Open a place's photos on the item page, then a tier's photos in Move it: the same viewer, "name · photo N of M" in the top bar both times. | Ravi 09-30d |
+| P2 | Move the 3D model (logged 2 days ago) without a photo: the page says "moved today · last seen Mon"; the photo still says Mon. A new photo → "seen today". The Kitchen counter moves → the batteries on it say "moved with the Kitchen counter". | Ravi 09-30d |
+| P3 | Move it on a 3-tier item: the chain line rings the tier Choose place will change; Choose place shows the whole chain, rings that tier, says what it means and what comes off; "Current place" on that tier's row (level 1 and tier 2). | Ravi 09-30d |
+| P4 | Photograph a new top tier (Foyer), then Choose place → "In air" on it: the square shows In air's photo, and at Save the Foyer's photo does NOT go onto In air. | Ravi 09-30d |
+| P5 | Choose place: a place that holds another place names it (not "nothing here yet"). | Ravi's screenshot |
+| P6 | A place called "In air": "Tap + to add what “In air” is in", never "the in air". | Ravi's screenshot |

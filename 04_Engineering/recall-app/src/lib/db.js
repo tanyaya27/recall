@@ -402,6 +402,8 @@ async function captionCoverSnap(itemId, text) {
 
 // Editing the place by hand IS a move: it goes into the history with a time, and the thing
 // counts as seen there now (round 5 — Edit replaces *Found it*).
+// 09-30d (Ravi): lastSeenAt stays the "latest news of it" used for sorting, but the page no longer calls a move "seen":
+// "seen" is read from the item's own photos (its snaps, minus the Move copies) — no new field, so the rules stay as they are.
 // Since 2026-09-16 (design §5, ruling 6) a move also writes a SIGHTING: the cover photo, at
 // the new place, now — so the new stay has a photo and the history never has a row without
 // one. Adding the place to a thing that had none is not a move: no sighting is written.

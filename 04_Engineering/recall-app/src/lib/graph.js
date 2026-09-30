@@ -80,6 +80,28 @@ export function whereChain(item, g = G) {
 }
 export const graph = () => G;
 
+// 09-30d (Ravi, phone: "this is not really the last time it was seen … just the last time it was moved"). When did the item
+// last CHANGE place — itself, or together with something it's in (its box moved, the counter it's on moved)? A link that
+// replaced an earlier one is a move; the first link of a box or place only says where it is (adding a tier on top is not
+// a move), and neither is putting away something that had no place. → { at, via } (via: the name of what moved with it,
+// or null for the item itself), or null when it has not moved since it was logged.
+export function movedOf(item, g = G) {
+  if (!item) return null;
+  const replaced = (id, e) => (g.edges || []).some((x) => x.rel === 'in' && x.from === id && x.until && x.id !== e.id && Math.abs((x.until || 0) - (e.since || 0)) < 5000);
+  let best = null;
+  const h = item.history || [];
+  for (let i = h.length - 1; i > 0; i--) {
+    const a = (h[i - 1].location || '').trim().toLowerCase(), b = (h[i].location || '').trim().toLowerCase();
+    if (a && b && a !== b) { best = { at: h[i].at || 0, via: null }; break; }
+  }
+  const e0 = openEdge(item.id, g); if (e0 && replaced(item.id, e0) && (!best || (e0.since || 0) > best.at + 5000)) best = { at: e0.since || 0, via: null };
+  for (const t of whereChain(item, g)) {
+    const id = t.t === 'thing' ? t.item.id : t.id; if (!id) continue;
+    const e = openEdge(id, g); if (e && replaced(id, e) && (!best || (e.since || 0) > best.at + 5000)) best = { at: e.since || 0, via: t.t === 'thing' ? t.item.name : t.name };
+  }
+  return best;
+}
+
 export function openEdge(itemId, g = G) { return g.open.get(itemId) || null; }
 
 // The thing it is in (an open edge to a THING that still exists), or null.

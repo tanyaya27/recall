@@ -77,4 +77,12 @@ only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eig
   for "merge · keep all photos". Built: the Move note on the item page (no card), the place page as the worklist (Move /
   Move all; Remove waits), merge with a photo check (`engine.samePlace`) and the review with a confirmed ✕ per photo.
   Screens: `design/mockups/BUILD_2026-09-30c_move-note-remove-merge.jpg`. 745 checks green (incl. WebKit).
-- `a`, `b`, `c` not pushed — one push covers them.
+- `a`, `b`, `c` pushed together (commit a8416a1); live as Build 20260930c.
+
+## 09-30 (night): Ravi's phone test of `c` → `20260930d`; the tier question
+- Four bugs from his screenshots, each reproduced first (`rig/audit_p30d.js`, 2/14 at the start → 15/15): one photo
+  viewer; "seen" vs "moved" (+ the photo's own time); Choose place names the tier it changes (camera and sheet); the
+  square after Choose place on a photographed tier (and the photo that leaked onto another place). Plus "nothing here
+  yet" and "the in air". Screens: `design/mockups/BUILD_2026-09-30d_phone-fixes.jpg`.
+- The tier question went to two new boards (Ravi asked): `design/BOARD_2026-09-30_tiers-or-freeform.md` and
+  `design/mockups/OPTIONS_2026-09-30_tiers-or-freeform.jpg`. Awaiting Ravi and Tanya.

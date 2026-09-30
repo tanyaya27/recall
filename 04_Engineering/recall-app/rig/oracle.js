@@ -30,7 +30,15 @@ module.exports = ({ page, PORT, tap }) => {
         seen.add(curPlace.id);
         const pe = edgeFrom(curPlace.id); if (!pe) break; e = pe; curPlace = null;
       }
-      return { id: it.id, chain: out };
+      // 09-30d (Ravi: "seen" vs "moved"): the newest photo OF the item (a Move's copy of the cover is not one), and the last
+      // time it changed place — itself (history), or with a box/place it is in (a link that replaced an earlier one).
+      const shots = live.filter((x) => x.kind === 'snap' && x.itemId === it.id && !x.moved).map((x) => x.at || 0);
+      const lastPhoto = it.photo ? Math.max(it.seenAt || 0, ...shots, shots.length ? 0 : (it.createdAt || 0)) : 0;
+      let lastMove = 0; const h = it.history || [];
+      for (let i = h.length - 1; i > 0; i--) { const a = (h[i - 1].location || '').trim().toLowerCase(), b = (h[i].location || '').trim().toLowerCase(); if (a && b && a !== b) { lastMove = h[i].at || 0; break; } }
+      const moved = (id) => { const e = edgeFrom(id); return e && d.some((x) => x.kind === 'edge' && x.from === id && x.until && x.id !== e.id && Math.abs(x.until - (e.since || 0)) < 5000) ? e.since || 0 : 0; };
+      lastMove = Math.max(lastMove, moved(it.id), ...[...seen].filter((id) => id !== it.id).map(moved));
+      return { id: it.id, chain: out, lastPhoto, lastMove };
     }, name);
   }
 
@@ -55,7 +63,7 @@ module.exports = ({ page, PORT, tap }) => {
       const chainEl = w.querySelector('.tp-chain');
       const words = chainEl ? [...chainEl.querySelectorAll('.cp')].map((c) => [...c.children].filter((x) => !x.classList.contains('in')).map((x) => x.innerText).join(' ')) : [(w.querySelector('.tx b') || {}).innerText || ''];
       return { none: w.classList.contains('none'), words, squares: w.querySelectorAll('.ch .st').length, pillsSq: w.querySelectorAll('.ch .in').length, pillsW: chainEl ? chainEl.querySelectorAll('.in').length : 0,
-        plainSeparators: /·/.test(chainEl ? chainEl.innerText : '') };
+        plainSeparators: /·/.test(chainEl ? chainEl.innerText : ''), when: ((w.parentNode || w).querySelector('.tp-wh ~ small, .tp-wh small') || {}).innerText || '' };
     });
     // Move it: the camera opens on everything already known; Cancel leaves it untouched.
     const mv = page.locator('button:has-text("Move it"), button:has-text("Put it somewhere")');
@@ -89,6 +97,10 @@ module.exports = ({ page, PORT, tap }) => {
       if (s.page.squares !== want.length) bad.push(`${label}${name} — item page: ${s.page.squares} squares for ${want.length} tiers`);
       if (want.length > 1 && (s.page.pillsSq !== want.length - 1 || s.page.pillsW !== want.length - 1)) bad.push(`${label}${name} — item page: "in" pills squares ${s.page.pillsSq} / words ${s.page.pillsW}, want ${want.length - 1} each`);
       if (s.page.plainSeparators) bad.push(`${label}${name} — item page: a "·" between tiers (the "in" pill everywhere)`);
+      // 09-30d: "seen" only when a photo of it is newer than its last move; "moved" only when it moved.
+      const w = (s.page.when || '').trim();
+      if (/^seen /i.test(w) && t.lastMove > t.lastPhoto + 2000) bad.push(`${label}${name} — item page says "${w}", but it moved after its last photo (nobody saw it there)`);
+      if (/^moved /i.test(w) && !t.lastMove) bad.push(`${label}${name} — item page says "${w}", but it never moved`);
     }
     if (s.camera) {
       const sq = s.camera.squares.map(norm);

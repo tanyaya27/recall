@@ -445,3 +445,11 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-30 — A check that visits every screen leaves you somewhere else.** The oracle opens the item page, Find and
   Move it; a journey that then clicked on "the place page" was on another page (J15). After an oracle run, open the
   screen you mean again — and scroll to the top before measuring (audit D16 failed on a scrolled page, not on the app).
+- **2026-09-30 — Two copies of one control drift.** The camera had its own photo viewer, written before the app's
+  viewer existed; the app's got Ravi's rulings, the camera's never did. When a second copy exists, delete it — a
+  checklist line ("every photo viewer") can't keep two in step.
+- **2026-09-30 — A time on the screen must name its event.** "seen 10:18" was the time of the last write, whatever the
+  write was. The oracle now checks the words against the store: "seen" only after a photo newer than the last move.
+- **2026-09-30 — Check what a pick did to the store, not just the screen.** Choose place on a photographed tier left
+  the old photo on the square — and then saved it onto a different place. Only reading the place's photos after Save
+  showed the damage (audit_p30d P4).

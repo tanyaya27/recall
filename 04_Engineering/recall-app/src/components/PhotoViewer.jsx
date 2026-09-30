@@ -11,11 +11,12 @@ import { CloseIcon, StarIcon, StarFillIcon, TrashIcon, PencilIcon } from './Icon
 //   title(i, n) the line under/above the photo — "Photo 2 of 3 · Today 5:55 PM" for a thing, "Desk drawer · photo 1 of 3" for a place
 //   caption     (i) → what the photo shows, or '' (a thing only; null = the viewer has no caption line at all)
 //   onEdit      (i) → opens the "What's in this photo?" sheet; null = no Edit (only the owner of the thing, D3)
-//   onMakeMain  (i) → null = no pill. onRemove (i) → null = no pill.
+//   onMakeMain  (i) → null = no pill. onRemove (i) → null = no pill. onRename () → a pencil "Rename" in the top bar (the camera's levels).
+//   09-30d: the camera uses this viewer too (it had its own, with the name UNDER the photo) — one viewer in the whole app.
 //
 // Swipe = scroll-snap, like the page's own strip. Tap on the dark (anywhere that is not the photo) or ✕ closes. Photos are
 // object-fit: contain: the whole picture, never cropped. Dark glass with white words, whatever the theme (the camera's rule).
-export default function PhotoViewer({ photos, start = 0, title, caption = null, onEdit = null, onMakeMain = null, onRemove = null, onClose }) {
+export default function PhotoViewer({ photos, start = 0, title, caption = null, onEdit = null, onMakeMain = null, onRemove = null, onRename = null, onClose }) {
   const [index, setIndex] = useState(Math.min(start, Math.max(0, photos.length - 1)));
   const scrollRef = useRef(null);
   const xRef = useRef(null);
@@ -59,6 +60,7 @@ export default function PhotoViewer({ photos, start = 0, title, caption = null, 
           {caption && cap ? <div className="d2-cap">In this photo: {cap}</div> : caption && onEdit ? <div className="d2-cap dim">In this photo: nothing said yet</div> : null}
         </div>
         {onEdit && caption ? <button type="button" className="d2-edit" onClick={() => onEdit(i)}><PencilIcon /><span>Edit</span></button> : null}
+        {onRename ? <button type="button" className="d2-edit" onClick={() => onRename(i)}><PencilIcon /><span>Rename</span></button> : null}
         <button type="button" ref={xRef} className="d2-x" aria-label="Close" onClick={onClose}><CloseIcon /></button>
       </div>
       <div className="d2-photos" ref={scrollRef} onScroll={onScroll}>

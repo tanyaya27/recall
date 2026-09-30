@@ -3,6 +3,31 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-30.
 
+## NOW — `20260930d`: Ravi's phone test of `c` (09-30, 10:27–10:32) + the tier question
+
+Screens: `design/mockups/BUILD_2026-09-30d_phone-fixes.jpg`. Suite `rig/audit_p30d.js` (15 checks, both engines).
+
+- [x] **One photo viewer.** The camera had its own (name and "photo 1 of 3" UNDER the photo); it now opens the same
+  viewer as the item page: name · photo N of M in the top bar beside ✕, Remove at the bottom, Rename in the top bar
+  for a level you named. A known place shows all its photos, not just the first.
+- [x] **"Seen" only when it was seen.** The item page said "seen" at the time of a Move. Now: a photo of it newer than
+  its last move → "seen today 10:18"; otherwise "moved today 10:18 · last seen Mon 4:09 PM"; its box or the counter it's
+  on moved → "moved with the White cardboard box …". "Seen" = a photo of the item itself (a Log, Add photo). The photo's
+  own time is now when it was TAKEN (it showed the Move's time).
+- [x] **Choose place says which tier it changes.** The camera's chain line rings the selected tier. Choose place opens
+  with the whole chain from the item, that tier ringed, "Changing what the White cardboard box is in — it moves, with
+  everything in it", and what comes off above it. "Current place" marks the place saved on THAT tier (it was level 1 only).
+- [x] **The square didn't change** after Choose place on a tier you had photographed (Foyer → In air) — and at Save the
+  Foyer's photo went onto "In air" (a place got a stranger's photo). Now the old tier's photo goes with the old tier.
+- [x] Seen in the screenshots: "nothing here yet" under a place that holds another place (Ikea shelving unit holds the
+  White cardboard box) → it names it; "the in air" → "what “In air” is in".
+- [ ] **Ravi + Tanya: the tier question** — two NEW boards (5 technical, 6 users), `design/BOARD_2026-09-30_tiers-or-freeform.md`,
+  options on the real screens `design/mockups/OPTIONS_2026-09-30_tiers-or-freeform.jpg`. First choices: A (one
+  question per Move) 4 · C (freeform) 3 · B (labelled tiers, = `d`) 2 · D (hybrids) 2. Claude: B's labels now; A + an
+  optional note next; "say it, ReCall builds the chain" later; not C. Three decisions at the end of the board file.
+- [ ] **Ravi: phone check of `d`**: Move it on the 3D model → Choose place (level 1, then tier 2) — the ringed tier and
+  the header; photograph a new tier then Choose place on it; tap a tier → See its photos; the item page's "moved/seen" line.
+
 ## NOW — `20260930c`: Ravi's picks on the Move card, removing a place, merging (09-30)
 
 Ravi: "I agree with your recommendations" + the merge "keep all photos" opens a review of the photos, each with a

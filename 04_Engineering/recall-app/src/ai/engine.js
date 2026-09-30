@@ -333,7 +333,7 @@ Reply with ONLY a JSON object, no other text:
 
   async answerQuery(question, items, { sensitivity = 'personal' } = {}) {
     const catalog = items.map((it, i) =>
-      `${i}: ${it.name} — ${it.location} — ${it.description || ''}${it.details ? ` — label: ${it.details}` : ''} (last seen ${new Date(it.lastSeenAt).toLocaleString()})`
+      `${i}: ${it.name} — ${it.location} — ${it.description || ''}${it.details ? ` — label: ${it.details}` : ''} (last updated ${new Date(it.lastSeenAt).toLocaleString()})`
     ).join('\n');
     const prompt =
 `You help someone find their belongings. Be brief, plain and never judgmental.

@@ -140,7 +140,7 @@ the functions: `./rules-test/run_ai_test.sh`.
   look and accepts ReCall's name in the Choose place sheet; `pickPlace(name)` goes through ☰ Choose place; `saveNext()`
   holds Save for 0.8 s. The pills (`.lc-chip`), the chain sheet (`.chain-sheet`) and look A are gone.
 - **09-30: the new testing (`06_Handoffs/TESTING.md`).** `./run_all.sh` runs everything in memory-safe batches (summary in
-  `/tmp/runs/SUMMARY.txt`) — **728 checks** at `20260930a`, **745** at `20260930c`. New: `oracle.js` (truth from the store vs every screen),
+  `/tmp/runs/SUMMARY.txt`) — **728 checks** at `20260930a`, **745** at `20260930c`, **775** at `20260930d` (+ `audit_p30d.js`, 15 checks, in both engines). New: `oracle.js` (truth from the store vs every screen),
   `journeys.js` (= tiers_head + journeys_body; stories in `JOURNEYS.md`, 34 checks; **51 at `c`**, J15–J18: the place worklist, Move all, merge; the stub's `global.SAME_PLACE` = 'same'|'different'|'unknown' answers the "PHOTO A:/PHOTO B:" place check), `monkey.js` (`SEED=… STEPS=…`),
   `realhouse_suite.js` (`REAL=/path/recall-house-….json`, round-trips the sample house without it), `engine.js`
   (`ENGINE=webkit node -r ./engine.js <suite>` — WebKit installed with `PLAYWRIGHT_BROWSERS_PATH=/home/claude/pw-webkit npx
@@ -155,3 +155,7 @@ the functions: `./rules-test/run_ai_test.sh`.
 - **Full run (09-29g): 536 checks.** audit 100 · audit_roles 44 · audit_graph 66 · audit_label 14 · audit_private 34 ·
   audit_d 83 · audit_where 53 · repro_f3 45 · audit_tiers 43 · probe_cap 14 · audit_card 31 · probe_row 9. Run the six
   plain suites together, then the browser-heavy ones **three at a time** (five at once ran the container out of memory).
+- `audit_p30d.js` (= `tiers_head.js` + `p30d_body.js`, `PORT=8701`): Ravi's phone test of `c` — one viewer, seen vs
+  moved, which tier Choose place changes, the square after a pick, "nothing here yet", "the in air". Stories in
+  `rig/JOURNEYS.md` (P1–P6). The oracle also checks the item page's "seen / moved" line against the store.
+- `opts_tier.js` (= `tiers_head.js` + `opts_tier_body.js`) + `compose_tier.py`: the tier options drawn on the real screens.

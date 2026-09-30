@@ -35,7 +35,7 @@
     // ---------- C2: + adds level 2 (empty, selected); + hides until it's set ----------
     await tap('.lv-sq.plus', { wait: 400 }); s = await st(); await snapC('plus adds level 2');
     check('C2', '+ adds an empty level 2, selected; the + is gone until it is set', s.squares === 2 && !s.plus && await count('.lv-sq.sel.empty') === 1, JSON.stringify({ sq: s.squares, plus: s.plus }));
-    check('C2', '"What is the kitchen counter in? Photograph it, or choose one." · "Place: not defined"', /What is the kitchen counter in\? Photograph it, or choose one\./.test(s.prompt) && /^Place:\s*not defined/.test(s.place), `${s.prompt} | ${s.place}`);
+    check('C2', '"What is the Kitchen counter in? Photograph it, or choose one." (09-30d: the name as written) · "Place: not defined"', /What is the Kitchen counter in\? Photograph it, or choose one\./.test(s.prompt) && /^Place:\s*not defined/.test(s.place), `${s.prompt} | ${s.place}`);
     check('C2', 'the chain under a thin line: "Kitchen counter in ?"', /Kitchen counter\s*in\s*\?/.test(s.chain) && await page.evaluate(() => getComputedStyle(document.querySelector('.lc-chainline')).borderTopWidth) === '1px', s.chain);
 
     // ---------- C3/C4: shutter → it looks (everything waits) → "Is this the Craft nook?" → Yes ----------

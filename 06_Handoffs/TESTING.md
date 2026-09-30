@@ -38,6 +38,9 @@ For the data the change touches, go through every screen that shows it:
 - [ ] The card after Save (a Log and a Move)
 - [ ] Home tiles and Find tiles
 - [ ] Places list and a place's own page
+- [ ] Choose place: each row's second line, "Current place", the header (which tier)
+- [ ] Every photo viewer (there is ONE: PhotoViewer) — the title in the top bar
+- [ ] Every time on screen says which event it is (seen = a photo of it; moved; logged)
 - [ ] …at Normal / Large / Largest, 390 and 375 wide, with the keyboard up where there's a field
 - [ ] …on a second visit (open it again after saving) and after Undo
 - [ ] …in WebKit

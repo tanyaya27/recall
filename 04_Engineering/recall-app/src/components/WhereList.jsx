@@ -21,7 +21,7 @@ const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 // place (not recognised, or "No"), `pending` puts that photo on top: "A new place?" + a name field (ReCall's guess) +
 // "Use this name"; the list below is headed "Or it's one of your places". `suggest` is a late recognition: first row.
 export default function WhereList({ item = null, items = [], places = [], title = 'Where does it go?', onPick, onPhotograph = null, onCancel, exclude = null,
-  chooser = false, pending = null, suggest = null }) {
+  chooser = false, pending = null, suggest = null, changing = null, current = undefined }) {
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState(pending ? pending.draft || '' : '');
   const [touched, setTouched] = useState(false);
@@ -40,17 +40,30 @@ export default function WhereList({ item = null, items = [], places = [], title 
   // A typed name that IS a box (or a place) is offered as that one, never as a new place with the same name (G23).
   const exists = typed && [...placeAll, ...containers(g, 999).map((b) => b.name)].some((n) => normName(n || '') === normName(bare));
   const placePic = (n) => { const p = placeNamed(n, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; };
-  const placeSub = (n) => { const here = atPlace(n, g).filter((x) => !item || x.id !== item.id); return here.length ? here.slice(0, 2).map((x) => cap(x.name)).join(', ') + (here.length > 2 ? ` +${here.length - 2}` : '') : 'nothing here yet'; };
-  // fix 2026-09-29 (Ravi): the place the thing is in right now is listed, and says so.
+  // 09-30d (Ravi's phone): a place that holds another place ("Ikea shelving unit" holds the White cardboard box) is not
+  // "nothing here yet" — the places inside it are named too.
+  const lowN = (x) => (x || '').trim().toLowerCase();
+  const subIn = (n) => (g.edges || []).filter((e) => !e.until && e.to && e.to.t === 'place' && lowN(e.to.name) === lowN(n)).map((e) => (places.find((p) => p.id === e.from) || {}).name).filter(Boolean);
+  const placeSub = (n) => { const here = [...subIn(n), ...atPlace(n, g).filter((x) => !item || x.id !== item.id).map((x) => cap(x.name))];
+    return here.length ? here.slice(0, 2).join(', ') + (here.length > 2 ? ` +${here.length - 2}` : '') : 'nothing here yet'; };
+  // fix 2026-09-29 (Ravi): the place the thing is in right now is listed, and says so. 09-30d: `current` names what is on
+  // the tier being changed (any tier, not only level 1) — { t:'place', name } | { t:'thing', item } | null.
   const curHolder = item ? holderOf(item, g) : null;
-  const isCurPlace = (n) => !!item && !curHolder && (item.location || '').toLowerCase() === (n || '').toLowerCase();
-  const isCurBox = (b) => !!curHolder && curHolder.id === b.id;
+  const isCurPlace = (n) => (current !== undefined ? !!current && current.t === 'place' && lowN(current.name) === lowN(n) : !!item && !curHolder && lowN(item.location) === lowN(n));
+  const isCurBox = (b) => (current !== undefined ? !!current && current.t === 'thing' && current.item && current.item.id === b.id : !!curHolder && curHolder.id === b.id);
   const boxSub = (b) => { const h = holderOf(b, g); return `a box · ${h ? `in the ${h.name}` : b.location ? `in ${b.location}` : 'no place yet'}`; };
   const shown = placeList.length + boxList.length;
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet where-list" role="dialog" aria-modal="true" aria-labelledby="wl-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-title" id="wl-title">{chooser ? <span className="wl-chooser"><ListIcon />Choose place</span> : title}</div>
+        {/* 09-30d (Ravi: "both pages should show the current tier hierarchy and then be clear which tier is being changed") */}
+        {changing && (
+          <div className="wl-chg">
+            <div className="wl-chg-ch">{changing.parts.map((p, j) => <span key={j} className="cp">{j > 0 && <span className="lc-in">in</span>}<span className={j === changing.at ? 'sel' : p.soft ? 'soft' : ''} style={j === changing.at ? { borderColor: p.c, color: p.c } : p.c && !p.soft ? { color: p.c } : undefined}>{p.n}</span></span>)}</div>
+            <p className="wl-chg-say">{changing.say}</p>
+            {changing.above ? <p className="wl-chg-above">{changing.above}</p> : null}
+          </div>)}
         {pending && (
           <div className="wl-pend">
             <div className="wl-pend-h">{pending.thumb ? <img src={pending.thumb} alt="" style={{ borderColor: pending.colour }} /> : null}<span><b>A new place?</b><small>Name the place in your photo</small></span></div>

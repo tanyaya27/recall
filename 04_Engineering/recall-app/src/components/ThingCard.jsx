@@ -3,7 +3,7 @@ import { hasSecret } from '../lib/sensitive.js';
 import { renameItem, loadSnaps, removeSnap, setMainPhoto, setSnapCaption, setPlaceMainPhoto, removePlacePhoto, updateItem, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { photoStamp, cap } from '../lib/format.js';
-import { contentsOf, chainOf, outerPlace, inPhrase, isContainer, whereChain } from '../lib/graph.js';
+import { contentsOf, chainOf, outerPlace, inPhrase, isContainer, whereChain, movedOf } from '../lib/graph.js';
 import { getPrefs } from '../lib/prefs.js';
 import { own } from './PhotoCard.jsx';
 import Confirm from './Confirm.jsx';
@@ -63,7 +63,11 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
 
   if (!item) return null;
 
-  const cover = { id: 'cover', photo: item.photo, thumb: item.thumb, location: item.location, at: item.lastSeenAt, cover: true, by: item.by || null };
+  // 09-30d (Ravi): a Move writes a "moved" copy of the cover at the new place (09-16) — that is not a photo taken then.
+  // `shot` is when the cover photo was really TAKEN (what its time says); `at` stays the sort key for "this stay".
+  const realShots = (snaps || []).filter((s) => !s.moved);
+  const coverShot = Math.max(0, ...realShots.filter((s) => s.photo === item.photo).map((s) => s.at || 0)) || item.createdAt || item.lastSeenAt;
+  const cover = { id: 'cover', photo: item.photo, thumb: item.thumb, location: item.location, at: item.lastSeenAt, shot: coverShot, cover: true, by: item.by || null };
   const shared = !isOwner || peopleCount > 0;
   const adder = (p) => (showAddedBy && shared && p.by && p.by !== item.owner ? firstName(p.by) : '');
   const live = (snaps || []);
@@ -178,8 +182,14 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   // 09-29h (Ravi: "Keep it consistent!!!"): every tier in words with the same "in" pill as the camera and the squares —
   // "White cardboard box (in) Ikea shelving unit (in) Office" — so the line under it is just when it was seen.
   const chainWords = tiers.map((t) => (t.t === 'thing' ? cap(t.item.name) : t.name));
-  const whereS = chain.length && tiers.length === chain.length ? 'Where the box is: not said yet'
-    : `seen ${photoStamp(item.lastSeenAt).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}`;
+  // 09-30d (Ravi): "seen" only when a photo of it was taken; a Move nobody photographed says "moved", and when it was
+  // last seen. Moving its box (or the counter it's on) moves it too: "moved with the White cardboard box".
+  const when = (t) => photoStamp(t).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday');
+  const seenAt = item.photo ? Math.max(coverShot || 0, ...realShots.map((s) => s.at || 0)) : 0;
+  const mv = movedOf(item);
+  const whenLine = mv && mv.at > seenAt + 2000 ? `moved ${mv.via ? `with the ${mv.via} ` : ''}${when(mv.at)}${seenAt ? ` · last seen ${when(seenAt)}` : ''}`
+    : seenAt ? `seen ${when(seenAt)}` : `logged ${when(item.createdAt || item.lastSeenAt)}`;
+  const whereS = chain.length && tiers.length === chain.length ? 'Where the box is: not said yet' : snaps === null ? '\u00a0' : whenLine; // wait for its photos: never a wrong date first
   const container = isContainer(item);
   const inside = contentsOf(item);
   const placeDoc = viewer && viewer.kind === 'place' ? placeNamed(viewer.name, places) : null;
@@ -206,7 +216,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
                 <div className="strip-page" key={p.id}>
                   <div className="photo-box">
                     <img className="photo-full" src={p.photo} alt={item.name || ''} {...(canEdit ? hold.props() : {})} onClick={canEdit ? hold.tap(() => setViewer({ kind: 'thing', start: pi })) : () => setViewer({ kind: 'thing', start: pi })} />
-                    {showTimes && <span className="stamp">{photoStamp(p.at)}{adder(p) ? ` · ${adder(p)}` : ''}</span>}
+                    {showTimes && <span className="stamp">{photoStamp(p.shot || p.at)}{adder(p) ? ` · ${adder(p)}` : ''}</span>}
                     {canEdit && <button type="button" className="photo-trash" aria-label="Remove this photo" onClick={() => askRemove(p)}><TrashIcon /></button>}
                   </div>
                   {was ? <div className="was"><PinWasIcon /><span>{p.location}</span></div> : null}
@@ -327,7 +337,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
       {/* D2 (Ravi 09-28): the photo viewer — one for the thing's own photos, one for a place's. */}
       {viewer && viewer.kind === 'thing' && item.photo && pages.length > 0 && (
         <PhotoViewer photos={pages.map((p) => ({ key: p.id, src: p.photo, main: p.photo === item.photo }))} start={viewer.start}
-          title={(i, n) => `Photo ${i + 1} of ${n}${showTimes && pages[i] ? ` · ${photoStamp(pages[i].at)}` : ''}`}
+          title={(i, n) => `Photo ${i + 1} of ${n}${showTimes && pages[i] ? ` · ${photoStamp(pages[i].shot || pages[i].at)}` : ''}`}
           caption={(i) => capOf(pages[i])}
           onEdit={canEdit && isOwner ? (i) => setCapEdit({ index: i, draft: capOf(pages[i]) }) : null}
           onMakeMain={canEdit ? makeMain : null} onRemove={canEdit ? (i) => askRemove(pages[i]) : null}

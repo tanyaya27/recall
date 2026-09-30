@@ -6,6 +6,23 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-30 (night) — Ravi's phone test of `c` → `20260930d`; the tier question to two new boards
+
+- **One photo viewer** (Ravi: "Pick one and keep it consistent throughout the app"): the top bar, beside ✕ — the item
+  page's viewer (D2, Ravi's 80% rule), now in the camera too. *Why the top:* it was already Ravi's ruling for D2, and it
+  keeps the photo as big as possible (the bottom bar holds the actions and the dots).
+- **"Seen" vs "moved"** (Ravi): seen = a photo of the item itself; moved = its own place changed, or with the box /
+  place it's in (a link that replaced an earlier one; adding a tier on top is not a move). Read from what's stored
+  (the item's photos and its history), no new field — so the Firestore rules don't change. The page waits for the
+  photos before it writes the line (never a wrong date first). *Not built:* marking something seen without a photo
+  ("I saw it there") — a question for Ravi if wanted.
+- **Choose place names the tier** (Ravi's spec: "both pages should show the current tier hierarchy and then be clear
+  which tier is being changed"). This is B's labelling; it ships now whatever is decided on the tier question.
+- **A pick that replaces a named tier drops that tier's photos** (they were of the old place). A pick right after the
+  photo (the sheet opened from it) still keeps the photo (fix B1, 09-28).
+- **The tier question** (Ravi: "Are we making this too complex … a more freeform mechanism?") went to two NEW boards,
+  as he asked: `design/BOARD_2026-09-30_tiers-or-freeform.md`. Not decided — Ravi and Tanya.
+
 ## 2026-09-30 (evening) — After a Move, removing a place, merging places (Ravi agreed with Claude's picks) — `20260930c`
 
 - **After a Move from the item page: a note in Where it is, not a card.** The page already shows the new place, so the

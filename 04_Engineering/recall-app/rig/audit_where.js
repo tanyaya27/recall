@@ -302,8 +302,8 @@ async function main() {
   await page.locator('.lv-strip .lv-sq').nth(0).click(); await page.waitForTimeout(400); // selected square → its sheet
   await tap('.tier-sheet .sheet-row:has-text("See its photos")', { wait: 500 });
   await shot('g5-before-remove');
-  check('G5a its photos open from the level\'s sheet, with the one attached photo removable', await count('.pv-rm') === 1);
-  await tap('.pv-rm', { wait: 500 });
+  check('G5a its photos open from the level\'s sheet, with the one attached photo removable', await count('.d2-pv .d2-pill.rm') === 1);
+  await tap('.d2-pv .d2-pill.rm', { wait: 500 });
   check('G5b R1.3: removing the last attached photo KEEPS the identity — still "Place: Wooden box"', /^(in the )?wooden box$/i.test(await sayT()), await sayT());
   await tap('.lc-x', { wait: 400 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 400 });
 
