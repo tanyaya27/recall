@@ -6,6 +6,17 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-30 (late night) — Focus colour (Ravi) and the tester's finds on `d` → `20260930e`
+
+- **One colour means "the tier you are about to change"** (Ravi's idea, his pick "build both"): the selected square, its
+  ring in the chain line, the shutter ring, the "Place:" label and now the Choose place button (outlined, not filled —
+  Save is the one filled action). Only that tier's word is coloured; the others are plain; context tiers grey. Each
+  tier keeps its own colour, so moving the focus changes the colour. *Colour never works alone:* the ring and the
+  header's words stay, for people who can't tell the colours apart. The item page's chain has no focus: uncoloured.
+- **The "which tier" header gives way** to the keyboard and to short screens (Ravi's 12:32 screenshot, tester #1):
+  what you type into and what it finds matter more than the explanation while you type.
+- **An Undo is not a move** (tester #2): the history line and the link of an Undo are marked, and "moved" skips them.
+
 ## 2026-09-30 (night) — Ravi's phone test of `c` → `20260930d`; the tier question to two new boards
 
 - **One photo viewer** (Ravi: "Pick one and keep it consistent throughout the app"): the top bar, beside ✕ — the item

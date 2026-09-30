@@ -407,13 +407,14 @@ async function captionCoverSnap(itemId, text) {
 // Since 2026-09-16 (design §5, ruling 6) a move also writes a SIGHTING: the cover photo, at
 // the new place, now — so the new stay has a photo and the history never has a row without
 // one. Adding the place to a thing that had none is not a move: no sighting is written.
-export async function changeLocation(item, location, placeSource = 'chosen', dest = null) {
+// 09-30d (independent tester #2): `undo` marks the history line and the link as an Undo, so "moved" never counts it.
+export async function changeLocation(item, location, placeSource = 'chosen', dest = null, { undo = false } = {}) {
   // Never a loop (bug #8, 09-27: the pencil went into the cabinet that was inside the pencil). Refused here, where every move passes.
   const to = dest || (location ? destOf(location, graph().byId.get(item.id) || item) : null);
   if (to && to.t === 'thing' && wouldLoop(item, to)) { logEvent('loop_refused', { itemId: item.id, to: to.id }); return false; }
   if (!dest) location = placeText(location, item);
   const now = Date.now();
-  const history = [...(item.history || []), { location, at: now }].slice(-100);
+  const history = [...(item.history || []), { location, at: now, ...(undo ? { undo: true } : {}) }].slice(-100);
   const moved = !!item.location && !!location && item.location.toLowerCase() !== location.toLowerCase();
   const patch = { location, needsPlace: !location, history, lastSeenAt: now, updatedAt: now, placeSource: location ? placeSource : '' };
   if (moved && item.photo) {
@@ -422,7 +423,7 @@ export async function changeLocation(item, location, placeSource = 'chosen', des
     Object.assign(patch, { logId, photoCount: 1 });
   }
   await updateDoc(doc(col, item.id), patch);
-  await recordMove(item, location, placeSource, dest);
+  await recordMove(item, location, undo ? 'undo' : placeSource, dest);
   return true;
 }
 
@@ -508,7 +509,7 @@ async function writeMove(item, location, how, dest) {
 // same "is in" edge a thing has, from the place doc's id (DECISIONS 2026-09-25: "is in" is an edge, never a field).
 // Closes the place's open edge when it changes; `to` null just closes it. Refuses a circle. Returns what it replaced
 // (for Undo) or undefined when nothing changed.
-export async function placeIn(place, to) {
+export async function placeIn(place, to, how = 'chosen') {
   if (!place || !place.id) return undefined;
   const cur = openEdge(place.id);
   if (to && to.t === 'place' && !(to.name || '').trim()) to = null;
@@ -519,7 +520,7 @@ export async function placeIn(place, to) {
   if (cur) await updateDoc(doc(col, cur.id), { until: now, closedBy: me() });
   if (to) {
     const t = to.t === 'thing' ? { t: 'thing', id: to.id || (to.item && to.item.id), name: to.name || (to.item && to.item.name) || '' } : { t: 'place', name: to.name };
-    await addDoc(col, { kind: 'edge', rel: 'in', from: place.id, to: t, since: now, until: null, how: 'chosen', owner: place.owner || me(), by: me(), private: false, roles: {}, sharedWith: [] });
+    await addDoc(col, { kind: 'edge', rel: 'in', from: place.id, to: t, since: now, until: null, how, owner: place.owner || me(), by: me(), private: false, roles: {}, sharedWith: [] });
   }
   logEvent('place_in', { placeId: place.id, to: to ? to.t : null, replaced: !!cur });
   return { place: { id: place.id, name: place.name, owner: place.owner }, prev: cur ? cur.to : null };
@@ -652,10 +653,10 @@ export async function undoChain({ itemId = null, isNew = false, prev = null, mad
     await purgeItem(it);
   };
   if (itemId && isNew) await drop(itemId);
-  else if (itemId && prev) { const it = g.byId.get(itemId); if (it) await changeLocation(it, prev.location || '', 'chosen', prev.dest || null); }
-  for (const m of made.moved || []) { const it = g.byId.get(m.item.id) || m.item; await changeLocation(it, m.location, 'chosen', m.dest); }
+  else if (itemId && prev) { const it = g.byId.get(itemId); if (it) await changeLocation(it, prev.location || '', 'chosen', prev.dest || null, { undo: true }); }
+  for (const m of made.moved || []) { const it = g.byId.get(m.item.id) || m.item; await changeLocation(it, m.location, 'chosen', m.dest, { undo: true }); }
   for (const id of made.items || []) await drop(id);
-  for (const pm of [...(made.placeMoves || [])].reverse()) await placeIn(pm.place, pm.prev).catch(() => {});
+  for (const pm of [...(made.placeMoves || [])].reverse()) await placeIn(pm.place, pm.prev, 'undo').catch(() => {});
   for (const id of made.places || []) { for (const e of graph().edges.filter((x) => x.from === id && !x.until)) await deleteDoc(doc(col, e.id)).catch(() => {}); await deleteDoc(doc(col, id)).catch(() => {}); }
   logEvent('camera_undo', { isNew, made: (made.items || []).length + (made.places || []).length });
 }

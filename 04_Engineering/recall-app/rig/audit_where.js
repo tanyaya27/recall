@@ -304,6 +304,8 @@ async function main() {
   await shot('g5-before-remove');
   check('G5a its photos open from the level\'s sheet, with the one attached photo removable', await count('.d2-pv .d2-pill.rm') === 1);
   await tap('.d2-pv .d2-pill.rm', { wait: 500 });
+  check('G5a2 09-30e: Remove asks first ("Remove this photo?")', /Remove this photo\?/.test(await page.evaluate(() => (document.querySelector('.pv-ask .sheet-title') || {}).innerText || '')));
+  await tap('.pv-ask .btn-secondary.amber', { wait: 500 });
   check('G5b R1.3: removing the last attached photo KEEPS the identity — still "Place: Wooden box"', /^(in the )?wooden box$/i.test(await sayT()), await sayT());
   await tap('.lc-x', { wait: 400 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 400 });
 

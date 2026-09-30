@@ -3,6 +3,28 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-30.
 
+## NOW — `20260930e`: Ravi's keyboard bug, the independent tester's finds on `d`, Ravi's colour rule
+
+Screens: `design/mockups/BUILD_2026-09-30e_keyboard-tester-colour.jpg`. Tester's report: `rig/indep/REPORT_d.md`.
+
+- [x] **Choose place: typing hid the text box** (Ravi's phone 12:32, and tester #1). The new header pushed the search under
+  the keyboard. Now the header steps aside while you type or the keyboard is up; on a short screen only the chain (with
+  the ringed tier) shows; the list always keeps room.
+- [x] **"Current place" is the first row** (tester #6) and leads the row's second line (at Largest a long name hid it).
+- [x] **Undo of a Move is not a move** (tester #2): the page said "moved today" after Undo. An Undo is marked as one.
+- [x] **The camera's viewer asks before Remove** (tester #3), like the item page; a place you named keeps its name when
+  its only photo goes (it said "Place: not defined").
+- [x] **A new tier, just photographed, is "chosen", not "changed"** (tester #4) — the header said "it moves, with
+  everything in it".
+- [x] Small (tester #5, #7, #8): the camera viewer's title always has "photo 1 of 1"; "moved with the Wooden box" (capital);
+  "Tap it again to change it, or tap + to add a level on top."
+- [x] **Ravi's colour rule** (he chose "build both", mockup `design/mockups/OPTIONS_2026-09-30_focus-colour.jpg`): the
+  Choose place button is outlined in the colour of the tier it will change (= that square, its ring, the shutter); in
+  the chain line and the Choose place header only the tier in focus is coloured, the others are plain words.
+- [ ] **Ravi: phone check of `e`**: Move it → Choose place → type a new name (the box stays in sight); tap tier 2 — the
+  button turns blue with it; a tier's photos → Remove asks; Move then Undo → the page line doesn't say "moved".
+- Suites: `rig/audit_p30d.js` now 28 checks (P1–P6, T1–T8, F1–F2), in both engines.
+
 ## NOW — `20260930d`: Ravi's phone test of `c` (09-30, 10:27–10:32) + the tier question
 
 Screens: `design/mockups/BUILD_2026-09-30d_phone-fixes.jpg`. Suite `rig/audit_p30d.js` (15 checks, both engines).

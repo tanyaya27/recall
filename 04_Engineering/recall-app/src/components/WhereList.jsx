@@ -35,6 +35,7 @@ export default function WhereList({ item = null, items = [], places = [], title 
   const hit = (s) => !words.length || words.every((w) => (s || '').toLowerCase().includes(w));
   const placeAll = knownLocations(items, 999, places).filter(hit);
   const placeList = placeAll.filter((n) => !exclude || !exclude({ t: 'place', name: n })); // 09-29: not one already on this chain, not a circle
+  // 09-30d (tester #6): the place saved on the tier being changed is the FIRST row — "Current place" never below the fold
   const boxList = containers(g, 999).filter((b) => (!item || (b.id !== item.id && !wouldLoop(item, b, g))) && hit(b.name) && (!exclude || !exclude({ t: 'thing', item: b })));
   const typed = q.trim();
   // A typed name that IS a box (or a place) is offered as that one, never as a new place with the same name (G23).
@@ -53,14 +54,19 @@ export default function WhereList({ item = null, items = [], places = [], title 
   const isCurBox = (b) => (current !== undefined ? !!current && current.t === 'thing' && current.item && current.item.id === b.id : !!curHolder && curHolder.id === b.id);
   const boxSub = (b) => { const h = holderOf(b, g); return `a box · ${h ? `in the ${h.name}` : b.location ? `in ${b.location}` : 'no place yet'}`; };
   const shown = placeList.length + boxList.length;
+  const boxRow = (b) => (
+    <button type="button" key={b.id} className="wl-row" onClick={() => onPick({ t: 'thing', item: b })}>
+      {b.thumb ? <img src={b.thumb} alt="" /> : <span className="no"><BoxIcon /></span>}
+      <span className="tx"><b>{cap(b.name)}</b><small>{isCurBox(b) && <span className="wl-cur">Current place</span>}{boxSub(b)}</small></span>
+    </button>);
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet where-list" role="dialog" aria-modal="true" aria-labelledby="wl-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-title" id="wl-title">{chooser ? <span className="wl-chooser"><ListIcon />Choose place</span> : title}</div>
         {/* 09-30d (Ravi: "both pages should show the current tier hierarchy and then be clear which tier is being changed") */}
-        {changing && (
+        {changing && !typed && ( /* 09-30d (tester #1): hidden while you type — the matches must stay above the keyboard */
           <div className="wl-chg">
-            <div className="wl-chg-ch">{changing.parts.map((p, j) => <span key={j} className="cp">{j > 0 && <span className="lc-in">in</span>}<span className={j === changing.at ? 'sel' : p.soft ? 'soft' : ''} style={j === changing.at ? { borderColor: p.c, color: p.c } : p.c && !p.soft ? { color: p.c } : undefined}>{p.n}</span></span>)}</div>
+            <div className="wl-chg-ch">{changing.parts.map((p, j) => <span key={j} className="cp">{j > 0 && <span className="lc-in">in</span>}<span className={j === changing.at ? 'sel' : p.soft ? 'soft' : ''} style={j === changing.at ? { borderColor: p.c, color: p.c } : undefined}>{p.n}</span></span>)}</div>
             <p className="wl-chg-say">{changing.say}</p>
             {changing.above ? <p className="wl-chg-above">{changing.above}</p> : null}
           </div>)}
@@ -85,16 +91,13 @@ export default function WhereList({ item = null, items = [], places = [], title 
         {typed && !exists && <button type="button" className="wl-new typed" onClick={() => onPick({ t: 'place', name: cap(typed) })}><PlusIcon /><span>A new place called “{cap(typed)}”</span></button>}
         <div className="wl-scroll">
           {shown > 0 && <div className="wl-g">{pending ? 'OR IT’S ONE OF YOUR PLACES' : 'YOUR PLACES'} · {shown}</div>}
-          {placeList.map((n) => { const t = placePic(n); return (
+          {boxList.filter(isCurBox).map((b) => boxRow(b))}
+          {[...placeList].sort((a, b) => Number(isCurPlace(b)) - Number(isCurPlace(a))).map((n) => { const t = placePic(n); return (
             <button type="button" key={'p' + n} className="wl-row" onClick={() => onPick({ t: 'place', name: n })}>
               {t ? <img src={t} alt="" /> : <span className="no"><PinIcon /></span>}
-              <span className="tx"><b>{n}{isCurPlace(n) && <span className="wl-cur">Current place</span>}</b><small>{placeSub(n)}</small></span>
+              <span className="tx"><b>{n}</b><small>{isCurPlace(n) && <span className="wl-cur">Current place</span>}{placeSub(n)}</small></span>
             </button>); })}
-          {boxList.map((b) => (
-            <button type="button" key={b.id} className="wl-row" onClick={() => onPick({ t: 'thing', item: b })}>
-              {b.thumb ? <img src={b.thumb} alt="" /> : <span className="no"><BoxIcon /></span>}
-              <span className="tx"><b>{cap(b.name)}{isCurBox(b) && <span className="wl-cur">Current place</span>}</b><small>{boxSub(b)}</small></span>
-            </button>))}
+          {boxList.filter((b) => !isCurBox(b)).map((b) => boxRow(b))}
           {!placeList.length && !boxList.length && !typed && <p className="empty">No places yet. Photograph one, or type its name.</p>}
         </div>
         <button type="button" className="btn-quiet" onClick={onCancel}>Cancel</button>

@@ -140,7 +140,7 @@ the functions: `./rules-test/run_ai_test.sh`.
   look and accepts ReCall's name in the Choose place sheet; `pickPlace(name)` goes through ☰ Choose place; `saveNext()`
   holds Save for 0.8 s. The pills (`.lc-chip`), the chain sheet (`.chain-sheet`) and look A are gone.
 - **09-30: the new testing (`06_Handoffs/TESTING.md`).** `./run_all.sh` runs everything in memory-safe batches (summary in
-  `/tmp/runs/SUMMARY.txt`) — **728 checks** at `20260930a`, **745** at `20260930c`, **775** at `20260930d` (+ `audit_p30d.js`, 15 checks, in both engines). New: `oracle.js` (truth from the store vs every screen),
+  `/tmp/runs/SUMMARY.txt`) — **728 checks** at `20260930a`, **745** at `20260930c`, **775** at `20260930d` (+ `audit_p30d.js`, 15 checks, in both engines), **802** at `20260930e` (`audit_p30d.js` 28 in both engines; audit_where 54). New: `oracle.js` (truth from the store vs every screen),
   `journeys.js` (= tiers_head + journeys_body; stories in `JOURNEYS.md`, 34 checks; **51 at `c`**, J15–J18: the place worklist, Move all, merge; the stub's `global.SAME_PLACE` = 'same'|'different'|'unknown' answers the "PHOTO A:/PHOTO B:" place check), `monkey.js` (`SEED=… STEPS=…`),
   `realhouse_suite.js` (`REAL=/path/recall-house-….json`, round-trips the sample house without it), `engine.js`
   (`ENGINE=webkit node -r ./engine.js <suite>` — WebKit installed with `PLAYWRIGHT_BROWSERS_PATH=/home/claude/pw-webkit npx

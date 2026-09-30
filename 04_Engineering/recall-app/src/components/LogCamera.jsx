@@ -97,6 +97,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const [saveErr, setSaveErr] = useState(''); // fix 2026-09-29: a failed save says so (it used to blink and sit)
   const [sheet, setSheet] = useState(null);  // 'more' | 'change' | 'rename' | 'cancel' | { ask } | { preview: level index }
   const [pvIndex, setPvIndex] = useState(0);
+  const [pvAsk, setPvAsk] = useState(null); // { i, src } — Remove this photo? (the viewer asks first)
   const [draft, setDraft] = useState('');
   const [lastWhere, setLastWhere] = useState(null); // + Next: the where of the thing saved a moment ago
   const [savedFlash, setSavedFlash] = useState(''); // 09-29: "Spare batteries ✓ saved", after Save + Next
@@ -392,7 +393,10 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         if (j !== li - 1) return l;
         const photos = l.photos.filter((_, k) => k !== pi);
         const identified = !!l.known || (!!l.ask && !l.no) || !!l.userName;
-        return photos.length === 0 && !identified ? { ...l, photos, status: 'empty', name: '', ask: null } : { ...l, photos };
+        if (photos.length === 0 && !identified) return { ...l, photos, status: 'empty', name: '', ask: null };
+        // 09-30d (tester #3): a place you NAMED keeps its name when its only photo goes — like typing a new place's name
+        if (photos.length === 0 && !l.known && l.userName && !l.moves) return { ...l, photos, known: { t: 'place', name: cap(l.userName) }, status: 'known' };
+        return { ...l, photos };
       }));
     }
     setPvIndex((x) => Math.max(0, x - 1));
@@ -734,7 +738,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       : <>What is {theOf(levels[focusIdx - 1])} in? Photograph it, or choose one.</>)
     : (moveItem && focusIdx === 0 && focus.current) ? <>Moved it? Photograph the new place, or choose one.</>
     : focusIdx + 1 >= MAX_LEVELS ? null
-    : focusIdx < levels.length - 1 ? <>Tap it again to change it. {plusGlyph} adds a level on top.</> // 09-30 (independent test #10): a middle level is already in the next one
+    : focusIdx < levels.length - 1 ? <>Tap it again to change it, or tap {plusGlyph} to add a level on top.</> // 09-30 (independent test #10): a middle level is already in the next one
     : <>Tap {plusGlyph} to add what {theOf(focus)} is in.</>;
   const chooseAt = sel > 0 ? sel - 1 : Math.max(0, levels.findIndex((l) => !filled(l)) === -1 ? levels.length : levels.findIndex((l) => !filled(l)));
   const openChoose = () => { if (locked) return; if (chooseAt >= levels.length) { setLevels((ls) => [...ls, emptyLevel()]); } setSel(chooseAt + 1); setSheet({ choose: chooseAt, withPhoto: false }); logEvent('camera_choose_open', { why: 'button', level: chooseAt + 1 }); };
@@ -784,7 +788,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (chooseIdx === null) return null;
     const itemN = cap(moveItem ? moveItem.name : name) || 'This item';
     const theItem = theName(itemN);
-    const L = levels[chooseIdx]; const isNew = !L || !filled(L);
+    const L = levels[chooseIdx]; const isNew = !L || !filled(L) || !known(L); // 09-30d (tester #4): a new tier (photographed, not yet a place) is chosen, not "changed"
     const below = chooseIdx === 0 ? theItem : theOf(levels[chooseIdx - 1]);
     const say = isNew ? `Choose what ${below} is in.` : chooseIdx === 0 ? `Changing what ${below} is in.` : `Changing what ${below} is in — it moves, with everything in it.`;
     const upper = isNew ? [] : chainParts.slice(chooseIdx + 1).map((p) => p.n).filter((x) => x && x !== '?' && x !== '…');
@@ -835,7 +839,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
                 {/* 09-30 (WebKit run): + sits OUTSIDE the scrolling squares — with 3+ tiers it had scrolled out of sight (on
                     Safari a tap there missed), and + is how you add on top. */}
                 {plusOk && <button type="button" className="lv-sq plus lc-plus-out" aria-label="Add a level: what it is in" onClick={addLevel}><PlusIcon /></button>}
-                <button type="button" className="lc-choose" disabled={locked} onClick={openChoose}><ListIcon />Choose place</button>
+                {/* 09-30d (Ravi): the button wears the colour of the tier it will change — the same colour as that square, its ring in
+                    the chain and the shutter; only the tier in focus is coloured (the words of the others are plain). */}
+                <button type="button" className="lc-choose" disabled={locked} onClick={openChoose} style={{ borderColor: lvColour(chooseAt + 1), color: lvColour(chooseAt + 1) }}><ListIcon />Choose place</button>
               </div>
               {placeLine && (
                 <div className="lc-say">
@@ -848,7 +854,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
                 </div>)}
               {chainParts.length >= 2 && (
                 <div className="lc-chainline" aria-label={'Where: ' + chainParts.map((p) => p.n).join(' in ')}>
-                  {chainParts.map((p, j) => <span key={j} className="cp">{j > 0 && <span className="lc-in">in</span>}<span style={j === sel - 1 ? { color: p.c, borderColor: p.c } : { color: p.c }} className={j === sel - 1 ? 'sel' : p.soft ? 'soft' : ''}>{p.n}</span></span>)}
+                  {chainParts.map((p, j) => <span key={j} className="cp">{j > 0 && <span className="lc-in">in</span>}<span style={j === sel - 1 ? { color: p.c, borderColor: p.c } : undefined} className={j === sel - 1 ? 'sel' : p.soft ? 'soft' : ''}>{p.n}</span></span>)}
                 </div>)}
             </>)}
             {privLine}
@@ -871,10 +877,14 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           the item page — name · photo N of M in the top bar beside ✕, the photo big, Remove at the bottom. */}
       {pv !== null && pvPhotos.length > 0 && (
         <PhotoViewer key={`pv${pv}_${pvPhotos.length}`} photos={pvPhotos.map((p, j) => ({ key: j, src: p.photo }))} start={Math.min(pvIndex, pvPhotos.length - 1)}
-          title={(i, n) => `${lvName(pv)}${n > 1 ? ` · photo ${i + 1} of ${n}` : ''}`}
+          title={(i, n) => `${lvName(pv)} · photo ${i + 1} of ${n}`}
           onRename={pv > 0 && !known(levels[pv - 1] || {}) ? () => chainRename(pv - 1) : null}
-          onRemove={!(pv === 0 && moveItem) && ((pv === 0 ? thing.photos : (levels[pv - 1] || {}).photos || []).length > 0) ? (i) => { setPvIndex(Math.max(0, i - 1)); removePhoto(pv, i); } : null}
+          onRemove={!(pv === 0 && moveItem) && ((pv === 0 ? thing.photos : (levels[pv - 1] || {}).photos || []).length > 0) ? (i) => setPvAsk({ i, src: pvPhotos[i] && pvPhotos[i].photo }) : null}
           onClose={() => setSheet(null)} />)}
+      {/* 09-30d (independent tester #3): Remove asks first, as the item page's viewer does. */}
+      {pv !== null && pvAsk && (
+        <div className="pv-ask"><Confirm title="Remove this photo?" image={pvAsk.src} body={pv === 0 ? 'Only this photo goes.' : 'The place keeps its name.'} actionLabel="Remove"
+          onKeep={() => setPvAsk(null)} onAction={() => { const i = pvAsk.i; setPvAsk(null); setPvIndex(Math.max(0, i - 1)); removePhoto(pv, i); }} /></div>)}
       {/* Tap the selected square: what you can do with THIS level (09-29 mockup "tap a selected square"). */}
       {tierL && (
         <div className="sheet-back" onClick={() => setSheet(null)} role="presentation">

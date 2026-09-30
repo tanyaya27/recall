@@ -69,7 +69,9 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-09-30 (night) — `20260930d` built (NOT pushed): Ravi's phone bugs of `c` — one photo viewer, "seen" vs "moved", Choose place names the tier it changes, the square after a pick. The tier question (tiers vs freeform) is with Ravi and Tanya: `06_Handoffs/design/BOARD_2026-09-30_tiers-or-freeform.md`. 775 checks green.**
+> **2026-09-30 (late night) — `20260930e` built (NOT pushed): Choose place no longer hides the text box under the keyboard; the tester's 8 finds on `d` fixed; Ravi's focus colour (Choose place wears the tier's colour; only that tier coloured). 802 checks green. `d` is pushed.**
+>
+> **2026-09-30 (night) — `20260930d` built (pushed): Ravi's phone bugs of `c` — one photo viewer, "seen" vs "moved", Choose place names the tier it changes, the square after a pick. The tier question (tiers vs freeform) is with Ravi and Tanya: `06_Handoffs/design/BOARD_2026-09-30_tiers-or-freeform.md`. 775 checks green.**
 >
 > **2026-09-30 (evening) — `20260930c` built (pushed, live): after a Move, a note on the item page (no card); a place's page lists what's in it with Move / Move all, and Remove waits until it's empty; renaming a place to a name you have merges it, with a photo check and a photo review. 745 checks green. `a`, `b` pushed with it.**
 >

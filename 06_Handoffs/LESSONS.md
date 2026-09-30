@@ -453,3 +453,8 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-30 — Check what a pick did to the store, not just the screen.** Choose place on a photographed tier left
   the old photo on the square — and then saved it onto a different place. Only reading the place's photos after Save
   showed the damage (audit_p30d P4).
+- **2026-09-30 — Every new header is a keyboard test.** The "which tier" header was checked on an empty screen; with the
+  keyboard up it pushed the search field under it. Ravi and the tester hit it the same hour. Anything added above a
+  field is checked with the keyboard up and at Largest on the small iPhone (audit_p30d T1).
+- **2026-09-30 — A check that passes by doing nothing.** T3 "the name stays after Remove" passed at first because the
+  test never managed to press Remove. A check must also prove the action happened (the square lost its photo).

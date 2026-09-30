@@ -87,9 +87,10 @@ export const graph = () => G;
 // or null for the item itself), or null when it has not moved since it was logged.
 export function movedOf(item, g = G) {
   if (!item) return null;
-  const replaced = (id, e) => (g.edges || []).some((x) => x.rel === 'in' && x.from === id && x.until && x.id !== e.id && Math.abs((x.until || 0) - (e.since || 0)) < 5000);
+  // an Undo puts it back: its link (how: 'undo') is not a move, and its history line cancels the line before it
+  const replaced = (id, e) => e.how !== 'undo' && (g.edges || []).some((x) => x.rel === 'in' && x.from === id && x.until && x.id !== e.id && Math.abs((x.until || 0) - (e.since || 0)) < 5000);
   let best = null;
-  const h = item.history || [];
+  const h = []; (item.history || []).forEach((x) => { if (x.undo && h.length > 1) h.pop(); else if (!x.undo) h.push(x); });
   for (let i = h.length - 1; i > 0; i--) {
     const a = (h[i - 1].location || '').trim().toLowerCase(), b = (h[i].location || '').trim().toLowerCase();
     if (a && b && a !== b) { best = { at: h[i].at || 0, via: null }; break; }
@@ -97,7 +98,7 @@ export function movedOf(item, g = G) {
   const e0 = openEdge(item.id, g); if (e0 && replaced(item.id, e0) && (!best || (e0.since || 0) > best.at + 5000)) best = { at: e0.since || 0, via: null };
   for (const t of whereChain(item, g)) {
     const id = t.t === 'thing' ? t.item.id : t.id; if (!id) continue;
-    const e = openEdge(id, g); if (e && replaced(id, e) && (!best || (e.since || 0) > best.at + 5000)) best = { at: e.since || 0, via: t.t === 'thing' ? t.item.name : t.name };
+    const e = openEdge(id, g); if (e && replaced(id, e) && (!best || (e.since || 0) > best.at + 5000)) best = { at: e.since || 0, via: t.t === 'thing' ? (t.item.name ? t.item.name.charAt(0).toUpperCase() + t.item.name.slice(1) : '') : t.name }; // 09-30d (tester #7): "Wooden box", as written everywhere
   }
   return best;
 }

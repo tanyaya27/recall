@@ -86,3 +86,8 @@ only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eig
   yet" and "the in air". Screens: `design/mockups/BUILD_2026-09-30d_phone-fixes.jpg`.
 - The tier question went to two new boards (Ravi asked): `design/BOARD_2026-09-30_tiers-or-freeform.md` and
   `design/mockups/OPTIONS_2026-09-30_tiers-or-freeform.jpg`. Awaiting Ravi and Tanya.
+
+## 09-30 (late night) → `20260930e`
+- Ravi's phone (12:32): typing in Choose place hid the text box — the same as the independent tester's #1 on `d`
+  (`rig/indep/REPORT_d.md`, 8 finds). All 8 reproduced in `audit_p30d.js` (T1–T8) and fixed. Ravi's colour idea
+  (critiqued, drawn, he chose "build both") built: only the focused tier coloured; Choose place wears its colour.

@@ -34,9 +34,9 @@ module.exports = ({ page, PORT, tap }) => {
       // time it changed place — itself (history), or with a box/place it is in (a link that replaced an earlier one).
       const shots = live.filter((x) => x.kind === 'snap' && x.itemId === it.id && !x.moved).map((x) => x.at || 0);
       const lastPhoto = it.photo ? Math.max(it.seenAt || 0, ...shots, shots.length ? 0 : (it.createdAt || 0)) : 0;
-      let lastMove = 0; const h = it.history || [];
+      let lastMove = 0; const h = []; (it.history || []).forEach((x) => { if (x.undo && h.length > 1) h.pop(); else if (!x.undo) h.push(x); });
       for (let i = h.length - 1; i > 0; i--) { const a = (h[i - 1].location || '').trim().toLowerCase(), b = (h[i].location || '').trim().toLowerCase(); if (a && b && a !== b) { lastMove = h[i].at || 0; break; } }
-      const moved = (id) => { const e = edgeFrom(id); return e && d.some((x) => x.kind === 'edge' && x.from === id && x.until && x.id !== e.id && Math.abs(x.until - (e.since || 0)) < 5000) ? e.since || 0 : 0; };
+      const moved = (id) => { const e = edgeFrom(id); return e && e.how !== 'undo' && d.some((x) => x.kind === 'edge' && x.from === id && x.until && x.id !== e.id && Math.abs(x.until - (e.since || 0)) < 5000) ? e.since || 0 : 0; };
       lastMove = Math.max(lastMove, moved(it.id), ...[...seen].filter((id) => id !== it.id).map(moved));
       return { id: it.id, chain: out, lastPhoto, lastMove };
     }, name);

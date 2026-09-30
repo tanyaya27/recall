@@ -283,6 +283,90 @@ async function runLook(look) {
     const when3 = await page.evaluate(() => [...document.querySelectorAll('.tp-blk small')].map((x) => x.innerText).join(' | '));
     await snap('batteries after their counter moved');
     check('P2', 'its counter moved to the Pantry shelf → "moved with the Kitchen counter …", not "seen"', /moved with the Kitchen counter today/i.test(when3) && /last seen/.test(when3), when3);
+
+    // ======== 09-30d independent tester (REPORT_d.md) ========
+    // the iPhone keyboard stand-in (as audit_chain): installed before the app loads, so the app's keyboard watcher sees it
+    await page.addInitScript(() => { const et = new EventTarget(); let h = null; const Hh = () => (h === null ? window.innerHeight : h);
+      Object.defineProperty(et, 'height', { get: Hh }); Object.defineProperty(et, 'offsetTop', { get: () => 0 }); Object.defineProperty(et, 'width', { get: () => window.innerWidth });
+      Object.defineProperty(window, 'visualViewport', { configurable: true, get: () => et }); window.__kb = (px) => { h = window.innerHeight - px; et.dispatchEvent(new Event('resize')); }; });
+    const kbStub = async () => {};
+    // T1: with the keyboard up, what you search for stays in sight (the new header must not push it under the keyboard)
+    await openThing('baseball card'); await kbStub();
+    await tap('button:has-text("Move it")', { wait: 900 });
+    await page.locator('.lv-strip .lv-sq').nth(1).click(); await page.waitForTimeout(350); // tier 2: the longest header (as the tester did)
+    await tap('.lc-choose', { wait: 500 }); await page.locator('.wl-search input').click(); await page.evaluate(() => window.__kb(380)); await page.waitForTimeout(250);
+    await page.keyboard.type('Pan', { delay: 40 }); await page.waitForTimeout(350);
+    const t1 = await page.evaluate(() => { const r = [...document.querySelectorAll('.where-list .wl-row')].find((x) => /Pantry shelf/.test(x.innerText)); const b = r ? r.getBoundingClientRect() : null; const i = document.querySelector('.wl-search input').getBoundingClientRect(); return { row: b ? Math.round(b.bottom) : null, input: Math.round(i.bottom), limit: window.innerHeight - 380 }; });
+    await snap('T1 keyboard up typing Pan');
+    check('T1', 'Choose place, keyboard up, "Pan" typed: the search and the Pantry shelf row sit above the keyboard', t1.row !== null && t1.row <= t1.limit && t1.input <= t1.limit, JSON.stringify(t1));
+    await page.evaluate(() => window.__kb(0)); await tap('.where-list .btn-quiet', { wait: 300 }); await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
+    // T1b: Largest text on a small iPhone, no keyboard: the first place row is on the screen
+    await page.setViewportSize({ width: 375, height: 667 }); await setPrefs({ size: 'largest' });
+    await openThing('baseball card'); await tap('button:has-text("Move it")', { wait: 900 }); await page.locator('.lv-strip .lv-sq').nth(1).click(); await page.waitForTimeout(350); await tap('.lc-choose', { wait: 500 });
+    const t1b = await page.evaluate(() => { const r = document.querySelector('.where-list .wl-row'); return r ? Math.round(r.getBoundingClientRect().top) : null; });
+    await snap('T1b largest 375 choose tier 2');
+    check('T1', 'Largest on 375x667: the first place row starts on the screen (it started at 693 px)', t1b !== null && t1b < 667 - 40, String(t1b));
+    await page.keyboard.press('Escape').catch(() => {}); if (await page.locator('.where-list').count()) await page.locator('.where-list .btn-quiet').click({ force: true, timeout: 3000 }).catch(() => {}); await page.waitForTimeout(300); await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
+    await page.setViewportSize({ width: 390, height: 844 }); await setPrefs({ size: 'normal' });
+    // T6: the current place is the first row
+    await move(); await tap('.lc-choose', { wait: 500 });
+    const t6 = await page.evaluate(() => { const r = document.querySelector('.where-list .wl-scroll .wl-row'); return r ? r.innerText.replace(/\n/g, ' | ') : ''; });
+    check('T6', 'Choose place: the place saved on that tier ("Current place") is the first row, not somewhere below', /Current place/.test(t6), t6);
+    await tap('.where-list .btn-quiet', { wait: 300 }); await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
+    // T2: Undo of a Move → not "moved"
+    await openThing('3D model of plant sensor');
+    const before = await page.evaluate(() => [...document.querySelectorAll('.tp-blk small')].map((x) => x.innerText).join(' | '));
+    await tap('button:has-text("Move it")', { wait: 900 }); await tap('.lc-choose', { wait: 500 }); await page.fill('.wl-search input', 'Linen closet'); await page.waitForTimeout(150);
+    await tap('.where-list .wl-row:has-text("Linen closet")', { wait: 500 }); await tap('.lc-k.sv', { wait: 2600 });
+    await tap('.tp-moved button:has-text("Undo")', { wait: 1500 });
+    await openThing('3D model of plant sensor');
+    const after = await page.evaluate(() => [...document.querySelectorAll('.tp-blk small')].map((x) => x.innerText).join(' | '));
+    check('T2', 'Move then Undo: the page says what it said before the Move (an undone move is not a move)', after === before, JSON.stringify({ before, after }));
+    // T4 + T3: a new tier on top, photographed → the header says "Choose what … is in" (not "Changing … it moves"); its viewer asks before removing; the name stays
+    await move(); await tap('.lv-sq.plus', { wait: 350 });
+    WHERE.push({ name: 'bench', moves: false }); await cam('real_slippers.jpg'); await tap('.lc-shutter', { wait: 2200 });
+    const t4 = await page.evaluate(() => ((document.querySelector('.where-list .wl-chg') || {}).innerText || '').replace(/\n/g, ' '));
+    check('T4', 'a new tier on top, just photographed: the header says "Choose what … is in", not "Changing … it moves"', /Choose what/.test(t4) && !/it moves/.test(t4), t4);
+    if (await page.locator('.wl-pend input').count()) { await page.locator('.wl-pend input').fill('Foyer bench'); await tap('.wl-pend .btn-primary', { wait: 500 }); }
+    const nsq = (await st()).squares.length;
+    await page.locator('.lv-strip .lv-sq').nth(nsq - 1).click(); await page.waitForTimeout(350);
+    await tap('.tier-sheet .sheet-row:has-text("See its photos")', { wait: 500 });
+    const t5 = await page.evaluate(() => (document.querySelector('.d2-pv .d2-meta') || {}).innerText || '');
+    check('T5', 'the camera viewer\'s title has the count even for one photo, like the item page ("Foyer bench · photo 1 of 1")', /Foyer bench · photo 1 of 1/.test(t5), t5);
+    await tap('.d2-pv .d2-pill.rm', { wait: 400 });
+    const t3a = await page.evaluate(() => ({ confirm: [...document.querySelectorAll('.sheet-title, .confirm h2, [role=alertdialog]')].map((x) => x.innerText).join(' | '), viewer: !!document.querySelector('.d2-pv') }));
+    check('T3', 'Remove in the camera\'s viewer asks first ("Remove this photo?"), like the item page', /Remove this photo\?/.test(t3a.confirm), JSON.stringify(t3a));
+    if (/Remove this photo/.test(t3a.confirm)) await tap('.pv-ask .btn-secondary.amber', { wait: 600 });
+    const gone = await page.evaluate(() => [...document.querySelectorAll('.lv-strip .lv-sq:not(.plus)')].pop().querySelector('img') === null || true);
+    s = await st(); const lastThumb = s.thumbs[s.thumbs.length - 1];
+    check('T3', 'removing a named tier\'s only photo (it IS removed: no picture on its square) keeps its name ("Place: Foyer bench", not "not defined")', lastThumb === '' && /Foyer bench/.test(s.place) && !/not defined/.test(s.place), JSON.stringify({ place: s.place, lastThumb }));
+    await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
+    // T7: "moved with the Wooden box" — a box keeps its capital
+    await page.evaluate(() => window.__rig.seed([{ id: 'ew', kind: 'edge', rel: 'in', from: 'w', to: { t: 'thing', id: 'm', name: 'memorabilia box' }, since: Date.now() - 80 * 3600e3, until: null, how: 'chosen', owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [] }]));
+    await openThing('wooden box'); await tap('button:has-text("Move it")', { wait: 900 }); await tap('.lc-choose', { wait: 500 }); await page.fill('.wl-search input', 'Pantry shelf'); await page.waitForTimeout(150);
+    await tap('.where-list .wl-row:has-text("Pantry shelf")', { wait: 500 }); await tap('.lc-k.sv', { wait: 2600 });
+    await openThing('baseball card');
+    const t7 = await page.evaluate(() => [...document.querySelectorAll('.tp-blk small')].map((x) => x.innerText).join(' | '));
+    check('T7', 'the card in the wooden box: "moved with the Wooden box" (the name as written everywhere)', /moved with the Wooden box/.test(t7), t7);
+    // T8: level 2 selected — the prompt reads as one sentence
+    await openThing('baseball card'); await tap('button:has-text("Move it")', { wait: 900 }); await page.locator('.lv-strip .lv-sq').nth(1).click(); await page.waitForTimeout(300);
+    const t8 = (await st()).prompt.replace(/\s+/g, ' ');
+    check('T8', 'a middle tier selected: the prompt is one sentence ("… or tap + to add a level on top.")', !/\. adds a level/.test(t8), t8);
+    await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
+    // ---- F (Ravi 09-30): the Choose place button wears the colour of the tier it changes; only that tier is coloured ----
+    await openThing('baseball card'); await tap('button:has-text("Move it")', { wait: 900 }); await page.locator('.lv-strip .lv-sq').nth(1).click(); await page.waitForTimeout(350);
+    const f = await page.evaluate(() => { const sel = document.querySelector('.lc-chainline .sel'); const b = document.querySelector('.lc-choose'); const sq = document.querySelector('.lv-strip .lv-sq.sel');
+      const words = [...document.querySelectorAll('.lc-chainline .cp > span:not(.lc-in)')].map((x) => ({ n: x.innerText, c: getComputedStyle(x).color, sel: x.classList.contains('sel') }));
+      return { ring: sel ? getComputedStyle(sel).borderTopColor : '', button: b ? getComputedStyle(b).borderTopColor : '', btnText: b ? getComputedStyle(b).color : '', square: sq ? getComputedStyle(sq).borderTopColor : '', words }; });
+    await snap('F focus colour tier 2');
+    check('F1', 'Choose place wears the colour of the tier it changes (button = ring in the chain = the selected square)', f.ring && f.button === f.ring && f.btnText === f.ring && f.square === f.ring, JSON.stringify(f));
+    const others = f.words.filter((w) => !w.sel).map((w) => w.c); const plain = new Set(others);
+    check('F2', 'only the tier in focus is coloured: every other tier\'s word is the same plain colour', others.length >= 1 && plain.size === 1 && !others.includes(f.ring), JSON.stringify(f.words));
+    await tap('.lc-choose', { wait: 500 });
+    const fh = await page.evaluate(() => [...document.querySelectorAll('.wl-chg-ch .cp > span:not(.lc-in)')].map((x) => ({ n: x.innerText, c: getComputedStyle(x).color, sel: x.classList.contains('sel') })));
+    const hOthers = new Set(fh.filter((w) => !w.sel).map((w) => w.c));
+    check('F2', 'Choose place header: only the tier being changed is coloured', hOthers.size === 1 && fh.filter((w) => w.sel).length === 1, JSON.stringify(fh));
+    await tap('.where-list .btn-quiet', { wait: 300 }); await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
   }
   await seedHouse();
   try { await runSuite(); } catch (e) { console.error('FATAL', e); check('P', 'suite ran', false, e.message); }
