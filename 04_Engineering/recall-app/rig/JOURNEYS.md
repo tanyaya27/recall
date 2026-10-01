@@ -38,3 +38,15 @@ Add a story whenever Ravi or Tanya finds a bug a story would have caught. Write 
 | P4 | Photograph a new top tier (Foyer), then Choose place → "In air" on it: the square shows In air's photo, and at Save the Foyer's photo does NOT go onto In air. | Ravi 09-30d |
 | P5 | Choose place: a place that holds another place names it (not "nothing here yet"). | Ravi's screenshot |
 | P6 | A place called "In air": "Tap + to add what “In air” is in", never "the in air". | Ravi's screenshot |
+
+## `audit_pick.js` — the 09-30f camera flow (Ravi 1:36 PM + the tester's timeout report)
+
+| # | Story | Came from |
+|---|---|---|
+| K1 | Move it → shoot the current place: "This photo is…" at once; nothing behind it changes. An empty tier opens Choose place at once. | Ravi 1:36 PM |
+| K2 | "Another photo of the White cardboard box" → next shots add without asking (the shutter shows the box, "+"); tap the square → the next shot asks again. | Ravi |
+| K3–K4 | "A different place" → Choose place: the old chain in the header, new place first, then search; Cancel puts it all back. | Ravi |
+| K5–K9 | A pick (or a new name) shows Before → Now; Back; Use; the photo goes to the place picked. | Ravi |
+| K10 | "Photograph a new place" is above the search; the next shot goes straight to naming it (pin shutter, "New"). | Ravi |
+| T1–T6 | No timer: a late answer only fills ReCall's slot (no jump, no refused name, no tier set); Cancel leaves no "A place"; a Move that moved nothing says "Saved just now". | tester (timeout) |
+| C0–C2 | The marks in "This photo is…" and on the shutter (Ravi's option 1); the fly-in; "Added — 2 photos of …". | Ravi |

@@ -267,8 +267,8 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         {/* 09-30 (Ravi, 2C): the Move just made, said here — no card over the page, no timer, gone when you leave. */}
         {moveNote && (
           <div className="tp-moved" role="status">
-            <div className="r1"><b>✓ {moveNote.was ? 'Moved just now' : 'Put away just now'}</b><button type="button" className="x" aria-label="Close" onClick={onCloseNote}>✕</button></div>
-            <div className="r2"><span>{moveNote.was ? `Before: ${moveNote.was}` : ' '}</span>{moveNote.undo && <button type="button" className="u" onClick={() => onUndoMove(moveNote)}>Undo</button>}</div>
+            <div className="r1"><b>✓ {moveNote.stayed ? 'Saved just now' : moveNote.was ? 'Moved just now' : 'Put away just now'}</b><button type="button" className="x" aria-label="Close" onClick={onCloseNote}>✕</button></div>
+            <div className="r2"><span>{moveNote.stayed ? moveNote.added : moveNote.was ? `Before: ${moveNote.was}` : ' '}</span>{moveNote.undo && <button type="button" className="u" onClick={() => onUndoMove(moveNote)}>Undo</button>}</div>
             {(moveNote.moving || []).map((m) => <div key={m} className="mv">{m}</div>)}
           </div>)}
         {canEdit && (hasPlace

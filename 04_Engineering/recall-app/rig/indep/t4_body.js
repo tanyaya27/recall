@@ -1,0 +1,17 @@
+    const cancelSheet = ['press', '.btn-quiet:has-text("Cancel")'];
+    const S = [
+      { id: 'B1', desc: 'during the look: shutter again @1.0s, Naming… square @1.4s, thumbnail @1.8s, Choose place @2.0s, Save @2.2s, hold Save @2.4s; answer KC @4.5s', answers: [{ ans: KC, delay: 4500 }],
+        steps: [[1000, 'shoot', 300], [1400, 'press', '.lv-sq.sel'], [1500, 'shot', 'naming square tapped'], [1800, 'press', '.lc-thing'], [2000, 'press', '.lc-choose'], [2200, 'save', ''], [2400, 'hold', '.lc-k.sv'], [3300, 'shot', 'at 3s'], [5200, 'shot', 'after late']] },
+      { id: 'B2', desc: 'Cancel (camera) @1.5s during the look; KC answer @2.5s lands after the camera closed', answers: [{ ans: KC, delay: 2500 }], steps: [[1500, 'press', '.lc-x'], [2000, 'shot', 'after cancel'], [4000, 'shot', 'after answer+timer'], [4200, 'fn', async () => { console.log('   item page:', (await bodyText()).replace(/\s+/g, ' ').slice(0, 200)); }]], saveAtEnd: false,
+        after: async () => { await tap('button:has-text("Move it")', { wait: 1000 }); console.log('   reopened Move it:', JSON.stringify(await state())); await shot('B2-reopened'); await page.waitForTimeout(3500); console.log('   3.5s later:', JSON.stringify(await state())); await press('.lc-x'); await page.waitForTimeout(800); } },
+      { id: 'B3', desc: 'Cancel (camera) @1.5s; NEW answer @6s lands on the item page; reopen Move it at 4s', answers: [{ ans: NEW, delay: 6000 }], steps: [[1500, 'press', '.lc-x'], [4000, 'press', 'button:has-text("Move it")'], [5000, 'shot', 'reopened'], [7000, 'shot', 'after late answer in NEW camera'], [7100, 'ui', '']], saveAtEnd: false,
+        after: async () => { console.log('   now:', JSON.stringify(await state())); } },
+      { id: 'B4', desc: 'OVERLAP: tier1 look times out (answer NEW "hall closet" @9s); she Cancels the sheet, taps +, shoots tier 2 (answer "garage wall" NEW @0.5s)', answers: [{ ans: NEW, delay: 9000 }, { ans: { name: 'garage wall' } }],
+        steps: [[3700, ...cancelSheet], [4100, 'press', '.lv-sq.plus'], [4500, 'shoot', 500], [5800, 'shot', 'tier2 sheet'], [6000, ...cancelSheet], [6400, 'fn', async () => console.log('   squares now', JSON.stringify(await state()))], [9800, 'shot', 'after tier1 late answer'], [10000, 'ui', '']] },
+      { id: 'B5', desc: 'OVERLAP: tier1 look times out (KC sure @9s); Cancel sheet, +, shoot tier 2 (answer "garage wall" @0.5s); she is typing in tier-2 sheet when tier-1 answer lands', answers: [{ ans: KC, delay: 9000 }, { ans: { name: 'garage wall' } }],
+        steps: [[3700, ...cancelSheet], [4100, 'press', '.lv-sq.plus'], [4500, 'shoot', 500], [7600, 'fn', async () => { await page.locator('input.place-input').first().fill(''); }], [7700, 'type', 'Back porch'], [9800, 'shot', 'typing when tier1 answer lands'], [10000, 'fn', async () => console.log('   state', JSON.stringify(await state()))], [10100, 'press', 'button.btn-primary:has-text("Use this name")'], [10800, 'shot', 'after use name'], [11000, 'ui', '']] },
+      { id: 'B6', desc: 'OVERLAP w/o cancel: tier1 times out (KC sure @7s); in the sheet she taps its Cancel, then selects nothing and shoots tier 1 AGAIN (answer NEW "hall closet" @0.5s)', answers: [{ ans: KC, delay: 7000 }, { ans: NEW }],
+        steps: [[3700, ...cancelSheet], [4200, 'shoot', 500], [5300, 'shot', 'second shot sheet'], [7600, 'shot', 'after first answer lands'], [7700, 'ui', '']] },
+    ];
+    const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
+    for (const sc of S) if (!only || only.includes(sc.id)) await runScn(sc);

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import PhotoViewer from './PhotoViewer.jsx';
+import { MiniMark } from './LogCamera.jsx';
 import { knownLocations, placeNamed } from '../lib/db.js';
 import { graph, containers, wouldLoop, atPlace, holderOf } from '../lib/graph.js';
 import { normName } from '../lib/names.js';
@@ -21,7 +23,12 @@ const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 // place (not recognised, or "No"), `pending` puts that photo on top: "A new place?" + a name field (ReCall's guess) +
 // "Use this name"; the list below is headed "Or it's one of your places". `suggest` is a late recognition: first row.
 export default function WhereList({ item = null, items = [], places = [], title = 'Where does it go?', onPick, onPhotograph = null, onCancel, exclude = null,
-  chooser = false, pending = null, suggest = null, changing = null, current = undefined }) {
+  chooser = false, pending = null, suggest = null, changing = null, current = undefined, describe = null, looking = false, newMark = null }) {
+  // 09-30f (Ravi, 1:36 PM): with `describe` (the camera), a pick doesn't close the sheet — it shows Before → Now first.
+  const [confirm, setConfirm] = useState(null); // { k } | { name }
+  const [view, setView] = useState(null); // { photos, title } — a Before/Now photo, big
+  const choose = (k) => (describe ? setConfirm({ k }) : onPick(k));
+  const useNew = (n) => (describe ? setConfirm({ name: n }) : pending.onUse(n));
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState(pending ? pending.draft || '' : '');
   const [touched, setTouched] = useState(false);
@@ -55,10 +62,37 @@ export default function WhereList({ item = null, items = [], places = [], title 
   const boxSub = (b) => { const h = holderOf(b, g); return `a box · ${h ? `in the ${h.name}` : b.location ? `in ${b.location}` : 'no place yet'}`; };
   const shown = placeList.length + boxList.length;
   const boxRow = (b) => (
-    <button type="button" key={b.id} className="wl-row" onClick={() => onPick({ t: 'thing', item: b })}>
+    <button type="button" key={b.id} className="wl-row" onClick={() => choose({ t: 'thing', item: b })}>
       {b.thumb ? <img src={b.thumb} alt="" /> : <span className="no"><BoxIcon /></span>}
       <span className="tx"><b>{cap(b.name)}</b><small>{isCurBox(b) && <span className="wl-cur">Current place</span>}{boxSub(b)}</small></span>
     </button>);
+  const d = confirm && describe ? describe(confirm) : null;
+  if (d) {
+    const tile = (lab, x, col, isNow) => (
+      <div className="bn-t">
+        <div className="bn-lab">{lab}</div>
+        {x ? (<>
+          <button type="button" className="bn-ph" style={{ borderColor: col }} disabled={!x.photos || !x.photos.length} aria-label={`Photos of ${x.name}`}
+            onClick={() => setView({ photos: x.photos, title: x.name })}>
+            {x.thumb ? <img src={x.thumb} alt="" /> : <span className="no"><PinIcon /></span>}
+            {x.photos && x.photos.length ? <span className="bn-n">{x.photos.length === 1 ? '1 photo' : `${x.photos.length} photos`}</span> : null}
+          </button>
+          <b className="bn-name">{x.name}{isNow && x.isNew ? <span className="bn-new">NEW</span> : null}</b>
+          {x.sub ? <small>{x.sub}</small> : null}</>)
+          : <div className="bn-none"><span className="no"><PinIcon /></span><b className="bn-name">No place yet</b></div>}
+      </div>);
+    return (
+      <div className="sheet-back" onClick={() => setConfirm(null)} role="presentation">
+        <div className="sheet where-list bn" role="dialog" aria-modal="true" aria-labelledby="wl-title" onClick={(e) => e.stopPropagation()}>
+          <div className="sheet-title" id="wl-title"><span className="wl-chooser"><ListIcon />Choose place</span></div>
+          <div className="bn-row">{tile('BEFORE', d.before, 'rgba(255,255,255,0.28)', false)}<span className="bn-arrow" style={{ color: d.colour }}>→</span>{tile('NOW', d.now, d.colour, true)}</div>
+          <p className="bn-say">{d.say}</p>
+          <button type="button" className="btn-primary" onClick={() => { const c = confirm; setConfirm(null); if (c.k) onPick(c.k); else pending.onUse(c.name); }}>{d.useLabel}</button>
+          <button type="button" className="btn-secondary" onClick={() => setConfirm(null)}>Back to the list</button>
+          {view && <PhotoViewer photos={view.photos.map((src, j) => ({ key: j, src }))} start={0} title={(i, n) => `${view.title} · photo ${i + 1} of ${n}`} onClose={() => setView(null)} />}
+        </div>
+      </div>);
+  }
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet where-list" role="dialog" aria-modal="true" aria-labelledby="wl-title" onClick={(e) => e.stopPropagation()}>
@@ -72,28 +106,33 @@ export default function WhereList({ item = null, items = [], places = [], title 
           </div>)}
         {pending && (
           <div className="wl-pend">
-            <div className="wl-pend-h">{pending.thumb ? <img src={pending.thumb} alt="" style={{ borderColor: pending.colour }} /> : null}<span><b>A new place?</b><small>Name the place in your photo</small></span></div>
+            <div className="wl-pend-h">{pending.thumb ? <img src={pending.thumb} alt="" style={{ borderColor: pending.colour }} /> : null}<span><b>A new place</b><small>Name the place in your photo</small></span></div>
             <input className="place-input" value={draft} onChange={(e) => { setTouched(true); setDraft(e.target.value); }} placeholder="What is it called?" aria-label="What is this place called?" enterKeyHint="done"
-              onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim() && !taken && !hasSecret(draft)) pending.onUse(draft.trim()); }} />
+              onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim() && !taken && !hasSecret(draft)) useNew(draft.trim()); }} />
             {taken ? <p className="wl-taken">{taken}</p> : <p className="wl-hint">{pending.guessed && !touched ? 'ReCall’s guess — type to change it.' : ' '}</p>}
-            <button type="button" className="btn-primary" disabled={!draft.trim() || !!taken || hasSecret(draft)} onClick={() => pending.onUse(draft.trim())}>Use this name</button>
+            <button type="button" className="btn-primary" disabled={!draft.trim() || !!taken || hasSecret(draft)} onClick={() => useNew(draft.trim())}>Use this name</button>
           </div>)}
-        {suggest && (
-          <button type="button" className="wl-row wl-sugg" onClick={() => onPick(suggest.known)}>
-            {suggest.thumb ? <img src={suggest.thumb} alt="" /> : <span className="no"><PinIcon /></span>}
-            <span className="tx"><b>Is it the {suggest.name}?</b><small>ReCall thinks so, from the photo</small></span>
-          </button>)}
+        {/* 09-30f (Ravi): the new place first, THEN the search for the places below it */}
+        {onPhotograph && !pending && <button type="button" className={'wl-new' + (newMark ? ' marked' : '')} onClick={onPhotograph}>{newMark ? <MiniMark kind="new" colour={newMark} /> : <CameraIcon />}<span>Photograph a new place</span></button>}
         <div className="wl-search"><SearchIcon /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your places" aria-label="Search your places" enterKeyHint="go"
           onKeyDown={(e) => { if (e.key !== 'Enter' || !typed) return; e.preventDefault(); /* 09-29h: Go picks what the list shows — the one match, or the new place */
             const one = placeList.length + boxList.length === 1 ? (placeList.length ? { t: 'place', name: placeList[0] } : { t: 'thing', item: boxList[0] }) : null;
-            if (one) onPick(one); else if (!exists) onPick({ t: 'place', name: cap(typed) }); }} /></div>
-        {onPhotograph && !pending && <button type="button" className="wl-new" onClick={onPhotograph}><CameraIcon /><span>Photograph a new place</span></button>}
-        {typed && !exists && <button type="button" className="wl-new typed" onClick={() => onPick({ t: 'place', name: cap(typed) })}><PlusIcon /><span>A new place called “{cap(typed)}”</span></button>}
+            if (one) choose(one); else if (!exists) choose({ t: 'place', name: cap(typed) }); }} /></div>
+        {typed && !exists && <button type="button" className="wl-new typed" onClick={() => choose({ t: 'place', name: cap(typed) })}><PlusIcon /><span>A new place called “{cap(typed)}”</span></button>}
         <div className="wl-scroll">
           {shown > 0 && <div className="wl-g">{pending ? 'OR IT’S ONE OF YOUR PLACES' : 'YOUR PLACES'} · {shown}</div>}
+          {/* 09-30f (tester #3c): ReCall's suggestion has a fixed slot at the top of the list from the start — its answer
+              fills the slot instead of pushing the rows down under her finger. Only a suggestion: she picks it or not. */}
+          {pending && !typed && (suggest ? (
+            <button type="button" className="wl-row wl-sugg" onClick={() => choose(suggest.known)}>
+              {suggest.thumb ? <img src={suggest.thumb} alt="" /> : <span className="no"><PinIcon /></span>}
+              <span className="tx"><b>{suggest.name}</b><small>ReCall: your photo looks like this one</small></span>
+            </button>) : (
+            <div className="wl-row wl-sugg quiet" aria-live="polite"><span className="no"><SearchIcon /></span>
+              <span className="tx"><b>{looking ? 'Looking at your photo…' : 'Not one ReCall recognises'}</b><small>{looking ? 'ReCall may suggest one of your places here' : 'Name it above, or pick it below'}</small></span></div>))}
           {boxList.filter(isCurBox).map((b) => boxRow(b))}
           {[...placeList].sort((a, b) => Number(isCurPlace(b)) - Number(isCurPlace(a))).map((n) => { const t = placePic(n); return (
-            <button type="button" key={'p' + n} className="wl-row" onClick={() => onPick({ t: 'place', name: n })}>
+            <button type="button" key={'p' + n} className="wl-row" onClick={() => choose({ t: 'place', name: n })}>
               {t ? <img src={t} alt="" /> : <span className="no"><PinIcon /></span>}
               <span className="tx"><b>{n}</b><small>{isCurPlace(n) && <span className="wl-cur">Current place</span>}{placeSub(n)}</small></span>
             </button>); })}

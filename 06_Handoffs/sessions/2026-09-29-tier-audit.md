@@ -91,3 +91,9 @@ only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eig
 - Ravi's phone (12:32): typing in Choose place hid the text box — the same as the independent tester's #1 on `d`
   (`rig/indep/REPORT_d.md`, 8 finds). All 8 reproduced in `audit_p30d.js` (T1–T8) and fixed. Ravi's colour idea
   (critiqued, drawn, he chose "build both") built: only the focused tier coloured; Choose place wears its colour.
+
+## 09-30 (night, later) → `20260930f`
+- Ravi: the photo on a tier assumed a new place (1:36 PM), the search sat above the new-place button, a pick closed the
+  sheet at once; the 3-s look "creating havoc". The tester's timeout run (`rig/indep/REPORT_timeout.md`) found six bugs.
+  Rendered (`OPTIONS_2026-09-30_photo-on-a-tier.jpg`), Ravi: "Build as drawn"; sticky answers, reset on any tier tap. A
+  design round for the shutter mark (Ravi's two options + two of the designer's); Ravi chose his option 1. 883 checks green.

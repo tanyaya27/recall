@@ -5,7 +5,7 @@
   const RECORD = [];
   async function runSuite(look) {
     const shot = makeShot(look);
-    const camState = () => page.evaluate(() => ({ open: !!document.querySelector('.lc'), say: (document.querySelector('.lc-say .tx') || {}).innerText || '', prompt: (document.querySelector('.lc-prompt') || {}).innerText || '', saveTxt: (document.querySelector('.lc-k.sv') || {}).innerText || '', saveDis: (document.querySelector('.lc-k.sv') || {}).disabled ?? null, chips: [], ask: (document.querySelector('.lc-ask2') || {}).innerText || '', chain: (document.querySelector('.lc-chainline') || {}).innerText || '', err: (document.querySelector('.lc-err') || {}).innerText || '' }));
+    const camState = () => page.evaluate(() => ({ open: !!document.querySelector('.lc'), say: (document.querySelector('.lc-say .tx') || {}).innerText || '', prompt: (document.querySelector('.lc-prompt') || {}).innerText || '', saveTxt: (document.querySelector('.lc-k.sv') || {}).innerText || '', saveDis: (document.querySelector('.lc-k.sv') || {}).disabled ?? null, chips: [], ask: (document.querySelector('.where-list .wl-sugg:not(.quiet)') || {}).innerText || '', chain: (document.querySelector('.lc-chainline') || {}).innerText || '', err: (document.querySelector('.lc-err') || {}).innerText || '' }));
     const fresh = async () => { WHERE.length = 0; NEXT_WHERE_DELAY = 0; NEXT_WHERE_BADJSON = false; await seedHouse(); SAME = { index: -1, sure: false }; await home(); await page.evaluate(() => window.__rig.rules(true)); await page.waitForTimeout(200); };
     let lastFind = null;
     const openThing = async (nm) => {
@@ -30,7 +30,8 @@
     const openTier = async (i) => { const sq = page.locator('.lv-strip .lv-sq').nth(i); if (!/\bsel\b/.test(await sq.getAttribute('class'))) { await sq.click(); await page.waitForTimeout(300); } await sq.click(); await page.waitForTimeout(400); };
     const settleWhere = async (fallback = '') => {
       for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-      for (let k = 0; k < 8 && !(await page.locator('.wl-pend .btn-primary').count()) && !(await page.locator('.lc-ask2').count()); k++) await page.waitForTimeout(150); // the sheet can open a beat after the look ends
+      for (let k = 0; k < 14 && !(await page.locator('.where-list, .photo-for').count()); k++) await page.waitForTimeout(150); for (let k = 0; k < 40 && (await page.locator('.where-list .wl-sugg.quiet:has-text("Looking")').count()); k++) await page.waitForTimeout(150); /* 09-30f: Choose place opens at once; wait for ReCall's look */ // the sheet can open a beat after the look ends
+      if (await page.locator('.where-list .wl-sugg:not(.quiet)').count()) return; // a suggestion: the test answers it
       if (await page.locator('.wl-pend .btn-primary').count()) {
         if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
         await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
@@ -180,15 +181,12 @@
       await snapCam(rec, 'unnamed tier'); await save(); rec.mid = await store();
       await home(); await newThing('tape'); await plus(); NEXT_WHERE_BADJSON = true; await shoot('real_desk.jpg', { name: '', moves: false }, true); await closeChoose();
       const st2 = await snapCam(rec, 'second unnamed tier');
-      check('S8', 'the unnamed tier is spoken of as "this place" (never "the a place")', /what this place is in/.test(st2.prompt) && !/the a place/i.test(st2.prompt), st2.prompt);
-      check('S8', 'a second unnamed place can\'t be saved into the first: Save waits for a name', st2.saveDis === true && /needs its own name/i.test(st2.say), st2.say + ' saveDis=' + st2.saveDis);
-      const sq = page.locator('.lv-strip .lv-sq').nth(0); if (!/\bsel\b/.test(await sq.getAttribute('class'))) { await sq.click(); await page.waitForTimeout(300); }
-      await sq.click(); await page.waitForTimeout(400); await tap('.tier-sheet .sheet-row:has-text("Rename")', { wait: 500 });
-      await type('.sheet .place-input', 'Hall shelf'); await tap('.sheet .btn-primary', { wait: 600 });
+      // 09-30f (Ravi, tester timeout #6): closing Choose place puts the tier back as it was — an unnamed tier is never left behind,
+      // so "A place" is never stored and there is nothing to merge by mistake.
+      check('S8', '09-30f: closing Choose place leaves no unnamed tier ("not defined" again, no "A place")', /not defined/.test(st2.say) && !/A place/.test(st2.say), st2.say);
       await save(); await after(rec, 'tape');
-      const ap = (await places()).filter((p) => p.name === 'A place');
-      check('S8', 'two different spots stay two places (A place: 1 photo; Hall shelf: 1 photo)', ap.length === 1 && ap[0].photos.length === 1 && ((await placeByName('Hall shelf')) || {}).photos?.length === 1, JSON.stringify(ap.map((p) => p.photos.length)));
-      check('S8', 'the tape is at Hall shelf, the stapler still at A place', /hall shelf/i.test((await byName('tape')).location) && /a place/i.test((await byName('stapler')).location), '');
+      const ap = (await places()).filter((p) => /^a place$/i.test(p.name));
+      check('S8', 'no place named "A place" was ever stored; both items saved without a place', ap.length === 0 && !((await byName('tape')).location) && !((await byName('stapler')).location), JSON.stringify(ap.map((p) => p.name)));
     });
     // S9 — Move: keep the current place, add a KNOWN place at tier 2.
     await scen('S9', 'Move: current place (Desk drawer) + known place (Craft nook) at tier 2', async (rec) => {
@@ -268,13 +266,13 @@
       await newThing('stapler');
       await plus(); await shoot('drawer.jpg', { name: 'Drawer 3', moves: false });
       await plus(); WHERE.push({ name: 'Craft nook', moves: false, sure: false }); NEXT_WHERE_DELAY = 1200; await cam('closet.jpg'); await tap('.lc-shutter', { wait: 300 });
-      const lockd = await page.evaluate(() => ({ look: !!document.querySelector('.lv-look'), plus: !!document.querySelector('.lv-sq.plus'), choose: document.querySelector('.lc-choose') ? document.querySelector('.lc-choose').disabled : null, save: (document.querySelector('.lc-k.sv') || {}).disabled }));
-      check('S14', 'while it looks: no ＋, Choose place and Save are off', lockd.look && !lockd.plus && lockd.choose === true && lockd.save === true, JSON.stringify(lockd));
+      const lockd = await page.evaluate(() => ({ sheet: !!document.querySelector('.where-list'), slot: ((document.querySelector('.where-list .wl-sugg') || {}).innerText || '') }));
+      check('S14', '09-30f: nothing waits — Choose place is open at once, ReCall\'s slot says it\'s looking', lockd.sheet && /Looking at your photo/.test(lockd.slot), JSON.stringify(lockd));
       await page.waitForTimeout(1600);
       await snapCam(rec, 'the tier-2 question');
-      const ask = await page.evaluate(() => { const a = document.querySelector('.lc-ask2'); return a ? { t: a.innerText, imgs: a.querySelectorAll('.pair img').length } : null; });
-      check('S14', 'Q5: the question shows tier 2\'s photo beside the Craft nook ("Is this the Craft nook?")', !!ask && ask.imgs === 2 && /Is this the Craft nook\?/i.test(ask.t), JSON.stringify(ask));
-      await tap('.lc-ask2 button:has-text("Yes")', { wait: 500 });
+      const ask = await page.evaluate(() => { const a = document.querySelector('.where-list .wl-sugg:not(.quiet)'); return a ? { t: a.innerText, imgs: a.querySelectorAll('.pair img').length } : null; });
+      check('S14', 'Q5 (09-30f): ReCall offers the Craft nook in its slot — tier 2\'s own photo is on top of the sheet', !!ask && (await count('.wl-pend img')) === 1 && /Craft nook[\s\S]*looks like this one/i.test(ask.t), JSON.stringify(ask));
+      await tap('.where-list .wl-sugg:not(.quiet)', { wait: 500 });
       await plus(); await shoot('real_desk.jpg', { name: 'Office', moves: false });
       const cl = await text('.lc-chainline');
       check('S14', 'Yes, then a third tier: "Drawer 3 in Craft nook in Office"', /Drawer 3\s*in\s*Craft nook\s*in\s*Office/i.test(cl), cl);

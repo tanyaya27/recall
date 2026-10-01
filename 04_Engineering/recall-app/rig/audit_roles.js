@@ -19,12 +19,12 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
       : { name: 'thing', description: '', location: '', same: true };
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  const page = await ctx.newPage(); const denied = []; page.on('console', (m) => { if (/permission-denied/.test(m.text())) denied.push(m.text()); }); page.on('pageerror', (e) => { if (/permission-denied/.test(e.message)) denied.push(e.message); });
+  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage(); const denied = []; page.on('console', (m) => { if (/permission-denied/.test(m.text())) denied.push(m.text()); }); page.on('pageerror', (e) => { if (/permission-denied/.test(e.message)) denied.push(e.message); });
   // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
   // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
   const settleWhere = async (fallback = '') => {
     for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-    for (let k = 0; k < 8 && !(await page.locator('.wl-pend .btn-primary').count()) && !(await page.locator('.lc-ask2').count()); k++) await page.waitForTimeout(150); // the sheet can open a beat after the look ends
+    for (let k = 0; k < 14 && !(await page.locator('.where-list, .photo-for').count()); k++) await page.waitForTimeout(150); for (let k = 0; k < 40 && (await page.locator('.where-list .wl-sugg.quiet:has-text("Looking")').count()); k++) await page.waitForTimeout(150); /* 09-30f: Choose place opens at once; wait for ReCall's look */ // the sheet can open a beat after the look ends
     if (await page.locator('.wl-pend .btn-primary').count()) {
       if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
       await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);

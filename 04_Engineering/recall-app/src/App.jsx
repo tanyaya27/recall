@@ -378,7 +378,7 @@ export default function App() {
       if (card.none) { say('No place yet'); return; }
       if (route.view === 'thing' && route.item && route.item.id === card.itemId) {
         const pv = card.undo && card.undo.prev; const was = pv ? (pv.dest && pv.dest.t === 'thing' ? (pv.dest.name ? pv.dest.name.charAt(0).toUpperCase() + pv.dest.name.slice(1) : pv.location) : pv.location) : '';
-        setMoveNote({ itemId: card.itemId, was: was || '', moving: card.moving || [], undo: card.undo, key: Date.now() });
+        setMoveNote({ itemId: card.itemId, was: card.stayed ? '' : (was || ''), stayed: !!card.stayed, added: card.added || '', moving: card.moving || [], undo: card.undo, key: Date.now() });
         return;
       }
       setSaved({ ...card, key: Date.now() });

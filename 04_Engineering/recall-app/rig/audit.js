@@ -27,7 +27,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 300));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
   });
-  const page = await ctx.newPage();
+  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text().slice(0, 160)); });
   const shot = async (n) => { await page.waitForTimeout(200); await page.screenshot({ path: `shots/audit-${n}.png` }); };

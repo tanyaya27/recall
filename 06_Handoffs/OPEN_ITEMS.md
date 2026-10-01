@@ -3,6 +3,38 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-09-30.
 
+## NOW — `20260930f`: a photo on a tier asks; Before → Now; no timer; Ravi's shutter marks
+
+Ravi 09-30 (1:36 PM screenshot, then the timeout question) + the tester's timeout report (`rig/indep/REPORT_timeout.md`).
+Mockups: `design/mockups/OPTIONS_2026-09-30_photo-on-a-tier.jpg`, `design/mockups/DESIGN_2026-09-30_shutter-*.jpg`
+(design round, `design/DESIGN_2026-09-30_shutter.md`). As built: `design/mockups/BUILD_2026-09-30f_photo-asks.jpg`.
+
+- [x] **A photo on a tier that already has a place asks** "This photo is…" — *Another photo of the White cardboard box*
+  (nothing moves) or *A different place* (Choose place, with the photo) — at once, nothing assumed. Retake.
+- [x] **The answer sticks** for the next shots on that tier (Ravi); **any tap on a tier resets it** (Ravi's pick).
+- [x] **Choose place: the new place first, then Search, then the list** (Ravi). The header keeps where it IS (old chain,
+  ringed) and says the photo is of a different place. **Cancel puts everything back** exactly.
+- [x] **A pick shows Before → Now** (photos, tap to zoom and swipe) and what will happen; *Use the Kitchen counter* or
+  *Back to the list*. Also for a new place by name (marked NEW).
+- [x] **No 3-second timer.** ReCall's look runs while Choose place is open and only SUGGESTS, in a fixed slot at the top of
+  the list ("Looking at your photo…" → "Kitchen counter · your photo looks like this one") — never sets a tier, never
+  fills the name field with a name she already has, never moves the list. Fixes the tester's timeout finds #1–#7.
+- [x] **Save is off until something changes** (Ravi); a Move that moved nothing says "✓ Saved just now · 2 photos added to
+  the White cardboard box", not "Moved" (tester #8).
+- [x] **Ravi's shutter marks (his option 1)**: more photos of a place → that place's photo in the disc + a "+" tab; the new
+  place → a pin in the disc + a "New" tab; plain when the next shot will ask. The same marks lead the choices in "This
+  photo is…" and on "Photograph a new place". After each shot the photo flies into its square; the prompt says "Added —
+  2 photos of the White cardboard box". (The designer recommended A, a glyph in the disc; Ravi chose his option 1.)
+- [x] **Dashed = going to change** (Ravi): a tier's square is dashed while it is empty, while a new photo waits in Choose
+  place, and after "Photograph a new place"; solid when its place stands (the next shot asks, or adds to it). The waiting
+  photo in Choose place and the NOW tile of Before → Now are dashed too.
+- [ ] **Ravi: phone check of `f`**: Move it → shoot the White cardboard box → "This photo is…" → Another photo (then shoot
+  again: no question, the shutter shows the box) → tap its square → shoot: asks again → A different place → pick one →
+  Before/Now → Use → Save. And: "Photograph a new place" → the pin shutter.
+- [ ] Still with Ravi + Tanya: the tier question (`design/BOARD_2026-09-30_tiers-or-freeform.md`).
+- Suites: `rig/audit_pick.js` (new flow, both engines); the older suites answer the two new questions through
+  `rig/legacy_flow.js` (the real buttons). 883 checks green.
+
 ## NOW — `20260930e`: Ravi's keyboard bug, the independent tester's finds on `d`, Ravi's colour rule
 
 Screens: `design/mockups/BUILD_2026-09-30e_keyboard-tester-colour.jpg`. Tester's report: `rig/indep/REPORT_d.md`.

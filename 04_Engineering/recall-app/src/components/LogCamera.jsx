@@ -76,6 +76,16 @@ function withTail(ls, idx) {
   return c;
 }
 
+// 09-30f (Ravi's option 1): the shutter's mark, small — it leads the choice in "This photo is…" (and "Photograph a new place"),
+// so what she chose there is what she sees on the shutter afterwards.
+export function MiniMark({ kind, thumb = null, colour = '#F5B942' }) {
+  return (
+    <span className="mini-mark" style={{ '--c': colour }} aria-hidden="true">
+      <i className={'d' + (kind === 'more' ? ' photo' : ' pin')} style={kind === 'more' && thumb ? { backgroundImage: `url("${thumb}")` } : undefined}>{kind === 'new' ? <PinIcon /> : null}</i>
+      <b className="t">{kind === 'new' ? 'New' : <PlusIcon />}</b>
+    </span>);
+}
+
 export default function LogCamera({ engine, items = [], places = [], owner = undefined, ownerName = '', look = 'b', preset = null, moveItem = null,
   onSaved, onCancel, onWrite, onNotice = () => {} }) {
   const videoRef = useRef(null); const streamRef = useRef(null);
@@ -97,6 +107,8 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const [saveErr, setSaveErr] = useState(''); // fix 2026-09-29: a failed save says so (it used to blink and sit)
   const [sheet, setSheet] = useState(null);  // 'more' | 'change' | 'rename' | 'cancel' | { ask } | { preview: level index }
   const [pvIndex, setPvIndex] = useState(0);
+  const newShotFor = useRef(null); const [armed, setArmed] = useState(null); // "Photograph a new place" from Choose place: the next shot on that tier IS the new place
+  const firstSig = useRef(null); // Move it: what the tiers were when it opened (Save waits for a change)
   const [pvAsk, setPvAsk] = useState(null); // { i, src } — Remove this photo? (the viewer asks first)
   const [draft, setDraft] = useState('');
   const [lastWhere, setLastWhere] = useState(null); // + Next: the where of the thing saved a moment ago
@@ -181,18 +193,49 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     }
     const i = sel - 1;
     const cur = levelsRef.current[i] || emptyLevel();
-    // REQUIREMENTS_2026-09-27 R1 (kills F1): a level that already has an IDENTITY — picked as a chip,
-    // confirmed "Yes" on an ask, or given a name of her own — keeps it. The shutter only ever ADDS a
-    // photo to it; it never wipes `known`, never re-enters the naming pass. Only a level with no
-    // identity yet behaves as before: first photo starts the naming pass, later ones just join it.
-    const identified = !cur.current && !cur.inherited && (!!cur.known || (!!cur.ask && !cur.no) || !!cur.userName); // 09-29: a shot on the current place photographs a NEW place (09-29h: or on a square that says what's already saved — if it IS that place, ReCall asks "Is this the …?")
-    const firstOfLevel = !identified && cur.photos.length === 0;
-    const next = identified
-      ? { ...cur, photos: [...cur.photos, { ...s, file }] }
-      : { ...cur, photos: [...cur.photos, { ...s, file }], known: null, current: false, inherited: false, ...(firstOfLevel ? { status: 'naming', name: '', ask: null, no: false, yes: false, collisionNo: '' } : {}) };
-    setLevels((ls) => { const c = [...ls]; while (c.length <= i) c.push(emptyLevel()); c[i] = next; return identified ? c : withTail(c, i); });
-    logEvent('camera_where_shot', { level: sel, n: next.photos.length, identified });
-    if (firstOfLevel) nameWhere(next.key, s.photo);
+    const shotS = { ...s, file };
+    // 09-30f (Ravi, 1:36 PM): a photo on a tier that already HAS a place never assumes a new one. It asks at once — another
+    // photo of that place, or a different place — with no wait and nothing changed until she answers.
+    const hasPlace = !!cur.known || !!cur.userName;
+    // 09-30f (Ravi): once she has said what photos on this tier are for, the next shots follow that answer — no asking again.
+    if (hasPlace && cur.addMode && newShotFor.current !== i) { addPhotoToTier(i, shotS); return; }
+    if (hasPlace && newShotFor.current !== i) { setSheet({ photoFor: i, shot: shotS }); logEvent('camera_where_shot', { level: sel, asked: true }); return; }
+    newShotFor.current = null; setArmed(null);
+    startNewPlace(i, shotS, hasPlace);
+  }
+  // "A different place" (or a first photo on an empty tier): the photo is of the NEW place; Choose place opens at once with
+  // the old tier kept aside — Cancel puts it back exactly. ReCall looks at the photo meanwhile, only to suggest.
+  function startNewPlace(i, shotS, fromAsk) {
+    const before = levelsRef.current;
+    const cur = before[i] || emptyLevel();
+    const next = { ...cur, photos: [shotS], known: null, addMode: false, current: false, inherited: false, status: 'naming', name: '', userName: '', moves: false, ask: null, no: false, yes: false, collisionNo: '', prompted: true, timedOut: false };
+    setLevels((ls) => { const c = [...ls]; while (c.length <= i) c.push(emptyLevel()); c[i] = next; return withTail(c, i); });
+    setSel(i + 1); setSheet({ choose: i, withPhoto: true, restore: before });
+    logEvent('camera_where_shot', { level: i + 1, n: 1, newPlace: true, fromAsk: !!fromAsk });
+    nameWhere(next.key, shotS.photo);
+  }
+  // 09-30f (Ravi: "Build both"): after each shot that joins a tier, the photo flies from the shutter into that tier's square and
+  // the square shows +1 — where the photo went, seen without reading.
+  function flyTo(i, thumb) {
+    try {
+      const sh = document.querySelector('.lc-shutter'); const sq = document.querySelectorAll('.lv-strip .lv-sq:not(.plus)')[i];
+      if (!sh || !sq || !thumb) return;
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; // the square and the words say it
+      const a = sh.getBoundingClientRect(), b = sq.getBoundingClientRect();
+      const x0 = a.left + a.width / 2, y0 = a.top + a.height / 2, x1 = b.left + b.width / 2, y1 = b.top + b.height / 2;
+      const f = document.createElement('i'); f.className = 'lc-fly'; f.style.backgroundImage = `url("${thumb}")`;
+      f.style.left = `${x0 - 29}px`; f.style.top = `${y0 - 29}px`; document.body.appendChild(f);
+      const k = b.width / 58;
+      f.animate([{ transform: 'translate(0,0) scale(1)', borderRadius: '29px', opacity: 1 },
+        { transform: `translate(${(x1 - x0) * 0.55 + 26}px, ${(y1 - y0) * 0.55}px) scale(${(1 + k) / 2})`, borderRadius: '20px', opacity: 1, offset: 0.55 },
+        { transform: `translate(${x1 - x0}px, ${y1 - y0}px) scale(${k})`, borderRadius: '14px', opacity: 0.2 }], { duration: 420, easing: 'cubic-bezier(.2,.7,.2,1)' }).onfinish = () => f.remove();
+      setTimeout(() => { sq.classList.remove('landed'); void sq.offsetWidth; sq.classList.add('landed'); }, 400);
+    } catch (e) { /* only a flourish */ }
+  }
+  function addPhotoToTier(i, shotS) {
+    setLevels((ls) => ls.map((l, j) => (j === i ? { ...l, photos: [...l.photos, shotS], addMode: true } : l)));
+    flyTo(i, shotS.thumb);
+    setSheet(null); logEvent('camera_where_shot', { level: i + 1, addedTo: 'same place' });
   }
 
   function nameThing(s) {
@@ -241,10 +284,8 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const cands = [...pickB.slice(0, 4).map((b) => ({ c: { name: b.name, thumb: b.thumb }, known: { t: 'thing', item: b } })),
       ...pickP.slice(0, 4).map((p) => ({ c: { name: p.name, thumb: p.photos[0].thumb }, known: { t: 'place', name: p.name } }))].slice(0, 8);
     let r = null; const t0 = Date.now(); let settled = false; let sent = [];
-    // 09-29 (Ravi): the wait is capped. Past RECOG_MS the level stops "looking" (not recognised) and Choose place opens.
-    const timer = setTimeout(() => { if (settled || !mounted.current) return;
-      setLevels((ls) => ls.map((l) => (l.key === key && l.status === 'naming' ? { ...l, status: 'named', timedOut: true } : l)));
-      logEvent('camera_where_timeout', { ms: RECOG_MS }); }, Math.max(400, RECOG_MS - (Date.now() - (shotAt.current || Date.now()))));
+    // 09-30f (Ravi, tester): no timer any more — Choose place is already open; the answer, whenever it comes, only suggests.
+    const timer = null;
     try {
       // 09-30 (found by audit_chain): one photo that won't open used to sink the whole look — every place went unrecognised.
       // A candidate whose photo can't be read is left out instead.
@@ -252,7 +293,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       sent = cands.filter((_, i) => small0[i]); const small = small0.filter(Boolean);
       r = await engine.whereIs(photo, sent.map((x, i) => ({ name: x.c.name, thumb: small[i] })), { thing: nameNow(), sensitivity: 'personal' });
     } catch (err) { console.error(err); }
-    settled = true; clearTimeout(timer);
+    settled = true; void timer; void settled;
     if (!mounted.current) return;
     const hit = r && r.index >= 0 && r.sure && sent[r.index] ? sent[r.index].known : null;
     logEvent('camera_where_named', { named: !!(r && r.name), moves: !!(r && r.moves), known: !!hit, ms: Date.now() - t0, late: Date.now() - t0 > RECOG_MS });
@@ -261,8 +302,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     // Q4 (Ravi 09-29): outside a place there are only places — a tier photographed there is a place even if the AI calls it
     // something that moves, and a box is never its match.
     setLevels((ls) => ls.map((l, j) => { if (l.key !== key) return l; const outP = placeBelow(ls, j);
-      if (l.known) return l; // she chose a place while it was looking (after the time-out): her choice stands
-      return { ...l, status: r ? 'named' : 'failed', name: l.userName ? l.name : ((r && r.name) || ''), moves: !outP && !!(r && r.moves), ask: outP && hit && hit.t === 'thing' ? null : (l.userName ? null : hit) }; }));
+      if (l.known) return l; // she chose a place while it was looking: her choice stands
+      if (l.userName) return { ...l, status: 'named' }; // …or named it: her name and her kind of place stand (tester #7)
+      return { ...l, status: r ? 'named' : 'failed', name: (r && r.name) || '', moves: !outP && !!(r && r.moves), ask: outP && hit && hit.t === 'thing' ? null : hit }; }));
   }
 
   // ---- what the screen says
@@ -283,7 +325,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   // What will be saved: the filled levels, or (none filled) the suggestion.
   const links = real.length ? real : suggestion && !moveItem ? [{ key: 'sugg', photos: [], known: suggestion.known, why: suggestion.why }] : [];
   const lastLink = links[links.length - 1];
-  const known = (l) => (l.known ? l.known : l.ask && !l.no ? l.ask : null);
+  // 09-30f (Ravi 1:36 PM + tester, timeout #2): ReCall's recognition is only ever a SUGGESTION. A tier's identity is what she
+  // picked or named — `ask` ("looks like the Kitchen counter") never counts as one, answered or not.
+  const known = (l) => (l.known ? l.known : null);
   // REQUIREMENTS_2026-09-27 R3.2: a name given at capture (userName) shows immediately, even while
   // `status` is still 'naming' — she should never see "Naming…" over a name she already gave it.
   const linkName = (l) => { const k = known(l); return k ? (k.t === 'thing' ? cap(k.item.name) : k.name) : l.userName ? cap(l.userName) : l.status === 'naming' ? 'Naming…' : cap(l.name) || (l.moves ? 'A box' : 'A place'); };
@@ -296,7 +340,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const tierKey = (k) => (k.t === 'thing' ? 't:' + k.item.id : 'p:' + (k.name || '').toLowerCase());
   const levelKey = (l) => { const k = known(l); if (k) return tierKey(k); const n = (l.userName || l.name || '').toLowerCase(); return n ? (l.moves ? 'n:' : 'p:') + n : null; };
   // Q4: is the tier just inside level j a place (known, or new and not a box)?
-  function placeBelow(ls, j) { const inner = j >= 1 ? ls[j - 1] : null; if (!inner || !(inner.photos.length || inner.known)) return false; const ik = inner.known || (inner.ask && !inner.no ? inner.ask : null); return ik ? ik.t === 'place' : !inner.moves; }
+  function placeBelow(ls, j) { const inner = j >= 1 ? ls[j - 1] : null; if (!inner || !(inner.photos.length || inner.known)) return false; const ik = inner.known || null; return ik ? ik.t === 'place' : !inner.moves; }
   function blockedAt(k, tier) {
     if (!k || tier < 1) return false;
     if (k.t === 'thing' && placeBelow(levels, tier - 1)) return true; // Q4 (Ravi 09-29): a box is never outside a place
@@ -352,6 +396,10 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     logEvent('camera_level_add', { level: levels.length + 1 });
   }
   function tapLevel(i) {
+    // 09-30f (Ravi: "reset on any tier tap"): tapping a tier — this one again, or another — means she's thinking about it again,
+    // so the next shot asks "This photo is…" again.
+    if (levelsRef.current.some((l) => l.addMode)) setLevels((ls) => ls.map((l) => (l.addMode ? { ...l, addMode: false } : l)));
+    newShotFor.current = null; setArmed(null);
     if (i === 0 && moveItem) { if (moveItem.photo || moveItem.thumb) { setSheet({ preview: 0 }); setPvIndex(0); } return; }
     if (i !== sel) { setSel(i); return; }
     // 09-29 (Ravi): tap the SELECTED square → that level's own sheet (its photos, Choose place, Rename, Remove this level).
@@ -369,7 +417,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const target = at !== null ? at : sel === 0 && levels.findIndex((l) => !filled(l)) === -1 ? levels.length : i;
     if (k.t === 'thing' && self && (k.item.id === self.id || wouldLoop(self, k.item))) return;
     if (blockedAt(k, target + 1)) return;
-    setLevels((ls) => { const c = [...ls]; while (c.length <= target) c.push(emptyLevel()); const was = c[target]; const keep = fromPhoto || !(known(was) || was.userName); c[target] = { ...was, photos: keep ? was.photos || [] : [], ...(keep ? {} : { name: '', userName: '' }), known: k, status: 'known', ask: null, no: false, yes: false, collisionNo: '', inherited: false, current: !!moveItem && target === 0 && sameKnown(k, hereKnown(moveItem)) }; return withTail(c, target); });
+    setLevels((ls) => { const c = [...ls]; while (c.length <= target) c.push(emptyLevel()); const was = c[target]; const keep = fromPhoto || !(known(was) || was.userName); c[target] = { ...was, photos: keep ? was.photos || [] : [], ...(keep ? {} : { name: '', userName: '' }), known: k, addMode: !!fromPhoto, status: 'known', ask: null, no: false, yes: false, collisionNo: '', inherited: false, current: !!moveItem && target === 0 && sameKnown(k, hereKnown(moveItem)) }; return withTail(c, target); });
     setSel(target + 1);
     logEvent('camera_where_chip', { t: k.t, level: target + 1 });
   }
@@ -392,7 +440,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       setLevels((ls) => ls.map((l, j) => {
         if (j !== li - 1) return l;
         const photos = l.photos.filter((_, k) => k !== pi);
-        const identified = !!l.known || (!!l.ask && !l.no) || !!l.userName;
+        const identified = !!l.known || !!l.userName;
         if (photos.length === 0 && !identified) return { ...l, photos, status: 'empty', name: '', ask: null };
         // 09-30d (tester #3): a place you NAMED keeps its name when its only photo goes — like typing a new place's name
         if (photos.length === 0 && !l.known && l.userName && !l.moves) return { ...l, photos, known: { t: 'place', name: cap(l.userName) }, status: 'known' };
@@ -503,7 +551,11 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         // 09-29: tier 1 kept as the current place (only a deeper tier changed) — the thing itself did not move.
         const ok = location && !(use[0] && use[0].current) ? await changeLocation(moveItem, location, 'chosen', dest) : true;
         logEvent('camera_move', { itemId: moveItem.id, ok, depth: resolved.length });
-        onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2, chain, nudge, none: say.none, moved: true, refused: ok === false, unnamed, moving,
+        // 09-30f (tester #8): nothing moved (a photo added to where it is, or a tier added on top) → the page must not say "Moved".
+        const itMoved = !(use[0] && use[0].current);
+        const added = use.filter((l) => l.photos.length && known(l)).map((l) => `${l.photos.length === 1 ? 'A photo' : `${l.photos.length} photos`} added to ${theName(linkName(l))}`);
+        const stayed = !itMoved && !moving.length && !((made.placeMoves || []).length);
+        onSaved({ itemId: moveItem.id, where: location, name: cap(moveItem.name), thumbs, l1: say.l1, l2, chain, nudge, none: say.none, moved: true, stayed, added: added.join(' · ') || (stayed ? 'Where it is: saved' : ''), refused: ok === false, unnamed, moving,
           undo: mine ? { itemId: moveItem.id, isNew: false, prev, made } : null });
         return;
       }
@@ -637,7 +689,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   //   Remove this level). Bottom: Cancel | shutter | Save; hold Save → "Save + Next" → "Spare batteries ✓ saved".
   // ======================================================================================================================
   const lvColour = (i) => LEVEL_COLOURS[Math.min(Math.max(i, 0), LEVEL_COLOURS.length - 1)];
-  const recognising = levels.some((l) => l.status === 'naming' && !l.timedOut && !l.known);
+  const recognising = false; // 09-30f: nothing waits on the look
   const locked = busy || recognising;
   // The where question ("Is this the Desk drawer?"): a sure visual match, or a place/box with the same name.
   const askIdx = askLevel ? levels.findIndex((l) => l.key === askLevel.l.key) : -1;
@@ -666,19 +718,10 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         <button type="button" className="o" onClick={askNo}>No, <ListIcon /> Choose place</button></div>
     </div>) : null;
 
-  // A new place ReCall couldn't place (not recognised, or timed out) — the Choose place sheet opens on its own, once.
-  useEffect(() => {
-    if (sheet || busy || identity) return;
-    const idx = levels.findIndex((l) => l.status !== 'naming' && l.status !== 'empty' && l.status !== 'known' && !l.prompted && !l.known && !l.userName
-      && l.photos.length > 0 && !(l.ask && !l.no) && !levelCollision(l));
-    if (idx < 0) return;
-    setLevels((ls) => ls.map((l, j) => (j === idx ? { ...l, prompted: true } : l)));
-    setSel(idx + 1); setSheet({ choose: idx, withPhoto: true });
-    logEvent('camera_choose_open', { why: levels[idx].timedOut ? 'timeout' : 'not_recognised', level: idx + 1 });
-  }); // eslint-disable-line react-hooks/exhaustive-deps
+  // 09-30f: nothing opens by itself any more — a photo opens Choose place (or asks) at once, and nothing waits on a timer.
 
   function useName(idx, n) {
-    setLevels((ls) => ls.map((l, j) => (j === idx ? { ...l, userName: n, status: l.status === 'naming' ? 'named' : l.status, no: true, prompted: true } : l)));
+    setLevels((ls) => ls.map((l, j) => (j === idx ? { ...l, userName: n, status: l.status === 'naming' ? 'named' : l.status, no: true, prompted: true, addMode: true } : l)));
     setSheet(null); logEvent('camera_level_rename', { level: idx + 1, via: 'choose' });
   }
   function takenMsg(n) {
@@ -696,7 +739,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       <div className="lv-s" key={'l' + l.key}>
         {j > 0 && <span className="lc-in">in</span>}
         <div className="lv-tile">
-          <button type="button" className={'lv-sq' + (on ? ' sel' : '') + (empty ? ' empty' : '') + (l.key === 'sugg' ? ' sugg' : '')} disabled={locked && !on}
+          {/* 09-30f (Ravi): a DASHED border = this tier is going to change (empty; a new photo waiting in Choose place; "Photograph a
+              new place" armed). SOLID = its place stands (the next shot asks, or adds photos to it). Shape, not only colour. */}
+          <button type="button" className={'lv-sq' + (on ? ' sel' : '') + (empty ? ' empty' : '') + (l.key === 'sugg' ? ' sugg' : '') + (empty || (!known(l) && !l.userName && l.photos.length) || armed === j ? ' changing' : '')} disabled={locked && !on}
             style={on || empty || l.key === 'sugg' ? { borderColor: c, color: c } : undefined}
             aria-label={`Level ${i}: ${empty ? 'not defined' : linkName(l)}`} aria-pressed={on}
             onClick={() => (l.key === 'sugg' ? pickKnown(l.known) : tapLevel(i))}>
@@ -734,6 +779,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const promptLine = !started ? null
     : sel === 0 ? (thing.photos.length ? (shownLevels.length && filled(shownLevels[0]) ? <>Another photo of it, or tap {plusGlyph} to add what {theOf(shownLevels[shownLevels.length - 1])} is in.</> : <>Another photo of it, or tap {plusGlyph} to add where it is.</>) : null)
     : focusLooking ? null
+    : (armed === focusIdx && sel > 0) ? <>Shutter: the new place. Photograph it.</>
+    : (focus && focus.addMode && filled(focus)) ? (focus.photos.length ? <>Added — {focus.photos.length === 1 ? '1 photo' : `${focus.photos.length} photos`} of {theName(linkName(focus))}. Tap its square to change that.</>
+      : <>Shutter: more photos of {theName(linkName(focus))}. Tap its square to change that.</>)
     : !filled(focus) ? (focusIdx === 0 ? (moveItem ? <>Moved it? Photograph the new place, or choose one.</> : <>Where is it? Photograph the place, or choose one.</>)
       : <>What is {theOf(levels[focusIdx - 1])} in? Photograph it, or choose one.</>)
     : (moveItem && focusIdx === 0 && focus.current) ? <>Moved it? Photograph the new place, or choose one.</>
@@ -758,7 +806,15 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
 
   // Save: a tap saves; held HOLD_MS it becomes "Save + Next" (let go = save and log the next item); slide off = nothing.
   const canNext = started && !moveItem;
-  const saveOff = locked || (moveItem && !real.length) || !!collidingLevel;
+  const selL = sel > 0 ? levels[sel - 1] : null;
+  const chipFor = !selL ? null : armed === sel - 1 ? { newPlace: true } : selL.addMode && filled(selL) ? { thumb: linkThumb(selL) } : null;
+  const shutterSays = !chipFor ? '' : chipFor.newPlace ? 'Take a photo of the new place' : `Take a photo — adds to ${theName(linkName(selL))}`;
+  // 09-30 (Ravi, phone): Move it opens with Save ON although nothing has changed. Save waits for a change — a different
+  // place, a tier added or changed, a photo taken, a name given. (Cancel closes an unchanged Move.)
+  const levelSig = (ls) => ls.filter((l) => l.known || l.photos.length || l.userName).map((l) => { /* an empty + tier is not a change */ const k = known(l); return `${k ? (k.t === 'thing' ? 't' + k.item.id : 'p' + (k.name || '').toLowerCase()) : '-'}:${(l.photos || []).length}:${l.userName || ''}`; }).join('|');
+  if (moveItem && firstSig.current === null) firstSig.current = levelSig(levels);
+  const unchanged = !!moveItem && levelSig(levels) === firstSig.current;
+  const saveOff = locked || (moveItem && !real.length) || !!collidingLevel || unchanged;
   const holdStart = (e) => {
     if (saveOff) return; holdLive.current = true; setHoldNext(false);
     try { e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
@@ -793,8 +849,39 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     const say = isNew ? `Choose what ${below} is in.` : chooseIdx === 0 ? `Changing what ${below} is in.` : `Changing what ${below} is in — it moves, with everything in it.`;
     const upper = isNew ? [] : chainParts.slice(chooseIdx + 1).map((p) => p.n).filter((x) => x && x !== '?' && x !== '…');
     const above = upper.length ? `${upper.join(', ')} ${upper.length === 1 ? 'comes' : 'come'} off — the place you pick brings what it’s in.` : '';
+    // 09-30f (Ravi, 1:36 PM): after "A different place" the header still shows where it IS — the old chain, that tier ringed —
+    // and says the photo is of the new place. Nothing on it changes until she picks (and confirms) one.
+    const R = sheet && sheet.restore;
+    if (R && R[chooseIdx] && (known(R[chooseIdx]) || R[chooseIdx].userName)) {
+      const rp = R.filter(filled).map((l, j) => ({ n: linkName(l), c: lvColour(j + 1), soft: !!l.inherited }));
+      return { parts: [{ n: itemN, c: '' }, ...rp], at: chooseIdx + 1, say: `Now: ${linkName(R[chooseIdx])}. Your photo is of a different place — name it, or pick it below.`, above: '' };
+    }
     return { parts: [{ n: itemN, c: '' }, ...chainParts.slice(0, Math.max(chooseIdx + 1, chainParts.length))], at: chooseIdx + 1, say, above };
   })();
+  // 09-30f (Ravi, 1:36 PM): a pick doesn't close Choose place — it shows Before and Now (photos she can open) and says what
+  // will happen; "Use …" makes it so, "Back to the list" doesn't. target: { k } (a place or box) | { name } (a new place).
+  const placeShots = (n) => { const p = placeNamed(n, places); return p && p.photos ? p.photos.map((x) => x.photo || x.thumb) : []; };
+  const knownShots = (k) => (k.t === 'thing' ? [k.item.photo || k.item.thumb].filter(Boolean) : placeShots(k.name));
+  function describePick(target) {
+    if (chooseIdx === null) return null;
+    const base = (sheet && sheet.restore) || levels; const B = base[chooseIdx];
+    const bk = B ? known(B) : null;
+    const before = bk ? { name: bk.t === 'thing' ? cap(bk.item.name) : bk.name, thumb: bk.t === 'thing' ? bk.item.thumb : placePic(bk.name), photos: knownShots(bk), sub: whereNow(bk) ? `in ${whereNow(bk)}` : '' }
+      : B && B.userName ? { name: cap(B.userName), thumb: B.photos[0] && B.photos[0].thumb, photos: B.photos.map((x) => x.photo), sub: 'a new place' } : null;
+    const withPhoto = !!(sheet && sheet.withPhoto && chooseL && chooseL.photos.length);
+    const k = target.k || null;
+    const isNewName = !k || (k.t === 'place' && !placeNamed(k.name, places));
+    const nowName = k ? (k.t === 'thing' ? cap(k.item.name) : k.name) : cap(target.name);
+    const shot = withPhoto ? chooseL.photos[0] : null;
+    const now = { name: nowName, isNew: isNewName, thumb: isNewName ? (shot ? shot.thumb : null) : (k.t === 'thing' ? k.item.thumb : placePic(k.name)),
+      photos: [...(isNewName || !k ? [] : knownShots(k)), ...(shot && (!k || isNewName || true) ? [shot.photo] : [])].filter(Boolean),
+      sub: isNewName ? (shot ? 'a new place, with your photo' : 'a new place') : `${whereNow(k) ? `in ${whereNow(k)}` : 'where it is: not said'}${shot ? ' · your photo is added to it' : ''}` };
+    const itemN = cap(moveItem ? moveItem.name : name) || 'The item';
+    const below = chooseIdx === 0 ? theName(itemN) : theOf(base[chooseIdx - 1] || {});
+    const moves = chooseIdx > 0 && !!(base[chooseIdx] && known(base[chooseIdx])) && !!(base[chooseIdx - 1] && known(base[chooseIdx - 1]));
+    const say = `${cap(below)} will be in ${theName(nowName)}${moves ? ' — it moves, with everything in it' : ''}.`;
+    return { before, now, say, colour: lvColour(chooseIdx + 1), useLabel: `Use ${theName(nowName)}` };
+  }
   const chooseCurrent = chooseIdx === null ? undefined : chooseIdx === 0 && moveItem ? (hereKnown(moveItem) || null) : ((chooseL && (chooseL.current || chooseL.inherited) && known(chooseL)) || null); // "Current place" = what is SAVED on that tier now
 
   return (
@@ -864,7 +951,12 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         {saveErr && <div className="lc-err" role="alert">{saveErr}</div>}
         <div className="lc-row">
           <button type="button" className="lc-x" onClick={tryCancel}><CloseIcon /><span>Cancel</span></button>
-          <button type="button" className="lc-shutter" style={{ borderColor: sel === 0 ? '#fff' : lvColour(sel) }} aria-label="Take a photo" disabled={cam !== 'live' || locked} onClick={snap}><span /></button>
+          {/* 09-30f (Ravi's option 1, DESIGN_2026-09-30_shutter.md): a remembered choice shows ON the shutter — more photos of a place:
+              that place's photo in the disc and a "+" tab; the new place: a pin in the disc and a "New" tab. Plain when the shot will ask.
+              The same marks lead the matching choices in "This photo is…" and "Photograph a new place". */}
+          <button type="button" className={'lc-shutter' + (chipFor ? (chipFor.newPlace ? ' m-new' : ' m-more') : '')} style={{ borderColor: sel === 0 ? '#fff' : lvColour(sel) }} aria-label={shutterSays || 'Take a photo'} disabled={cam !== 'live' || locked} onClick={snap}>
+            <span style={chipFor && !chipFor.newPlace && chipFor.thumb ? { backgroundImage: `url("${chipFor.thumb}")` } : undefined}>{chipFor && chipFor.newPlace ? <PinIcon /> : null}</span>
+            {chipFor && <b className="sh-tab" aria-hidden="true">{chipFor.newPlace ? 'New' : <PlusIcon />}</b>}</button>
           {started ? <button type="button" className={'lc-k sv' + (holdNext ? ' next' : '')} disabled={saveOff}
             aria-label={canNext ? 'Save (hold for Save + Next)' : 'Save'}
             onPointerDown={holdStart} onPointerUp={holdEnd} onPointerCancel={holdCancel} onContextMenu={(e) => e.preventDefault()}
@@ -902,12 +994,34 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         </div>)}
       {chooseL && (
         <WhereList item={self} items={items} places={places} chooser exclude={(k) => blockedAt(k, chooseIdx + 1)} changing={changing} current={chooseCurrent}
-          pending={sheet.withPhoto && chooseL.photos.length && !chooseL.known ? { thumb: chooseL.photos[0].thumb, colour: lvColour(chooseIdx + 1), draft: cap(chooseL.userName || chooseL.name || ''), guessed: !!(chooseL.name && !chooseL.userName),
+          describe={describePick} newMark={lvColour(chooseIdx + 1)}
+          pending={sheet.withPhoto && chooseL.photos.length && !chooseL.known ? { thumb: chooseL.photos[0].thumb, photo: chooseL.photos[0].photo, colour: lvColour(chooseIdx + 1),
+            // 09-30f (tester #3b/#4): ReCall's guess goes in the field only when it is a NEW name — a name she already has is
+            // offered as that place (the suggestion row), never put in the field and refused in the same breath.
+            draft: chooseL.userName ? cap(chooseL.userName) : chooseL.name && !collisionFor(chooseL.name) ? cap(chooseL.name) : '', guessed: !!(chooseL.name && !chooseL.userName && !collisionFor(chooseL.name)),
             taken: takenMsg, onUse: (n) => useName(chooseIdx, n) } : null}
-          suggest={sheet.withPhoto && chooseL.ask && !chooseL.known && !chooseL.no && !chooseL.collisionNo ? { known: chooseL.ask, name: chooseL.ask.t === 'thing' ? own(chooseL.ask.item.name) : chooseL.ask.name, thumb: chooseL.ask.t === 'thing' ? chooseL.ask.item.thumb : placePic(chooseL.ask.name) } : null}
-          onCancel={() => { setSheet(null); if (!filled(chooseL)) chainRemove(chooseIdx); }}
+          looking={sheet.withPhoto && chooseL.status === 'naming' && !chooseL.known}
+          suggest={(() => { if (!sheet.withPhoto || chooseL.known) return null;
+            // ReCall's sure visual match — or (R4.2) a name it gave that is one she already has: offered, never assumed
+            const k = chooseL.ask || (chooseL.name ? collisionFor(chooseL.name) : null);
+            return k && !blockedAt(k, chooseIdx + 1) ? { known: k, name: k.t === 'thing' ? cap(k.item.name) : k.name, thumb: k.t === 'thing' ? k.item.thumb : placePic(k.name) } : null; })()}
+          onCancel={() => { const r = sheet.restore; setSheet(null); if (r) { setLevels(r); logEvent('camera_choose_cancel', { restored: true }); } else if (!filled(chooseL)) chainRemove(chooseIdx); }}
           onPick={(k) => { const fromPhoto = !!sheet.withPhoto; setSheet(null); pickKnown(k, chooseIdx, fromPhoto); }}
-          onPhotograph={() => setSheet(null)} />)}
+          onPhotograph={() => { newShotFor.current = chooseIdx; setArmed(chooseIdx); const r = sheet.restore; setSheet(null); if (r) setLevels(r); setSel(chooseIdx + 1); }} />)}
+      {/* 09-30f (Ravi, 1:36 PM): a photo on a tier that has a place asks what it is — nothing assumed, nothing waits. */}
+      {sheet && sheet.photoFor !== undefined && levels[sheet.photoFor] && (
+        <div className="sheet-back" onClick={() => setSheet(null)} role="presentation">
+          <div className="sheet photo-for" data-was={levels[sheet.photoFor].current || levels[sheet.photoFor].inherited ? 'saved' : 'picked'} role="dialog" aria-modal="true" aria-labelledby="pf-t" onClick={(e) => e.stopPropagation()}>
+            <div className="pf-head"><img src={sheet.shot.thumb} alt="" style={{ borderColor: lvColour(sheet.photoFor + 1) }} />
+              <span><b id="pf-t">This photo is…</b><small>for level {sheet.photoFor + 1}{sheet.photoFor > 0 ? ` — where ${theOf(levels[sheet.photoFor - 1])} is` : ''}</small></span></div>
+            <button type="button" className="wl-row pf-same" style={{ borderColor: lvColour(sheet.photoFor + 1) }} onClick={() => addPhotoToTier(sheet.photoFor, sheet.shot)}>
+              <MiniMark kind="more" thumb={linkThumb(levels[sheet.photoFor])} colour={lvColour(sheet.photoFor + 1)} />
+              <span className="tx"><b>Another photo of {theName(linkName(levels[sheet.photoFor]))}</b><small>It’s still there — the photo is added to it</small></span></button>
+            <button type="button" className="wl-row pf-other" onClick={() => { const i = sheet.photoFor; const shotS = sheet.shot; startNewPlace(i, shotS, true); }}>
+              <MiniMark kind="new" colour={lvColour(sheet.photoFor + 1)} /><span className="tx"><b>A different place</b><small>Name it, or pick one of yours</small></span></button>
+            <button type="button" className="btn-quiet" onClick={() => { setSheet(null); logEvent('camera_where_shot', { retake: true }); }}>Retake</button>
+          </div>
+        </div>)}
       {(sheet === 'rename' || (sheet && sheet.levelRename !== undefined)) && (
         <div className="sheet-back" onClick={() => setSheet(null)} role="presentation">
           <div className="sheet" role="dialog" aria-labelledby="lc-rn" onClick={(e) => e.stopPropagation()}>

@@ -458,3 +458,9 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   field is checked with the keyboard up and at Largest on the small iPhone (audit_p30d T1).
 - **2026-09-30 — A check that passes by doing nothing.** T3 "the name stays after Remove" passed at first because the
   test never managed to press Remove. A check must also prove the action happened (the square lost its photo).
+- **2026-09-30 — A timer that decides for her is a bug factory.** The 3-second look opened sheets by itself and late answers
+  changed tiers she had left; the tester found six ways it went wrong, and Ravi couldn't reproduce "the weird stuff" because
+  it depended on timing. The fix wasn't a better timer: nothing acts unless she taps; the AI only suggests.
+- **2026-09-30 — When a flow changes, adapt the old suites, don't delete them.** `rig/legacy_flow.js` answers the two new
+  questions with the real buttons, so ~700 older checks keep guarding what they were written for; the new flow has its
+  own suite (`audit_pick.js`) that turns the adapter off.

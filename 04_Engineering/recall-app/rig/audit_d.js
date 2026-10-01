@@ -51,7 +51,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 200));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  const page = await ctx.newPage();
+  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/camera|permission-denied/i.test(m.text())) errors.push('console: ' + m.text().slice(0, 160)); });
 
@@ -336,9 +336,9 @@ async function main() {
     const L = 'B';
     await shootWhere('b');
     await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
-    check(`D4 ${L}: the recognition question is up: "Is this the Desk drawer?", Yes and "No, ☰ Choose place", each ≥ 44 px`, /Is this the Desk drawer\?/i.test(await text('.lc-ask2')) && (await box('.lc-ask2 button:not(.o)')).h >= 44 && (await box('.lc-ask2 button.o')).h >= 44 && /No,\s*Choose place/.test(await text('.lc-ask2 button.o')), await text('.lc-ask2'));
-    await tap('.lc-ask2 button:not(.o)', { wait: 600 });
-    check(`D4 ${L}: Yes → "Place: Desk drawer"; the photo taken for the level stays on it (fix B1 kept)`, await count('.lc-ask2') === 0 && /Place:\s*Desk drawer/.test(await text('.lc-say')) && await page.locator('.lc-card .lv-tile').nth(0).locator('img').count() > 0, await text('.lc-say'));
+    check(`D4 ${L}: 09-30f: ReCall offers the Desk drawer in its slot in Choose place; the slot and the name field are each ≥ 44 px`, /Desk drawer[\s\S]*looks like this one/i.test(await text('.where-list .wl-sugg:not(.quiet)')) && (await box('.where-list .wl-sugg:not(.quiet)')).h >= 44 && (await box('.where-list .wl-pend input')).h >= 44, await text('.where-list .wl-sugg:not(.quiet)'));
+    await tap('.where-list .wl-sugg:not(.quiet)', { wait: 600 });
+    check(`D4 ${L}: Yes → "Place: Desk drawer"; the photo taken for the level stays on it (fix B1 kept)`, await count('.where-list .wl-sugg:not(.quiet)') === 0 && /Place:\s*Desk drawer/.test(await text('.lc-say')) && await page.locator('.lc-card .lv-tile').nth(0).locator('img').count() > 0, await text('.lc-say'));
     await shot('D4_ask-B-superseded');
     await tap('.lc-k.sv', { wait: 2500 });
     const lb = (await dump()).find((d) => d.kind === 'item' && d.name === 'lint brush');
@@ -347,7 +347,7 @@ async function main() {
     check(`D3 ${L}: the first photo of a NEW thing gets the tag's restingOn as its snap caption`, !!cs && cs.caption === 'on the orange carpet' && lb.restingOn === 'on the orange carpet', JSON.stringify({ c: cs && cs.caption }));
     // "No, ☰ Choose place" → the sheet with the photo on top; pick another place from the list: the photo stays with it
     await shootWhere('b'); await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
-    await tap('.lc-ask2 button.o', { wait: 600 });
+    await tap('.where-list .wl-pend input', { wait: 600 });
     check(`D4 ${L}: No → ☰ Choose place with the photo on top ("A new place?") and the list below`, await count('.where-list .wl-pend img') === 1 && await count('.where-list .wl-row') >= 2);
     const second = (await page.locator('.where-list .wl-row:not(.wl-sugg) b').allInnerTexts()).map((x) => x.trim()).find((x) => x !== 'Desk drawer');
     await page.locator(`.where-list .wl-row:not(.wl-sugg):has(b:text-is("${second}"))`).first().click(); await page.waitForTimeout(500);
@@ -362,7 +362,7 @@ async function main() {
     await tap('.lv-sq.plus', { wait: 350 }); await tap('.lc-choose', { wait: 500 });
     check('D5 the search placeholder is "Search your places"', await page.locator('.where-list .wl-search input').getAttribute('placeholder') === 'Search your places');
     const nb = await page.locator('.where-list .wl-new:not(.typed)').evaluate((b) => { const cs = getComputedStyle(b); return { t: b.innerText.trim(), border: cs.borderStyle, bg: cs.backgroundColor, radius: cs.borderRadius, svg: b.querySelectorAll('svg').length, h: b.getBoundingClientRect().height }; });
-    check('D5 the new-place control is a solid rounded "Photograph a new place" button (camera icon + words, no dashes)', nb.t === 'Photograph a new place' && !/dashed/.test(nb.border) && nb.bg !== 'rgba(0, 0, 0, 0)' && parseFloat(nb.radius) >= 8 && nb.svg === 1 && nb.h >= 44, JSON.stringify(nb));
+    check('D5 the new-place control is a solid rounded "Photograph a new place" button (09-30f: the "New place" mark + words, no dashes)', /Photograph a new place$/.test(nb.t) && /^New/.test(nb.t) && !/dashed/.test(nb.border) && nb.bg !== 'rgba(0, 0, 0, 0)' && parseFloat(nb.radius) >= 8 && nb.svg === 1 && nb.h >= 44, JSON.stringify(nb));
     const heads = await page.locator('.where-list .wl-g').allInnerTexts(); const rows = await count('.where-list .wl-row');
     check('D5 ONE list, headed "YOUR PLACES · N" with N = the rows shown', heads.length === 1 && heads[0].trim() === `YOUR PLACES · ${rows}` && rows >= 5, JSON.stringify({ heads, rows }));
     const rr = await page.evaluate(() => [...document.querySelectorAll('.where-list .wl-row')].map((r) => ({ b: r.querySelector('b').innerText, s: r.querySelector('small').innerText, box: !!r.querySelector('.no svg') && !r.querySelector('img') })));

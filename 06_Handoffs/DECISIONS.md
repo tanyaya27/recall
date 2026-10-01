@@ -6,6 +6,25 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-09-30 (night, later) — A photo on a tier asks; a pick confirms; no timer; Ravi's shutter marks → `20260930f`
+
+- **A photo never assumes a new place** (Ravi, 1:36 PM): on a tier that has a place the shutter asks "This photo is…" —
+  another photo of it / a different place. *Why not the AI deciding:* Ravi — "the old place is gone and the user is
+  wondering what just happened". The answer sticks for the next shots; any tap on a tier resets it (Ravi chose this over
+  "only another tier" and "never").
+- **Choose place: new place first, then Search** (Ravi: the search is for the places below it). **A pick shows Before →
+  Now** and waits for *Use* (Ravi: "what if the user is just clicking around…").
+- **No timer; ReCall only suggests.** The 3-second look (09-29, Ravi: "go with 3 seconds") is gone: it opened sheets by
+  itself and late answers changed tiers no one confirmed (tester: an existing place was put inside a new one). The look
+  now fills a fixed suggestion slot. *Would change:* people missing the suggestion because they pick too fast.
+- **Save off until something changes** (Ravi).
+- **Dashed border = this tier is going to change; solid = its place stands** (Ravi's idea; shape, not only colour).
+  Pairs with the marks: pin + New ↔ dashed; photo + "+" ↔ solid.
+- **Shutter marks — Ravi's option 1** (place photo in the disc + "+" tab; pin + "New" tab), shown in the modal choices too
+  (Ravi's rule). Design round `design/DESIGN_2026-09-30_shutter.md`: the designer recommended A (a glyph in the disc,
+  nothing above the ring) — objections to option 1: a photo in a round button reads as "open gallery", a dark photo
+  muddies the disc, the "+" also means "add a level", tabs on the ring read as badges. Ravi chose option 1.
+
 ## 2026-09-30 (late night) — Focus colour (Ravi) and the tester's finds on `d` → `20260930e`
 
 - **One colour means "the tier you are about to change"** (Ravi's idea, his pick "build both"): the selected square, its

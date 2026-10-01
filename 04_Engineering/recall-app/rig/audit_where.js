@@ -59,12 +59,12 @@ async function main() {
     await new Promise((r) => setTimeout(r, 100));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  const page = await ctx.newPage();
+  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
   // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
   // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
   const settleWhere = async (fallback = '') => {
     for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-    for (let k = 0; k < 8 && !(await page.locator('.wl-pend .btn-primary').count()) && !(await page.locator('.lc-ask2').count()); k++) await page.waitForTimeout(150); // the sheet can open a beat after the look ends
+    for (let k = 0; k < 14 && !(await page.locator('.where-list, .photo-for').count()); k++) await page.waitForTimeout(150); for (let k = 0; k < 40 && (await page.locator('.where-list .wl-sugg.quiet:has-text("Looking")').count()); k++) await page.waitForTimeout(150); /* 09-30f: Choose place opens at once; wait for ReCall's look */ // the sheet can open a beat after the look ends
     if (await page.locator('.wl-pend .btn-primary').count()) {
       if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
       await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
@@ -345,10 +345,10 @@ async function main() {
   AI = { name: 'travel adapter' }; WHERE = [{ name: 'Kitchen counter', moves: false }];
   await home(); await cam('real_cetaphil.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
   await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1700 });
-  check('I1 R4.2/4.5: a same-NAME (not visually sure) match still asks "Is this the Kitchen counter?"', /Is this the Kitchen counter\?/.test(await text('.lc-ask2')), await text('.lc-ask2'));
+  check('I1 R4.2/4.5: a same-NAME (not visually sure) match still asks "Is this the Kitchen counter?"', /Kitchen counter[\s\S]*looks like this one/i.test(await text('.where-list .wl-sugg:not(.quiet)')), await text('.where-list .wl-sugg:not(.quiet)'));
   check('I2 R4.2: Save is off while the ask is unresolved', await page.locator('.lc-k.sv').isDisabled());
   const kcBefore = await placeByName('Kitchen counter');
-  await tap('.lc-ask2 button:has-text("Yes")', { wait: 500 });
+  await tap('.where-list .wl-sugg:not(.quiet)', { wait: 500 });
   await tap('.lc-k.sv', { wait: 1500 });
   const kcAfter = await placeByName('Kitchen counter');
   const placesNamedKC = (await places()).filter((p) => p.name === 'Kitchen counter');
@@ -359,8 +359,11 @@ async function main() {
   AI = { name: 'phone stand' }; WHERE = [{ name: 'Hall table', moves: false }];
   await home(); await cam('real_painting.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
   await tap('.lv-sq.plus', { wait: 300 }); await cam('book.jpg'); await tap('.lc-shutter', { wait: 1700 });
-  await tap('.lc-ask2 button.o', { wait: 600 });
-  check('I4a No opens Choose place with the name field, and says "Hall table" is taken', await count('.wl-pend input') === 1 && /already have a place called .Hall table./.test(await text('.wl-taken')), await text('.wl-taken'));
+  for (let k = 0; k < 30 && (await count('.where-list .wl-sugg.quiet:has-text("Looking")')); k++) await page.waitForTimeout(150);
+  const i4 = { slot: await text('.where-list .wl-sugg'), field: await page.locator('.wl-pend input').inputValue(), taken: await count('.wl-taken') };
+  check('I4a 09-30f: ReCall named it "Hall table", a place she has — offered in ReCall\'s slot; the name field is left empty (never filled and refused at once)', /Hall table/.test(i4.slot) && i4.field === '' && i4.taken === 0, JSON.stringify(i4));
+  await page.locator('.wl-pend input').fill('Hall table'); await page.waitForTimeout(250);
+  check('I4a2 typing "Hall table" says it is taken', /already have a place called .Hall table./.test(await text('.wl-taken')), await text('.wl-taken'));
   check('I4b "Use this name" is off while the name is taken', await page.locator('.wl-pend .btn-primary').isDisabled());
   await page.locator('.wl-pend input').fill('Hall table west'); await page.waitForTimeout(250);
   check('I4c the gate clears once the name differs', !(await page.locator('.wl-pend .btn-primary').isDisabled()));
@@ -393,8 +396,9 @@ async function main() {
   if (await count('.lv-sq.plus')) { await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1700 }); }
   const i7n = await count('.lc-ask'); await shot('i7-single-ask');
   check('I7 R4.4: with a thing-identity ask already up, no SECOND ask renders at once (single ask, F7)', identityAskUp && i7n === 1, `identity=${identityAskUp} asks=${i7n}`);
-  await tap('.lc-ask:not(.lc-ask2) button:not(.o)', { wait: 600 }); // answer the item's ask
-  check('I7b …and once it is answered, the place question comes next ("Is this the Kitchen counter?")', /Is this the Kitchen counter\?/.test(await text('.lc-ask2')), await text('.lc-card'));
+  for (let k = 0; k < 30 && (await count('.where-list .wl-sugg.quiet:has-text("Looking")')); k++) await page.waitForTimeout(150);
+  check('I7b 09-30f: the place is offered in Choose place (ReCall\'s slot) while the item\'s own question waits on the card', /Kitchen counter[\s\S]*looks like this one/i.test(await text('.where-list .wl-sugg:not(.quiet)')) && await count('.lc-ask') === 1, await text('.where-list .wl-sugg'));
+  await tap('.where-list .btn-quiet', { wait: 400 });
   await tap('.lc-x', { wait: 400 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 400 });
 
   // ---- J. R5 — each level's own sheet (replaces the 09-27 chain sheet) ----

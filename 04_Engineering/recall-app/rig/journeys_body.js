@@ -26,7 +26,8 @@
     const shootPlace = async (file, where, nameIt = '') => {
       WHERE.push(where); await cam(file); await tap('.lc-shutter', { wait: 300 });
       for (let k = 0; k < 40 && await page.locator('.lv-look').count(); k++) await page.waitForTimeout(150);
-      for (let k = 0; k < 8 && !(await page.locator('.wl-pend .btn-primary').count()) && !(await page.locator('.lc-ask2').count()); k++) await page.waitForTimeout(150);
+      for (let k = 0; k < 14 && !(await page.locator('.where-list, .photo-for').count()); k++) await page.waitForTimeout(150); for (let k = 0; k < 40 && (await page.locator('.where-list .wl-sugg.quiet:has-text("Looking")').count()); k++) await page.waitForTimeout(150); /* 09-30f: Choose place opens at once; wait for ReCall's look */
+      if (await page.locator('.where-list .wl-sugg:not(.quiet)').count()) return; // a suggestion: the test answers it
       if (await page.locator('.wl-pend .btn-primary').count()) { if (nameIt) await page.locator('.wl-pend input').fill(nameIt); await tap('.wl-pend .btn-primary', { wait: 450 }); }
     };
     const save = async () => { await tap('.lc-k.sv', { wait: 2600 }); };
@@ -115,9 +116,9 @@
     await story('J10', async () => {
       const p0 = ((await places()).find((p) => p.name === 'Desk drawer') || {}).photos || [];
       await move('passport'); await shootPlace('drawer.jpg', { name: 'drawer', moves: false, known: 'Desk drawer', sure: true });
-      const ask = await page.evaluate(() => (document.querySelector('.lc-ask2') || {}).innerText || '');
-      check(J, 'photographing the Desk drawer it is already in: "Is this the Desk drawer?"', /Is this the Desk drawer\?/.test(ask), ask.replace(/\n/g, ' '));
-      if (ask) await tap('.lc-ask2 button:has-text("Yes")', { wait: 500 });
+      const ask = await page.evaluate(() => (document.querySelector('.where-list .wl-sugg:not(.quiet)') || {}).innerText || '');
+      check(J, 'photographing the Desk drawer it is already in: "Is this the Desk drawer?"', /Desk drawer[\s\S]*looks like this one/i.test(ask), ask.replace(/\n/g, ' '));
+      if (ask) await tap('.where-list .wl-sugg:not(.quiet)', { wait: 500 });
       await save();
       const p1 = ((await places()).find((p) => p.name === 'Desk drawer') || {}).photos || [];
       check(J, 'Yes: nothing moved, and the drawer has the new photo', p1.length === Math.min(6, p0.length + 1), `${p0.length} -> ${p1.length}`);

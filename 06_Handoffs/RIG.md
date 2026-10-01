@@ -140,7 +140,7 @@ the functions: `./rules-test/run_ai_test.sh`.
   look and accepts ReCall's name in the Choose place sheet; `pickPlace(name)` goes through ☰ Choose place; `saveNext()`
   holds Save for 0.8 s. The pills (`.lc-chip`), the chain sheet (`.chain-sheet`) and look A are gone.
 - **09-30: the new testing (`06_Handoffs/TESTING.md`).** `./run_all.sh` runs everything in memory-safe batches (summary in
-  `/tmp/runs/SUMMARY.txt`) — **728 checks** at `20260930a`, **745** at `20260930c`, **775** at `20260930d` (+ `audit_p30d.js`, 15 checks, in both engines), **802** at `20260930e` (`audit_p30d.js` 28 in both engines; audit_where 54). New: `oracle.js` (truth from the store vs every screen),
+  `/tmp/runs/SUMMARY.txt`) — **728 checks** at `20260930a`, **745** at `20260930c`, **775** at `20260930d` (+ `audit_p30d.js`, 15 checks, in both engines), **802** at `20260930e` (`audit_p30d.js` 28 in both engines; audit_where 54), **883** at `20260930f`. New: `oracle.js` (truth from the store vs every screen),
   `journeys.js` (= tiers_head + journeys_body; stories in `JOURNEYS.md`, 34 checks; **51 at `c`**, J15–J18: the place worklist, Move all, merge; the stub's `global.SAME_PLACE` = 'same'|'different'|'unknown' answers the "PHOTO A:/PHOTO B:" place check), `monkey.js` (`SEED=… STEPS=…`),
   `realhouse_suite.js` (`REAL=/path/recall-house-….json`, round-trips the sample house without it), `engine.js`
   (`ENGINE=webkit node -r ./engine.js <suite>` — WebKit installed with `PLAYWRIGHT_BROWSERS_PATH=/home/claude/pw-webkit npx
@@ -159,3 +159,10 @@ the functions: `./rules-test/run_ai_test.sh`.
   moved, which tier Choose place changes, the square after a pick, "nothing here yet", "the in air". Stories in
   `rig/JOURNEYS.md` (P1–P6). The oracle also checks the item page's "seen / moved" line against the store.
 - `opts_tier.js` (= `tiers_head.js` + `opts_tier_body.js`) + `compose_tier.py`: the tier options drawn on the real screens.
+- `audit_pick.js` (= `tiers_head.js` + `pick_body.js`, `PORT=8730`, both engines): the 09-30f camera flow — "This photo is…",
+  sticky answer + reset, Choose place order, Cancel restores, Before → Now, no timer (late answers only suggest), the
+  shutter marks (Ravi's option 1) and the fly-in. It sets `window.__noAuto`.
+- `legacy_flow.js`: installed by every older harness (tiers_head and the audit_*.js); answers "This photo is…" (a saved tier
+  → A different place, as before; a picked tier → Another photo, as R1) and clicks *Use* on Before → Now.
+- `build_f.js` (= tiers_head + `build_f_body.js`): the as-built screens of f. `opts_pick*`, `opts_chip*`, `shutter_*`/`sz_run.sh`:
+  the mockups and the design round.

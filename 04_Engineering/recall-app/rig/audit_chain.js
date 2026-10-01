@@ -71,7 +71,7 @@ async function runLook(look) {
     if (badjson) { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: 'not json{{{' }] }) }); return; }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  const page = await ctx.newPage();
+  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 200)); });
 
@@ -237,9 +237,9 @@ async function runLook(look) {
     const hist0 = await page.evaluate(() => window.__rig.dump().find((x) => x.id === 'ps').history.length);
 
     // ---- 4: Save with nothing changed writes nothing ----
-    await move(); await tap('.lc-k.sv', { wait: 1500 });
+    await move(); const offNow = await isDisabled('.lc-k.sv'); await tap('.lc-x', { wait: 600 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
     const hist1 = await page.evaluate(() => window.__rig.dump().find((x) => x.id === 'ps').history.length);
-    check('H4', 'Move it, Save with nothing changed: closes, no new history line', !(await page.locator('.lc').count()) && hist1 === hist0, `${hist0} -> ${hist1}`);
+    check('H4', '09-30 (Ravi): Move it with nothing changed — Save is off; Cancel closes; no new history line', offNow === true && !(await page.locator('.lc').count()) && hist1 === hist0, `${offNow} ${hist0} -> ${hist1}`);
 
     // ---- 5: a different place at tier 1 — the old outer tiers go (they were about the drawer) ----
     await move(); await tap('.lc-choose', { wait: 500 }); await page.fill('.wl-search input', 'Kitchen counter'); await page.waitForTimeout(150);

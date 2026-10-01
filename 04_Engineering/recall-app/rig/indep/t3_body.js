@@ -1,0 +1,13 @@
+    const S = [
+      { id: 'A1', desc: 'Move L1, sure-known @4.5s; she types "Attic trunk" from 3.5s (answer lands mid-typing)', answers: [{ ans: KC, delay: 4500 }], steps: [[3400, 'type', 'Attic trunk'], [5200, 'shot', 'typed+late'], [5300, 'press', 'button.btn-primary:has-text("Use this name")'], [6200, 'shot', 'after use name']] },
+      { id: 'A2', desc: 'Move L1, NEW @4.5s; she types "Attic trunk" from 3.5s', answers: [{ ans: NEW, delay: 4500 }], steps: [[3400, 'type', 'Attic trunk'], [5200, 'shot', 'typed+late'], [5300, 'press', 'button.btn-primary:has-text("Use this name")'], [6200, 'shot', 'after use name']] },
+      { id: 'A3', desc: 'Move L1, sure-known @4.5s; she picks Desk drawer at 4.3s, answer lands after the sheet closed', answers: [{ ans: KC, delay: 4500 }], steps: [[4250, 'pick', 'Desk drawer'], [5300, 'shot', 'after pick+late'], [6000, 'ui', '']] },
+      { id: 'A4', desc: 'Move L1, NEW @4.5s; she picks Desk drawer at 4.3s', answers: [{ ans: NEW, delay: 4500 }], steps: [[4250, 'pick', 'Desk drawer'], [5300, 'shot', 'after pick+late']] },
+      { id: 'A5', desc: 'Move L1, sure-known @4.5s; she taps the suggestion "Is it the Kitchen counter?"', answers: [{ ans: KC, delay: 4500 }], steps: [[5200, 'press', '.wl-sugg'], [5900, 'shot', 'after sugg']] },
+      { id: 'A6', desc: 'Move L1, sure-known @0.5s; she taps No, Choose place, then types "Attic trunk" + Use this name', answers: [{ ans: KC, delay: 500 }], steps: [[1500, 'press', 'button:has-text("No,")'], [2200, 'shot', 'after No'], [2300, 'type', 'Attic trunk'], [4200, 'press', 'button.btn-primary:has-text("Use this name")'], [4900, 'shot', 'after use name']] },
+      { id: 'A7', desc: 'Move L1, sure-known @0.5s; Yes', answers: [{ ans: KC, delay: 500 }], steps: [[1500, 'press', 'button:has-text("Yes")'], [2200, 'shot', 'after Yes']] },
+      { id: 'A8', desc: 'Move L1, NEW @9s; she Cancels the sheet at 4s and presses Save at 5s (answer lands after the save)', answers: [{ ans: NEW, delay: 9000 }], steps: [[4000, 'press', '.btn-quiet:has-text("Cancel")'], [5000, 'save', ''], [7000, 'shot', 'saved before answer'], [10500, 'shot', 'after late answer post-save']], saveAtEnd: false },
+      { id: 'A9', desc: 'Move L1, sure-known @9s; she Cancels the sheet at 4s and presses Save at 5s (answer lands after the save)', answers: [{ ans: KC, delay: 9000 }], steps: [[4000, 'press', '.btn-quiet:has-text("Cancel")'], [5000, 'save', ''], [10500, 'shot', 'after late answer post-save']], saveAtEnd: false },
+    ];
+    const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
+    for (const sc of S) if (!only || only.includes(sc.id)) await runScn(sc);

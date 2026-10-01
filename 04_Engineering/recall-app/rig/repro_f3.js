@@ -70,7 +70,7 @@ async function runLook(look) {
     if (badjson) { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: 'not json{{{' }] }) }); return; }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  const page = await ctx.newPage();
+  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 200)); });
 
@@ -162,7 +162,7 @@ async function runLook(look) {
   async function runSuite(look) {
     const L = look.toUpperCase();
     const shot = makeShot(look);
-    const camState = () => page.evaluate(() => ({ open: !!document.querySelector('.lc'), askText: (document.querySelector('.lc-ask2') || {}).innerText || '', saveTxt: (document.querySelector('.lc-k.sv') || {}).innerText || '', saveDis: (document.querySelector('.lc-k.sv') || {}).disabled ?? null, say: (document.querySelector('.lc-say .tx') || {}).innerText || '' }));
+    const camState = () => page.evaluate(() => ({ open: !!document.querySelector('.lc'), askText: (document.querySelector('.where-list .wl-sugg:not(.quiet)') || {}).innerText || '', saveTxt: (document.querySelector('.lc-k.sv') || {}).innerText || '', saveDis: (document.querySelector('.lc-k.sv') || {}).disabled ?? null, say: (document.querySelector('.lc-say .tx') || {}).innerText || '' }));
     // 09-29g camera card: places come from "☰ Choose place" (no pills). Pick one by name from the open list, or open it first.
     const choose = async (name) => { if (!(await page.locator('.where-list').count())) { await tap('.lc-choose', { wait: 400 }); }
       await page.fill('.wl-search input', name); await page.waitForTimeout(150); await tap(`.where-list .wl-row:not(.wl-sugg):has-text("${name}")`, { wait: 500 }); };
@@ -171,8 +171,8 @@ async function runLook(look) {
       await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
       await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
       let st = await camState(); await shot(tag, 'after the where shot: ask state');
-      check(tag, 'the "Is this the …?" ask appeared', new RegExp('Is this the ' + target, 'i').test(st.askText), JSON.stringify(st).slice(0, 200), '');
-      if (/Is this/.test(st.askText)) { await tap('.lc-ask2 button:has-text("Yes")', { wait: 600 }); }
+      check(tag, 'the "Is this the …?" ask appeared', new RegExp(target + '[\\s\\S]*looks like this one', 'i').test(st.askText), JSON.stringify(st).slice(0, 200), '');
+      if (st.askText) { await tap('.where-list .wl-sugg:not(.quiet)', { wait: 900 }); }
       st = await camState(); await shot(tag, 'after Yes');
       check(tag, 'after Yes the line names the confirmed place', new RegExp('Place:\\s*(in the )?' + target, 'i').test(st.say), 'say=' + st.say, '');
       check(tag, 'after Yes, Save is enabled', st.saveDis === false, JSON.stringify(st).slice(0, 200), '');
@@ -290,9 +290,10 @@ async function runLook(look) {
       check(T, 'opens with "Place: Kitchen counter" (not "not defined")', /place:\s*kitchen counter/i.test(say0), say0, s1);
       check(T, 'level 1 shows the current place\'s photo', sq1img > 0, '', '');
       check(T, 'the prompt asks "Moved it? Photograph the new place, or choose one."', /Moved it\? Photograph the new place, or choose one\./.test(prompt0), prompt0, '');
-      await tap('.lc-k.sv', { wait: 1500 });
+      const off0 = await page.locator('.lc-k.sv').isDisabled(); // 09-30 (Ravi): nothing changed → Save is off; Cancel closes
+      await tap('.lc-x', { wait: 800 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
       const b1 = await byName('spare batteries'); const st1 = await camState();
-      check(T, 'Save with nothing changed closes and writes nothing', st1.open === false && b1.location === b0.location && b1.lastSeenAt === b0.lastSeenAt, `open=${st1.open} loc=${b1.location}`, '');
+      check(T, 'nothing changed: Save is off; Cancel closes and writes nothing', off0 && st1.open === false && b1.location === b0.location && b1.lastSeenAt === b0.lastSeenAt, `off=${off0} open=${st1.open} loc=${b1.location}`, '');
       // pick a new place, then back to the current, then the new again and save
       await tap('button:has-text("Move it")', { wait: 900 });
       await choose('Craft nook');

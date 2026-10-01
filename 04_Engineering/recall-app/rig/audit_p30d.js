@@ -71,7 +71,7 @@ async function runLook(look) {
     if (badjson) { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: 'not json{{{' }] }) }); return; }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  const page = await ctx.newPage();
+  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 200)); });
 
@@ -367,6 +367,15 @@ async function runLook(look) {
     const hOthers = new Set(fh.filter((w) => !w.sel).map((w) => w.c));
     check('F2', 'Choose place header: only the tier being changed is coloured', hOthers.size === 1 && fh.filter((w) => w.sel).length === 1, JSON.stringify(fh));
     await tap('.where-list .btn-quiet', { wait: 300 }); await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
+    // ---- S1 (Ravi 09-30): Move it opens with nothing changed → Save is off; any change turns it on ----
+    await openThing('baseball card'); await tap('button:has-text("Move it")', { wait: 900 });
+    const s0 = await isDisabled('.lc-k.sv');
+    await snap('S1 move it just opened');
+    check('S1', 'Move it, just opened (nothing changed): Save is off', s0 === true, String(s0));
+    await tap('.lc-choose', { wait: 500 }); await page.fill('.wl-search input', 'Linen closet'); await page.waitForTimeout(150); await tap('.where-list .wl-row:has-text("Linen closet")', { wait: 500 });
+    const s1 = await isDisabled('.lc-k.sv');
+    check('S1', '… a different place picked: Save is on', s1 === false, String(s1));
+    await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
   }
   await seedHouse();
   try { await runSuite(); } catch (e) { console.error('FATAL', e); check('P', 'suite ran', false, e.message); }

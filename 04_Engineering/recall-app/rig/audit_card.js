@@ -71,7 +71,7 @@ async function runLook(look) {
     if (badjson) { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: 'not json{{{' }] }) }); return; }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  const page = await ctx.newPage();
+  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 200)); });
 
@@ -175,7 +175,7 @@ async function runLook(look) {
       return { open: !!q('.lc'), band: t('.lc-band'), prompt: t('.lc-card .lc-prompt'), place: t('.lc-card .lc-say'), chain: t('.lc-chainline'), choose: !!q('.lc-choose'), chooseDis: (q('.lc-choose') || {}).disabled ?? null,
         plus: !!q('.lv-sq.plus'), squares: document.querySelectorAll('.lc-card .lv-sq:not(.plus)').length, pills: document.querySelectorAll('.lc-chip').length, next: !!q('.lc-k.sn'),
         cancelBottom: !!q('.lc-bot .lc-x'), cancelTop: !!q('.lc-top .lc-x'), save: t('.lc-k.sv'), saveDis: (q('.lc-k.sv') || {}).disabled ?? null, shutterDis: (q('.lc-shutter') || {}).disabled ?? null,
-        looking: !!q('.lv-look'), ask: t('.lc-ask2'), askImgs: document.querySelectorAll('.lc-ask2 .pair img').length, sheet: t('.sheet'), flash: t('.lc-saved') };
+        looking: !!q('.lv-look'), ask: t('.where-list .wl-sugg:not(.quiet)'), askImgs: document.querySelectorAll('.where-list .wl-sugg:not(.quiet) img').length, sheet: t('.sheet'), flash: t('.lc-saved') };
     });
     const fresh = async () => { await seedHouse(); SAME = { index: -1, sure: false }; await home(); await page.evaluate(() => window.__rig.rules(true)); await page.waitForTimeout(200); };
     const openThing = async (nm) => { await home(); await page.click('.footer .btn-primary.alt'); await page.waitForSelector('.ask'); await page.fill('#ask-input', nm); await page.waitForTimeout(350); await page.click('.ask .tile >> nth=0'); await page.waitForSelector('.card.thing'); await page.waitForTimeout(300); };
@@ -204,13 +204,13 @@ async function runLook(look) {
     check('C2', '"What is the Kitchen counter in? Photograph it, or choose one." (09-30d: the name as written) · "Place: not defined"', /What is the Kitchen counter in\? Photograph it, or choose one\./.test(s.prompt) && /^Place:\s*not defined/.test(s.place), `${s.prompt} | ${s.place}`);
     check('C2', 'the chain under a thin line: "Kitchen counter in ?"', /Kitchen counter\s*in\s*\?/.test(s.chain) && await page.evaluate(() => getComputedStyle(document.querySelector('.lc-chainline')).borderTopWidth) === '1px', s.chain);
 
-    // ---------- C3/C4: shutter → it looks (everything waits) → "Is this the Craft nook?" → Yes ----------
+    // ---------- C3/C4 (09-30f, Ravi: no timer): shutter → Choose place at once, ReCall's slot "Looking…" → its suggestion → tap → Use ----------
     NEXT_WHERE_DELAY = 1500; WHERE.push({ name: 'Pantry shelf', moves: false, known: 'Pantry shelf', sure: true });
     await cam('real_slippers.jpg'); await tap('.lc-shutter', { wait: 500 }); s = await st(); await snapC('looking at the photo');
-    check('C3', 'while it looks: a spinner on the square, "Looking at the photo…", Save / Choose place / shutter all wait', s.looking && /Looking at the photo/.test(s.place) && s.saveDis === true && s.chooseDis === true && s.shutterDis === true, JSON.stringify({ l: s.looking, p: s.place, sd: s.saveDis, cd: s.chooseDis, sh: s.shutterDis }));
+    check('C3', '09-30f: the photo opens Choose place at once (no wait): the photo on top, ReCall\'s slot "Looking at your photo…"', /Choose place/.test(s.sheet) && /Looking at your photo/.test(s.sheet), JSON.stringify({ l: s.looking, p: s.place, sd: s.saveDis, cd: s.chooseDis, sh: s.shutterDis }));
     await page.waitForTimeout(1600); s = await st(); await snapC('is this the pantry shelf');
-    check('C4', 'recognised: "Is this the Pantry shelf?" with both photos, Yes / No, ☰ Choose place', /Is this the Pantry shelf\?/i.test(s.ask) && s.askImgs === 2 && /No,\s*Choose place/.test(s.ask), `${s.ask} imgs=${s.askImgs}`);
-    await tap('.lc-ask2 button:has-text("Yes")', { wait: 400 }); s = await st(); await snapC('yes');
+    check('C4', 'recognised: ReCall\'s slot offers the Pantry shelf ("your photo looks like this one") — only offers', /Pantry shelf[\s\S]*looks like this one/i.test(s.ask) && s.askImgs >= 1, `${s.ask} imgs=${s.askImgs}`);
+    await tap('.where-list .wl-sugg:not(.quiet)', { wait: 400 }); s = await st(); await snapC('yes');
     check('C4', 'Yes → "Place: Pantry shelf"; the chain reads "Kitchen counter in Pantry shelf"; + is back', /^Place:\s*Pantry shelf/.test(s.place) && /Kitchen counter\s*in\s*Pantry shelf/.test(s.chain) && s.plus, `${s.place} | ${s.chain}`);
     await tap('.lc-k.sv', { wait: 2500 });
     check('C4', 'Save (rules on): Kitchen counter is now in Pantry shelf (with the new photo); the camera closed', !(await st()).open && (await page.evaluate(() => { const d = window.__rig.dump(); const p = d.find((x) => x.kind === 'place' && x.name === 'Kitchen counter'); return d.some((e) => e.kind === 'edge' && e.from === p.id && !e.until && e.to.name === 'Pantry shelf'); })) && ((await placeByName('Pantry shelf')).photos || []).length === 2, '');
@@ -221,20 +221,20 @@ async function runLook(look) {
     NEXT_WHERE_DELAY = 4200; WHERE.push({ name: 'Hall shelf', moves: false, known: 'Desk drawer', sure: true });
     await cam('closet.jpg'); const t0 = Date.now(); await tap('.lc-shutter', { wait: 200 });
     await page.waitForSelector('.where-list', { timeout: 6000 }); const opened = Date.now() - t0; s = await st(); await snapC('timeout opens choose place');
-    check('C5', 'after ~3 s with no answer, ☰ Choose place opens by itself with the photo: "A new place?"', opened >= 2800 && opened < 4000 && /Choose place/.test(s.sheet) && /A new place\?/.test(s.sheet), `opened after ${opened} ms`);
-    for (let k = 0; k < 20 && !/Is it the/.test((await st()).sheet); k++) await page.waitForTimeout(200);
+    check('C5', '09-30f: Choose place is open at once (no 3 s wait) with the photo: "A new place"', opened < 1500 && /Choose place/.test(s.sheet) && /A new place/.test(s.sheet), `opened after ${opened} ms`);
+    for (let k = 0; k < 30 && !/looks like this one/.test((await st()).sheet); k++) await page.waitForTimeout(200);
     await page.waitForTimeout(300); s = await st(); await snapC('late answer shows in the sheet');
     const draft1 = await page.locator('.wl-pend input').inputValue();
-    check('C5', 'the late answer shows up in the sheet: "Is it the Desk drawer?" first, and ReCall\'s name in the field', /Is it the Desk drawer\?/.test(s.sheet) && /hall shelf/i.test(draft1), `draft="${draft1}"`);
-    await tap('.wl-sugg', { wait: 500 }); s = await st();
+    check('C5', 'the late answer shows up in the sheet: the Desk drawer in ReCall\'s slot, and ReCall\'s name in the field', /Desk drawer[\s\S]*looks like this one/i.test(s.sheet) && /hall shelf/i.test(draft1), `draft="${draft1}"`);
+    await tap('.wl-sugg:not(.quiet)', { wait: 700 }); s = await st();
     check('C5', 'tapping it sets level 2 = Desk drawer', /^Place:\s*Desk drawer/.test(s.place), s.place);
 
-    // ---------- C6: "No, ☰ Choose place" → name it ----------
+    // ---------- C6 (09-30f): not the suggestion → name it in the same sheet ----------
     await fresh(); await move('Spare batteries'); await tap('.lv-sq.plus', { wait: 300 });
     NEXT_WHERE_DELAY = 300; WHERE.push({ name: 'Pantry shelf', moves: false, known: 'Pantry shelf', sure: true });
     await cam('real_desk.jpg'); await tap('.lc-shutter', { wait: 1500 });
-    await tap('.lc-ask2 button.o', { wait: 500 }); s = await st(); await snapC('no, choose place');
-    check('C6', '"No, ☰ Choose place" opens the same sheet with the photo on top: "A new place?" + a name field + the list', /A new place\?/.test(s.sheet) && await count('.wl-pend input') === 1 && /OR IT’S ONE OF YOUR PLACES/.test(s.sheet), s.sheet.slice(0, 160));
+    await tap('.where-list .wl-pend input', { wait: 500 }); s = await st(); await snapC('no, choose place');
+    check('C6', 'the sheet has the photo on top: "A new place" + a name field + the list', /A new place/.test(s.sheet) && await count('.wl-pend input') === 1 && /OR IT’S ONE OF YOUR PLACES/.test(s.sheet), s.sheet.slice(0, 160));
     await page.locator('.wl-pend input').fill('Pantry shelf'); await page.waitForTimeout(200);
     check('C6', 'a name that is already a place can\'t be used ("pick it below, or give this one its own name")', await page.locator('.wl-pend .btn-primary').isDisabled() && /already have/.test(await text('.wl-taken')), await text('.wl-taken'));
     await page.locator('.wl-pend input').fill('Sewing shelf'); await tap('.wl-pend .btn-primary', { wait: 400 }); s = await st();

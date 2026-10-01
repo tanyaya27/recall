@@ -71,7 +71,7 @@ async function runLook(look) {
     if (badjson) { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: 'not json{{{' }] }) }); return; }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  const page = await ctx.newPage();
+  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 200)); });
 
@@ -194,8 +194,9 @@ async function runLook(look) {
       WHERE.push({ name: nm.toLowerCase(), moves: rnd() < 0.3 }); if (rnd() < 0.15) NEXT_WHERE_DELAY = 3800;
       await cam(pick(WHERE_PHOTOS)); await tap('.lc-shutter', { wait: 300 });
       for (let k = 0; k < 40 && await page.locator('.lv-look').count(); k++) await page.waitForTimeout(150);
-      for (let k = 0; k < 8 && !(await page.locator('.wl-pend .btn-primary').count()) && !(await page.locator('.lc-ask2').count()); k++) await page.waitForTimeout(150);
-      if (await page.locator('.lc-ask2').count()) { await tap(rnd() < 0.5 ? '.lc-ask2 button:has-text("Yes")' : '.lc-ask2 button.o', { wait: 450 }); }
+      for (let k = 0; k < 14 && !(await page.locator('.where-list, .photo-for').count()); k++) await page.waitForTimeout(150); for (let k = 0; k < 40 && (await page.locator('.where-list .wl-sugg.quiet:has-text("Looking")').count()); k++) await page.waitForTimeout(150); /* 09-30f: Choose place opens at once; wait for ReCall's look */
+      if (await page.locator('.where-list .wl-sugg:not(.quiet)').count()) { await tap(rnd() < 0.5 ? '.where-list .wl-sugg:not(.quiet)' : '.where-list .wl-pend input', { wait: 450 }); }
+      if (await page.locator('.where-list .wl-sugg:not(.quiet)').count()) return; // a suggestion: the test answers it
       if (await page.locator('.wl-pend .btn-primary').count()) {
         if (await page.locator('.wl-pend .btn-primary').isDisabled() || rnd() < 0.3) await page.locator('.wl-pend input').fill(nm);
         if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(nm + ' b');
