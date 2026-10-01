@@ -1,0 +1,16 @@
+    await page.setViewportSize({ width: 375, height: 667 }); await kbInit();
+    await seedHouse(); await page.evaluate(() => window.__rig.rules(true)); await noAuto();
+    await home(); await tap('.menu-btn', { wait: 500 }); await tap('.drawer-row:has-text("Text size")', { wait: 600 }); await tap('button:text-is("Largest")', { wait: 400 });
+    await openItem('baseball card'); await noAuto(); await tap('button:has-text("Move it")', { wait: 1000 }); await shot('f12-XL-move');
+    await tapSq(2); await closeSheetRow(); await shot('f12-XL-L2-selected');
+    await shoot('drawer.jpg', KCa, 2500); await S('modal'); await shot('f12-XL-modal');
+    await btn(/A different place/, 400); await shot('f12-XL-choose-looking');
+    const inp = page.locator('input.place-input').first(); await inp.click(); await kbUp(300); await page.waitForTimeout(500);
+    await page.keyboard.type('Attic', { delay: 120 }); await page.waitForTimeout(2500);
+    console.log('KB field', JSON.stringify(await aboveKb('input.place-input', 300)), 'use', JSON.stringify(await aboveKb('.wl-pend .btn-primary', 300)), 'sugg', JSON.stringify(await aboveKb('.wl-sugg', 300)));
+    await S('typed+kb'); await shot('f12-XL-kb-typed');
+    await kbDown(); await page.waitForTimeout(400); await shot('f12-XL-kb-down');
+    await btn(/Use this name/, 900); await shot('f12-XL-bn'); console.log('BN:', await sheetText());
+    console.log('BN buttons', JSON.stringify(await aboveKb('.bn .btn-primary', 0)), JSON.stringify(await aboveKb('.bn .btn-secondary', 0)));
+    await btn(/^Use the/, 1000); await S('after Use'); await shot('f12-XL-after-use');
+    await saveNow(); await shot('f12-XL-saved'); await store();

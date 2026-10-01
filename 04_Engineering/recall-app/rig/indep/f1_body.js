@@ -1,0 +1,12 @@
+    await page.evaluate(() => { window.__noAuto = true; });
+    await page.evaluate(() => window.__rig.rules(true));
+    await openItem('baseball card');
+    await page.evaluate(() => { window.__noAuto = true; });
+    await ui('item page');
+    await tap('button:has-text("Move it")', { wait: 1000 });
+    await ui('move it'); await shot('f1-move-open');
+    console.log(JSON.stringify(await state()));
+    WHERE.push({ name: 'kitchen counter', known: 'Kitchen counter', sure: true });
+    await cam('real_desk.jpg'); await press('.lc-shutter'); await page.waitForTimeout(1200);
+    await ui('after shot L?'); await shot('f1-after-shot');
+    console.log(await page.evaluate(() => document.querySelector('.sheet, .modal, [role=dialog]') ? document.querySelector('.sheet, .modal, [role=dialog]').outerHTML.slice(0, 3000) : 'no sheet'));

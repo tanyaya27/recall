@@ -1,7 +1,17 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-09-30.
+*Done* when closed. Updated 2026-10-01.
+
+## NOW — the "where" model (10-01): Ravi's two ways, on hold for Ravi + Tanya
+
+- [ ] **Decide** (`design/BOARD_2026-10-01_two-ways-of-where.md`, decisions + Claude's picks at the top): no "mode"
+  word (the In: chip is the switch)?; words on a boxed item keep it in the box unless she clears the chip?; ReCall's
+  analysis after Save on the item page, release 2, camera later?; photo privacy before any analysis; 3 levels shown,
+  any depth stored.
+- [ ] Then release 1 "Words, and one pick" (both boards): no AI and no tier editing on the camera.
+- [ ] On hold until then: build `g` (the tester's finds on `f`, `rig/indep/REPORT_f.md`); the 09-30 tier question is
+  folded into this.
 
 ## NOW — `20260930f`: a photo on a tier asks; Before → Now; no timer; Ravi's shutter marks
 

@@ -1,0 +1,16 @@
+    const noAuto = () => page.evaluate(() => { window.__noAuto = true; });
+    await noAuto(); await page.evaluate(() => window.__rig.rules(true));
+    await openItem('baseball card'); await noAuto();
+    await tap('button:has-text("Move it")', { wait: 1000 });
+    WHERE.length = 0; WHERE.push({ name: 'kitchen counter', known: 'Kitchen counter', sure: true }); NEXT_WHERE_DELAY = 3000;
+    await cam('real_desk.jpg'); await shutter(); await page.waitForTimeout(800);
+    console.log('reqs after shot', reqTimes.join(','));
+    await press('.pf-other'); await page.waitForTimeout(500);
+    console.log('reqs after other', reqTimes.join(','));
+    await ui('choose place @~1.3s'); await shot('f2-choose-looking');
+    console.log((await page.evaluate(() => (document.querySelector('.wl, .where-list, .sheet') || document.body).outerHTML.replace(/src="data:[^"]*"/g, 'src=""').slice(0, 5000))));
+    await page.waitForTimeout(3000);
+    await ui('choose place after answer'); await shot('f2-choose-suggested');
+    await pickRow('Pantry shelf'); await page.waitForTimeout(800);
+    await ui('before-now'); await shot('f2-before-now');
+    console.log((await page.evaluate(() => document.body.innerHTML.replace(/src="data:[^"]*"/g, 'src=""').match(/.{0,200}Before.{0,3000}/s)?.[0] || '')).slice(0, 3500));
