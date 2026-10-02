@@ -1,9 +1,9 @@
-# Two ways to say "where": the boards on Ravi's 10-01 proposal · for Ravi and Tanya to decide
+# Two ways to say "where": the boards on Tanya's 10-01 proposal · for Ravi and Tanya to decide
 
-Ravi's proposal: an unstructured way (photo + her words; ReCall's analysis on the side, never acting) and a structured
+Tanya's proposal: an unstructured way (photo + her words; ReCall's analysis on the side, never acting) and a structured
 way (containers, up to 3 levels shown), chosen item by item, on one store, so switching rewrites nothing. Two boards
 critiqued it: the regular boards (Maya, Devin, Priyanka, Sam; Margaret, Robert, Priya — a first pass, then an addendum
-after Ravi's clarifications) and the adversarial board (Grace, Tomás, Frank, Mei, Sunil). Full texts follow below.
+after Tanya's clarifications) and the adversarial board (Grace, Tomás, Frank, Mei, Sunil). Full texts follow below.
 
 ## What Ravi and Tanya decide (Claude's recommendation first)
 
@@ -18,7 +18,7 @@ after Ravi's clarifications) and the adversarial board (Grace, Tomás, Frank, Me
    item page, tied to its photo — not on the camera, because a late answer on the camera *is* build f's worst bug. It reaches the camera
    only after two clean tester rounds.
    *Recommend:* release 1 without any AI; the analysis is release 2 on the item page; the camera later, earned by the
-   tester. This holds back part of Ravi's "as much as possible on the camera" — deliberately, for now.
+   tester. This holds back part of Tanya's "as much as possible on the camera" — deliberately, for now.
 4. **Photos of her home sent to the AI.** Both boards: the analysis names what's in the background (pill bottles,
    passports, mail). Before it ships: a plain statement of which photos go to the AI service and whether they're kept;
    a house switch; "Don't look" per item; private items analysed for their owner only. "Training" means her
@@ -150,7 +150,7 @@ Her note about the model (Sep 30) and Ravi moving the Tesla (Oct 7) don't confli
 - Refusing the move makes the app lie.
 - What holds: build up to 3 at a time, show 3 plus "+1 more", store any depth.
 
-**10. "Unless it complicates" has no referee. *(Grace)*** Write the camera down; changes need Ravi's sign-off.
+**10. "Unless it complicates" has no referee. *(Grace)*** Write the camera down; changes need Tanya's sign-off.
 - **Words-only:** shutter, item photo, + photos, words (type or mic), Save.
 - **With a container:** the same, plus one **In:** chip (recent, search, new by name, or skip).
 - **Off the camera:**
@@ -194,7 +194,7 @@ the whole conversion. Credit.
 
 **Tomás (auditor): drop the word "mode"; ask "what's it in?" per item.**
 - *Strongest argument:* per-item modes in mixed boxes double the paths, unless the mode *is* the link.
-- *What he'd lose:* Ravi's framing.
+- *What he'd lose:* Tanya's framing.
 - *What would change his mind:* words-only items in linked boxes passing Move, Find and Undo identically.
 - *Ships first:* release 1 with In open by default, and Skip.
 
@@ -311,13 +311,13 @@ Same cast as the first pass. They advise; Ravi and Tanya decide.
 
 ## 1. What's settled, what stands, what's new
 
-**Settled by Ravi:** a guess never moves a link (so "never-guess" items are moot); modes are per item; switching rewrites nothing.
+**Settled by Tanya:** a guess never moves a link (so "never-guess" items are moot); modes are per item; switching rewrites nothing.
 
 **Where each member stands now:**
 - **Maya:** "My 'one flow with an optional step' is now the design. Still open: what is the AI *for* on day 1?"
-- **Devin:** "Per-item doors are fine. Still open: Ravi said 'sidebar', and a phone has no side."
+- **Devin:** "Per-item doors are fine. Still open: Tanya said 'sidebar', and a phone has no side."
 - **Priyanka:** "The AI only offers, so I drop my one-mode objection. The late-answer bug stays until the AI's answers leave the camera."
-- **Sam:** "My rules are Ravi's now. My 'guess' tag on links goes unused. Guesses get their own record."
+- **Sam:** "My rules are Tanya's now. My 'guess' tag on links goes unused. Guesses get their own record."
 - **Margaret:** "Nothing changes behind my back. Good. Still no tips on keeping my house, please."
 - **Robert:** "No guessing in my garage: resolved. The cap: still stands."
 - **Priya:** "Two truths about one car: still stands."
@@ -405,7 +405,7 @@ Roughly 150 new checks. Most of f's 883 still apply."
 ## 4. Disagreements, votes, questions
 
 **Where does the analysis go?**
-- **Maya:** "Ravi wants as much as possible on the camera. A panel after Save hides his idea."
+- **Maya:** "Tanya wants as much as possible on the camera. A panel after Save hides her idea."
 - **Devin:** "He also said push it off if it complicates. A late panel *is* the bug history."
 - **Priyanka:** "Item page first. Two clean tester rounds earn the camera."
 
@@ -480,7 +480,7 @@ C's staleness unless inference makes a Tesla record *and* someone moves it.
 ## The members
 
 **Maya (PM): one mode.** The default capture is a photo, one "what's it in?" and optional words.
-- *Strongest argument:* Ravi's two modes are two *halves* of one good flow: capture fast in your own words; the
+- *Strongest argument:* Tanya's two modes are two *halves* of one good flow: capture fast in your own words; the
   structure lives on the box's own page. "Structured or unstructured?" on day 1 is a question nobody can answer.
 - *What she'd lose:* Robert's tree on day 1.
 - *Would change her mind:* if in a hallway test, people given one flow keep asking for "just let me type".
@@ -593,7 +593,7 @@ C's staleness unless inference makes a Tesla record *and* someone moves it.
 | **2. Default** | Photo + own words: Maya, Devin, Sam, Margaret, Priya (**5**). Structured: Priyanka, Robert (**2**) |
 | **3. The 3-level cap** | A display cap only, with no limit on what's stored: Maya, Devin, Sam, Margaret, Priya (**5**). A hard cap of 3: Priyanka (**1**). No cap anywhere: Robert (**1**) |
 
-Ravi's cap gets support only as a *screen* limit. Nobody wants a move refused because the chain got too deep.
+Tanya's cap gets support only as a *screen* limit. Nobody wants a move refused because the chain got too deep.
 
 ## What Ravi and Tanya decide
 

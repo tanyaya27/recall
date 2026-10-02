@@ -3,15 +3,16 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-10-01.
 
-## NOW — the "where" model (10-01): Ravi's two ways, on hold for Ravi + Tanya
+## NOW — release 1 "Words, and one pick" (10-01, Tanya)
 
-- [ ] **Decide** (`design/BOARD_2026-10-01_two-ways-of-where.md`, decisions + Claude's picks at the top): no "mode"
-  word (the In: chip is the switch)?; words on a boxed item keep it in the box unless she clears the chip?; ReCall's
-  analysis after Save on the item page, release 2, camera later?; photo privacy before any analysis; 3 levels shown,
-  any depth stored.
-- [ ] Then release 1 "Words, and one pick" (both boards): no AI and no tier editing on the camera.
-- [ ] On hold until then: build `g` (the tester's finds on `f`, `rig/indep/REPORT_f.md`); the 09-30 tier question is
-  folded into this.
+Rulings in DECISIONS 2026-10-01. Screens: `design/mockups/MOCK_2026-10-01_release1-words-and-one-pick.jpg`.
+- [ ] Tanya: sign off the screens (then build).
+- [ ] Build: the camera (words + one "In"), the "What is it in?" list helped by her words, Move it = one "In",
+  a box's/place's own Move, the item page's words, Find with words, Home tiles photo + name only.
+- [ ] Gate: two builds with no store-changing tester find; every camera control visible at Largest on a small phone;
+  Undo also removes added photos; two phones, newest by time taken.
+- [ ] Release 2 (later): ReCall's take on the item page; privacy statement + switches first.
+- On hold, folded into this: build `g` (tester's finds on `f`, `rig/indep/REPORT_f.md`); the 09-30 tier question.
 
 ## NOW — `20260930f`: a photo on a tier asks; Before → Now; no timer; Ravi's shutter marks
 

@@ -6,6 +6,30 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-10-01 — "Where" is her words and one optional pick (Tanya) → release 1, "Words, and one pick"
+
+Boards: `design/BOARD_2026-10-01_two-ways-of-where.md` (regular + adversarial). Screens: `design/mockups/MOCK_2026-10-01_release1-words-and-one-pick.jpg`.
+
+- **No "mode" setting** (Tanya: "the user either takes a picture and provides details … in a descriptive field and/or
+  they use the 'in' option"). An item is "structured" only because it has an "In"; she can add or remove it any time.
+  Both are optional. *Why:* both boards — a mode picker is one more thing to get wrong, and a house can't be in two modes.
+- **One store, two views; switching rewrites nothing** (Tanya asked that it be easy both ways). Her words and photos are
+  kept as given, dated, with who said them; the "in" links stay as they are.
+- **The AI never writes a link or moves anything** (Tanya: "There is no assumption in the guesses … the user can
+  override"). Its analysis (what the item is, what's around it, what the place probably is) comes in release 2, shown
+  on the item page after Save, tied to its photo; chat-to-correct later; organisation tips cut.
+- **"In" is helped by her words** (Tanya): in release 1 by plain matching on the phone (her words against her places and
+  boxes — instant, no late answer); in release 2 also by the AI's suggestions — chips she taps, never typed for her.
+- **A boxed item's camera opens with "In: <box>" already set**; Save keeps it; ✕ takes it out. *Why:* what she sees is
+  what is saved, and no question is added to the camera.
+- **Off the camera:** the tier squares and +, Choose place as a tier editor, "This photo is…", photo-to-place matching,
+  Before → Now. A box or place is moved from its own page (Move it), so a chain changes one link at a time.
+- **3 levels shown, any depth stored**; a move is never refused for depth.
+- **Home tiles: photo and name only** (Tanya: "No need for a location on the main page … it just gets truncated and
+  becomes useless"). Where it is lives on the item page; Find results keep it.
+- *Would change our mind:* people not finding things logged in words only (Find answers "You said …" — watch the
+  events), or the "In" step skipped so often that moving a box leaves things behind.
+
 ## 2026-09-30 (night, later) — A photo on a tier asks; a pick confirms; no timer; Ravi's shutter marks → `20260930f`
 
 - **A photo never assumes a new place** (Ravi, 1:36 PM): on a tier that has a place the shutter asks "This photo is…" —
