@@ -1,0 +1,33 @@
+    const snap = async (nm) => { const d = await D(); const it = d.find(x => x.kind === 'item' && !x.deleted && (x.name||'').toLowerCase() === nm); if (!it) return 'MISSING'; const e = d.filter(x => x.kind === 'edge' && x.from === it.id).map(x => ({ to: x.to.name, until: !!x.until })); const { updatedAt, ...r } = it; return JSON.stringify({ ...r, e }); };
+    const nItems = async (nm) => (await D()).filter(x => x.kind === 'item' && !x.deleted && (x.name || '').toLowerCase() === nm).length;
+    const remoteWords = async (nm, said) => { await page.evaluate(([n, s]) => { const d = window.__rig.dump(); const it = d.find(x => x.kind === 'item' && !x.deleted && x.name.toLowerCase() === n); const t = Date.now(); const { id, ...rest } = it; window.__rig.seed([{ id, ...rest, updatedAt: t, history: [...(it.history || []), { at: t, w: 1, said: s, by: 'robert' }] }]); }, [nm, said]); await page.waitForTimeout(1000); console.log('   REMOTE words on', nm); };
+    await grant();
+    console.log('\n######## U1 Move then Undo at once');
+    let s0 = await snap('reading glasses'); await moveIt('reading glasses'); await setWords('next to the kettle'); await openIn(); await pickIn('Kitchen counter'); await press('.lc-k.sv'); await page.waitForTimeout(250); await undo('U1 immediate'); await page.waitForTimeout(800); let s1 = await snap('reading glasses'); console.log('   U1 restored exactly?', s0 === s1); if (s0 !== s1) { console.log('   before', s0); console.log('   after ', s1); } await shot('u1');
+    console.log('\n######## U2 Move then Undo after 12 s on the page');
+    s0 = await snap('reading glasses'); await moveIt('reading glasses'); await openIn(); await pickIn('Pantry shelf'); await doSave(); await page.waitForTimeout(12000); console.log('   undo after 12s', await undoCount()); await undo('U2'); s1 = await snap('reading glasses'); console.log('   U2 restored?', s0 === s1); if (s0 !== s1) { console.log('   before', s0); console.log('   after ', s1); } await shot('u2');
+    console.log('\n######## U3 Move A, then my own Move B, then Undo (page) -> undoes B only?');
+    s0 = await snap('reading glasses'); await moveIt('reading glasses'); await openIn(); await pickIn('Linen closet'); await doSave(); const sA = await snap('reading glasses');
+    await moveIt('reading glasses'); await openIn(); await pickIn('Garage shelf'); await doSave(); console.log('   undo count', await undoCount()); await undo('U3 B'); const sB = await snap('reading glasses'); console.log('   back to A?', sB === sA); if (sB !== sA) { console.log('   A', sA); console.log('   now', sB); }
+    console.log('   another Undo visible?', await undoCount()); if (await undoCount()) { await undo('U3 again'); console.log('   back to start?', (await snap('reading glasses')) === s0); } await shot('u3'); await raw('reading glasses');
+    console.log('\n######## U4 Home-card Undo of a Log, after my own Move of that item');
+    await logStart('stapler', 'scissors.jpg'); await setWords('top drawer'); await openIn(); await pickIn('Desk drawer'); await doSave(); console.log('   home undo', await undoCount()); await raw('stapler');
+    await moveIt('stapler'); await openIn(); await pickIn('Craft nook'); await doSave(); const st1 = await snap('stapler'); await home(); console.log('   home undo after own move', await undoCount(), (await bodyText()).replace(/\s+/g, ' ').slice(0, 200)); await shot('u4-home');
+    if (await undoCount()) { await undo('U4 home'); await shot('u4-after'); console.log('   staplers', await nItems('stapler'), '| unchanged?', (await snap('stapler')) === st1); await raw('stapler'); await placeEdges(); }
+    console.log('\n######## U4b Home-card Undo of a Log after my own words-only change (Move it, words, Save)');
+    await logStart('tape', 'scissors.jpg'); await openIn(); await pickIn('Desk drawer'); await doSave(); await moveIt('tape'); await setWords('under the stamps'); await doSave(); const tp1 = await snap('tape'); await home(); console.log('   home undo', await undoCount());
+    if (await undoCount()) { await undo('U4b'); console.log('   tapes', await nItems('tape'), '| unchanged?', (await snap('tape')) === tp1); await raw('tape'); }
+    console.log('\n######## U5 Save + Next item1 -> camera Undo after another phone wrote words on item1');
+    await logStart('hammer', 'tooldrawer.jpg'); await openIn(); await pickIn('Garage shelf'); await hold('.lc-k.sv', 1200); await page.waitForTimeout(1200); console.log('   CAM', await camText()); const h0 = await snap('hammer');
+    await remoteWords('hammer', 'on the left hook'); const h1 = await snap('hammer'); const cu = page.locator('.lc button:has-text("Undo")').first(); console.log('   camera undo?', await cu.count());
+    if (await cu.count()) { await cu.click(); await page.waitForTimeout(1500); console.log('   after cam undo:', await camText()); await shot('u5-cam'); } console.log('   hammers', await nItems('hammer'), '| unchanged by undo?', (await snap('hammer')) === h1); await raw('hammer');
+    await leaveCam(); await home();
+    console.log('\n######## U6 Save + Next item1 (new place), Save + Next item2 (chip), Save item3; home Undo; then item2/1 + place');
+    await logStart('pliers', 'tooldrawer.jpg'); await setWords('in the red toolbox'); await openIn(); const nb = page.locator('.in-list button').filter({ hasText: /New place/ }).first(); console.log('   new row', await nb.allInnerTexts()); await nb.click(); await page.waitForTimeout(700);
+    await hold('.lc-k.sv', 1200); await page.waitForTimeout(1500); AI = { name: 'wrench' }; await cam('scissors.jpg'); await tap('.lc-shutter', { wait: 2000 }); console.log('   CAM2', await camText()); const cu2 = page.locator('.lc button:has-text("Undo")'); console.log('   cam undo for item1 still on item2?', await cu2.count());
+    await hold('.lc-k.sv', 1200); await page.waitForTimeout(1500); console.log('   CAM3', await camText()); const cu3 = page.locator('.lc button:has-text("Undo")').first(); console.log('   cam undo (wrench) visible', await cu3.count());
+    if (await cu3.count()) { await cu3.click(); await page.waitForTimeout(1500); console.log('   after undo wrench:', await camText()); }
+    await allPlaces(); await raw('pliers'); await raw('wrench'); await placeEdges();
+    AI = { name: 'file' }; await cam('book.jpg'); await tap('.lc-shutter', { wait: 2000 }); console.log('   CAM file', await camText()); await shot('u6-file'); await doSave(); await raw('file'); await allPlaces();
+    await undo('U6 home (file)'); await allPlaces(); await raw('pliers'); await raw('wrench'); await raw('file'); await placeEdges(); await shot('u6-after');
+    console.log('   ', errs());

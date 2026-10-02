@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { restoreItem, purgeItem, exportEvents, EVENT_SCHEMA, addPlace, renamePlace, removePlace, removePlacePhoto, placeNamed, placeThumb, allPlaces, changeLocation, logEvent, PLACE_PHOTOS, placeIn, mergePlace } from '../lib/db.js';
-import WhereList from './WhereList.jsx';
+import InList from './InList.jsx';
 import { compressPlacePhoto } from '../lib/img.js';
 import { CameraIcon, ChevronIcon, PencilIcon, TrashIcon, NoteIcon, PinIcon } from './Icons.jsx';
-import { timeAgo, cap } from '../lib/format.js';
+import { timeAgo, cap, inThe, theOrQuoted } from '../lib/format.js';
 import { getPrefs, savePrefs, THEMES, SIZES } from '../lib/prefs.js';
 import Header from './Header.jsx';
 import { placeOuter, graph } from '../lib/graph.js';
@@ -129,6 +129,16 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
   const subPlaces = (graph().edges || []).filter((e) => !e.until && e.to && e.to.t === 'place' && lower(e.to.name) === lower(name))
     .map((e) => places.find((p) => p.id === e.from)).filter(Boolean);
   const [moving, setMoving] = useState(null); // { it } | { p } | 'all'
+  const [whereSel, setWhereSel] = useState(false); // 10-01: where THIS place is — one link, from its own page
+  const inNow = placeOuter(name)[0] || null;
+  async function setWhere(k) {
+    setWhereSel(false);
+    let doc0 = saved; if (!doc0) { const id = await addPlace(name, places, [], owner); doc0 = { id, name, owner }; }
+    if (k && k.t === 'place' && !placeNamed(k.name, places)) await addPlace(k.name, places, [], owner);
+    const r = await placeIn(doc0, k ? { t: 'place', name: k.name } : null);
+    logEvent('place_where', { name, to: k ? k.name : null, ok: r !== undefined });
+    onToast && onToast(k ? `${name} · ${inThe(k.name)}` : `${name} · not in anything`);
+  }
   const busyLeft = things.length + subPlaces.length;
   async function moveTo(k) {
     const what = moving; setMoving(null);
@@ -206,6 +216,9 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
           <button type="button" className="field-value" onClick={() => setEditing(true)}><span className="field-text">{name}</span><PencilIcon /></button>
         )}
 
+        <div className="field-label">Where this place is</div>
+        <button type="button" className="field-value pl-where" onClick={() => setWhereSel(true)}><span className="field-text">{inNow ? cap(inThe(inNow.t === 'thing' ? cap(inNow.item.name) : inNow.name)) : 'Not said'}</span><PencilIcon /></button>
+
         <div className="field-label pl-here">{busyLeft ? `Here now · ${busyLeft}` : 'Nothing here now'}
           {busyLeft > 1 && <button type="button" className="pl-all" onClick={() => setMoving('all')}>Move all to…</button>}</div>
         {things.map((it) => (
@@ -221,8 +234,8 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
             <button type="button" className="pl-move" onClick={() => setMoving({ p })}>Move</button>
           </div>))}
 
-        <button className="btn-secondary amber" disabled={busyLeft > 0} onClick={() => setConfirming('place')}><TrashIcon /> Remove this place</button>
-        {busyLeft > 0 && <p className="note-quiet left">Move {busyLeft === 1 ? 'the item' : `the ${busyLeft} items`} first — then the place can go.</p>}
+        {(owner || me()) === me() && <button className="btn-secondary amber" disabled={busyLeft > 0} onClick={() => setConfirming('place')}><TrashIcon /> Remove this place</button>}
+        {(owner || me()) === me() && busyLeft > 0 && <p className="note-quiet left">Move {busyLeft === 1 ? 'the item' : `the ${busyLeft} items`} first — then the place can go.</p>}
       </div>
       {merge && !merge.review && (
         <div className="sheet-back" onClick={() => setMerge(null)} role="presentation">
@@ -262,9 +275,12 @@ export function PlaceScreen({ name, places = [], items = [], onBack, onAddPhoto,
         <Confirm title="Remove this photo?" image={merge.review[merge.drop].thumb} body="It won’t be one of this place’s photos." actionLabel="Remove"
           onKeep={() => setMerge((m) => ({ ...m, drop: null }))}
           onAction={() => setMerge((m) => ({ ...m, review: m.review.filter((_, j) => j !== m.drop), drop: null }))} />)}
+      {whereSel && <InList placesOnly selfPlace={name} items={items} places={places} title={`What is ${theOrQuoted(name)} in?`}
+        current={inNow && inNow.t === 'place' ? { t: 'place', name: inNow.name } : null} onPick={(k) => setWhere(k)} onClear={() => setWhere(null)} onCancel={() => setWhereSel(false)} />}
       {moving && (
-        <WhereList chooser item={moving.it || null} items={items} places={places}
-          exclude={(k) => (k.t === 'place' && lower(k.name) === lower(name)) || (!!moving.p && k.t === 'thing')}
+        <InList item={moving.it || null} items={items} places={places} placesOnly={!!moving.p} selfPlace={moving.p ? moving.p.name : ''}
+          title={moving === 'all' ? `Move everything in ${theOrQuoted(name)} to…` : moving.it ? `Where is ${theOrQuoted(cap(moving.it.name))} now?` : `What is ${theOrQuoted(moving.p.name)} in now?`}
+          exclude={(k) => (k.t === 'place' && lower(k.name) === lower(name)) || (moving === 'all' && k.t === 'thing' && things.some((x) => x.id === k.item.id))}
           onPick={moveTo} onCancel={() => setMoving(null)} />)}
       {confirming === 'place' && (
         <Confirm title={`Remove ${name}?`} image={photos[0] ? photos[0].thumb : undefined}

@@ -140,7 +140,7 @@ the functions: `./rules-test/run_ai_test.sh`.
   look and accepts ReCall's name in the Choose place sheet; `pickPlace(name)` goes through ☰ Choose place; `saveNext()`
   holds Save for 0.8 s. The pills (`.lc-chip`), the chain sheet (`.chain-sheet`) and look A are gone.
 - **09-30: the new testing (`06_Handoffs/TESTING.md`).** `./run_all.sh` runs everything in memory-safe batches (summary in
-  `/tmp/runs/SUMMARY.txt`) — **728 checks** at `20260930a`, **745** at `20260930c`, **775** at `20260930d` (+ `audit_p30d.js`, 15 checks, in both engines), **802** at `20260930e` (`audit_p30d.js` 28 in both engines; audit_where 54), **883** at `20260930f`. New: `oracle.js` (truth from the store vs every screen),
+  `/tmp/runs/SUMMARY.txt`) — **728 checks** at `20260930a`, **745** at `20260930c`, **775** at `20260930d` (+ `audit_p30d.js`, 15 checks, in both engines), **802** at `20260930e`, **631** at `20261001a` (tier suites retired) (`audit_p30d.js` 28 in both engines; audit_where 54), **883** at `20260930f`. New: `oracle.js` (truth from the store vs every screen),
   `journeys.js` (= tiers_head + journeys_body; stories in `JOURNEYS.md`, 34 checks; **51 at `c`**, J15–J18: the place worklist, Move all, merge; the stub's `global.SAME_PLACE` = 'same'|'different'|'unknown' answers the "PHOTO A:/PHOTO B:" place check), `monkey.js` (`SEED=… STEPS=…`),
   `realhouse_suite.js` (`REAL=/path/recall-house-….json`, round-trips the sample house without it), `engine.js`
   (`ENGINE=webkit node -r ./engine.js <suite>` — WebKit installed with `PLAYWRIGHT_BROWSERS_PATH=/home/claude/pw-webkit npx
@@ -166,3 +166,9 @@ the functions: `./rules-test/run_ai_test.sh`.
   → A different place, as before; a picked tier → Another photo, as R1) and clicks *Use* on Before → Now.
 - `build_f.js` (= tiers_head + `build_f_body.js`): the as-built screens of f. `opts_pick*`, `opts_chip*`, `shutter_*`/`sz_run.sh`:
   the mockups and the design round.
+- `audit_r1.js` (= `tiers_head.js` + `r1_body.js`, `PORT=8740`, both engines): release 1 — Home, the camera (words, the In
+  chip, tiers 2–3), the In list (her words, new places, secrets, counts), Move it, Undo (photos, words, stale), a box's and a
+  place's own where, Write it down, Find, Not put away, Largest + keyboard. Mockups: `r1_mock.js` + `compose_r1.py`.
+- **Retired 10-01** to `rig/retired/` (the camera they drove is gone): audit_where, repro_f3, audit_tiers, audit_pick,
+  audit_card, audit_chain, probe_row, legacy_flow (the auto-answer adapter). Each adapted suite lists its retired checks
+  at the top under "Retired 2026-10-01". `oracle.js` now checks the camera's In chip and her words.

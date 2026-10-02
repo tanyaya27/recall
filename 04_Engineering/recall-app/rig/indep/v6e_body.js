@@ -1,0 +1,26 @@
+    let r;
+    const shut = async (nm, f = 'real_spoon.jpg') => { AI = { name: nm }; await cam(f); await tap('.lc-shutter', { wait: 2000 }); };
+    const seedX = async (docs) => { await page.evaluate((s) => window.__rig.seed(s), docs); await page.waitForTimeout(600); };
+    const now0 = Date.now();
+    const box = (id, name, location, extra = {}) => ({ id, kind: 'item', owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [], name, location, photo: null, thumb: null, written: true, holds: true, order: now0 - 4e6, createdAt: now0 - 4e6, lastSeenAt: now0 - 4e6, logId: 'l_' + id, photoCount: 0, history: [{ location, at: now0 - 4e6 }], ...extra });
+    const edge = (id, from, to) => ({ id, kind: 'edge', rel: 'in', from, to, since: now0 - 4e6, until: null, how: 'chosen', owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [] });
+    await fresh4('OLD old data: text-only places and boxes');
+    await logStart('key', 'real_spoon.jpg'); await openIn(); await pickIn('Hall table'); await card('old1'); r = await sv('OLD1 into text-only place Hall table'); await st4('OLD1', ['key']); if (r.open) await leaveCam();
+    await logStart('nail', 'real_spoon.jpg'); await openIn(); await pickIn('Tin box'); await card('old2'); r = await sv('OLD2 into box with text-only place (Garage)'); await st4('OLD2', ['nail', 'tin box']); if (r.open) await leaveCam();
+    await logStart('screw', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); const hasTD = await listHas('Tool drawer'); console.log('   t2 offers Tool drawer?', hasTD); if (hasTD) await pickIn('Tool drawer'); await card('old3'); r = await sv('OLD3 Cookie tin + t2 Tool drawer (text-only Garage)'); await st4('OLD3', ['screw', 'cookie tin', 'tool drawer']); if (r.open) await leaveCam();
+    await logStart('coin', 'real_spoon.jpg'); await openIn(); await pickIn('Hall table'); if (await addTier()) await pickIn('Basement'); await card('old4'); r = await sv('OLD4 text-only Hall table + t2 Basement'); await st4('OLD4', ['coin', 'wallet']); if (r.open) await leaveCam();
+    await mv('wallet'); await openIn(); await pickIn('Cookie tin'); r = await sv('OLD5 Move it wallet (text-only) -> Cookie tin'); await st4('OLD5', ['wallet']); if (r.open) await leaveCam();
+    await mv('tin box'); await openIn(); await pickIn('Sewing box'); if (await addTier()) await pickIn('Garage shelf'); r = await sv('OLD6 Move it tin box (text-only, holds nail) -> Sewing box + t2 Garage shelf'); await st4('OLD6', ['nail', 'tin box']); if (r.open) await leaveCam();
+    await mv('tote bin'); await openIn(); await pickIn('Craft nook'); await card('old7'); await cam('real_desk.jpg'); await tap('.lc-shutter', { wait: 2000 }).catch(() => {}); await card('old7 photo'); r = await sv('OLD7 Move it tote bin -> Craft nook (same text) + photo'); await st4('OLD7', ['tote bin']); if (r.open) await leaveCam();
+    await mv('coffee can'); await openIn(); await pickIn('Memorabilia box'); r = await sv('OLD8 Move it coffee can (needsPlace) -> Memorabilia box (edge-only place Crawl space)'); await st4('OLD8', ['coffee can']); if (r.open) await leaveCam();
+    console.log('-- OLD9 old text-only cycle: box "bread bin" location text "Cookie tin" (no edge); Log, In=Cookie tin + t2 Bread bin');
+    await seedX([box('bbn', 'bread bin', 'Cookie tin')]);
+    await logStart('crumb', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); const hasBB = await listHas('Bread bin'); console.log('   t2 offers Bread bin?', hasBB); if (hasBB) await pickIn('Bread bin'); else await cancelList(); await card('old9'); r = await sv('OLD9 ct + t2 bread bin (bread bin text says Cookie tin)', true); await st4('OLD9', ['crumb', 'cookie tin', 'bread bin']); if (r.open) await leaveCam();
+
+    await fresh4('NM same names');
+    await logStart('cookie tin', 'box.jpg'); await openIn(); await pickIn('Cookie tin'); await card('nm1'); r = await sv('NM1 new "cookie tin" into the Cookie tin'); await st4('NM1', ['cookie tin']); if (r.open) await leaveCam();
+    await seedX([box('atb', 'attic', '')]);
+    await mv('attic'); await openIn(); await pickKind('Attic', /place/); await card('nm2'); r = await sv('NM2 Move it box "attic" -> place Attic'); await st4('NM2', ['attic']); if (r.open) await leaveCam();
+    await logStart('fan', 'real_desk.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickKind('Attic', /a box|box/); await card('nm3'); if (await addTier()) await pickKind('Attic', /place/); await card('nm3b'); r = await sv('NM3 Cookie tin > box attic > place Attic'); await st4('NM3', ['fan', 'cookie tin', 'attic']); if (r.open) await leaveCam();
+    await logStart('sewing box', 'smallbox.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Sewing box'); await card('nm4'); r = await sv('NM4 new "sewing box" > Cookie tin > Sewing box'); await st4('NM4', ['cookie tin']); if (r.open) await leaveCam();
+    console.log('   ', errs()); summary();

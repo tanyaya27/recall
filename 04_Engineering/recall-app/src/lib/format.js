@@ -106,3 +106,9 @@ export function photoStamp(ts) {
   if (d.getFullYear() === now.getFullYear()) return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+// 10-01 (P6, 09-30d): "in the Desk drawer", but a place whose name already starts like a where ("In air", "On the stairs")
+// is quoted as it is — never "the In air".
+const WHERE_WORD = /^(in|on|at|under|inside|behind|by|near|next|beside|above|below|outside|over)\b/i;
+export function inThe(name) { const n = (name || '').trim(); return WHERE_WORD.test(n) ? `in “${n}”` : `in the ${n}`; }
+export function theOrQuoted(name) { const n = (name || '').trim(); return WHERE_WORD.test(n) ? `“${n}”` : `the ${n}`; }

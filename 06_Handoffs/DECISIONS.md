@@ -6,6 +6,25 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-10-02 — Release 1 as built (`20261001a`): tiers 2–3 on the camera; the tester's rounds
+
+- **Tiers 2 and 3 on the camera** (Tanya: "it does not look to be easy to add the 2nd or 3rd … we design for n-tiers but
+  release with 3 until the use cases show that we need more"). Under the In chip: "+ What is the Desk drawer in?" — the
+  same list, helped by her words. *Kept out on purpose* (what made c–f break): no photos per tier, no AI guess, no editing a
+  middle tier; it only adds outward, and only where nothing is saved above (a saved chain shows read-only and is changed
+  from that box's or place's own page). `TIERS_SHOWN = 3` in graph.js; storage has no limit. Shown in the build screens,
+  not drawn as options first — Tanya said "Proceed".
+- **New places come only from what follows a where-word** ("in/on/under/of the …"), never a name or part of a name of an
+  item she has, never numbers, filler or a secret; the longer of two matching names wins (tester rounds 1–2).
+- **Typed words are her words.** Write it down → "Somewhere else" no longer makes a place named like a sentence; an exact
+  name of a place she has (any case) links to it as it is named (tester round 2).
+- **Undo** takes back the photos a save added and restores the cover, her words with their own time and author, and "last
+  seen"; it never rolls back something newer — another phone's move after the save: "Not undone · it changed since"
+  (tester rounds 1–3). Undo stays the owner's (it deletes; the rules allow only the owner); an editor's Move still says
+  "Moved". "Remove this place" is shown to the owner only.
+- **One list of where** in the whole app: the camera, the tiers above it, Write it down, a place's "Where this place is"
+  and "Move all to…" (which never offers the place itself or a box in it). WhereList is retired.
+
 ## 2026-10-01 — "Where" is her words and one optional pick (Tanya) → release 1, "Words, and one pick"
 
 Boards: `design/BOARD_2026-10-01_two-ways-of-where.md` (regular + adversarial). Screens: `design/mockups/MOCK_2026-10-01_release1-words-and-one-pick.jpg`.

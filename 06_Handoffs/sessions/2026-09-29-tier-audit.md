@@ -97,3 +97,11 @@ only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eig
   sheet at once; the 3-s look "creating havoc". The tester's timeout run (`rig/indep/REPORT_timeout.md`) found six bugs.
   Rendered (`OPTIONS_2026-09-30_photo-on-a-tier.jpg`), Ravi: "Build as drawn"; sticky answers, reset on any tier tap. A
   design round for the shutter mark (Ravi's two options + two of the designer's); Ravi chose his option 1. 883 checks green.
+
+## 10-01 → 10-02: Tanya's "words and one pick" → `20261001a`
+- Tanya (not Ravi — corrected) proposed two modes; two boards critiqued it (`design/BOARD_2026-10-01_two-ways-of-where.md`);
+  she clarified (guesses never act; per item; one store, two views) and ruled: no mode setting, the In chip is the switch,
+  her words help the In, Home tiles photo + name. Drawn (`MOCK_2026-10-01_release1-…jpg`), "Build as drawn".
+- Built; the tier suites retired, the rest adapted by three agents in parallel. The independent tester ran 6 rounds
+  (REPORT_r1, r1b, r1c, r1d); every store bug found got a failing check, then a fix. Tanya: tiers 2–3 must be easy →
+  "+ What is the … in?" on the camera. 631 checks green.

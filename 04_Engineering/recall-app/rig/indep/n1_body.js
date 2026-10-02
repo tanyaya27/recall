@@ -1,53 +1,34 @@
-    await seedHouse(); await page.evaluate(() => window.__rig.rules(true));
-    const st = () => page.evaluate(() => { const t = (q) => (document.querySelector(q) || {}).innerText || '';
-      const plus = document.querySelector('.lv-sq.plus'); const pr = plus && plus.getBoundingClientRect();
-      return { squares: [...document.querySelectorAll('.lv-strip .lv-sq:not(.plus)')].map((b) => b.getAttribute('aria-label')), place: t('.lc-say').replace(/\s+/g,' '), chain: t('.lc-chainline').replace(/\s+/g, ' '), prompt: t('.lc-prompt').replace(/\s+/g,' '), plus: pr ? [Math.round(pr.left), Math.round(pr.right), innerWidth] : null }; });
-    const openItem = async (nm) => { await home(); await page.click('.footer .btn-primary.alt'); await page.waitForSelector('.ask'); await page.fill('#ask-input', nm); await page.waitForTimeout(450); await page.locator('.ask .tile').first().click(); await page.waitForSelector('.card.thing'); await page.waitForTimeout(400); };
-    const cardProbe = () => page.evaluate(() => { const u = [...document.querySelectorAll('button')].find(b => /^Undo$/.test(b.innerText.trim())); if (!u) return null; const r = u.getBoundingClientRect(); const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      let c = u.parentElement; while (c && c.parentElement && c.getBoundingClientRect().height < 60) c = c.parentElement; const cr = c.getBoundingClientRect(); const cs = getComputedStyle(c);
-      return { undo: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], hit: top ? (top.tagName + '.' + top.className + ' "' + (top.innerText||'').slice(0,30).replace(/\s+/g,' ') + '"') : null, card: [Math.round(cr.top), Math.round(cr.bottom)], op: cs.opacity, tr: cs.transform, pe: getComputedStyle(u).pointerEvents }; });
-    // --- Find tile: only the tier it is in
-    await home(); await page.click('.footer .btn-primary.alt'); await page.fill('#ask-input', 'baseball'); await page.waitForTimeout(500);
-    const ft = await page.locator('.ask').innerText(); console.log('FIND baseball:', ft.replace(/\s+/g, ' ')); await shot('find baseball');
-    check('S1', 'Find tile shows the tier it is in (Wooden box)', /wooden box/i.test(ft) && !/memorabilia/i.test(ft), ft.replace(/\s+/g,' '));
-    // --- Move it on baseball card: Place: Wooden box; level-1 sheet; middle prompt
-    await page.locator('.ask .tile').first().click(); await page.waitForTimeout(600);
-    await tap('button:has-text("Move it")', { wait: 1000 }); let s = await st(); console.log('MOVE baseball', JSON.stringify(s)); await shot('move baseball');
-    check('S2', '"Place: Wooden box" (no "In the")', /^Place: Wooden box/.test(s.place), s.place);
-    check('S5', '+ visible (not scrolled away) with 3 squares', s.plus && s.plus[1] <= s.plus[2], JSON.stringify(s.plus));
-    await page.locator('.lv-sq[aria-label^="Level 1"]').click(); await page.waitForTimeout(500); if (!(await page.locator('.tier-sheet').count())) { await page.locator('.lv-sq[aria-label^="Level 1"]').click(); await page.waitForTimeout(500); }
-    const rows = await page.locator('.tier-sheet button').allInnerTexts(); console.log('L1 sheet rows', JSON.stringify(rows)); await shot('level1 sheet');
-    check('F6', 'Move it level 1 sheet has no Remove', rows.length > 0 && !rows.some(r => /Remove/i.test(r)), JSON.stringify(rows));
-    await tap('.tier-sheet .btn-quiet:has-text("Close")');
-    await page.locator('.lv-sq[aria-label^="Level 2"]').click(); await page.waitForTimeout(500);
-    if (await page.locator('.tier-sheet').count()) { const r2 = await page.locator('.tier-sheet button').allInnerTexts(); console.log('L2 sheet rows', JSON.stringify(r2)); await tap('.tier-sheet .btn-quiet:has-text("Close")'); }
-    s = await st(); console.log('L2 selected', JSON.stringify(s)); await shot('middle level selected');
-    check('S3', 'middle level prompt does not say "Tap + to add what X is in"', !/Tap \+ to add what/i.test(s.prompt), s.prompt);
-    // --- No, Choose place: does not suggest the same place again (Log a new item, photograph Kitchen counter, say No)
-    await tap('.lc-x', { wait: 500 }); if (await page.locator('button:has-text("Throw away")').count()) await tap('button:has-text("Throw away")');
-    await home(); await page.click(LOG); await page.waitForTimeout(900);
-    AI = { name: 'egg timer' }; await cam('real_spoon.jpg'); await tap('.lc-shutter', { wait: 1800 });
-    await tap('.lv-sq.plus', { wait: 400 }); WHERE.push({ name: 'counter', known: 'Kitchen counter', moves: false }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 3500 });
-    console.log('asked?', /Is this the Kitchen counter/i.test(await bodyText()));
-    await tap('.lc button:has-text("No")', { wait: 700 }); await shot('after No'); const noTxt = await bodyText(); await ui('after No');
-    const rowsNo = await page.locator('.where-list .wl-row').allInnerTexts().catch(() => []); console.log('rows after No', JSON.stringify(rowsNo.slice(0, 5)));
-    check('S4', 'after No, Kitchen counter is not suggested again at the top', !(rowsNo[0] || '').match(/Kitchen counter/) && !/Your kitchen counter\?|Is this the Kitchen counter/i.test(noTxt), (rowsNo[0] || '') );
-    if (await page.locator('.wl-search input').count()) { await page.locator('.wl-search input').fill('Pantry'); await page.waitForTimeout(250); await tap('.where-list .wl-row:has-text("Pantry shelf")', { wait: 500 }); }
-    await tap('.lc-k.sv', { wait: 400 });
-    // --- saved card: tap body
-    let p = await cardProbe(); console.log('LOG card probe t0', JSON.stringify(p)); await shot('log card');
-    await page.waitForTimeout(8000);
-    // --- Move card on item page: hit test over time, tap card body, what's under it
-    await openItem('egg timer'); await tap('button:has-text("Move it")', { wait: 800 }); await tap('.lc-choose', { wait: 400 }); await page.locator('.wl-search input').fill('Linen'); await page.waitForTimeout(250); await tap('.where-list .wl-row:has-text("Linen closet")', { wait: 300 });
-    await page.locator('.lc-k.sv').click(); const t0 = Date.now();
-    for (const ms of [150, 400, 800, 1500, 3000]) { while (Date.now() - t0 < ms) await page.waitForTimeout(40); console.log('MOVE card probe', ms, JSON.stringify(await cardProbe())); }
-    await shot('move card on item page');
-    const under = await page.evaluate(() => { const u = [...document.querySelectorAll('button')].find(b => /^Undo$/.test(b.innerText.trim())); if (!u) return null; let c = u.parentElement; while (c.getBoundingClientRect().height < 60) c = c.parentElement; const cr = c.getBoundingClientRect();
-      return [...document.querySelectorAll('.card.thing button, .card.thing .tp-row, button.sw')].filter(b => { const r = b.getBoundingClientRect(); return r.height && r.bottom > cr.top && r.top < cr.bottom; }).map(b => (b.innerText || b.getAttribute('aria-label') || '').replace(/\s+/g,' ').slice(0, 30)); });
-    console.log('controls under the Move card:', JSON.stringify(under));
-    // tap the card body (the name)
-    const nm = page.locator('text=Egg timer').last(); const before = page.url(); await nm.click({ timeout: 2000 }).catch(e => console.log('tap card name failed', e.message.slice(0, 80))); await page.waitForTimeout(700);
-    console.log('after tapping card name: url', before, '->', page.url(), '| card still?', !!(await cardProbe())); await shot('after tap card');
-    let gone = 0; for (let i = 0; i < 40; i++) { if (!(await cardProbe())) { gone = (Date.now() - t0); break; } await page.waitForTimeout(250); }
-    console.log('Move card gone after ms', gone);
-    console.log('egg timer', await chainOf('egg timer'));
+    const leaveCam = async () => { await press('.lc-x'); await page.waitForTimeout(500); const lv = page.locator('button:has-text("Leave")'); if (await lv.count()) await lv.first().click(); await page.waitForTimeout(300); };
+    const newRows = async () => page.locator('.in-list button').filter({ hasText: /New place/ }).allInnerTexts().then(a => a.map(s => s.replace(/\s+/g, ' ').trim()));
+    const fromSaid = async () => page.evaluate(() => { const t = document.querySelector('.in-list').innerText; const m = t.split(/FROM WHAT YOU SAID/i)[1]; return m ? m.split(/RECENT|ALL YOUR/i)[0].replace(/\n+/g, ' / ').trim() : '(none)'; });
+    const sheetFor = async (w, label) => { await setWords(w); await openIn(); console.log(`WORDS ${JSON.stringify(w)}\n      FROM-SAID: ${await fromSaid()}`); if (label) await shot(label); await cancelChoose(); };
+    const srch = async (q, label) => { const i = page.locator('.in-list .wl-search input'); await i.fill(''); await i.type(q, { delay: 10 }); await page.waitForTimeout(500); console.log(`SEARCH ${JSON.stringify(q)} -> ${(await inText()).slice(0, 260)}`); if (label) await shot(label); };
+    const tapNew = async (txt) => { const b = page.locator('.in-list button').filter({ hasText: txt }).first(); if (!(await b.count())) { console.log('   no new row', txt); return false; } await b.click(); await page.waitForTimeout(700); console.log('   tapped', await b.innerText().catch(() => txt)); return true; };
+    const now = Date.now();
+    const PL = (id, nm) => ({ id, kind: 'place', owner: 'margaret', by: 'margaret', private: false, name: nm, order: now, createdAt: now, parent: null, photos: [] });
+    await page.evaluate((s) => window.__rig.seed(s), [PL('pD', 'Desk'), PL('pB14', 'Box 14'), PL('pB1', 'Box 1'), PL('pS2', 'Shelf 2'),
+      { id: 'lab', kind: 'item', owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [], name: 'pantry shelf label', location: '', order: now, createdAt: now, lastSeenAt: now, logId: 'l_lab', photoCount: 0, written: true, photo: null, thumb: null, history: [] },
+      { id: 'org', kind: 'item', owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [], name: 'closet organizer', location: '', order: now, createdAt: now, lastSeenAt: now, logId: 'l_org', photoCount: 0, written: true, photo: null, thumb: null, history: [] }]);
+    await page.reload(); await page.waitForTimeout(800); await page.evaluate(() => window.__rig.rules(true)); await allPlaces();
+    await logStart('egg timer', 'real_spoon.jpg');
+    for (const w of ['on the shelf in the closet under the stairs', 'in the kitchen counter drawer', 'on the desk', 'in the desk drawer', 'on the desk, in the drawer', 'in box 14', 'in box 1', 'in Box 14 on shelf 2', 'in box 140', 'on shelf 22', 'in the garage', 'in the garage cupboard', 'on the hall table', 'in the hall table drawer', 'in the coffee can', 'in the pantry', 'in the closet', 'in the label drawer', 'in the reading room', 'behind the TV', "at mom's house", 'in the blue folder in the desk drawer', 'in the drawer of the desk', 'inside the desk', 'under box 14', 'in Desk drawer 2', 'In the shed.In the bin', 'in the egg timer box'])
+      await sheetFor(w, /shelf in the closet|kitchen counter drawer|box 140|desk, in/.test(w) ? w : null);
+    console.log('\n######## A: several where-words -> tap a New place, Save');
+    await setWords('on the shelf in the closet under the stairs'); await openIn(); const nr = await newRows(); console.log('NEW ROWS', JSON.stringify(nr)); if (nr.length) await tapNew(nr[0].replace(/^New place: /, '')); console.log('CAM', await camText()); await shot('A-chip');
+    await doSave(); await dumpItem('egg timer'); await allPlaces(); await placeEdges();
+    console.log('\n######## B: tap New place then x then Cancel the camera -> no stray place');
+    await logStart('stapler', 'scissors.jpg'); await setWords('in the attic'); await openIn(); console.log('NEW', JSON.stringify(await newRows())); await tapNew('Attic'); await page.locator('.w1-in .x').first().click().catch(() => console.log('no x')); await page.waitForTimeout(400);
+    await openIn(); await srch('Garden shed'); await tapNew('Garden shed'); await leaveCam(); await allPlaces();
+    console.log('\n######## C: search "pass: hunter2" -> New place -> Save');
+    await logStart('ruler', 'real_pencil.jpg'); await openIn(); await srch('pass: hunter2'); await tapNew('hunter2'); console.log('CAM', await camText(), await saveState()); await shot('C-chip'); await doSave(); await allPlaces(); await dumpItem('ruler');
+    console.log('\n######## D: "in box 140" -> save');
+    await logStart('hole punch', 'tin.jpg'); await setWords('in box 140'); await openIn(); const nd = await newRows(); console.log('NEW', JSON.stringify(nd)); if (nd.length) await tapNew(nd[0].replace(/^New place: /, '')); console.log('CAM', await camText()); await doSave(); await dumpItem('hole punch'); await allPlaces();
+    console.log('\n######## E: search desk -> pick Desk');
+    await logStart('tape', 'keys.jpg'); await setWords('on the desk'); await openIn(); await srch('desk', 'E-search-desk'); await pickIn('Desk'); console.log('CAM', await camText()); await doSave(); await dumpItem('tape');
+    console.log('\n######## F: search "  attic   room  " -> new place name');
+    await logStart('fan', 'closet.jpg'); await openIn(); await srch('  attic   room  '); const nf = await newRows(); console.log('NEW', JSON.stringify(nf)); if (nf.length) await tapNew('ttic'); await doSave(); await dumpItem('fan'); await allPlaces();
+    console.log('\n######## G: second item, same words "under the stairs" -> must match existing Stairs (if created)');
+    await logStart('mop', 'book.jpg'); await setWords('under the stairs'); await openIn(); console.log('FROM-SAID', await fromSaid(), 'NEW', JSON.stringify(await newRows())); await shot('G-sheet'); await cancelChoose(); await leaveCam();
+    console.log('\n######## H: Log New place "Stairs" from words, while the place "Stairs" already exists under different case "STAIRS " via search');
+    await logStart('bucket', 'box.jpg'); await openIn(); await srch('STAIRS '); await shot('H-search'); await cancelChoose(); await leaveCam();
+    await allPlaces(); await placeEdges();

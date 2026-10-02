@@ -1,0 +1,20 @@
+    console.log('\n######## S4 blue folder in desk drawer');
+    await fresh2(); await logStart('reading lamp', 'real_desk.jpg');
+    await words('in the blue folder in the desk drawer'); await openIn();
+    console.log(await HTML('.in-list > button:not(.wl-row)'));
+    await btn(/New place/); console.log('CAM:', await camText()); await shot('s4-chip-new');
+    await doSave(); await dumpItem('reading lamp'); await allPlaces(); await placeEdges();
+    await itemPage('reading lamp', 's4-itempage');
+    console.log('\n######## S4b second item: words "blue folder" again -> must match existing Blue folder, no dup');
+    await logStart('stapler', 'scissors.jpg'); await words('in the Blue Folder'); await openIn(); console.log('SHEET:', (await inText()).slice(0, 300)); await shot('s4b-sheet');
+    // search for the new place by different case / with "the"
+    const srch = async (q) => { const i = page.locator('.in-list .wl-search input'); await i.fill(''); await i.type(q, { delay: 20 }); await page.waitForTimeout(500); console.log(`SEARCH "${q}":`, (await inText()).slice(0, 260)); };
+    await srch('BLUE FOLDER'); await shot('s4b-search-case');
+    await srch('the blue folder'); await srch('in the blue folder'); await shot('s4b-search-in-the');
+    await srch('  blue   folder '); await srch('Attic'); await shot('s4b-search-attic');
+    await srch('kitchen'); await srch('box');
+    await cancelChoose(); console.log('CAM after cancel:', await camText());
+    await setWords(''); await openIn(); console.log('EMPTY-WORDS SHEET:', (await inText()).slice(0, 200)); await srch('the attic');
+    const nb = page.locator('.in-list button').filter({ hasText: /New place/ }).first(); console.log('new row text:', await nb.innerText().catch(() => 'none'));
+    await nb.click().catch(() => {}); await page.waitForTimeout(700); console.log('CAM:', await camText());
+    await doSave(); await dumpItem('stapler'); await allPlaces();

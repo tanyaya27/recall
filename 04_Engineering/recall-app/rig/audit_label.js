@@ -28,18 +28,16 @@ async function main() {
     await new Promise((r) => setTimeout(r, 250));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
   });
-  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
-  // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
-  // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
-  const settleWhere = async (fallback = '') => {
-    for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-    for (let k = 0; k < 14 && !(await page.locator('.where-list, .photo-for').count()); k++) await page.waitForTimeout(150); for (let k = 0; k < 40 && (await page.locator('.where-list .wl-sugg.quiet:has-text("Looking")').count()); k++) await page.waitForTimeout(150); /* 09-30f: Choose place opens at once; wait for ReCall's look */ // the sheet can open a beat after the look ends
-    if (await page.locator('.wl-pend .btn-primary').count()) {
-      if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
-      await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
-    }
+  const page = await ctx.newPage();
+  // GUIDE_adapt.md helper (10-01): pick where it is in the camera's In list — an existing place/box by exact name, else a
+  // new place by that name. (Replaces the 09-29 settleWhere + ☰ Choose place helpers; the tier camera is gone.)
+  const pickPlace = async (name) => {
+    await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+    await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
+    const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
+    if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
+    await page.waitForTimeout(250);
   };
-  const pickPlace = async (name) => { await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.click(`.where-list .wl-row:has-text("${name}")`); await page.waitForTimeout(350); };
   const saveNext = async () => { const b = await page.locator('.lc-k.sv').boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up(); await page.waitForTimeout(400); };
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/camera/.test(m.text())) errors.push('console: ' + m.text().slice(0, 160)); });
@@ -102,7 +100,7 @@ async function main() {
   const snapsBefore = (await dump()).filter((d) => d.kind === 'snap').length;
   await page.click('.note-card .btn-primary'); await page.waitForSelector('.board'); await page.waitForTimeout(500);
   const key = (await items()).find((d) => d.name === 'bank locker key');
-  check('W3 saved with no photo: place "Blue tin, top of the wardrobe", private, photoCount 0, written, no snap', key && key.location === 'Blue tin, top of the wardrobe' && key.private === true && key.photoCount === 0 && key.written === true && !key.photo && (await dump()).filter((d) => d.kind === 'snap').length === snapsBefore, JSON.stringify(key && [key.location, key.private, key.photoCount, key.written]));
+  check('W3 saved with no photo: "Blue tin, top of the wardrobe" kept as her words (10-02: typed words are words, not a place), private, photoCount 0, written, no snap', key && key.location === '' && ((key.history || []).filter((h) => h.w).pop() || {}).said === 'blue tin, top of the wardrobe' && key.private === true && key.photoCount === 0 && key.written === true && !key.photo && (await dump()).filter((d) => d.kind === 'snap').length === snapsBefore, JSON.stringify(key && [key.location, key.private, key.photoCount, key.written]));
   check('W4 the board shows it as a written tile (no broken image)', await count('.tile .tile-written') === 1 && await page.evaluate(() => [...document.querySelectorAll('.tile img')].every((i) => i.getAttribute('src'))));
   await shot('4-board-written');
   await page.click('.tile:has-text("Bank locker key")'); await page.waitForSelector('.card.thing'); await page.waitForTimeout(400);

@@ -40,7 +40,7 @@ let NEXT_WHERE_DELAY = 0; let NEXT_WHERE_BADJSON = false; let lastPool = null; l
 // is cheap insurance against that, not a behavior difference between looks.
 async function runLook(look) {
   const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream'] });
-  const ctx = await browser.newContext({ permissions: ['camera'], viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const ctx = await browser.newContext({ permissions: ['camera'], viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   await ctx.addInitScript(() => {
     const c = document.createElement('canvas'); c.width = 960; c.height = 1280; const g = c.getContext('2d');
     const im = new Image(); let src = '';
@@ -164,42 +164,54 @@ async function runLook(look) {
     await page.waitForTimeout(400);
   }
 
-  // probe_row — 09-29g: "☰ Choose place" stays on the squares' row at every text size; the squares scroll, and the
-  // selected square and ＋ stay in view. Normal / Large / Largest, 1–3 tiers.
-  const window_w = (vw) => vw;
+  // 09-30 shutter-mark design round (R1, R2, A, B) — drawn over the real screens; OPT=R1|R2|A|B
   async function runSuite() {
-    fs.mkdirSync(path.join(__dirname, 'shots_row'), { recursive: true });
-    const pickWhere = async (name) => { if (!(await page.locator('.where-list').count())) await tap('.lc-choose', { wait: 600 });
-      await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.locator(`.where-list .wl-row:not(.wl-sugg):has-text("${name}")`).first().click(); await page.waitForTimeout(500); };
-    for (const vw of [390, 375]) for (const size of ['normal', 'large', 'largest']) {
-      await page.setViewportSize(vw === 390 ? { width: 390, height: 844 } : { width: 375, height: 667 });
-      await seedHouse(); await setPrefs({ size }); await home();
-      AI = { name: 'stapler' }; await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
-      const tiers = ['Kitchen counter', 'Craft nook', 'Pantry shelf'];
-      for (let k = 0; k < tiers.length; k++) {
-        await tap('.lv-sq.plus', { wait: 350 }); await pickWhere(tiers[k]);
-        const m = await page.evaluate(() => { const r = (q) => { const e = document.querySelector(q); return e ? e.getBoundingClientRect() : null; };
-          const st = r('.lc-card .lv-strip'), ch = r('.lc-choose'), cd = r('.lc-card'), sel = r('.lv-strip .lv-sq.sel'), pl = r('.lc-row2 .lv-sq.plus');
-          const inView = (b) => !b || (b.left >= st.left - 1.5 && b.right <= st.right + 1.5); // a 1 px sliver is not visible
-          const inCard = (b) => !!b && b.left >= cd.left && b.right <= cd.right;
-          const selCut = sel ? Math.round(st.left - sel.left) : 0; return { selCut, stripW: Math.round(st.width), sameRow: Math.abs((ch.top + ch.bottom) / 2 - (st.top + st.bottom) / 2) <= 4, chooseIn: ch.right <= cd.right + 0.5, selIn: inView(sel), plusIn: inCard(pl), cardH: Math.round(cd.height) }; });
-        await page.locator('.lc-card').screenshot({ path: path.join(__dirname, 'shots_row', `row-${vw}-${size}-${k + 1}.png`) });
-        const btns = await page.evaluate(() => [...document.querySelectorAll('.lc-row .lc-x, .lc-row .lc-k.sv')].map((b) => { const r = b.getBoundingClientRect(); return { t: b.innerText.trim(), l: Math.round(r.left), r: Math.round(r.right), clip: b.scrollWidth > b.clientWidth + 1 }; }));
-        check('ROW', `${vw} wide, ${size}, ${k + 1} tier${k ? 's' : ''}: Cancel and Save whole and on screen (09-30 independent test #3)`, btns.length === 2 && btns.every((b) => b.l >= 0 && b.r <= window_w(vw) && !b.clip), JSON.stringify(btns));
-        check('ROW', `${vw} wide, ${size}, ${k + 1} tier${k ? 's' : ''}: Choose place on the squares' row, inside the card; selected square and ＋ in view`, m.sameRow && m.chooseIn && m.selIn && m.plusIn, JSON.stringify(m));
-      }
-      await tap('.lc-x', { wait: 400 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 400 });
-    }
+    const OPT = process.env.OPT || 'A';
+    const OUT = path.join(__dirname, 'shots_sz', OPT); fs.mkdirSync(OUT, { recursive: true });
+    const DZ = fs.readFileSync(path.join(__dirname, 'shutter_dz.js'), 'utf8');
+    const Z = async (fn, ...a) => { await page.evaluate(DZ); return page.evaluate(([f, a]) => window.__SZ[f](...a), [fn, a]); };
+    const snap = async (f) => { await page.waitForTimeout(450); await page.screenshot({ path: path.join(OUT, f) }); console.log('  [shot]', OPT, f); };
+    const close = async (f, extraTop = 0) => { await page.waitForTimeout(300); const r = await page.locator('.lc-shutter').boundingBox();
+      await page.screenshot({ path: path.join(OUT, f), clip: { x: r.x + r.width / 2 - 100, y: r.y - 64 - extraTop, width: 200, height: r.height + 80 + extraTop } }); console.log('  [shot]', OPT, f); };
+    const openThing = async (nm) => { await home(); await page.click('.footer .btn-primary.alt'); await page.waitForSelector('.ask'); await page.fill('#ask-input', nm); await page.waitForTimeout(350); await page.click('.ask .tile >> nth=0'); await page.waitForSelector('.card.thing'); await page.waitForTimeout(500); };
+    const move = async () => { await openThing('3D model of plant sensor'); await tap('button:has-text("Move it")', { wait: 900 }); };
+    const now = Date.now();
+    await page.evaluate(([a, b, c, d, t]) => { const H = 3600e3; const P = (id, nm, im, ago) => ({ id, kind: 'place', owner: 'margaret', by: 'margaret', private: false, name: nm, order: t - ago, createdAt: t - ago, parent: null, photos: [{ photo: im, thumb: im, at: t - ago }] });
+      const E = (id, from, to, ago) => ({ id, kind: 'edge', rel: 'in', from, to, since: t - ago, until: null, how: 'chosen', owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [] });
+      window.__rig.seed([
+        P('pl7', 'White cardboard box', a, 93 * H), P('pik', 'Ikea shelving unit', b, 92 * H), P('plr', 'Living room', c, 91 * H),
+        { id: 'ps', kind: 'item', owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [], name: '3D model of plant sensor', location: 'White cardboard box', photo: d, thumb: d, thumbV: 2,
+          order: t, createdAt: t - 50 * H, lastSeenAt: t, seenAt: t - 50 * H, logId: 'l_ps', photoCount: 1, history: [{ location: 'White cardboard box', at: t - 50 * H }] },
+        { id: 'sps', kind: 'snap', owner: 'margaret', by: 'margaret', itemId: 'ps', logId: 'l_ps', photo: d, thumb: d, location: 'White cardboard box', at: t - 50 * H, caption: '' },
+        E('eps', 'ps', { t: 'place', name: 'White cardboard box' }, 50 * H), E('e7', 'pl7', { t: 'place', name: 'Ikea shelving unit' }, 92 * H), E('eik', 'pik', { t: 'place', name: 'Living room' }, 91 * H)]); },
+    [img('box.jpg'), img('closet.jpg'), img('real_desk.jpg'), img('real_cetaphil.jpg'), now]);
+    await page.addInitScript(() => { window.__noAuto = true; });
+
+    // (a) default — the next shot will ask
+    await move(); await cam('box.jpg'); await Z('ensureCss'); await snap('a.png'); await close('a_close.png');
+    console.log('rects a', JSON.stringify(await Z('rects')));
+    // the modal — marks on the choices
+    await cam('box.jpg'); await tap('.lc-shutter', { wait: 700 }); await page.waitForSelector('.photo-for');
+    await Z('modal', OPT); await snap('modal.png');
+    console.log('rects modal', JSON.stringify(await Z('rects')));
+    // (b) remembered: more photos of the White cardboard box
+    await tap('.photo-for .pf-same', { wait: 700 }); await cam('box.jpg');
+    await Z('shutter', OPT, 'b'); await snap('b.png'); await close('b_close.png');
+    console.log('rects b', JSON.stringify(await Z('rects')));
+    // (d) one frame of the fly-in
+    const shotSrc = img('box.jpg'); console.log('fly', await Z('fly', OPT, shotSrc, 3)); await snap('d.png'); await Z('unfly');
+    // (b) over a bright camera photo
+    await cam('closet.jpg'); await page.waitForTimeout(500); await Z('shutter', OPT, 'b'); await snap('b_bright.png'); await close('b_bright_close.png');
+    await tap('.lc-x', { wait: 500 }); if (await page.locator('text=Throw away').count()) await tap('text=Throw away', { wait: 500 });
+    // (c) armed: Choose place → Photograph a new place
+    await move(); await cam('box.jpg'); await tap('.lc-choose', { wait: 700 }); await Z('chooseRow', OPT); await snap('choose.png');
+    await page.evaluate(() => document.querySelectorAll('.where-list .wl-new .sz-mini, .where-list .wl-new .sz-cap').forEach((x) => x.remove()));
+    await tap('.where-list .wl-new', { wait: 700 });
+    console.log('promptC', await Z('promptC')); await Z('shutter', OPT, 'c'); await snap('c.png'); await close('c_close.png');
+    await cam('closet.jpg'); await page.waitForTimeout(500); await Z('shutter', OPT, 'c'); await snap('c_bright.png');
   }
   await seedHouse();
-  try { await runSuite(); } catch (e) { console.error('FATAL', e); check('ROW', 'suite ran', false, e.message); }
+  try { await runSuite(); } catch (e) { console.error('FATAL', e); }
   await browser.close();
 }
-(async () => {
-  await new Promise((r) => server.listen(PORT, r));
-  await runLook('b');
-  const pass = results.filter((r) => r.ok).length;
-  console.log(`\n${pass}/${results.length} checks passed`);
-  console.log('Page errors:', errors.length ? errors : 'none');
-  server.close();
-})();
+(async () => { await new Promise((r) => server.listen(PORT, r)); await runLook('b'); server.close(); })();

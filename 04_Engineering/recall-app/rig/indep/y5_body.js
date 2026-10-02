@@ -1,0 +1,26 @@
+    await grant();
+    const fromSaid = async () => page.evaluate(() => { const t = document.querySelector('.in-list').innerText; const m = t.split(/FROM WHAT YOU SAID/i)[1]; return m ? m.split(/RECENT|ALL YOUR/i)[0].replace(/\n+/g, ' / ').trim() : '(none)'; });
+    const placePage = async (nm) => { await home(); await page.click('.menu-btn'); await page.waitForTimeout(500); await page.click('.drawer-row:has-text("Places")'); await page.waitForTimeout(900); const r = page.locator('.loc-row').filter({ hasText: new RegExp('^' + nm + '(?![ a-z])', 'i') }).first(); if (!(await r.count())) { console.log('   NO PLACE ROW', nm); return false; } await r.click(); await page.waitForTimeout(900); return true; };
+    console.log('\n######## S11 rename Pantry shelf -> Larder');
+    await logStart('egg timer', 'real_spoon.jpg'); await setWords('on the pantry shelf, behind the flour'); await openIn(); await pickIn('Pantry shelf'); await doSave();
+    await moveIt('wallet'); await setWords('pantry shelf'); await doSave(); await raw('wallet');
+    await placePage('Pantry shelf'); await page.locator('button.field-value').first().click(); await page.waitForTimeout(600); await shot('s11-rename'); await ui('rename');
+    const ri = page.locator('input').filter({ visible: true }).first(); await ri.fill('Larder'); await page.keyboard.press('Enter'); await page.waitForTimeout(1200); const sv = page.locator('button').filter({ hasText: /^(Save|Done|Rename)$/ }).filter({ visible: true }); if (await sv.count()) { await sv.first().click(); await page.waitForTimeout(1200); }
+    console.log('   PAGE', (await bodyText()).replace(/\s+/g, ' ').slice(0, 260)); await allPlaces(); await raw('egg timer'); await raw('wallet'); await placeEdges();
+    await pageWords('egg timer', 's11-egg-page');
+    await logStart('flour', 'real_spoon.jpg'); await setWords('on the pantry shelf'); await openIn(); console.log(`   words "on the pantry shelf" FROM-SAID: ${await fromSaid()}`); await srch('pantry'); await srch('larder'); await shot('s11-in-after-rename'); await cancelChoose(); await leaveCam();
+    await home(); await page.click('.footer .btn-primary.alt'); await page.waitForSelector('.ask'); await page.fill('#ask-input', 'pantry'); await page.waitForTimeout(800); console.log('   FIND pantry:', (await bodyText()).replace(/\s+/g, ' ').slice(0, 300)); await shot('s11-find');
+    console.log('\n######## S12 Undo after reload');
+    await moveIt('reading glasses'); await openIn(); await pickIn('Kitchen counter'); await doSave(); console.log('   undo before reload', await undoCount()); await page.reload(); await page.waitForTimeout(1500); console.log('   undo after reload (same page)', await undoCount(), (await bodyText()).replace(/\s+/g, ' ').slice(0, 160));
+    await openItem('reading glasses'); console.log('   undo on reopened', await undoCount()); await home(); console.log('   undo on home', await undoCount());
+    await logStart('stapler', 'scissors.jpg'); await openIn(); await pickIn('Craft nook'); await doSave(); console.log('   home undo before reload', await undoCount()); await page.reload(); await page.waitForTimeout(1500); console.log('   home undo after reload', await undoCount()); if (await undoCount()) { await undo('after reload'); await raw('stapler'); }
+    console.log('\n######## S13 owner sees editor move; Undo?');
+    await asUser('robert'); await moveIt('yearbook 1978'); await openIn(); await pickIn('Linen closet'); await press('.lc-k.sv'); await page.waitForTimeout(1500); console.log('   robert undo', await undoCount());
+    await asUser('margaret'); await openItem('yearbook 1978'); console.log('   margaret undo on yearbook page', await undoCount(), (await bodyText()).replace(/\s+/g, ' ').slice(0, 220)); await shot('s13-margaret'); if (await undoCount()) { await undo('owner undo of editor'); await raw('yearbook 1978'); }
+    console.log('\n######## S14 stale Undo: Margaret moves wallet; Robert (other phone) moves it after; Margaret taps her Undo');
+    await moveIt('tin box'); await openIn(); await pickIn('Garage shelf'); await doSave(); console.log('   undo visible', await undoCount()); const tb = await raw('tin box');
+    await page.evaluate((id) => { const d = window.__rig.dump(); const it = d.find(x => x.id === id); const t = Date.now(); const edges = d.filter(x => x.kind === 'edge' && x.from === id && !x.until).map(e => ({ ...e, until: t }));
+      const { id: _i, ...rest } = it; window.__rig.seed([{ id, ...rest, location: 'Linen closet', lastSeenAt: t, updatedAt: t, history: [...(it.history || []), { location: 'Linen closet', at: t, w: 1, said: 'in the linen closet, top', by: 'robert' }] }, ...edges, { id: 'eR' + t, kind: 'edge', rel: 'in', from: id, to: { t: 'place', name: 'Linen closet' }, since: t, until: null, how: 'chosen', owner: 'margaret', by: 'robert', private: false, roles: {}, sharedWith: [] }]); }, tb.id);
+    await page.waitForTimeout(1200); console.log('   page after remote change:', (await bodyText()).replace(/\s+/g, ' ').slice(0, 260), '| undo', await undoCount()); await shot('s14-before-undo'); await raw('tin box');
+    if (await undoCount()) { await undo('stale'); await shot('s14-after-undo'); await raw('tin box'); await placeEdges(); }
+    console.log('   ', errs());

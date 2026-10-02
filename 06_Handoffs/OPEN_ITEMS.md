@@ -3,16 +3,39 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-10-01.
 
-## NOW — release 1 "Words, and one pick" (10-01, Tanya)
+## NOW — `20261001a`: release 1 "Words, and one pick" (Tanya, 10-01/02)
 
-Rulings in DECISIONS 2026-10-01. Screens: `design/mockups/MOCK_2026-10-01_release1-words-and-one-pick.jpg`.
-- [ ] Tanya: sign off the screens (then build).
-- [ ] Build: the camera (words + one "In"), the "What is it in?" list helped by her words, Move it = one "In",
-  a box's/place's own Move, the item page's words, Find with words, Home tiles photo + name only.
-- [ ] Gate: two builds with no store-changing tester find; every camera control visible at Largest on a small phone;
-  Undo also removes added photos; two phones, newest by time taken.
-- [ ] Release 2 (later): ReCall's take on the item page; privacy statement + switches first.
-- On hold, folded into this: build `g` (tester's finds on `f`, `rig/indep/REPORT_f.md`); the 09-30 tier question.
+Rulings: DECISIONS 2026-10-01 and 10-02. As built: `design/mockups/BUILD_2026-10-01a_words-and-one-pick.jpg`.
+Tester: `rig/indep/REPORT_r1.md` … `REPORT_r1f.md` (6 rounds; round 6 found no store-changing bug — the gate is met). 631 checks green.
+
+- [x] The camera: the item's photos, her words (typed or said), one optional "What is it in?" — no tiers, no Choose place,
+  no "This photo is…", no AI place matching, no Before → Now. The chip is what's saved; ✕ takes it off.
+- [x] **Tiers 2 and 3 on the camera** (Tanya 10-01: "it does not look to be easy to add the 2nd or 3rd tiers"): under the
+  chip, "+ What is the Desk drawer in?" — the same list, helped by her words; outward only, one question at a time, only
+  where nothing is saved above; up to 3 tiers shown (`TIERS_SHOWN`), any depth stored.
+- [x] "What is it in?" list: her places and boxes she named first ("you said it"), then new places from what follows
+  "in/on/under…", never a name (or part of a name) of an item she has, never a secret; search; Recent; all.
+- [x] Move it = the same camera, chip set to where it is now; Save waits for a change. A box moves from its own page; a
+  place's page has "Where this place is". Write it down and "Move all to…" use the same list.
+- [x] Item page: her words ("You said · when" / "Robert said"); a words-only item has "Put it in a place or a box" (Undo).
+- [x] Home tiles: photo + name only (Tanya). Not put away = no place, no box and no words. Find finds her words.
+- [x] Undo: takes back the photos it added, her words keep their own time and author, "last seen" comes back; an Undo
+  never rolls back something newer (another phone) — "Not undone · it changed since". Undo is the owner's.
+- [x] Typed words under Write it down → "Somewhere else" are her words, not a place (an exact place name links to it).
+- [ ] **Tanya + Ravi: phone check of `20261001a`**: Log item → photo → say "in the blue folder in the desk drawer" → What is
+  it in? → Desk drawer → "+ What is the Desk drawer in?" → New place: Office → Save. Then Move it on it (chip already set,
+  Save off until you change something); ✕ the chip; Undo. A box's own Move it. Home tiles.
+- [ ] **Questions for Tanya** (from the tester; Claude's view in brackets):
+  1. A place and a box with the same name — her words offer only the box. [rare; leave]
+  2. "Your wallet?" Yes sets the chip to where the wallet was; new words + that chip disagree. [as ruled; the chip is shown]
+  3. Her words say where a BOX is ("tin box on the kitchen counter") — nothing acts. [release 2: "…put it there? Yes"]
+  4. A removed or renamed place is still offered from old words / history. [a small clean-up later]
+  5. Save while "Naming…" before "Your wallet?" makes a second wallet. [could wait for the name; your call]
+  6. A box and a place with the same name ("kitchen" box, "Kitchen" place): the place can't be picked while the box is in
+     the chain. [rename one; or allow it — your call]
+- [ ] Release 2 (next): ReCall's take on the item page after Save; the privacy statement and switches first.
+- Suites: `rig/audit_r1.js` (new, both engines); the tier-camera suites retired to `rig/retired/` (where, f3, tiers, pick,
+  card, chain, row); the others adapted (audit, label, roles, private, graph, d, journeys, monkey, p30d).
 
 ## NOW — `20260930f`: a photo on a tier asks; Before → Now; no timer; Ravi's shutter marks
 

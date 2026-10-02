@@ -1,3 +1,5 @@
+// Adapted 2026-10-01 (release 1): no checks retired; the place helper now uses the camera's In list (pickPlace),
+// and a failed pick is reported in E0 instead of being swallowed.
 // Private by default + refusing secrets (Ravi 09-24; S3_private.jpg). One thing (before the name,
 // after it, Next item), Several, Write it down, a typed secret, a photo with a readable secret,
 // Share it instead, "On this phone only" → Coming soon, a helper (Can help) — with the rules ON
@@ -30,18 +32,16 @@ async function main() {
     await new Promise((r) => setTimeout(r, isSame ? 150 : aiDelay));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
   });
-  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
-  // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
-  // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
-  const settleWhere = async (fallback = '') => {
-    for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-    for (let k = 0; k < 14 && !(await page.locator('.where-list, .photo-for').count()); k++) await page.waitForTimeout(150); for (let k = 0; k < 40 && (await page.locator('.where-list .wl-sugg.quiet:has-text("Looking")').count()); k++) await page.waitForTimeout(150); /* 09-30f: Choose place opens at once; wait for ReCall's look */ // the sheet can open a beat after the look ends
-    if (await page.locator('.wl-pend .btn-primary').count()) {
-      if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
-      await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
-    }
+  const page = await ctx.newPage();
+  // GUIDE_adapt.md helper (10-01): pick where it is in the camera's In list — an existing place/box by exact name, else a
+  // new place by that name. (Replaces the 09-29 settleWhere + ☰ Choose place helpers; the tier camera is gone.)
+  const pickPlace = async (name) => {
+    await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+    await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
+    const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
+    if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
+    await page.waitForTimeout(250);
   };
-  const pickPlace = async (name) => { await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.click(`.where-list .wl-row:has-text("${name}")`); await page.waitForTimeout(350); };
   const saveNext = async () => { const b = await page.locator('.lc-k.sv').boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up(); await page.waitForTimeout(400); };
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/camera/.test(m.text())) errors.push('console: ' + m.text().slice(0, 160)); });
@@ -60,7 +60,7 @@ async function main() {
   const openCam = async () => { await page.click('.footer .btn-primary:not(.alt)'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); };
   const shootOne = async () => { await openCam(); await page.click('.lc-shutter'); await page.waitForTimeout(400); };
   // The camera (09-27): tap the place chip if there is one, then Save.
-  const saveAt = async (nm) => { if (nm) await pickPlace(nm).catch(() => {}); await page.waitForTimeout(150); await page.click('.lc-k.sv'); await page.waitForSelector('.board'); };
+  const saveAt = async (nm) => { if (nm) await pickPlace(nm).catch((e) => errors.push('pickPlace ' + nm + ': ' + String(e.message || e).slice(0, 120))); await page.waitForTimeout(150); await page.click('.lc-k.sv'); await page.waitForSelector('.board'); };
   const waitFor = async (fn, ms = 6000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return true; await page.waitForTimeout(150); } return false; };
 
   await page.goto(`http://localhost:${PORT}/`); await page.waitForSelector('.screen');

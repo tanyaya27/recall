@@ -1,3 +1,14 @@
+// Retired 2026-10-01 (release 1 — the tier camera is gone):
+//   D4 "ReCall offers the Desk drawer in its slot in Choose place; slot and name field ≥ 44 px" — the AI place match on a
+//      where-photo (the WHERE / "MOVES:" ask) and Choose place are removed.
+//   D4 "Yes → Place: Desk drawer; the photo taken for the level stays on it (fix B1)" — the "Place:" line, tier squares and
+//      place photos are removed.
+//   D4 "No → ☰ Choose place with the photo on top (A new place?) and the list below" — the where-photo naming flow is removed.
+//   D5 "the new-place control is a solid rounded 'Photograph a new place' button" — place photos are removed; no caller passes
+//      WhereList an onPhotograph any more (the button can never show).
+// Rewritten: D4 "Save writes the thing at Desk drawer" and "picking another place sets it" now go through the In chip;
+// D5 (the one list "YOUR PLACES · N") now opens from Write it down → Pick a place or box, the list's remaining home —
+// the camera's In list (InList) is release 1's own design and is covered by audit_graph.
 // D1-D5 audit (Ravi 09-28): the five RULED design changes picked from the rendered mockups (shots_d/, mock/d/).
 //   D1 the "Add photo" pill on the thing page's caption line      D2 the photo viewer (a thing's photos, a place's photos)
 //   D3 a caption per photo                                        D4 the camera's where-card (pills inside, one line, the ask)
@@ -19,7 +30,7 @@ const SHOTS = process.env.D_SHOTS || path.join(__dirname, 'shots_dd'); fs.mkdirS
 const results = []; const errors = [];
 function check(name, ok, note = '') { results.push({ name, ok: !!ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${note ? ' — ' + note : ''}`); }
 
-let AI = { name: 'thing' }; let WHERE = []; let SAME = { index: -1, sure: false };
+let AI = { name: 'thing' }; let SAME = { index: -1, sure: false };
 const LEVEL1 = 'rgb(245, 185, 66)'; // LEVEL_COLOURS[1], amber
 
 async function main() {
@@ -41,17 +52,13 @@ async function main() {
     const texts = content.filter((b) => b.type === 'text').map((b) => b.text).join('\n');
     const images = content.filter((b) => b.type === 'image').length;
     let out;
-    if (/MOVES:/.test(texts)) {
-      const w = WHERE.shift() || { name: 'shelf', moves: false };
-      let index = 0; if (w.known) { const m = [...texts.matchAll(/SAVED (\d+) — "([^"]*)"/g)].find((x) => x[2].toLowerCase() === w.known.toLowerCase()); index = m ? Number(m[1]) : 0; }
-      out = { name: w.name, moves: !!w.moves, index, sure: w.sure !== undefined ? !!w.sure : !!index };
-    } else if (/NEW PHOTO/.test(texts)) out = SAME;
+    if (/NEW PHOTO/.test(texts)) out = SAME;
     else if (images) out = { name: AI.name, sameAs: '', alternatives: [], restingOn: AI.restingOn || '', placeCertain: false, placeGuesses: [], description: '', details: '', private: false, privateWhy: '', secretVisible: false };
     else out = { matches: [], message: '' };
     await new Promise((r) => setTimeout(r, 200));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
+  const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/camera|permission-denied/i.test(m.text())) errors.push('console: ' + m.text().slice(0, 160)); });
 
@@ -317,67 +324,66 @@ async function main() {
     check('D2 press-and-hold on the photo still opens the item sheet (no viewer)', await count('.sheet-back') >= 1 && await count('.d2-pv') === 0);
   }
 
-  // ============================== D4 · the camera's where-card, both looks ==============================
-  const shootWhere = async (look) => {
-    await seed(); await setPrefs({ cameraLook: look });
-    AI = { name: 'lint brush', restingOn: 'on the orange carpet' }; WHERE = [{ name: 'Desk drawer', moves: false, known: 'Desk drawer', sure: true }]; SAME = { index: -1, sure: false };
-    await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
+  // ============================== D4 · where it is, on the camera (10-01: the In chip) ==============================
+  // 10-01 (release 1): the where-card's tiers, Choose place, the AI's place ask and "Place:" are gone (see Retired). D4's lasting
+  // promises are kept: the place she gives is what Save writes, she can change it before saving, and the tag's caption lands on
+  // the first photo (D3).
+  const pickPlace = async (name) => {
+    await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+    await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
+    const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
+    if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
+    await page.waitForTimeout(250);
   };
-  const oneLine = async (sel) => page.evaluate((s) => {
-    const row = document.querySelector(s); if (!row) return null; const chips = [...row.querySelectorAll('.lc-chip')]; const rr = row.getBoundingClientRect();
-    return { n: chips.length, places: chips.filter((c) => !c.classList.contains('more')).length, more: row.querySelectorAll('.lc-chip.more').length, tops: chips.map((c) => Math.round(c.getBoundingClientRect().top)), offs: chips.map((c) => c.offsetTop),
-      rights: chips.map((c) => Math.round(c.getBoundingClientRect().right)), rowRight: Math.round(rr.right), rowH: Math.round(rr.height), ell: chips.filter((c) => !c.classList.contains('more')).map((c) => getComputedStyle(c.querySelector('span:last-child')).textOverflow) };
-  }, sel);
-  // 09-29 (Ravi): the D4 where-card (pills in the card, "📍 Your desk drawer?") is SUPERSEDED by the camera card of 09-29 —
-  // no pills; one look; the question is "Is this the Desk drawer?" with both photos, Yes / "No, ☰ Choose place". The new card
-  // has its own suite (audit_card.js); D4's lasting promises are kept here: the photo stays on its level, Yes resolves it,
-  // Save writes the thing there, and the tag's caption lands on the first photo (D3).
+  const chip = async () => (await page.locator('.w1-in.set .t').first().innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+  const shootThing = async () => {
+    await seed();
+    AI = { name: 'lint brush', restingOn: 'on the orange carpet' }; SAME = { index: -1, sure: false };
+    await home(); await cam('real_slippers.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 });
+    if (await count('.lc-ask button:has-text("No, a new item")')) await tap('.lc-ask button:has-text("No, a new item")', { wait: 200 });
+  };
   {
-    const L = 'B';
-    await shootWhere('b');
-    await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
-    check(`D4 ${L}: 09-30f: ReCall offers the Desk drawer in its slot in Choose place; the slot and the name field are each ≥ 44 px`, /Desk drawer[\s\S]*looks like this one/i.test(await text('.where-list .wl-sugg:not(.quiet)')) && (await box('.where-list .wl-sugg:not(.quiet)')).h >= 44 && (await box('.where-list .wl-pend input')).h >= 44, await text('.where-list .wl-sugg:not(.quiet)'));
-    await tap('.where-list .wl-sugg:not(.quiet)', { wait: 600 });
-    check(`D4 ${L}: Yes → "Place: Desk drawer"; the photo taken for the level stays on it (fix B1 kept)`, await count('.where-list .wl-sugg:not(.quiet)') === 0 && /Place:\s*Desk drawer/.test(await text('.lc-say')) && await page.locator('.lc-card .lv-tile').nth(0).locator('img').count() > 0, await text('.lc-say'));
-    await shot('D4_ask-B-superseded');
+    await shootThing();
+    await pickPlace('Desk drawer');
+    check('D4 the In chip says "In: Desk drawer"', /^In: Desk drawer(?![a-z])/.test(await chip()), await chip());
+    await shot('D4_in-chip');
     await tap('.lc-k.sv', { wait: 2500 });
     const lb = (await dump()).find((d) => d.kind === 'item' && d.name === 'lint brush');
-    check(`D4 ${L}: Save closes the camera and writes the thing at Desk drawer`, await count('.lc') === 0 && !!lb && lb.location === 'Desk drawer');
+    check('D4 Save closes the camera and writes the thing at Desk drawer', await count('.lc') === 0 && !!lb && lb.location === 'Desk drawer', JSON.stringify({ lc: await count('.lc'), loc: lb && lb.location }));
     const cs = lb ? (await snapsOf(lb.id)).find((s) => !s.extra) : null;
-    check(`D3 ${L}: the first photo of a NEW thing gets the tag's restingOn as its snap caption`, !!cs && cs.caption === 'on the orange carpet' && lb.restingOn === 'on the orange carpet', JSON.stringify({ c: cs && cs.caption }));
-    // "No, ☰ Choose place" → the sheet with the photo on top; pick another place from the list: the photo stays with it
-    await shootWhere('b'); await tap('.lv-sq.plus', { wait: 300 }); await cam('closet.jpg'); await tap('.lc-shutter', { wait: 2000 });
-    await tap('.where-list .wl-pend input', { wait: 600 });
-    check(`D4 ${L}: No → ☰ Choose place with the photo on top ("A new place?") and the list below`, await count('.where-list .wl-pend img') === 1 && await count('.where-list .wl-row') >= 2);
-    const second = (await page.locator('.where-list .wl-row:not(.wl-sugg) b').allInnerTexts()).map((x) => x.trim()).find((x) => x !== 'Desk drawer');
-    await page.locator(`.where-list .wl-row:not(.wl-sugg):has(b:text-is("${second}"))`).first().click(); await page.waitForTimeout(500);
-    check(`D4 ${L}: picking another place sets it; the photo stays on the level`, (await text('.lc-say')).includes(second) && await page.locator('.lc-card .lv-tile').nth(0).locator('img').count() > 0, second + ' / ' + await text('.lc-say'));
+    check('D3 the first photo of a NEW thing gets the tag\'s restingOn as its snap caption', !!cs && cs.caption === 'on the orange carpet' && lb.restingOn === 'on the orange carpet', JSON.stringify({ c: cs && cs.caption }));
+    // she changes her mind before saving: the chip follows, and Save writes the new one
+    await shootThing(); await pickPlace('Desk drawer');
+    await page.click('.w1-in-open'); await page.waitForSelector('.in-list');
+    const second = (await page.locator('.in-list .wl-row b').allInnerTexts()).map((x) => x.trim()).find((x) => x !== 'Desk drawer' && !/box|bin/i.test(x));
+    await page.locator(`.in-list .wl-row:has(b:text-is("${second}"))`).first().click(); await page.waitForTimeout(400);
+    check('D4 picking another place sets it (the chip follows); the item\'s photo stays the item\'s', (await chip()).startsWith('In: ' + second) && await count('.lc-band .lc-thing.sel img') === 1, second + ' / ' + await chip());
     await tap('.lc-x', { wait: 300 }); if (await count('text=Throw away')) await tap('text=Throw away', { wait: 300 });
   }
 
-  // ============================== D5 · the ••• list ==============================
+  // ============================== D5 · the one list of where ==============================
   {
-    await seed(); await setPrefs({ cameraLook: 'b' }); AI = { name: 'lint roller', restingOn: '' }; WHERE = []; SAME = { index: -1, sure: false };
-    await home(); await cam('scissors.jpg'); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1400 });
-    await tap('.lv-sq.plus', { wait: 350 }); await tap('.lc-choose', { wait: 500 });
-    check('D5 the search placeholder is "Search your places"', await page.locator('.where-list .wl-search input').getAttribute('placeholder') === 'Search your places');
-    const nb = await page.locator('.where-list .wl-new:not(.typed)').evaluate((b) => { const cs = getComputedStyle(b); return { t: b.innerText.trim(), border: cs.borderStyle, bg: cs.backgroundColor, radius: cs.borderRadius, svg: b.querySelectorAll('svg').length, h: b.getBoundingClientRect().height }; });
-    check('D5 the new-place control is a solid rounded "Photograph a new place" button (09-30f: the "New place" mark + words, no dashes)', /Photograph a new place$/.test(nb.t) && /^New/.test(nb.t) && !/dashed/.test(nb.border) && nb.bg !== 'rgba(0, 0, 0, 0)' && parseFloat(nb.radius) >= 8 && nb.svg === 1 && nb.h >= 44, JSON.stringify(nb));
-    const heads = await page.locator('.where-list .wl-g').allInnerTexts(); const rows = await count('.where-list .wl-row');
-    check('D5 ONE list, headed "YOUR PLACES · N" with N = the rows shown', heads.length === 1 && heads[0].trim() === `YOUR PLACES · ${rows}` && rows >= 5, JSON.stringify({ heads, rows }));
-    const rr = await page.evaluate(() => [...document.querySelectorAll('.where-list .wl-row')].map((r) => ({ b: r.querySelector('b').innerText, s: r.querySelector('small').innerText, box: !!r.querySelector('.no svg') && !r.querySelector('img') })));
+    // 10-01: Write it down uses the camera's "What is it in?" list (InList) — the one list of where in the app.
+    await seed(); AI = { name: 'lint roller', restingOn: '' }; SAME = { index: -1, sure: false };
+    await home(); await tap(LOG, { wait: 800 }); await tap('.lc-typeit button', { wait: 500 }); await page.waitForSelector('.note-card');
+    await page.fill('#note-what', 'lint roller'); await tap('.note-card .path.in', { wait: 500 }); await page.waitForSelector('.in-list');
+    check('D5 the search placeholder is "Search your places and boxes"', await page.locator('.in-list .wl-search input').getAttribute('placeholder') === 'Search your places and boxes');
+    const sec = await page.evaluate(() => { const out = []; let cur = null; for (const el of document.querySelectorAll('.in-list .wl-scroll > *')) { if (el.classList.contains('wl-g')) { cur = { h: el.innerText.trim(), rows: [] }; out.push(cur); } else if (el.classList.contains('wl-row') && cur) cur.rows.push({ b: el.querySelector('b').innerText, s: el.querySelector('small').innerText, box: !!el.querySelector('.no svg') && !el.querySelector('img') }); } return out; });
+    const allS = sec.find((x) => /^ALL YOUR PLACES AND BOXES · \d+$/i.test(x.h));
+    check('D5 Recent, then "All your places and boxes · N" with N = the rows under it', !!allS && Number(allS.h.split('·')[1]) === allS.rows.length && allS.rows.length >= 3, JSON.stringify(sec.map((x) => [x.h, x.rows.length])));
+    const rr = sec.flatMap((x) => x.rows);
     const bx = rr.find((r) => r.b === 'White cardboard box'), bn = rr.find((r) => r.b === 'Spare bin');
     check('D5 a box: box icon, second line "a box · in Garage" / "a box · no place yet"', !!bx && bx.s === 'a box · in Garage' && !!bn && bn.s === 'a box · no place yet' && bx.box && bn.box, JSON.stringify([bx, bn]));
-    const firstBox = rr.findIndex((r) => /^a box · /.test(r.s)); const lastPlace = rr.map((r) => /^a box · /.test(r.s)).lastIndexOf(false);
-    check('D5 places first, then the boxes, under the one heading', firstBox > lastPlace, JSON.stringify(rr.map((r) => r.b)));
-    check('D5 the old headings are gone', !/^(PLACES|BOXES AND CONTAINERS)$/i.test(heads.join('|')) && !/Boxes and containers/i.test(await text('.where-list')));
-    check('D5 Cancel is kept', await count('.where-list .btn-quiet:has-text("Cancel")') === 1);
+    const ar = allS ? allS.rows : []; const firstBox = ar.findIndex((r) => /^a box · /.test(r.s)); const lastPlace = ar.map((r) => /^a box · /.test(r.s)).lastIndexOf(false);
+    check('D5 in "All": places first, then the boxes', firstBox === -1 || firstBox > lastPlace, JSON.stringify(ar.map((r) => r.b)));
+    check('D5 the old headings are gone', !/^(PLACES|BOXES AND CONTAINERS|YOUR PLACES · \d+)$/i.test(sec.map((x) => x.h).join('|')));
+    check('D5 Cancel is kept', await count('.in-list .btn-quiet:has-text("Cancel")') === 1);
     await shot('D5_list');
-    await page.locator('.where-list .wl-search input').fill('Attic'); await page.waitForTimeout(250);
-    check('D5 typing a new name: the row "A new place called “Attic”" is kept', (await text('.where-list .wl-new.typed')).trim() === 'A new place called “Attic”');
-    await page.locator('.where-list .wl-search input').fill('desk'); await page.waitForTimeout(250);
-    check('D5 the count follows the search ("YOUR PLACES · N" = rows shown)', (await text('.where-list .wl-g')).trim() === `YOUR PLACES · ${await count('.where-list .wl-row')}`);
-    await tap('.where-list .btn-quiet', { wait: 300 });
+    await page.locator('.in-list .wl-search input').fill('Attic'); await page.waitForTimeout(250);
+    check('D5 typing a new name: "New place: Attic"', (await text('.in-list .wl-new')).trim() === 'New place: Attic', await text('.in-list .wl-new'));
+    await page.locator('.in-list .wl-search input').fill('desk'); await page.waitForTimeout(250);
+    check('D5 the count follows the search ("Your places · N" = rows shown)', /YOUR PLACES · (\d+)/i.test(await text('.in-list .wl-g')) && Number((await text('.in-list .wl-g')).split('·')[1]) === await count('.in-list .wl-row'), await text('.in-list .wl-g'));
+    await tap('.in-list .btn-quiet:has-text("Cancel")', { wait: 300 });
   }
 
   check('no page errors / console errors', errors.length === 0, errors.slice(0, 3).join(' | '));

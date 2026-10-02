@@ -79,6 +79,9 @@ export function whereChain(item, g = G) {
   return [...boxes, { t: 'place', name: p ? p.name : loc, id: p ? p.id : null }, ...placeOuter(loc, g)];
 }
 export const graph = () => G;
+// 10-01 (Tanya): designed for any number of tiers; the camera shows and builds up to this many (item → in → in → in), until the
+// use cases show more are needed. Storage and the chain readers have no such limit.
+export const TIERS_SHOWN = 3;
 
 // 09-30d (Ravi, phone: "this is not really the last time it was seen … just the last time it was moved"). When did the item
 // last CHANGE place — itself, or together with something it's in (its box moved, the counter it's on moved)? A link that
@@ -223,4 +226,21 @@ export function thingMatches(text, item = null, g = G, limit = 4) {
   return g.items.filter((x) => !x.deleted && x.name && (!item || (x.id !== item.id && !wouldLoop(item, x, g))))
     .filter((x) => { const n = [x.name, ...(x.aliases || [])].map(normName).join(' '); return words.every((w) => n.includes(w)); })
     .slice(0, limit);
+}
+
+// 10-01 (Tanya, release 1 "Words, and one pick"): her own words for where it is. Kept in the item's history as a "where
+// statement" (w: 1) — what she typed or said, when, and who — never rewritten; the newest statement is the one shown. No new
+// field on the item, so the Firestore rules don't change. { said: '' } when she never said one (or the last one was empty).
+export function saidOf(item) {
+  const h = (item && item.history) || [];
+  for (let i = h.length - 1; i >= 0; i--) { const e = h[i]; if (e && e.w) return { said: (e.said || '').trim(), at: e.saidAt || e.at || 0, stmt: e.at || 0, by: e.by || '' }; }
+  return { said: '', at: 0, stmt: 0, by: '' };
+}
+// Her words, when they are still about where it is now: a link made after them (put in a box elsewhere, moved from a box's
+// page) is newer news, and the words are history then. Words with no link at all are always current.
+export function saidNow(item, g = G) {
+  const s = saidOf(item);
+  if (!s.said) return s;
+  const e = item && item.id ? g.open.get(item.id) : null;
+  return e && (e.since || 0) > (s.stmt || s.at) + 5000 ? { said: '', at: 0, by: '', stale: s } : s;
 }

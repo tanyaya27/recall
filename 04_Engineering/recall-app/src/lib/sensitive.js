@@ -36,6 +36,12 @@ export function privateWhy(...texts) {
 // A secret typed into a name or a place: "PIN 4821", "password: tulip88", a card number, an SSN.
 const SECRETS = [
   /\b(password|passcode|pwd)\s*(is|:|=|-)\s*\S+/i,
+  /\b(password|passcode|passwd|pass|pwd|pw)\b\s*(?:is\s+|[:=-]\s*)?(?=\S*[\d!@#$%^&*])\S{3,}/i,
+  /\b(passwd|pass|pw|pwd)\s*[:=]\s*\S+/i,
+  /\bpin\s*#?\s*\d{3,}/i, // "PIN4821" (10-02 tester)
+  /\bp\/w\b\s*[:=]?\s*\S{3,}/i,                                    // "p/w hunter2" (round 3)
+  /\b(login|log-in|username|user)\s+\S+\s+(?=\S*[\d!@#$%^&*])\S{3,}/i, // "login bob hunter2" (round 3) // 10-01 tester: "password hunter2", "pw hunter2" (not "password notebook")
+  /\b(login|log-in|username|user name|user)\s*[:=]\s*\S+\s*[/|,;]\s*\S+/i,             // 10-01 tester: "login: bob / hunter2"
   /\b(pin|passcode|code|combination|combo)\b\s*(number|no\.?|#)?\s*(is|:|=|-)?\s*\d[\d -]{1,}\d/i,
   /\b\d{3}-\d{2}-\d{4}\b/,                 // a US social security number
   /\b(?:\d[ -]?){13,19}\b/,                // a card or account number

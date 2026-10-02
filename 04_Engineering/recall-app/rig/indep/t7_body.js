@@ -1,8 +1,18 @@
-    const PLUS = async () => { await press('.lv-sq.plus'); await page.waitForTimeout(500); };
-    const raw = async (nm) => { const r = await page.evaluate((n) => { const d = window.__rig.dump(); const it = d.find((x) => x.kind === 'item' && !x.deleted && (x.name || '').toLowerCase() === n); if (!it) return 'NO ITEM'; const es = d.filter((e) => e.kind === 'edge' && e.from === it.id); const pl = d.filter((p) => p.kind === 'place' && !p.deleted).map((p) => JSON.stringify(p.name)); return { location: it.location, history: it.history, edges: es.map((e) => ({ to: e.to, until: e.until, how: e.how })), places: pl.join(',') }; }, nm); console.log('RAW', nm, JSON.stringify(r)); };
-    const offs = (process.env.OFFS || '300,640,690,720,760,850').split(',').map(Number);
-    for (const mode of (process.env.MODES || 'log,move').split(',')) for (const off of offs) {
-      await runScn({ id: `E-${mode}-${off}`, desc: `${mode}: NEW "hall closet" answer @500ms; Save pressed at ${off}ms`, mode, pre: mode === 'log' ? PLUS : null, answers: [{ ans: NEW, delay: 500 }],
-        steps: [[off, 'save', ''], [off + 60, 'fn', async () => console.log('   +60ms', JSON.stringify(await state()))], [off + 1200, 'shot', 'after']], saveAtEnd: false, waitEnd: 1500,
-        after: async () => { await raw(mode === 'log' ? 'egg timer' : 'baseball card'); } });
-    }
+    await kbInit(); await page.setViewportSize({ width: 375, height: 667 }); await home(); await tap('.menu-btn', { wait: 500 }); await tap('.drawer-row:has-text("Text size")', { wait: 600 }); await tap('button:text-is("Largest")', { wait: 400 }); await home();
+    await seed4();
+    const fit = async (label) => { const r = await page.evaluate(() => { const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+        return [...document.querySelectorAll('.lc button, .lc input')].filter(vis).map(b => { const r = b.getBoundingClientRect(); const cut = b.scrollWidth > b.clientWidth + 1 || [...b.querySelectorAll('*')].some(c => c.scrollWidth > c.clientWidth + 1 && getComputedStyle(c).overflow !== 'visible');
+          return { t: (b.getAttribute('aria-label') || b.innerText || '').replace(/\s+/g, ' ').slice(0, 40), top: Math.round(r.top), bot: Math.round(r.bottom), l: Math.round(r.left), rt: Math.round(r.right), off: r.top < 0 || r.bottom > innerHeight || r.left < 0 || r.right > innerWidth, cut }; }); });
+      console.log(`   FIT[${label}] ` + r.map(x => `${x.t}@${x.top}-${x.bot}${x.off ? ' OFFSCREEN' : ''}${x.cut ? ' CUT' : ''}`).join(' | ')); return r; };
+    console.log('\n######## XL1 Largest 375x667: Log, words, In=Cookie tin, t2 New place long name, t3 New place long name');
+    await logStart('measuring tape', 'real_pencil.jpg'); await setWords('in the cookie tin'); await openIn(); await pickIn('Cookie tin'); await shot('xl-in'); await fit('In');
+    await addTier(); await shot('xl-t2-list'); await srchT('Great-grandmother\'s mahogany sideboard'); await tapNew(/New place/); await shot('xl-t2'); await fit('t2');
+    await addTier(); await srchT('Downstairs back bedroom walk-in closet'); await tapNew(/New place/); await shot('xl-t3'); const f3 = await fit('t3');
+    console.log('   Save/Cancel/shutter visible?', f3.filter(x => /Save|Cancel|Take a photo/.test(x.t)).map(x => `${x.t} off=${x.off}`).join(', '));
+    await page.locator('.lc-card').evaluate(e => e.scrollTop = 0).catch(() => {});
+    console.log('-- keyboard up in words with 3 tiers'); await page.locator('.w1-words input').click(); await kbUp(); await page.waitForTimeout(600); await shot('xl-kb-words'); console.log('   words input above kb:', JSON.stringify(await aboveKb('.w1-words input'))); await fit('kb words'); await kbDown(); await page.keyboard.press('Escape').catch(() => {});
+    console.log('-- keyboard up in the tier-list search'); const xs = page.locator('.lc-card button.x').filter({ visible: true }); await xs.nth(2).click(); await page.waitForTimeout(500); await card('after x t3'); await addTier(); await page.locator('.in-list input').last().click(); await kbUp(); await page.waitForTimeout(600); await page.keyboard.type('Cel', { delay: 30 }); await page.waitForTimeout(500); await shot('xl-kb-tierlist'); console.log('   search above kb:', JSON.stringify(await aboveKb('.in-list input'))); console.log('   New row above kb:', JSON.stringify(await aboveKb('.in-list .wl-new')));
+    await tapNew(/New place/); await kbDown(); await page.waitForTimeout(400); await shot('xl-after-kb'); await fit('after');
+    await doSave(); await st4('XL1', ['measuring tape', 'cookie tin']); await shot('xl-saved');
+    console.log('-- XL2 Move it baseball card at Largest with 3 tiers (page view after)'); await moveIt('baseball card'); await openIn(); await pickIn('Sewing box'); await addTier(); await pickIn('Red crate'); await addTier(); await pickIn('Upstairs hall'); await shot('xl2-card'); await fit('xl2'); await doSave(); await shot('xl2-page'); await st4('XL2', ['baseball card']);
+    console.log('   ', errs());

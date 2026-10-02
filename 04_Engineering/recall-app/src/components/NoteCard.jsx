@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import Header from './Header.jsx';
-import { addItem, knownLocations, logEvent, firstName } from '../lib/db.js';
+import { addItem, addPlace, knownLocations, logEvent, firstName } from '../lib/db.js';
 import { me } from '../lib/auth.js';
 import { CheckIcon, LockIcon, SaveIcon } from './Icons.jsx';
 import { privateWhy, hasSecret } from '../lib/sensitive.js';
 import PrivNote, { PhoneOnly } from './PrivNote.jsx';
-import WhereList from './WhereList.jsx';
+import InList from './InList.jsx';
 import { containers, inPhrase } from '../lib/graph.js';
 import { BoxIcon, PinIcon } from './Icons.jsx';
 
@@ -23,6 +23,8 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
   const [dest, setDest] = useState(null); // a box picked by photo or made new: linked by id (09-27)
   const [typing, setTyping] = useState(false);
   const [inPick, setInPick] = useState(false);
+  const [newPlace, setNewPlace] = useState(''); // "New place: X" picked in the list
+  const typedHere = typing && !!place.trim(); // "Somewhere else": her own words
   const [touched, setTouched] = useState(false); // she moved the switch herself: ReCall stops deciding
   const [privSet, setPriv] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -38,9 +40,17 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
   async function save() {
     if (!ready) return;
     setBusy(true);
-    const loc = cap(place.trim());
+    let loc = cap(place.trim()); let said;
+    const boxed = dest && loc && cap(dest.name) === loc ? dest : null;
+    // 10-02 (tester C; Tanya 10-01): what she typed under "Somewhere else" is HER WORDS, kept as she said them — never turned
+    // into a place named like a sentence. Only an exact name of a place she has (any case) links to that place, as it's named.
+    if (!boxed && typedHere) {
+      const hit = [...knownLocations(items, 999, places), ...places.map((p) => p.name)].find((n) => n.trim().toLowerCase() === loc.trim().toLowerCase());
+      if (hit) loc = hit; else { said = place.trim(); loc = ''; }
+    }
+    if (!boxed && loc && newPlace && newPlace.toLowerCase() === loc.toLowerCase()) await addPlace(loc, places, [], owner || me()); // "New place: Attic" from the list is a place, made as one
     // Private from the first write, so it is never visible to anyone for a moment (09-24).
-    const id = await addItem({ name: name.trim(), location: loc, placeSource: loc ? 'chosen' : '', dest: dest && loc && cap(dest.name) === loc ? dest : null, ...(owner ? { owner } : {}), private: priv && mine, privateAuto: !touched && why ? why : '' });
+    const id = await addItem({ name: name.trim(), location: loc, placeSource: loc ? 'chosen' : '', dest: boxed, said, ...(owner ? { owner } : {}), private: priv && mine, privateAuto: !touched && why ? why : '' });
     logEvent('capture', { initiatedBy: 'self', mode: 'written', itemId: id, hasPlace: !!loc, private: priv && mine, auto: !touched && !!why });
     onDone({ saved: true, name: cap(name.trim()), place: loc, itemId: id });
   }
@@ -65,7 +75,7 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
             </button>
           )}
           {chips.map((c) => (
-            <button key={c} type="button" className={'guess' + (place === c ? ' pre' : '')} onClick={() => { setPlace(place === c ? '' : c); setTyping(false); }}>
+            <button key={c} type="button" className={'guess' + (place === c ? ' pre' : '')} onClick={() => { setPlace(place === c ? '' : c); setDest(null); setTyping(false); }}>
               <span>{c}</span>{place === c && <CheckIcon />}
             </button>
           ))}
@@ -94,10 +104,10 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
         <div className="lc-say note-say"><span className="tx"><span className="l1"><span className="lc-pin"><PinIcon /></span><b>{place.trim() ? cap(place.trim()) : 'No place yet'}</b></span><span className="soft">{place.trim() ? (dest && dest.t === 'thing' ? 'in that box' : '') : 'You can put it away later'}</span></span></div>
         <button type="button" className="btn-primary" disabled={!ready} onClick={save}><SaveIcon /><span>Save</span></button>
       </div>
-      {/* The one list of "where" (09-27): every place and every box, with search; never a pencil. */}
-      {inPick && <WhereList items={items} places={places} title={`Where is ${name.trim() ? 'the ' + name.trim().toLowerCase().replace(/^(my|the|our)\s+/, '') : 'it'}?`}
+      {/* The one list of "where" (10-01: the camera's "What is it in?" list): every place and box, with search; never a pencil. */}
+      {inPick && <InList items={items} places={places} title={`What is ${name.trim() ? 'the ' + name.trim().toLowerCase().replace(/^(my|the|our)\s+/, '') : 'it'} in?`}
         onCancel={() => setInPick(false)}
-        onPick={(k) => { setInPick(false); setTyping(false); if (k.t === 'thing') { setPlace(cap(k.item.name)); setDest({ t: 'thing', id: k.item.id, name: k.item.name }); } else { setPlace(cap(k.name)); setDest(null); } }} />}
+        onPick={(k) => { setInPick(false); setTyping(false); if (k.t === 'thing') { setPlace(cap(k.item.name)); setDest({ t: 'thing', id: k.item.id, name: k.item.name }); setNewPlace(''); } else { setPlace(cap(k.name)); setDest(null); setNewPlace(k.isNew ? cap(k.name) : ''); } }} />}
     </div>
   );
 }

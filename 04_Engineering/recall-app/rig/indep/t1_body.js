@@ -1,13 +1,21 @@
-    await page.evaluate(() => window.__rig.rules(true));
-    const openItem = async (nm) => { await home(); await page.click('.footer .btn-primary.alt'); await page.waitForSelector('.ask'); await page.fill('#ask-input', nm); await page.waitForTimeout(450); await page.locator('.ask .tile').filter({ hasText: new RegExp(nm, 'i') }).first().click(); await page.waitForSelector('.card.thing'); await page.waitForTimeout(900); };
-    await openItem('baseball card');
-    await tap('button:has-text("Move it")', { wait: 1000 });
-    await ui('move it open'); await shot('move it open');
-    // level 1 = wooden box selected? shoot it with a late sure-known answer
-    WHERE.push({ name: 'wooden box', known: 'Kitchen counter', sure: true }); NEXT_WHERE_DELAY = 4500;
-    await cam('real_desk.jpg');
-    const t0 = Date.now(); await page.locator('.lc-shutter').click();
-    await page.waitForTimeout(800); await ui('0.8s'); await shot('look 0.8s');
-    await page.waitForTimeout(2400); console.log('t=', Date.now() - t0); await ui('3.2s'); await shot('look 3.2s');
-    await page.waitForTimeout(2000); console.log('t=', Date.now() - t0); await ui('5.2s'); await shot('look 5.2s');
-    console.log('pool', lastPoolNames);
+    console.log('\n######## T1 Log egg timer: In=Kitchen counter, +Linen closet, +Craft nook; Save; Undo');
+    await logStart('egg timer', 'real_spoon.jpg'); await openIn(); await pickIn('Kitchen counter'); await card('In');
+    await addTier(); console.log('   tier2 has boxes? tin', await listHas('Tin box'), 'wooden', await listHas('Wooden box'), 'KC itself', await listHas('Kitchen counter'));
+    await srchT('tin'); await srchT('kitchen'); await srchT('');
+    await pickIn('Linen closet'); await card('t2'); console.log(await HTML('.lc-card'));
+    await addTier(); console.log('   tier3: KC?', await listHas('Kitchen counter'), 'Linen?', await listHas('Linen closet')); await srchT('linen'); await srchT('kitchen counter'); await srchT('');
+    await pickIn('Craft nook'); await card('t3'); await shot('t1-3tiers');
+    await doSave(); await st4('T1 save', ['egg timer', 'spare batteries']); await shot('t1-saved');
+    await undo('T1'); await st4('T1 undo', ['spare batteries', 'kitchen counter']);
+    console.log('   KC place page:'); 
+
+    console.log('\n######## T2 box chain: In=Tin box, +Kitchen counter(place), +? ; and box-in-box');
+    await logStart('ruler', 'real_pencil.jpg'); await openIn(); await pickIn('Tin box'); await card('In tin');
+    await addTier(); console.log('   tier2 offers boxes? tool drawer', await listHas('Tool drawer'), 'shoe rack', await listHas('Shoe rack'), 'tin itself', await listHas('Tin box'), 'wooden', await listHas('Wooden box'));
+    await pickIn('Tool drawer'); await card('t2 tool drawer');
+    await addTier(); console.log('   tier3 offers tin?', await listHas('Tin box'), 'tool?', await listHas('Tool drawer'), 'shoe rack', await listHas('Shoe rack'));
+    await srchT('tin'); await srchT('tool drawer'); await srchT('');
+    await pickIn('Shoe rack'); await card('t3 shoe'); await shot('t2-boxes');
+    await doSave(); await st4('T2', ['ruler']);
+    await undo('T2'); await st4('T2 undo', ['tin box', 'tool drawer']);
+    console.log('   ', errs());

@@ -1,0 +1,21 @@
+    const moveIt = async (nm) => { await openItem(nm); await tap('button:has-text("Move it")', { wait: 1200 }); };
+    const placePage = async (nm) => { await home(); await page.click('.menu-btn'); await page.waitForTimeout(500); await page.click('.drawer-row:has-text("Places")'); await page.waitForTimeout(900); await page.locator('.loc-row').filter({ hasText: new RegExp('^' + nm) }).first().click(); await page.waitForTimeout(900); };
+    const placeParents = async () => { const d = await D(); console.log('PLACE PARENTS:', d.filter(x => x.kind === 'place' && !x.deleted).map(p => `${p.name}^${JSON.stringify(p.parent)}`).join(' ; ')); };
+    console.log('\n######## P1 Where this place is');
+    await placePage('Pantry shelf'); await page.click('.pl-where'); await page.waitForTimeout(900); await ui('where this place is'); await shot('p1-where-sheet');
+    console.log('SHEET', await sheetText());
+    await pickIn('Kitchen counter') || await page.locator('.wl-row').filter({ has: page.locator('b:text-is("Kitchen counter")') }).first().click(); await page.waitForTimeout(900);
+    console.log('PANTRY PAGE:', (await bodyText()).replace(/\s+/g, ' ')); await shot('p1-pantry-after'); await placeParents(); await placeEdges();
+    await placePage('Kitchen counter'); await page.click('.pl-where'); await page.waitForTimeout(900); console.log('KC SHEET', await sheetText()); await shot('p1-kc-where-sheet');
+    const s = page.locator('.sheet input').first(); if (await s.count()) { await s.type('pantry', { delay: 20 }); await page.waitForTimeout(500); console.log('KC SEARCH pantry', await sheetText()); await shot('p1-kc-search-pantry');
+      const nb = page.locator('.sheet button').filter({ hasText: /New place/ }).first(); if (await nb.count()) console.log('   NEW offered on circle search:', await nb.innerText()); }
+    const row = page.locator('.sheet .wl-row').filter({ has: page.locator('b:text-is("Pantry shelf")') }).first();
+    if (await row.count()) { await row.click(); await page.waitForTimeout(900); console.log('!! CIRCLE PICK ALLOWED'); console.log((await bodyText()).replace(/\s+/g, ' ').slice(0, 300)); await shot('p1-circle'); } else console.log('circle: Pantry shelf not offered');
+    await placeParents(); await placeEdges();
+    console.log('\n######## B1 wooden box moved from its own page; card words');
+    await fresh2(); await moveIt('baseball card'); await words('top tray, in the plastic sleeve'); await doSave();
+    await moveIt('wooden box'); console.log('CAM', await camText(), await saveState()); await openIn(); await pickIn('Kitchen counter'); await doSave(); await shot('b1-woodenbox-page');
+    await dumpItem('wooden box'); await dumpItem('baseball card'); await placeEdges(); console.log('chain card:', await chainOf('baseball card'));
+    await itemPage('baseball card', 'b1-card-page');
+    console.log('\n######## N1 words naming a non-box item and the item itself');
+    await logStart('egg timer', 'real_spoon.jpg'); await words('egg timer is next to the wallet by the reading glasses'); await openIn(); console.log('SHEET', (await inText()).slice(0, 300)); await shot('n1-sheet');

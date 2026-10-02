@@ -1,0 +1,18 @@
+    // ---- v5 helpers ----
+    // remote "Robert" change: put doc `id` (item or place) into `to` ({t:'thing',id,name} | {t:'place',name}); ends its live edges
+    const remoteIn = async (id, to, extra = {}) => { const r = await page.evaluate(([id, to, extra]) => { const d = window.__rig.dump(); const it = d.find(x => x.id === id); const t = Date.now();
+        const edges = d.filter(x => x.kind === 'edge' && x.from === id && !x.until).map(e => ({ ...e, until: t })); const { id: _i, ...rest } = it;
+        const upd = it.kind === 'item' ? { id, ...rest, location: to.name.replace(/^./, c => c.toUpperCase()), needsPlace: false, lastSeenAt: t, updatedAt: t, history: [...(it.history || []), { location: to.name, at: t, by: 'robert' }], ...extra } : { id, ...rest, updatedAt: t, ...extra };
+        window.__rig.seed([upd, ...edges, { id: 'eR' + t + Math.floor(Math.random() * 1e4), kind: 'edge', rel: 'in', from: id, to, since: t, until: null, how: 'chosen', owner: 'margaret', by: 'robert', private: false, roles: {}, sharedWith: [] }]); return it.name; }, [id, to, extra]);
+      console.log(`   REMOTE (robert): ${r} -> ${to.name}`); await page.waitForTimeout(1500); };
+    const remoteNew = async (id, name, to) => { await page.evaluate(([id, name, to]) => { const t = Date.now(); window.__rig.seed([{ id, kind: 'item', owner: 'margaret', by: 'robert', private: false, roles: {}, sharedWith: [], name, location: to.name, photo: null, thumb: null, written: true, order: t, createdAt: t, lastSeenAt: t, updatedAt: t, logId: 'l_' + id, photoCount: 0, history: [{ location: to.name, at: t, by: 'robert' }] },
+        { id: 'eN' + t, kind: 'edge', rel: 'in', from: id, to, since: t, until: null, how: 'chosen', owner: 'margaret', by: 'robert', private: false, roles: {}, sharedWith: [] }]); }, [id, name, to]); console.log(`   REMOTE (robert) logged ${name} into ${to.name}`); await page.waitForTimeout(1500); };
+    const idOf = async (nm) => (await itemDoc(nm) || {}).id;
+    const T_ = (id, name) => ({ t: 'thing', id, name });
+    const msg = async () => { const t = (await bodyText()).replace(/\s+/g, ' '); const m = t.match(/(Not saved[^.]*\.?[^.]{0,80}|Not undone[^.]{0,80}|Undone[^.]{0,60}|inside itself[^.]{0,40})/g); console.log('   MESSAGES:', JSON.stringify(m || [])); return m || []; };
+    const camOpen = async () => page.locator('.lc-shutter').count();
+    const pickKind = async (name, kindRe) => { const rows = page.locator('.in-list .wl-row').filter({ has: page.locator(`b:text-is("${name}")`) }); const n = await rows.count(); for (let i = 0; i < n; i++) { const t = await rows.nth(i).innerText(); if (kindRe.test(t)) { await rows.nth(i).scrollIntoViewIfNeeded(); await rows.nth(i).click(); await page.waitForTimeout(700); console.log('   picked', name, '(' + t.replace(/\s+/g, ' ') + ')'); return true; } } console.log('   pickKind: none', name, String(kindRe), 'rows', n); return false; };
+    const snapAll = async () => JSON.stringify((await D()).map(x => { const { photo, thumb, photos, ...r } = x; return r; }).sort((a, b) => String(a.id).localeCompare(String(b.id))));
+    const diffSnap = async (before, label) => { const a = JSON.parse(before), b = JSON.parse(await snapAll()); const A = new Map(a.map(x => [x.id, JSON.stringify(x)])), B = new Map(b.map(x => [x.id, JSON.stringify(x)]));
+      const ch = []; for (const [k, v] of B) { if (!A.has(k)) ch.push('+' + k + ':' + v.slice(0, 160)); else if (A.get(k) !== v) ch.push('~' + k + ':' + v.slice(0, 240)); } for (const k of A.keys()) if (!B.has(k)) ch.push('-' + k);
+      console.log(`   DIFF[${label}] ${ch.length} change(s)` + (ch.length ? '\n     ' + ch.join('\n     ') : '')); return ch; };

@@ -1,4 +1,4 @@
-import { holderOf, contentsOf, isContainer } from '../lib/graph.js';
+import { holderOf, contentsOf, isContainer, saidOf } from '../lib/graph.js';
 import { photoStamp, cap } from '../lib/format.js';
 import { logEvent } from '../lib/db.js';
 import { ChevronLeftIcon, ChevronIcon, NoteIcon } from './Icons.jsx';
@@ -10,7 +10,7 @@ export default function NotPutAway({ items = [], onBack, onOpen }) {
   // REQUIREMENTS_2026-09-27 R6.1/6.2: a box made only because it was named as WHERE something else goes
   // (asWhere) is not a chore to put away — it never shows up here (it still gets a place of its own the
   // moment someone moves it, same as anything else).
-  const list = items.filter((x) => !x.deleted && !x.location && !holderOf(x) && !x.asWhere).sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
+  const list = items.filter((x) => !x.deleted && !x.location && !holderOf(x) && !x.asWhere && !saidOf(x).said).sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
   return (
     <div className="screen notput-page">
       <div className="thing-head">

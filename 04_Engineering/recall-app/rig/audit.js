@@ -1,3 +1,9 @@
+// Retired 2026-10-01 (release 1 — the tier camera is gone):
+//   B3 — the amber "No place yet" flip on a Home tile (.tile-label.noplace) is removed; tiles show photo + name only.
+//   B4 — the Home tile's second line (.tile-sub, where it is) is removed; tiles show photo + name only.
+// Rewritten to the new camera (same behaviour, new UI): D15m, D15p (Move it → In chip / In list), C4, C4a, C5
+//   (What is it in? → .in-list; the chip, not the "Place:" line, shows what is saved; the In list makes "the shelf" the
+//   place "Shelf" — it drops a leading "the"), plus the shared pickPlace helper from GUIDE_adapt.md.
 // Full-path audit of ReCall in the rig. Every screen, every transition, with assertions.
 // node audit.js  → prints PASS/FAIL per check, screenshots to shots/audit-*.png
 const { chromium } = require('playwright');
@@ -27,7 +33,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 300));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text }] }) });
   });
-  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage();
+  const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text().slice(0, 160)); });
   const shot = async (n) => { await page.waitForTimeout(200); await page.screenshot({ path: `shots/audit-${n}.png` }); };
@@ -40,6 +46,14 @@ async function main() {
     return { photo: c.toDataURL('image/jpeg', 0.7), thumb: t.toDataURL('image/jpeg', 0.8) };
   }, [label, color, w, h]);
   const shoot = async (n = 1) => { await page.waitForSelector('.camera'); await page.waitForTimeout(400); for (let i = 0; i < n; i++) { await page.click('.shutter'); await page.waitForTimeout(250); } await page.click('.camera-done'); };
+  // GUIDE_adapt.md helper: pick where it is in the camera's In list (an existing place/box by exact name, else a new place).
+  const pickPlace = async (name) => {
+    await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+    await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
+    const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
+    if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
+    await page.waitForTimeout(250);
+  };
   const back = async () => { await page.click('.header .back, .thing-head .chev'); await page.waitForTimeout(300); };
 
   // ---------- A. Boot without a key ----------
@@ -90,8 +104,7 @@ async function main() {
   await page.waitForTimeout(500);
   check('B1 board shows 3 tiles', await count('.tile') === 3);
   check('B2 old item thumb rebuilt (thumbV set)', await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i2').thumbV === 2));
-  check('B3 no-place tile: flipped label block says "No place yet"', await page.locator('.tile').nth(2).locator('.tile-label.noplace').count() === 1 && (await page.locator('.tile').nth(2).innerText()).includes('No place yet'));
-  check('B4 build 2: line 2 of a placed tile is where it is', /Kitchen counter/.test(await page.locator('.tile').nth(0).locator('.tile-sub.place').innerText().catch(() => '')));
+  // B3, B4 retired 2026-10-01 (see the top of the file).
 
   // ---------- D. Thing card: OLD item — Add photo ----------
   await page.click('.tile >> nth=1'); await page.waitForSelector('.card.thing');
@@ -138,10 +151,13 @@ async function main() {
   check('D14 header shows new name', /Spectacles/.test(await text('.thing-head .name')));
   // Edit the place → history grows, seen now
   await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
-  check('D15m Move it → the camera, the item up in the band, level 1 chosen (amber ring)', await count('.lc-band .lc-thing') === 1 && await count('.lc-card .lv-sq:not(.plus)') >= 1 && await page.locator('.lv-sq.sel').getAttribute('aria-label').then((a) => /^Level 1/.test(a || '')) && /245, 185, 66|F5B942/i.test(await page.evaluate(() => getComputedStyle(document.querySelector('.lc-shutter')).borderTopColor)));
-  await page.click('.lc-choose'); await page.waitForSelector('.where-list');
-  check('D15p ☰ Choose place → every place and box, with search; no thing that holds nothing', await count('.where-list .wl-search input') === 1 && await count('.where-list .wl-row') >= 1 && !/Boxes and containers/i.test(await text('.where-list')) && await count('.where-list .wl-g') === 1);
-  await page.fill('.wl-search input', 'sofa'); await page.click('.wl-new.typed'); await page.waitForTimeout(300); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(500);
+  // 10-01: Move it → the same camera, the In chip already set to where it is now; Save waits for a change.
+  check('D15m Move it → the camera, the item up in the band, In: Kitchen counter already set, Save off until a change', await count('.lc-band .lc-thing') === 1 && await count('.lc-card .w1-in.set') === 1 && /Kitchen counter/.test(await text('.w1-in.set')) && await page.locator('.lc-k.sv').isDisabled());
+  await page.click('.w1-in-open'); await page.waitForSelector('.in-list');
+  { const rows = await page.locator('.in-list .wl-row b').allInnerTexts();
+    check('D15p In → every place and box, with search, Kitchen counter marked Current place; no thing that holds nothing', await count('.in-list .wl-search input') === 1 && rows.length >= 1 && await count('.in-list .wl-row:has(b:text-is("Kitchen counter")) .wl-cur') === 1 && !rows.some((r) => /^(Keys|Sparkling soda|Spectacles)$/i.test(r)), rows.join(' | ')); }
+  await page.click('.in-list .btn-quiet:has-text("Cancel")'); await page.waitForTimeout(150);
+  await pickPlace('Sofa'); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(500);
   if (await count('.saved-card')) { await page.waitForTimeout(600); await page.click('.saved-card .s'); await page.waitForTimeout(300); } // 09-30: the Move's card, tapped away
   const i1b = await page.evaluate(() => window.__rig.dump().find((d) => d.id === 'i1'));
   check('D15a edit place → history entry + lastSeenAt now', i1b.location === 'Sofa' && i1b.history.length === 3 && Date.now() - i1b.lastSeenAt < 5000);
@@ -188,13 +204,14 @@ async function main() {
   check('C2 one photo → the band names it (capitalised); Cancel | shutter | Save (hold Save = Save + Next; no + Next button)', /Blue mug/.test(await text('.lc-name')) && await count('.lc-k.sv') === 1 && await count('.lc-k.sn') === 0 && /hold for Save \+ Next/.test(await page.locator('.lc-k.sv').getAttribute('aria-label')) && await count('.lc-bot .lc-x') === 1);
   await page.click('.lc-name'); await page.fill('.sheet .place-input', 'coffee mug'); await page.click('.sheet .btn-primary'); await page.waitForTimeout(200);
   check('C3 tap the name → rename', /Coffee mug/.test(await text('.lc-name')));
-  await page.click('.lc-choose'); await page.waitForSelector('.where-list');
-  check('C4 ☰ Choose place → every place and box (WhereList), with Photograph a new place (D5 ruling, Ravi 09-28: was New place or box: photograph it)', await count('.where-list .wl-row') >= 1 && await count('.where-list .wl-new') === 1);
-  await page.fill('.wl-search input', 'the shelf'); await page.click('.wl-new.typed'); await page.waitForTimeout(300);
-  check('C4a the typed place is the sentence above Save (Save stays one word)', /the shelf/i.test(await text('.lc-say')) && (await text('.lc-k.sv')).trim() === 'Save');
+  await page.click('button.w1-in'); await page.waitForSelector('.in-list');
+  check('C4 What is it in? → every place and box (InList), with search', await count('.in-list .wl-row') >= 1 && await count('.in-list .wl-search input') === 1);
+  await page.click('.in-list .btn-quiet:has-text("Cancel")'); await page.waitForTimeout(150);
+  await pickPlace('the shelf');
+  check('C4a the typed place is the In chip (new place "Shelf"); Save stays one word', await count('.w1-in.set') === 1 && /In:\s*Shelf/.test(await text('.w1-in.set')) && (await text('.lc-k.sv')).trim() === 'Save', await text('.w1-in.set'));
   await page.click('.lc-k.sv'); await page.waitForSelector('.board', { timeout: 5000 }); await page.waitForTimeout(500);
   const mug = await page.evaluate(() => window.__rig.dump().find((d) => d.kind === 'item' && d.name === 'coffee mug'));
-  check('C5 typed place saved, AI name kept as alias', mug && /the shelf/i.test(mug.location) && (mug.aliases || []).includes('blue mug'), mug && JSON.stringify([mug.location, mug.aliases]));
+  check('C5 typed place saved, AI name kept as alias', mug && mug.location === 'Shelf' && (mug.aliases || []).includes('blue mug'), mug && JSON.stringify([mug.location, mug.aliases]));
   check('C6 board now 4 tiles; Home shows the saved card', await count('.tile') === 4 && await count('.saved-card') === 1);
   // Cancel after a photo asks first
   await page.click('.footer .btn-primary >> nth=0'); await lc(1); await page.click('.lc-x'); await page.waitForTimeout(200);

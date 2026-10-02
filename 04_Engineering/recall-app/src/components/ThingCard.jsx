@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { hasSecret } from '../lib/sensitive.js';
-import { renameItem, loadSnaps, removeSnap, setMainPhoto, setSnapCaption, setPlaceMainPhoto, removePlacePhoto, updateItem, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
+import { changeLocation, saveChain, undoChain, renameItem, loadSnaps, removeSnap, setMainPhoto, setSnapCaption, setPlaceMainPhoto, removePlacePhoto, updateItem, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
-import { photoStamp, cap } from '../lib/format.js';
-import { contentsOf, chainOf, outerPlace, inPhrase, isContainer, whereChain, movedOf } from '../lib/graph.js';
+import { photoStamp, cap, inThe } from '../lib/format.js';
+import { contentsOf, chainOf, outerPlace, inPhrase, isContainer, whereChain, movedOf, saidNow } from '../lib/graph.js';
+import InList from './InList.jsx';
+import { me } from '../lib/auth.js';
 import { getPrefs } from '../lib/prefs.js';
 import { own } from './PhotoCard.jsx';
 import Confirm from './Confirm.jsx';
@@ -47,6 +49,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   // "What's in this photo?" sheet over it ({ index, draft }). Declared here with the others: this component returns early below.
   const [viewer, setViewer] = useState(null);
   const [capEdit, setCapEdit] = useState(null);
+  const [putting, setPutting] = useState(false); // 10-01: "Put it in a place or a box" — the one pick, from this page
   const stripRef = useRef(null);
   const showTimes = getPrefs().showTimes !== false; // Settings → Taking photos (09-27: it's for the whole app, #27)
   const hold = useHold(() => { logEvent('photo_hold', { itemId: item && item.id }); setSheet(true); });
@@ -174,6 +177,21 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   const outer = outerPlace(item);
   const placePic = (n) => { const p = placeNamed(n, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; };
   const hasPlace = chain.length > 0 || !!item.location;
+  // 10-01 (Tanya): her own words for where it is — shown as she said them, dated, with who said them.
+  const said = saidNow(item);
+  const saidBy = said.by && said.by !== me() ? `${firstName(said.by) || 'Someone'} said` : 'You said';
+  async function putIt(k) {
+    setPutting(false);
+    const r = await saveChain([{ known: k.t === 'thing' ? { t: 'thing', item: k.item } : { t: 'place', name: k.name } }], { owner: item.owner || me(), places });
+    if (!r.first) return;
+    // her words stay — they were about this same spot; the In is new information next to them
+    const prev = { location: item.location || '', dest: null, said: said.said || '', saidAt: said.at, saidBy: said.by, lastSeenAt: item.lastSeenAt || 0 };
+    const ok = await changeLocation(item, r.first.text, 'chosen', r.first.dest, { said: said.said || undefined, saidAt: said.at, saidBy: said.by });
+    const after = Date.now();
+    logEvent('put_from_page', { itemId: item.id, t: k.t, isNew: !!k.isNew, ok });
+    onToast && onToast(ok === false ? 'Not put there · it can’t go inside something that is inside it' : cap(inThe(r.first.text.replace(/^(the|my|our)\s+/i, ''))),
+      ok === false || !isOwner ? undefined : async () => { const u = await undoChain({ itemId: item.id, isNew: false, prev: { ...prev, said: prev.said }, made: r.made, after }); logEvent('put_from_page_undo', { itemId: item.id, r: u }); if (u === 'stale') onToast && onToast('Not undone · it changed since'); });
+  }
   // Q1 (Ravi 09-29, tier audit): every tier, boxes then places (Drawer 3 › Oak cabinet › Office). The squares scroll
   // sideways; the words show every tier at once, wrapping, one separator between tiers.
   const tiers = whereChain(item);
@@ -247,7 +265,9 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
       {/* Where it is (#16, #22, #24): the chain as photos and the words; one way to change it, the camera. */}
       <section className="tp-blk" aria-labelledby="tp-where">
         <h2 id="tp-where">Where it is</h2>
-        <div className={'tp-wh' + (hasPlace ? '' : ' none') + (hasPlace && tiers.length > 1 ? ' multi' : '')}>
+        {!hasPlace && said.said ? (
+          <div className="tp-said"><q>{said.said}</q><small>{saidBy} · {photoStamp(said.at)}</small></div>
+        ) : <div className={'tp-wh' + (hasPlace ? '' : ' none') + (hasPlace && tiers.length > 1 ? ' multi' : '')}>
           {hasPlace ? (
             <div className={'ch' + (tiers.length > 2 ? ' scroll' : '')}>
               {tiers.map((t, i) => (
@@ -263,7 +283,8 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
               : <b>{hasPlace ? whereB : 'No place yet'}</b>}
             <small>{hasPlace ? whereS : 'Put it away so you can find it'}</small>
           </div>
-        </div>
+        </div>}
+        {hasPlace && said.said ? <div className="tp-said under"><q>{said.said}</q><small>{saidBy} · {photoStamp(said.at)}</small></div> : null}
         {/* 09-30 (Ravi, 2C): the Move just made, said here — no card over the page, no timer, gone when you leave. */}
         {moveNote && (
           <div className="tp-moved" role="status">
@@ -273,7 +294,9 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
           </div>)}
         {canEdit && (hasPlace
           ? <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page' }); onMove(item); }}><PinIcon /><span>Move it</span></button>
+          : said.said ? <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page', words: true }); onMove(item); }}><PinIcon /><span>Move it</span></button>
           : <button type="button" className="btn-secondary amber tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page', first: true }); onMove(item); }}><PinIcon /><span>Put it somewhere</span></button>)}
+        {canEdit && !hasPlace && said.said ? <button type="button" className="btn-quiet tp-btn tp-put" onClick={() => { logEvent('put_from_page_open', { itemId: item.id }); setPutting(true); }}>Put it in a place or a box</button> : null}
       </section>
 
       {/* In it: only on a container (#12, Ravi 09-27). Each opens its own page; Back returns here. */}
@@ -422,6 +445,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
           keepLabel="Keep it" actionLabel="Remove" onKeep={() => setConfirming(null)}
           onAction={async () => { setConfirming(null); await softDeleteItem(item); logEvent('item_removed', { itemId: item.id, itemName: item.name || null }); onRemoved(item); }} />
       )}
+      {putting && <InList item={item} items={items} places={places} said={said.said} current={null} onPick={putIt} onCancel={() => setPutting(false)} />}
     </div>
   );
 }

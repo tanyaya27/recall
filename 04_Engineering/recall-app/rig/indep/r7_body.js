@@ -1,0 +1,11 @@
+    const moveIt = async (nm) => { await openItem(nm); await tap('button:has-text("Move it")', { wait: 1200 }); };
+    const undo = async () => { const u = page.locator('button.u').first(); if (!(await u.count())) { console.log('   NO UNDO'); return; } await u.click(); await page.waitForTimeout(1500); };
+    const photosShown = async () => page.evaluate(() => { const imgs = [...document.querySelectorAll('img')].filter(i => i.getBoundingClientRect().width > 200).map(i => i.src.length); const dots = document.querySelectorAll('button.dot').length; return `bigimgs=${imgs.join('/')} dots=${dots} text=${(document.body.innerText.match(/\d+ of \d+/) || ['-'])[0]}`; });
+    const snapsOf = async (nm) => { const d = await D(); const it = d.find(x => x.kind === 'item' && x.name === nm); const s = d.filter(x => x.kind === 'snap' && x.itemId === it.id); console.log(`   ${nm}: item.photo=${(it.photo||'').length} photoCount=${it.photoCount} snaps=${JSON.stringify(s.map(z => ({ id: z.id, plen: (z.photo||'').length, del: z.deleted, loc: z.location })))}`); };
+    await logStart('egg timer', 'real_spoon.jpg'); await words('on the windowsill'); await doSave(); await snapsOf('egg timer');
+    await moveIt('egg timer'); console.log('BEFORE', await photosShown());
+    AI = { name: 'egg timer' }; await cam('closet.jpg'); await tap('.lc-shutter', { wait: 1800 }); await doSave();
+    console.log('AFTER SAVE', await photosShown()); await snapsOf('egg timer'); await shot('after-save');
+    await undo(); console.log('AFTER UNDO', await photosShown()); await snapsOf('egg timer'); await shot('after-undo');
+    await moveIt('egg timer'); AI = { name: 'egg timer' }; await cam('glasses.jpg'); await tap('.lc-shutter', { wait: 1800 }); await openIn(); await pickIn('Pantry shelf'); await doSave();
+    console.log('AFTER MOVE+PHOTO', await photosShown()); await snapsOf('egg timer'); await undo(); console.log('AFTER UNDO2', await photosShown()); await snapsOf('egg timer'); await shot('after-undo2'); await dumpItem('egg timer');

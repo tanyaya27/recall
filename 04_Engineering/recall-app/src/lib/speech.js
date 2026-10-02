@@ -1,3 +1,4 @@
+import { saidOf } from './graph.js';
 import { useEffect, useRef, useState } from 'react';
 
 // Dictation, where the browser offers it — and where it is worth offering.
@@ -97,7 +98,7 @@ function wordTier(w, it) {
   if (w.length >= 4 && names.some((t) => t.length >= 4 && (editDistance(t, w) <= 2 || sharedPrefix(t, w) >= 4 || (sharedPrefix(t, w) >= 3 && Math.min(t.length, w.length) <= 6)))) return 2;
   if (w.length < 3) return 0;
   if (toks(`${it.description || ''} ${it.details || ''}`).some((t) => t.startsWith(w))) return 3; // + what the label says (MVP #9)
-  if (toks(`${it.location || ''} ${it.restingOn || ''}`).some((t) => t.startsWith(w))) return 4;
+  if (toks(`${it.location || ''} ${it.restingOn || ''} ${saidOf(it).said}`).some((t) => t.startsWith(w))) return 4;
   return 0;
 }
 export function matchThings(items, query) {

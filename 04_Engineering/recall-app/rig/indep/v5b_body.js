@@ -1,0 +1,40 @@
+    await grant();
+    await fresh4('LP3b place loop at tier 3, box-y: Log lamp, In=Cookie tin + t2 Sewing box + t3 Red crate; Robert puts Red crate INTO Cookie tin; Save');
+    await logStart('lamp', 'real_desk.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Sewing box'); await addTier(); await pickIn('Red crate');
+    await remoteIn('rc', T_('ct', 'cookie tin')); await card('after remote');
+    let s0 = await snapAll(); await doSave(); await shot('lp3b-after-save'); await msg(); console.log('   camera open?', await camOpen()); await diffSnap(s0, 'LP3b save'); await st4('LP3b', ['lamp', 'cookie tin', 'sewing box', 'red crate']);
+    if (await camOpen()) await leaveCam();
+    await fresh4('LP3c place inside the In box: Log lamp, In=Cookie tin + t2 Basement; Robert puts Basement INTO Cookie tin; Save');
+    await logStart('lamp', 'real_desk.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Basement');
+    await remoteIn('pB', T_('ct', 'cookie tin')); await card('after remote');
+    s0 = await snapAll(); await doSave(); await shot('lp3c-after-save'); await msg(); console.log('   camera open?', await camOpen()); await diffSnap(s0, 'LP3c save'); await st4('LP3c', ['lamp', 'cookie tin', 'basement']);
+    if (await camOpen()) await leaveCam();
+    await fresh4('LP3d place loop, 2 places: Log lamp, In=Upstairs hall + t2 Basement; Robert puts Basement INTO Attic; Save');
+    await logStart('lamp', 'real_desk.jpg'); await openIn(); await pickIn('Upstairs hall'); await addTier(); await pickIn('Basement');
+    await remoteIn('pB', { t: 'place', name: 'Attic' }); await card('after remote');
+    s0 = await snapAll(); await doSave(); await shot('lp3d-after-save'); await msg(); console.log('   camera open?', await camOpen()); await diffSnap(s0, 'LP3d save'); await st4('LP3d', ['lamp', 'upstairs hall', 'basement', 'attic']);
+    if (await camOpen()) await leaveCam();
+    await fresh4('LP4 self loop via another phone: Move it COOKIE TIN -> In Sewing box; Robert puts Sewing box INTO Cookie tin; Save');
+    await openItem('cookie tin'); await btn(/Put it somewhere|Move it/, 1200); await card('start2'); await openIn(); await pickIn('Sewing box'); await card('mv');
+    await remoteIn('sb', T_('ct', 'cookie tin'));
+    s0 = await snapAll(); await doSave(); await shot('lp4-after-save'); await msg(); console.log('   camera open?', await camOpen()); await diffSnap(s0, 'LP4 save'); await st4('LP4', ['cookie tin', 'sewing box', 'button jar']);
+    if (await camOpen()) await leaveCam();
+
+    await fresh4('LP5 legit moves inside own chain (no loop): Move it GREEN BAG -> In Red crate (its grandparent); Undo');
+    await moveIt('green bag'); await openIn(); console.log('   In list offers red crate', await listHas('Red crate'), 'blue bin', await listHas('Blue bin')); await pickIn('Red crate');
+    s0 = await snapAll(); await doSave(); await msg(); await diffSnap(s0, 'LP5 save'); await st4('LP5', ['green bag', 'blue bin']);
+    s0 = await snapAll(); await undo('LP5'); await msg(); await diffSnap(s0, 'LP5 undo'); await st4('LP5 undo', ['green bag', 'blue bin']);
+    console.log('-- LP5b Move it BASEBALL CARD -> In Memorabilia box (grandparent); Undo');
+    await moveIt('baseball card'); await openIn(); await pickIn('Memorabilia box'); s0 = await snapAll(); await doSave(); await msg(); await diffSnap(s0, 'LP5b save'); await st4('LP5b', ['baseball card']);
+    s0 = await snapAll(); await undo('LP5b'); await msg(); await diffSnap(s0, 'LP5b undo'); await st4('LP5b undo', ['baseball card']);
+
+    await fresh4('LP6 same name box vs place (no loop): box "upstairs hall" (no place); Log ball, In = box Upstairs hall + t2 place Attic (Attic is in place Upstairs hall)');
+    await page.evaluate(() => { const now = Date.now(); window.__rig.seed([{ id: 'uhb', kind: 'item', owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [], name: 'upstairs hall', location: '', photo: null, thumb: null, written: true, holds: true, order: now - 3e6, createdAt: now - 3e6, lastSeenAt: now - 3e6, logId: 'l_uhb', photoCount: 0, history: [{ location: '', at: now - 3e6 }] }]); });
+    await page.waitForTimeout(800);
+    await logStart('ball', 'real_spoon.jpg'); await openIn(); console.log('   In rows:', JSON.stringify(await listNames())); await pickKind('Upstairs hall', /a box/); await card('In box UH');
+    if (await addTier()) { console.log('   t2 has place Attic?', await listHas('Attic')); const ok = await pickKind('Attic', /place/); await card('t2 attic'); await shot('lp6-card'); }
+    s0 = await snapAll(); await doSave(); await shot('lp6-after'); await msg(); console.log('   camera open?', await camOpen()); await diffSnap(s0, 'LP6 save');
+    if (await camOpen()) await leaveCam();
+    console.log('-- LP6b Log cup, In = place Attic? read-only; In = place Upstairs hall + t2 box "Upstairs hall"?');
+    await logStart('cup', 'real_spoon.jpg'); await openIn(); await pickKind('Upstairs hall', /place/); await card('In place UH'); if (await addTier()) { console.log('   t2 rows', JSON.stringify(await listNames())); await cancelList(); } await leaveCam();
+    console.log('   ', errs());

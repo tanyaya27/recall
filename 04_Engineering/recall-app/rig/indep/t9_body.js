@@ -1,3 +1,15 @@
-    await seedHouse(); await page.evaluate(() => window.__rig.rules(true));
-    for (const it of ['baseball card', 'yearbook 1978']) { await moveStart(it); console.log('open', it, JSON.stringify(await state())); WHERE.push(KC); NEXT_WHERE_DELAY = 60000; await cam('real_desk.jpg'); await shutter(); await at(3600); console.log('at 3.6', JSON.stringify(await state())); await press('.btn-quiet:has-text("Cancel")'); await page.waitForTimeout(400); console.log('after cancel', JSON.stringify(await state())); await press('.lc-k.sv'); await page.waitForTimeout(1500); console.log('after save', JSON.stringify(await state())); await shot('F4-' + it); await ui('F4 ' + it); }
-    console.log('F4 places:', await places()); console.log('F4 chains', await chainOf('baseball card'), '|', await chainOf('yearbook 1978'));
+    const remoteMove = async (id, place) => page.evaluate(([id, place]) => { const d = window.__rig.dump(); const it = d.find(x => x.id === id); const t = Date.now(); const edges = d.filter(x => x.kind === 'edge' && x.from === id && !x.until).map(e => ({ ...e, until: t })); const { id: _i, ...rest } = it;
+      window.__rig.seed([{ id, ...rest, location: place, needsPlace: false, lastSeenAt: t, updatedAt: t, history: [...(it.history || []), { location: place, at: t, w: 1, said: 'robert moved it', by: 'robert' }] }, ...edges, { id: 'eR' + t, kind: 'edge', rel: 'in', from: id, to: { t: 'place', name: place }, since: t, until: null, how: 'chosen', owner: 'margaret', by: 'robert', private: false, roles: {}, sharedWith: [] }]); }, [id, place]);
+    await fresh4('W-L1c loop: Move it Blue bin, In -> Cookie tin, t2 Green bag (inside the item)');
+    await moveIt('blue bin'); await openIn(); await pickIn('Cookie tin'); await addTier(); console.log('   offers green bag', await listHas('Green bag')); await pickIn('Green bag'); await shot('wl1c-card'); await doSave(); await shot('wl1c-after'); console.log('   undo', await undoCount()); await st4('W-L1c', ['blue bin', 'cookie tin']);
+    await fresh4('W-SN2 carried In + after Save + Next');
+    await logStart('fork', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Kitchen counter'); await hold('.lc-k.sv', 1200); await page.waitForTimeout(1500);
+    AI = { name: 'knife' }; await cam('scissors.jpg'); await tap('.lc-shutter', { wait: 2000 }); await card('item2 carried'); await shot('wsn2-carried');
+    if ((await upBtns()).length) { await addTier(); await pickIn('Linen closet'); await doSave(); await st4('W-SN2', ['fork', 'cookie tin']); await undo('W-SN2'); await raw('cookie tin'); await pageWords('cookie tin', 'wsn2-cookie-page'); await notPut(); } else await leaveCam();
+    await fresh4('W-U1 stale Undo on a tier box');
+    await logStart('fork', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Kitchen counter'); await doSave(); await remoteMove('ct', 'Linen closet'); await page.waitForTimeout(1500); await undo('W-U1'); await shot('wu1-after'); await raw('cookie tin'); await st4('W-U1', ['cookie tin']);
+    await fresh4('W-N3c duplicate new place across tiers + LS lastSeen');
+    const lsb = (await itemDoc('cookie tin')).lastSeenAt;
+    await logStart('sieve', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await srchT('Larder'); await tapNew(/New place: Larder/); await addTier(); await srchT('Larder'); await tapNew(/New place: Larder/); await shot('wn3c-card'); await doSave(); await st4('W-N3c', ['sieve', 'cookie tin']);
+    await undo('W-N3c'); console.log(`   LS cookie tin lastSeen before=${lsb} afterUndo=${(await itemDoc('cookie tin')).lastSeenAt}`);
+    console.log('   ', errs());

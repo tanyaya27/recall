@@ -5,7 +5,7 @@
 //   const bad = await O.check('3D model of plant sensor');   // [] when every screen agrees
 // A mismatch is a string that says which screen, what it showed, and what the store says.
 module.exports = ({ page, PORT, tap }) => {
-  const norm = (s) => (s || '').replace(/\s+/g, ' ').trim().replace(/^in (the )?/i, '').toLowerCase();
+  const norm = (s) => (s || '').replace(/\s+/g, ' ').trim().replace(/^in (the )?/i, '').replace(/[“”"]/g, '').toLowerCase();
 
   // The truth: the item's open "in" edge, then that box's or place's edge, and so on; a legacy item with only a
   // location text starts from the place of that name.
@@ -77,37 +77,56 @@ module.exports = ({ page, PORT, tap }) => {
     return out;
   }
 
-  // Compare. Returns a list of plain-words mismatches.
+  // Compare. Returns a list of plain-words mismatches. 10-01 (release 1): the camera has ONE "In" chip (no tier squares, no
+  // chain line) — Move it must open with the chip set to where it is now, the line under it the rest of the chain; and the item
+  // page shows her latest words while they are still about where it is.
   async function check(name, { label = '' } = {}) {
-    const t = await truth(name);
-    if (!t) return [`${label}${name}: not in the store`];
-    const s = await screens(name);
-    const want = t.chain.map(norm);
-    const bad = [];
-    const say = (where, got) => bad.push(`${label}${name} — ${where} shows [${got.join(' in ')}], the store says [${t.chain.join(' in ')}]`);
-    if (!want.length) {
-      if (s.page && !s.page.none) say('item page', s.page.words);
+
+      const t = await truth(name); if (!t) return [`${name}: not in the store`];
+      const said = await page.evaluate((n) => { const d = window.__rig.dump(); const it = d.find((x) => x.kind === 'item' && !x.deleted && (x.name || '').toLowerCase() === n.toLowerCase()); if (!it) return '';
+        let s = null; const h = it.history || []; for (let i = h.length - 1; i >= 0; i--) if (h[i] && h[i].w) { s = { said: (h[i].said || '').trim(), at: h[i].at || 0 }; break; }
+        if (!s || !s.said) return ''; const e = d.find((x) => x.kind === 'edge' && !x.deleted && x.from === it.id && !x.until); return e && (e.since || 0) > s.at + 5000 ? '' : s.said; }, name);
+      const { tile } = await openItem(name);
+      const pg = await page.evaluate(() => {
+        const sd = document.querySelector('.tp-said q'); const said = sd ? sd.innerText.trim().replace(/^[“"]|[”"]$/g, '') : '';
+        const w = document.querySelector('.tp-wh'); if (!w) return { none: true, words: [], squares: 0, said, missing: true };
+        const chainEl = w.querySelector('.tp-chain');
+        const words = chainEl ? [...chainEl.querySelectorAll('.cp')].map((c) => [...c.children].filter((x) => !x.classList.contains('in')).map((x) => x.innerText).join(' ')) : [(w.querySelector('.tx b') || {}).innerText || ''];
+        return { none: w.classList.contains('none'), words, squares: w.querySelectorAll('.ch .st').length, pillsSq: w.querySelectorAll('.ch .in').length, pillsW: chainEl ? chainEl.querySelectorAll('.in').length : 0,
+          plainSeparators: /·/.test(chainEl ? chainEl.innerText : ''), when: ((w.parentNode || w).querySelector('.tp-wh ~ small, .tp-wh small') || {}).innerText || '', said };
+      });
+      let chip; const mv = page.locator('.tp-btn:has-text("Move it"), .tp-btn:has-text("Put it somewhere")');
+      if (await mv.count()) {
+        await mv.first().click(); await page.waitForSelector('.lc'); await page.waitForTimeout(600);
+        chip = await page.evaluate(() => { const c = document.querySelector('.lc .w1-in.set .w1-in-open .t'); if (!c) return null; const k = c.cloneNode(true); const sm = k.querySelector('small'); const outer = sm ? sm.innerText.trim() : '';
+          k.querySelectorAll('small, .lab, em').forEach((x) => x.remove()); return { first: k.textContent.trim(), outer: !outer || /^a (box|place)$/.test(outer) ? [] : outer.split(' · ').map((s) => s.trim()) }; });
+        await page.click('.lc-x'); await page.waitForTimeout(350);
+        if (await page.locator('button:has-text("Leave"), button:has-text("Throw away")').count()) { await page.locator('button:has-text("Leave"), button:has-text("Throw away")').first().click(); await page.waitForTimeout(300); }
+      }
+      const want = t.chain.map(norm); const bad = [];
+      const say = (where, got) => bad.push(`${label}${name} — ${where} shows [${got.join(' in ')}], the store says [${t.chain.join(' in ')}]`);
+      if (said && pg.said !== said) bad.push(`${label}${name} — item page: her words show "${pg.said}", the store's latest words are "${said}"`);
+      if (!said && pg.said) bad.push(`${label}${name} — item page shows words "${pg.said}", but the store has none current`);
+      if (!want.length) {
+        if (!pg.missing && !pg.none) say('item page', pg.words);
+        if (chip) say('Move it "In" chip', [chip.first, ...chip.outer]);
+        return bad;
+      }
+      if (tile && norm(tile.sub) !== want[0]) say('Find tile', [tile.sub]);
+      if (pg.missing) bad.push(`${label}${name} — item page: no "Where it is" block`);
+      else {
+        const got = pg.words.map(norm);
+        if (JSON.stringify(got) !== JSON.stringify(want)) say('item page words', pg.words);
+        if (pg.squares !== want.length) bad.push(`${label}${name} — item page: ${pg.squares} squares for ${want.length} tiers`);
+        if (want.length > 1 && (pg.pillsSq !== want.length - 1 || pg.pillsW !== want.length - 1)) bad.push(`${label}${name} — item page: "in" pills squares ${pg.pillsSq} / words ${pg.pillsW}, want ${want.length - 1} each`);
+        if (pg.plainSeparators) bad.push(`${label}${name} — item page: a "·" between tiers (the "in" pill everywhere)`);
+        const w = (pg.when || '').trim();
+        if (/^seen /i.test(w) && t.lastMove > t.lastPhoto + 2000) bad.push(`${label}${name} — item page says "${w}", but it moved after its last photo (nobody saw it there)`);
+        if (/^moved /i.test(w) && !t.lastMove) bad.push(`${label}${name} — item page says "${w}", but it never moved`);
+      }
+      if (chip === null) bad.push(`${label}${name} — Move it opens with no "In" chip, the store says [${t.chain.join(' in ')}]`);
+      else if (chip) { const got = [chip.first, ...chip.outer].map(norm); if (JSON.stringify(got) !== JSON.stringify(want)) say('Move it "In" chip', [chip.first, ...chip.outer]); }
       return bad;
-    }
-    if (s.tile !== null && norm(s.tile) !== want[0]) say('Find tile', [s.tile]);
-    if (!s.page) bad.push(`${label}${name} — item page: no "Where it is" block`);
-    else {
-      const got = s.page.words.map(norm);
-      if (JSON.stringify(got) !== JSON.stringify(want)) say('item page words', s.page.words);
-      if (s.page.squares !== want.length) bad.push(`${label}${name} — item page: ${s.page.squares} squares for ${want.length} tiers`);
-      if (want.length > 1 && (s.page.pillsSq !== want.length - 1 || s.page.pillsW !== want.length - 1)) bad.push(`${label}${name} — item page: "in" pills squares ${s.page.pillsSq} / words ${s.page.pillsW}, want ${want.length - 1} each`);
-      if (s.page.plainSeparators) bad.push(`${label}${name} — item page: a "·" between tiers (the "in" pill everywhere)`);
-      // 09-30d: "seen" only when a photo of it is newer than its last move; "moved" only when it moved.
-      const w = (s.page.when || '').trim();
-      if (/^seen /i.test(w) && t.lastMove > t.lastPhoto + 2000) bad.push(`${label}${name} — item page says "${w}", but it moved after its last photo (nobody saw it there)`);
-      if (/^moved /i.test(w) && !t.lastMove) bad.push(`${label}${name} — item page says "${w}", but it never moved`);
-    }
-    if (s.camera) {
-      const sq = s.camera.squares.map(norm);
-      if (JSON.stringify(sq) !== JSON.stringify(want)) say('Move it squares', s.camera.squares);
-      if (want.length > 1) { const ch = s.camera.chain.map(norm); if (JSON.stringify(ch) !== JSON.stringify(want)) say('Move it chain line', s.camera.chain); }
-    }
-    return bad;
   }
 
   // The card right after a Save: its words must be the truth too.

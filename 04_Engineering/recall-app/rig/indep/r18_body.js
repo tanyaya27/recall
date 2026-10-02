@@ -1,0 +1,6 @@
+    await logStart('egg timer', 'real_spoon.jpg'); await words('in the blue folder in the desk drawer'); await openIn(); await shot('in-sheet'); console.log('SHEET', (await inText()).slice(0, 200));
+    await btn(/New place/); await shot('chip-new'); await doSave(); await dumpItem('egg timer'); await allPlaces(); await itemPage('egg timer', 'itempage');
+    await openItem('baseball card'); await tap('button:has-text("Move it")', { wait: 1200 }); console.log('MOVE', await camText(), await saveState()); await shot('move-open');
+    await words('top tray'); console.log('save', await saveState()); await doSave(); await dumpItem('baseball card');
+    await kbInit(); await page.setViewportSize({ width: 375, height: 667 }); await home(); await tap('.menu-btn', { wait: 500 }); await tap('.drawer-row:has-text("Text size")', { wait: 600 }); await tap('button:text-is("Largest")', { wait: 400 }); await home();
+    await logStart('stapler', 'scissors.jpg'); await shot('xl-cam'); await page.locator('.w1-words input').click(); await kbUp(); await page.waitForTimeout(500); await shot('xl-cam-kb'); await kbDown(); await setWords('in the wooden box in the memorabilia box'); await openIn(); await shot('xl-in-sheet'); await pickIn('Wooden box'); await shot('xl-chip');

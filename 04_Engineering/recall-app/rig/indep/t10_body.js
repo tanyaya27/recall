@@ -1,0 +1,6 @@
+    const dbl = async (sel, gap = 40) => { const b = await page.locator(sel).filter({ visible: true }).first().boundingBox().catch(() => null); if (!b) { console.log('   dbl: no', sel); return false; } const x = b.x + b.width / 2, y = b.y + b.height / 2; await page.mouse.click(x, y); await page.waitForTimeout(gap); await page.mouse.click(x, y); console.log(`   double-tapped ${sel}`); return true; };
+    await fresh4('D1 double-tap the tier New place row, double-tap Save, double-tap Undo');
+    await logStart('trowel', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await srchT('Potting shed'); await dbl('.in-list .wl-new', 30); await page.waitForTimeout(800); await card('after dbl new');
+    console.log('   list open after dbl?', await page.locator('.in-list').count(), (await sheetText('.in-list')).slice(0,60)); if (!(await page.locator('.in-list').count())) await addTier(); await srchT('Back yard'); await tapNew(/New place: Back yard/); await dbl('.lc-k.sv', 30); await page.waitForTimeout(2500); await st4('D1', ['trowel', 'cookie tin']);
+    await dbl('button:has-text("Undo")', 30); await page.waitForTimeout(2000); await st4('D1 undo', ['cookie tin']);
+    console.log('   ', errs());

@@ -1,3 +1,6 @@
+// Adapted 2026-10-01 (release 1 — the tier camera is gone): no checks retired. R5 picks the place in the camera's In
+// list; R7b (a helper makes a new box on a new shelf in her ReCall, rules on) is rebuilt from one-link steps: log the
+// tin, mark it "It holds items", log a thing In the tin, then the tin's own page → Move it → In a new shelf.
 // Multi-user audit — Phase 1 (2026-09-19) + Phase 2 (2026-09-21). Runs the app "as" six people
 // over ONE store with rules ON (the stub's permission table = firestore.rules) and checks what
 // each can see and do, in the UI they actually get: owner · direct viewer · direct editor ·
@@ -19,18 +22,16 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
       : { name: 'thing', description: '', location: '', same: true };
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(out) }] }) });
   });
-  await require('./legacy_flow.js')(ctx); const page = await ctx.newPage(); const denied = []; page.on('console', (m) => { if (/permission-denied/.test(m.text())) denied.push(m.text()); }); page.on('pageerror', (e) => { if (/permission-denied/.test(e.message)) denied.push(e.message); });
-  // 09-29 camera card: after a where photo, wait while ReCall looks; if "Choose place" opened to name it, take ReCall's
-  // name (or a made-up one when there is none / it's taken) — the old camera named it silently.
-  const settleWhere = async (fallback = '') => {
-    for (let k = 0; k < 40; k++) { if (!(await page.locator('.lv-look').count())) break; await page.waitForTimeout(150); }
-    for (let k = 0; k < 14 && !(await page.locator('.where-list, .photo-for').count()); k++) await page.waitForTimeout(150); for (let k = 0; k < 40 && (await page.locator('.where-list .wl-sugg.quiet:has-text("Looking")').count()); k++) await page.waitForTimeout(150); /* 09-30f: Choose place opens at once; wait for ReCall's look */ // the sheet can open a beat after the look ends
-    if (await page.locator('.wl-pend .btn-primary').count()) {
-      if (await page.locator('.wl-pend .btn-primary').isDisabled()) await page.locator('.wl-pend input').fill(fallback || ('Spot ' + (Date.now() % 100000)));
-      await page.click('.wl-pend .btn-primary'); await page.waitForTimeout(300);
-    }
+  const page = await ctx.newPage(); const denied = []; page.on('console', (m) => { if (/permission-denied/.test(m.text())) denied.push(m.text()); }); page.on('pageerror', (e) => { if (/permission-denied/.test(e.message)) denied.push(e.message); });
+  // GUIDE_adapt.md helper (10-01): pick where it is in the camera's In list — an existing place/box by exact name, else a
+  // new place by that name. (Replaces the 09-29 settleWhere + ☰ Choose place helpers; the tier camera is gone.)
+  const pickPlace = async (name) => {
+    await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+    await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
+    const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
+    if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
+    await page.waitForTimeout(250);
   };
-  const pickPlace = async (name) => { await page.click('.lc-choose'); await page.waitForSelector('.where-list'); await page.fill('.wl-search input', name); await page.waitForTimeout(150); await page.click(`.where-list .wl-row:has-text("${name}")`); await page.waitForTimeout(350); };
   const saveNext = async () => { const b = await page.locator('.lc-k.sv').boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up(); await page.waitForTimeout(400); };
   let first = true;
   const boot = async (uid, { anon = false, whose = null, url = '' } = {}) => {
@@ -118,8 +119,7 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   denied.length = 0; await page.click('.tp-row:has-text("Add a photo")'); await shoot(); await page.waitForTimeout(1200);
   const snapsG = (await dump()).filter((d) => d.kind === 'snap' && d.itemId === 'g');
   check('R4 editor CAN add a photo; the snap is by robert, owned by margaret', snapsG.length === 3 && snapsG.filter((s) => s.by === 'robert' && s.owner === 'margaret').length === 2 && denied.length === 0, `snaps=${snapsG.length} denied=${denied.length}`);
-  await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); await page.click('.lc-choose'); await page.waitForSelector('.where-list');
-  await page.click('.where-list .wl-row:has(b:text-is("Hall table"))'); await page.waitForTimeout(250); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(700);
+  await page.click('.tp-btn:has-text("Move it")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350); await pickPlace('Hall table'); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(700);
   check('R5 editor CAN move it with the camera (place + a sighting written)', (await dump()).find((d) => d.id === 'g').location === 'Hall table' && (await dump()).some((d) => d.kind === 'snap' && d.itemId === 'g' && d.moved && d.by === 'robert'));
   await page.goBack(); await page.waitForSelector('.board');
   await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.lc'); await page.waitForTimeout(400); await page.click('.lc-shutter'); await page.waitForTimeout(1500);
@@ -132,15 +132,32 @@ const results = []; const check = (n, ok, note = '') => { results.push([n, ok, n
   // A helper steps back: the thing into a NEW box on a NEW shelf — all of it in her ReCall, with the rules on.
   await page.waitForTimeout(5500);
   await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
-  // Build 2: every where photo goes where HE says — ＋ picks the next level before each one.
-  await page.click('.lc-shutter'); await page.waitForTimeout(1200); await page.click('.lv-sq.plus'); await page.click('.lc-shutter'); await settleWhere('Blue tin'); await page.click('.lv-sq.plus'); await page.click('.lc-shutter'); await settleWhere('Top shelf');
-  denied.length = 0; await page.click('.lc-k.sv'); await page.waitForTimeout(500);
-  if (await count('.item-sheet button:has-text("No, a new item")')) { await page.click('.item-sheet button:has-text("No, a new item")'); } // the AI named it "thing" again: asked, never assumed
-  await page.waitForTimeout(2500);
-  const d2 = await dump(); const byRob = d2.filter((d) => d.by === 'robert' && d.createdAt > Date.now() - 20000);
-  check('R7b helper: a new box and a new shelf from photos, all owned by margaret, edges allowed, nothing denied',
-    denied.length === 0 && byRob.some((d) => d.kind === 'place' && d.owner === 'margaret') && d2.filter((d) => d.kind === 'edge' && d.owner === 'margaret' && d.by === 'robert').length >= 2,
-    `denied=${denied.length} ${JSON.stringify(byRob.map((d) => d.kind))}`);
+  // 10-01: one link at a time. (1) log the tin and name it; (2) its page: It holds items; (3) log a thing In the tin;
+  // (4) the tin's page → Move it → In a NEW shelf. The AI stub names every photo "thing": a "Your thing?" is answered No.
+  const noMatch = async () => { for (let k = 0; k < 12 && !(await count('.lc-ask')); k++) await page.waitForTimeout(150); if (await count('.lc-ask button:has-text("No, a new item")')) await page.click('.lc-ask button:has-text("No, a new item")'); };
+  denied.length = 0;
+  await page.click('.lc-shutter'); await page.waitForTimeout(1200); await noMatch();
+  await page.click('.lc-name'); await page.fill('.sheet .place-input', 'sewing tin'); await page.click('.sheet .btn-primary'); await page.waitForTimeout(200);
+  await page.click('.lc-k.sv'); await page.waitForSelector('.board'); await page.waitForTimeout(700);
+  if (await count('.saved-card')) { await page.click('.saved-card .s').catch(() => {}); await page.waitForTimeout(300); }
+  await page.click('.tile:has-text("Sewing tin")'); await page.waitForSelector('.card.thing');
+  await page.click('.sw[aria-label="It holds items"]'); await page.waitForTimeout(400);
+  await page.goBack(); await page.waitForSelector('.board'); await page.waitForTimeout(300);
+  await page.click('.footer .btn-primary.whose'); await page.waitForSelector('.lc'); await page.waitForTimeout(400);
+  await page.click('.lc-shutter'); await page.waitForTimeout(1200); await noMatch();
+  await pickPlace('Sewing tin'); await page.click('.lc-k.sv'); await page.waitForSelector('.board'); await page.waitForTimeout(700);
+  if (await count('.saved-card')) { await page.click('.saved-card .s').catch(() => {}); await page.waitForTimeout(300); }
+  await page.click('.tile:has-text("Sewing tin")'); await page.waitForSelector('.card.thing');
+  await page.click('.tp-btn:has-text("Move it"), .tp-btn:has-text("Put it somewhere")'); // a box with no place yet says "Put it somewhere" await page.waitForSelector('.lc'); await page.waitForTimeout(350);
+  await pickPlace('Hall closet shelf'); await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' });
+  await page.waitForTimeout(1500);
+  const d2 = await dump(); const byRob = d2.filter((d) => d.by === 'robert' && d.createdAt > Date.now() - 60000);
+  { const tin = d2.find((d) => d.kind === 'item' && d.name === 'sewing tin');
+    check('R7b helper: a new box (sewing tin) on a new shelf, all owned by margaret, edges allowed, nothing denied',
+    denied.length === 0 && !!tin && tin.owner === 'margaret' && tin.holds === true && tin.location === 'Hall closet shelf' && byRob.some((d) => d.kind === 'place' && d.owner === 'margaret' && d.name === 'Hall closet shelf')
+      && d2.some((d) => d.kind === 'edge' && !d.until && d.from === tin.id && d.to && d.to.t === 'place' && d.owner === 'margaret' && d.by === 'robert')
+      && d2.some((d) => d.kind === 'edge' && !d.until && d.to && d.to.t === 'thing' && d.to.id === tin.id && d.owner === 'margaret' && d.by === 'robert'),
+    `denied=${denied.length} ${JSON.stringify(byRob.map((d) => [d.kind, d.name || (d.to && d.to.name)]))} tin=${JSON.stringify(tin && [tin.owner, tin.holds, tin.location])}`); }
 
   // ---------- Linda: Can see on ONE thing (direct role) → her own grid with an owner tag ----------
   await boot('linda');

@@ -1,0 +1,10 @@
+    console.log('\n######## M1 Move it opens');
+    await fresh2(); await openItem('baseball card'); await shot('m1-itempage'); await tap('button:has-text("Move it")', { wait: 1200 });
+    console.log('CAM:', await camText(), '| save', await saveState()); await shot('m1-move-open'); await ui('m1 move');
+    console.log('\n######## M3 words only');
+    await words('top tray, in the plastic sleeve'); console.log('save after words:', await saveState()); await doSave(); await ui('after save m3'); await shot('m3-after-save');
+    await dumpItem('baseball card'); await placeEdges();
+    console.log('\n######## M4 move to Kitchen counter, no words');
+    await openItem('baseball card'); await tap('button:has-text("Move it")', { wait: 1200 }); console.log('CAM:', await camText());
+    await openIn(); await pickIn('Kitchen counter'); console.log('save:', await saveState()); await doSave(); await shot('m4-after-save'); await ui('after m4');
+    await dumpItem('baseball card'); await itemPage('baseball card', 'm4-itempage');

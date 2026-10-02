@@ -1,17 +1,36 @@
-    const cancelSheet = ['press', '.btn-quiet:has-text("Cancel")'];
-    const S = [
-      { id: 'B1', desc: 'during the look: shutter again @1.0s, Naming… square @1.4s, thumbnail @1.8s, Choose place @2.0s, Save @2.2s, hold Save @2.4s; answer KC @4.5s', answers: [{ ans: KC, delay: 4500 }],
-        steps: [[1000, 'shoot', 300], [1400, 'press', '.lv-sq.sel'], [1500, 'shot', 'naming square tapped'], [1800, 'press', '.lc-thing'], [2000, 'press', '.lc-choose'], [2200, 'save', ''], [2400, 'hold', '.lc-k.sv'], [3300, 'shot', 'at 3s'], [5200, 'shot', 'after late']] },
-      { id: 'B2', desc: 'Cancel (camera) @1.5s during the look; KC answer @2.5s lands after the camera closed', answers: [{ ans: KC, delay: 2500 }], steps: [[1500, 'press', '.lc-x'], [2000, 'shot', 'after cancel'], [4000, 'shot', 'after answer+timer'], [4200, 'fn', async () => { console.log('   item page:', (await bodyText()).replace(/\s+/g, ' ').slice(0, 200)); }]], saveAtEnd: false,
-        after: async () => { await tap('button:has-text("Move it")', { wait: 1000 }); console.log('   reopened Move it:', JSON.stringify(await state())); await shot('B2-reopened'); await page.waitForTimeout(3500); console.log('   3.5s later:', JSON.stringify(await state())); await press('.lc-x'); await page.waitForTimeout(800); } },
-      { id: 'B3', desc: 'Cancel (camera) @1.5s; NEW answer @6s lands on the item page; reopen Move it at 4s', answers: [{ ans: NEW, delay: 6000 }], steps: [[1500, 'press', '.lc-x'], [4000, 'press', 'button:has-text("Move it")'], [5000, 'shot', 'reopened'], [7000, 'shot', 'after late answer in NEW camera'], [7100, 'ui', '']], saveAtEnd: false,
-        after: async () => { console.log('   now:', JSON.stringify(await state())); } },
-      { id: 'B4', desc: 'OVERLAP: tier1 look times out (answer NEW "hall closet" @9s); she Cancels the sheet, taps +, shoots tier 2 (answer "garage wall" NEW @0.5s)', answers: [{ ans: NEW, delay: 9000 }, { ans: { name: 'garage wall' } }],
-        steps: [[3700, ...cancelSheet], [4100, 'press', '.lv-sq.plus'], [4500, 'shoot', 500], [5800, 'shot', 'tier2 sheet'], [6000, ...cancelSheet], [6400, 'fn', async () => console.log('   squares now', JSON.stringify(await state()))], [9800, 'shot', 'after tier1 late answer'], [10000, 'ui', '']] },
-      { id: 'B5', desc: 'OVERLAP: tier1 look times out (KC sure @9s); Cancel sheet, +, shoot tier 2 (answer "garage wall" @0.5s); she is typing in tier-2 sheet when tier-1 answer lands', answers: [{ ans: KC, delay: 9000 }, { ans: { name: 'garage wall' } }],
-        steps: [[3700, ...cancelSheet], [4100, 'press', '.lv-sq.plus'], [4500, 'shoot', 500], [7600, 'fn', async () => { await page.locator('input.place-input').first().fill(''); }], [7700, 'type', 'Back porch'], [9800, 'shot', 'typing when tier1 answer lands'], [10000, 'fn', async () => console.log('   state', JSON.stringify(await state()))], [10100, 'press', 'button.btn-primary:has-text("Use this name")'], [10800, 'shot', 'after use name'], [11000, 'ui', '']] },
-      { id: 'B6', desc: 'OVERLAP w/o cancel: tier1 times out (KC sure @7s); in the sheet she taps its Cancel, then selects nothing and shoots tier 1 AGAIN (answer NEW "hall closet" @0.5s)', answers: [{ ans: KC, delay: 7000 }, { ans: NEW }],
-        steps: [[3700, ...cancelSheet], [4200, 'shoot', 500], [5300, 'shot', 'second shot sheet'], [7600, 'shot', 'after first answer lands'], [7700, 'ui', '']] },
-    ];
-    const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
-    for (const sc of S) if (!only || only.includes(sc.id)) await runScn(sc);
+    await fresh4('L3u Log thimble In=Red crate, t2=Cookie tin, t3=Green bag (inside the In) -> Save -> Home Undo');
+    await logStart('thimble', 'real_spoon.jpg'); await openIn(); await pickIn('Red crate'); await addTier(); await pickIn('Cookie tin'); await addTier(); await pickIn('Green bag'); await doSave(); await shot('l3u-home');
+    await st4('L3u', ['thimble', 'red crate', 'cookie tin']); await undo('L3u'); await st4('L3u undo', ['red crate', 'cookie tin', 'green bag']); await raw('cookie tin');
+
+    await fresh4('N1 new places at every tier: Log, words "in the bread bin", In=New place; t2 New place Larder; t3 New place Cellar; Save; Undo');
+    await logStart('whisk', 'real_spoon.jpg'); await setWords('in the bread bin'); await openIn(); await tapNew(/New place/); await card('In new');
+    await addTier(); await srchT('Larder'); await tapNew(/New place: Larder/); await card('t2 new');
+    await addTier(); await srchT('larder'); await srchT('bread bin'); await srchT('Cellar'); await tapNew(/New place: Cellar/); await card('t3 new'); await shot('n1-card');
+    await doSave(); await st4('N1', ['whisk', 'bread bin', 'larder']); await raw('whisk');
+    await undo('N1'); await st4('N1 undo', ['bread bin', 'larder', 'cellar']);
+
+    await fresh4('N2 same name twice: In=Cookie tin, t2 New place "Attic shelf", t3 search "attic shelf" / "Attic Shelf " / "ATTIC SHELF"');
+    await logStart('trowel', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await srchT('Attic shelf'); await tapNew(/New place: Attic shelf/); await addTier();
+    for (const q of ['attic shelf', 'Attic Shelf ', 'ATTIC SHELF', ' attic  shelf', 'Attic shelf.']) await srchT(q);
+    const hasNew = (await listNames()).find(x => /New place/.test(x)); if (hasNew) { await tapNew(/New place/); await card('dup'); await shot('n2-dup'); await doSave(); await st4('N2', ['trowel', 'cookie tin']); } else { await srchT('Pantry shelf'); await pickIn('Pantry shelf'); await doSave(); await st4('N2b', ['trowel', 'cookie tin', 'attic shelf']); }
+    console.log('-- N3 In = New place "Bread bin" then t2 search "bread bin" (same name as In)');
+    await logStart('scoop', 'real_spoon.jpg'); await setWords('in the bread bin'); await openIn(); await tapNew(/New place: Bread bin/); await addTier(); await srchT('bread bin'); await srchT('Bread Bin'); 
+    const hn = (await listNames()).find(x => /New place/.test(x)); if (hn) { await tapNew(/New place/); await card('dup In'); await shot('n3-dup'); await doSave(); await st4('N3', ['scoop']); } else { await cancelList(); await leaveCam(); }
+
+    await fresh4('X1 x on the MIDDLE row: In=Cookie tin, t2=Sewing box? (has jar inside, fine), t3=Red crate; x on t2');
+    await logStart('tape', 'real_pencil.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Sewing box'); await addTier(); await pickIn('Kitchen counter'); await card('3 tiers');
+    await tierX(1); await card('after x middle'); await shot('x1-after-x');
+    await doSave(); await st4('X1', ['tape', 'cookie tin', 'sewing box']); await undo('X1'); await st4('X1 undo', ['cookie tin', 'sewing box']);
+    console.log('-- X2 x on the In with 2 tiers');
+    await logStart('tape2', 'real_pencil.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Sewing box'); await tierX(0); await card('after x In'); await openIn(); await pickIn('Red crate'); await card('In red crate'); await doSave(); await st4('X2', ['tape2', 'red crate', 'cookie tin']);
+
+    await fresh4('C1 change the In after tiers: In=Cookie tin, t2=Sewing box(box), t3=Kitchen counter; change In -> Kitchen counter (a place)');
+    await logStart('cup', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Sewing box'); await addTier(); await pickIn('Pantry shelf'); await card('3');
+    await openIn(); await pickIn('Kitchen counter'); await card('In -> KC'); await shot('c1-changed'); await doSave(); await st4('C1', ['cup', 'kitchen counter', 'cookie tin', 'sewing box']);
+    console.log('-- C2 In=Cookie tin + t2 Pantry shelf; change In to Wooden box (has saved above)');
+    await logStart('mug', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Pantry shelf'); await openIn(); await pickIn('Wooden box'); await card('In -> wooden'); await shot('c2'); await doSave(); await st4('C2', ['mug', 'wooden box', 'cookie tin']);
+    console.log('-- C3 In=Kitchen counter + t2 Linen closet; change In to Sewing box (box)');
+    await logStart('jug', 'real_spoon.jpg'); await openIn(); await pickIn('Kitchen counter'); await addTier(); await pickIn('Linen closet'); await openIn(); await pickIn('Sewing box'); await card('In -> sewing'); await doSave(); await st4('C3', ['jug', 'sewing box', 'kitchen counter']);
+    console.log('-- C4 wooden box (has above) as t2: In=Cookie tin, t2=Wooden box -> + offered?');
+    await logStart('dish', 'real_spoon.jpg'); await openIn(); await pickIn('Cookie tin'); await addTier(); await pickIn('Wooden box'); await card('t2 wooden'); await shot('c4'); await doSave(); await st4('C4', ['dish', 'cookie tin', 'wooden box']); await undo('C4'); await st4('C4 undo', ['cookie tin', 'wooden box']);
+    console.log('   ', errs());

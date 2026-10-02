@@ -4,7 +4,7 @@ import { me } from '../lib/auth.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
 import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon, SwitchIcon, NoteIcon, BoxIcon, PinIcon } from './Icons.jsx';
-import { topLevel, contentsOf, holderOf, inPhrase, isContainer } from '../lib/graph.js';
+import { topLevel, contentsOf, holderOf, isContainer, saidOf } from '../lib/graph.js';
 
 // Home — THE BOARD. Board decision 2026-09-05, Rules 1–3.
 //
@@ -80,7 +80,7 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
 
       {/* Log first, put away later (Ravi 09-27): the things with no place gather here; one tap starts putting them away. */}
       {/* REQUIREMENTS_2026-09-27 R6.1/6.2: asWhere containers don't count as things left to put away. */}
-      {!removed && canLog && onPutAway && (() => { const n = items.filter((x) => !x.location && !holderOf(x) && !x.asWhere).length; return n > 0 && (
+      {!removed && canLog && onPutAway && (() => { const n = items.filter((x) => !x.location && !holderOf(x) && !x.asWhere && !saidOf(x).said).length; return n > 0 && (
         <button type="button" className="notput" onClick={onPutAway}><PinIcon /> Not put away · {n}</button>); })()}
       {!removed && things.length > 0 && (
         <div className="board">
@@ -88,12 +88,6 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
             const other = !!it.owner && it.owner !== (whose || me()); // a thing shared into this grid one by one, or given
             const tag = other ? possessive(firstName(it.owner) || 'Someone') : '';
             const inside = isContainer(it) ? contentsOf(it).length : 0; // a box: one tile, a count
-            const h = holderOf(it);
-            const where = h ? inPhrase(h) : it.location || '';
-            // REQUIREMENTS_2026-09-27 R6.2: a where-created container with no place yet is not a chore —
-            // no amber "No place yet" flip, just a plain muted dash. Once it has a real place (moved), it
-            // reads exactly like any other tile.
-            const asWhereBlank = !!it.asWhere && !where;
             return (
               <button key={it.id} className="tile"
                 {...hold.props(it)}
@@ -105,14 +99,11 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
                 {it.thumb ? <img src={it.thumb} alt={it.name || ''} /> : <span className="tile-written" aria-label="Written down, no photo"><NoteIcon /></span>}
                 {isPrivate(it) && <span className="tile-lock" aria-label="Private"><LockIcon /></span>}
                 {inside > 0 && <span className="inbadge"><BoxIcon /> {inside} inside</span>}
-                {/* No place: the label block flips to reverse colours and says so (Ravi 09-16 —
-                    the corner pin badge of 09-15 was "pure crap"). Words plus the flipped block,
-                    so it reads without colour; the lock watermark is unaffected. */}
-                <div className={'tile-label' + (where || asWhereBlank ? '' : ' noplace')}>
+                {/* 10-01 (Tanya): "No need for a location on the main page … it just gets truncated and becomes useless." A tile
+                    is the photo and the name; where it is lives on the item's page (and Find shows it). Things with no place at
+                    all are counted in "Not put away" above. */}
+                <div className="tile-label">
                   {cap(it.name)}
-                  {where ? <span className="tile-sub place"><PinIcon />{where}</span>
-                    : asWhereBlank ? <span className="tile-sub dash">—</span>
-                    : <span className="tile-sub">No place yet</span>}
                   {tag && <span className="tile-owner">{tag}</span>}
                 </div>
               </button>

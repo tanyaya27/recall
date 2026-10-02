@@ -252,7 +252,7 @@ export default function App() {
       {shield ? <div className="tap-shield" aria-hidden="true" onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }} /> : null}
       {!log && <SavedCard card={saved && { ...saved, name: (() => { const it = items.find((x) => x.id === saved.itemId); return it && it.name ? it.name.charAt(0).toUpperCase() + it.name.slice(1) : saved.name; })() }} onDone={() => setSaved(null)}
         onShare={async (c) => { await setVisibility({ id: c.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: c.itemId, to: 'shared', via: 'saved_card' }); setSaved((x) => (x ? { ...x, lock: false, priv: null, shared: true } : x)); }}
-        onUndo={async (u) => { const mv = !!(saved && saved.moved); await undoChain(u); if (mv) logEvent('move_undo', { itemId: saved.itemId }); say(mv ? 'Undone · back where it was' : 'Undone · nothing from that photo is kept'); }}
+        onUndo={async (u) => { const mv = !!(saved && saved.moved); const r = await undoChain(u); if (r === 'stale') { say('Not undone · it changed since'); return; } if (mv) logEvent('move_undo', { itemId: saved.itemId }); say(mv ? 'Undone · back where it was' : 'Undone · nothing from that photo is kept'); }}
         onRenameLink={openRenameLink} />}
       {/* R3.3: the "Unnamed — tap to name" line's rename sheet — renames the place/box saveChain just made. */}
       {renameLink && (
@@ -375,9 +375,9 @@ export default function App() {
       if (card.refused) { say('Not moved · it can’t go inside something that is inside it'); return; }
       // 09-30 (independent test #5): a move gets the same card as a Log — the photos with "in" pills, the chain in words, what
       // moved with it (Q3) on its own line, Undo. The one-line toast cut all of that off with "…".
-      if (card.none) { say('No place yet'); return; }
+      if (card.none && !card.undo) { say('No place yet'); return; } // 10-02 (tester F): ✕-only Move keeps its Undo on the page
       if (route.view === 'thing' && route.item && route.item.id === card.itemId) {
-        const pv = card.undo && card.undo.prev; const was = pv ? (pv.dest && pv.dest.t === 'thing' ? (pv.dest.name ? pv.dest.name.charAt(0).toUpperCase() + pv.dest.name.slice(1) : pv.location) : pv.location) : '';
+        const pv = card.prev || (card.undo && card.undo.prev); const was = pv ? (pv.dest && pv.dest.t === 'thing' ? (pv.dest.name ? pv.dest.name.charAt(0).toUpperCase() + pv.dest.name.slice(1) : pv.location) : pv.location) : '';
         setMoveNote({ itemId: card.itemId, was: card.stayed ? '' : (was || ''), stayed: !!card.stayed, added: card.added || '', moving: card.moving || [], undo: card.undo, key: Date.now() });
         return;
       }
@@ -462,7 +462,7 @@ export default function App() {
           onOpen={(it) => (route.from && it.id === route.from ? back() : go('thing', { item: it, from: route.item.id }))}
           onPutIn={(it) => setPutIn(it)} onMove={openMove} onLogInto={(it) => openLog({ t: 'thing', item: it })}
           moveNote={moveNote && moveNote.itemId === route.item.id ? moveNote : null} onCloseNote={() => setMoveNote(null)}
-          onUndoMove={async (n) => { setMoveNote(null); if (n.undo) { await undoChain(n.undo); logEvent('move_undo', { itemId: n.itemId, via: 'page_note' }); } say('Undone · back where it was'); }}
+          onUndoMove={async (n) => { setMoveNote(null); if (n.undo) { const r = await undoChain(n.undo); if (r === 'stale') { say('Not undone · it changed since'); return; } logEvent('move_undo', { itemId: n.itemId, via: 'page_note' }); } say('Undone · back where it was'); }}
         />
       );
       break;
@@ -596,7 +596,7 @@ export default function App() {
       {shield ? <div className="tap-shield" aria-hidden="true" onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }} /> : null}
       {!log && <SavedCard card={saved && { ...saved, name: (() => { const it = items.find((x) => x.id === saved.itemId); return it && it.name ? it.name.charAt(0).toUpperCase() + it.name.slice(1) : saved.name; })() }} onDone={() => setSaved(null)}
         onShare={async (c) => { await setVisibility({ id: c.itemId, owner: me() }, 'household'); logEvent('privacy_share', { itemId: c.itemId, to: 'shared', via: 'saved_card' }); setSaved((x) => (x ? { ...x, lock: false, priv: null, shared: true } : x)); }}
-        onUndo={async (u) => { const mv = !!(saved && saved.moved); await undoChain(u); if (mv) logEvent('move_undo', { itemId: saved.itemId }); say(mv ? 'Undone · back where it was' : 'Undone · nothing from that photo is kept'); }}
+        onUndo={async (u) => { const mv = !!(saved && saved.moved); const r = await undoChain(u); if (r === 'stale') { say('Not undone · it changed since'); return; } if (mv) logEvent('move_undo', { itemId: saved.itemId }); say(mv ? 'Undone · back where it was' : 'Undone · nothing from that photo is kept'); }}
         onRenameLink={openRenameLink} />}
       {/* R3.3: the "Unnamed — tap to name" line's rename sheet — renames the place/box saveChain just made. */}
       {renameLink && (

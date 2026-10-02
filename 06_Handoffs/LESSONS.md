@@ -464,3 +464,9 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
 - **2026-09-30 — When a flow changes, adapt the old suites, don't delete them.** `rig/legacy_flow.js` answers the two new
   questions with the real buttons, so ~700 older checks keep guarding what they were written for; the new flow has its
   own suite (`audit_pick.js`) that turns the adapter off.
+- **2026-10-02 — Remove the screen where the bugs live, then test the paths it touches.** Taking tiers off the camera
+  removed the c–f bug cluster, but the tester's six rounds found store bugs in the OLD paths the new
+  model now runs through: Write it down's free text, Undo, an editor's rights, "Move all". A new model is a reason to
+  re-test every path that writes "where", not only the new screen.
+- **2026-10-02 — An Undo on screen is a promise about the past.** It must check that nothing changed since (another
+  phone), or it silently destroys newer work. Every Undo carries when its save finished.

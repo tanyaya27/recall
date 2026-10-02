@@ -1,0 +1,18 @@
+    const moveIt = async (nm) => { await openItem(nm); await tap('button:has-text("Move it")', { wait: 1200 }); };
+    const find = async (q, label) => { await home(); await page.click('.footer .btn-primary.alt'); await page.waitForSelector('.ask'); await page.fill('#ask-input', q); await page.waitForTimeout(900); const t = await page.evaluate(() => [...document.querySelectorAll('.ask .tile')].map(e => e.innerText.replace(/\s+/g, ' ')).join(' || ')); console.log(`FIND "${q}": ${t}`); const all = (await page.evaluate(() => document.querySelector('.ask').innerText)).replace(/\s+/g, ' ').slice(0, 400); console.log('   ask text:', all); if (label) await shot(label); };
+    const asUser = async (uid) => { await page.evaluate((u) => { localStorage.setItem('rig-uid', u); const p = JSON.parse(localStorage.getItem('recall-prefs') || '{}'); p.whose = u === 'robert' ? 'margaret' : null; localStorage.setItem('recall-prefs', JSON.stringify(p)); }, uid); await page.reload(); await page.waitForSelector('.screen'); await page.waitForTimeout(800); await page.evaluate(() => window.__rig.rules(true)); console.log('   now user', uid); };
+    console.log('\n######## F1 Find by words'); await page.evaluate((s) => window.__rig.seed(s, 'recall_grants'), [{ id: 'margaret_robert', grantor: 'margaret', grantee: 'robert', role: 'editor', createdAt: Date.now() - 86400000 }]);
+    await logStart('egg timer', 'real_spoon.jpg'); await words('under the stairs behind the vacuum'); await doSave();
+    await find('vacuum', 'f1-vacuum'); await find('stairs'); await find('egg');
+    await moveIt('baseball card'); await words('top tray, in the plastic sleeve'); await doSave();
+    await find('plastic sleeve', 'f1-sleeve');
+    await moveIt('baseball card'); await openIn(); await pickIn('Kitchen counter'); await doSave();
+    await find('plastic sleeve', 'f1-sleeve-after-move'); await find('baseball');
+    console.log('\n######## T1 two people');
+    await asUser('robert'); await home(); await shot('t1-robert-home'); console.log('robert notput', await page.locator('.notput').first().innerText().catch(() => 'none'));
+    await moveIt('egg timer'); await words('robert put it in the garage cupboard'); await doSave(); await shot('t1-robert-saved'); await dumpItem('egg timer');
+    await itemPage('egg timer', 't1-robert-view');
+    await asUser('margaret'); await itemPage('egg timer', 't1-margaret-view'); await find('cupboard', 't1-find-cupboard');
+    await asUser('robert'); await logStart('hammer', 'tooldrawer.jpg'); await doSave(); await notPut(); await shot('t1-robert-notput');
+    await asUser('margaret'); await notPut(); await shot('t1-margaret-notput'); await page.click('.notput'); await page.waitForTimeout(900); console.log('NOTPUT LIST (margaret):', (await bodyText()).replace(/\s+/g, ' ').slice(0, 400)); await shot('t1-notput-list');
+    await dumpItem('hammer');
