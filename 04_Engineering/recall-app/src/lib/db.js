@@ -311,7 +311,7 @@ export const ROLE_BLURB = { viewer: 'Sees your items and where they are. Cannot 
 // 10-01 (Tanya): one where statement in the history — her words (maybe ''), when, who. `said` undefined = not a statement.
 // `saidAt`/`saidBy`: the same words carried over to a new In ("Put it in a place or a box") keep when and who said them.
 const whereEntry = (location, at, said, extra = {}) => ({ location, at, by: me(), ...extra, ...(said === undefined || said === null ? {} : { w: 1, said: String(said).trim(), by: me() }) });
-export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '', dest = null, holds = undefined, asWhere = false, said = undefined, note = false }) {
+export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '', dest = null, holds = undefined, asWhere = false, said = undefined, note = false, prep = undefined }) {
   location = placeText(location, null);
   const now = Date.now();
   const logId = `log_${now}`;
@@ -326,7 +326,7 @@ export async function addItem({ name = '', location = '', description = '', phot
     // outward chain) is not a chore to put away — it's marked so Not put away and the board can leave it alone.
     ...(asWhere ? { asWhere: true } : {}),
   });
-  if (location) await recordMove({ id: ref.id, owner, private: keep }, location, placeSource || 'chosen', dest);
+  if (location) await recordMove({ id: ref.id, owner, private: keep }, location, placeSource || 'chosen', dest, prep);
   if (!photo) return ref.id;
   // D3 (Ravi 09-28): the cover photo keeps its own caption — what it shows the thing resting on ("on the orange carpet").
   await addDoc(col, { kind: 'snap', owner, by: me(), itemId: ref.id, logId, photo, thumb, location, at: now, caption: restingOn || '' });
@@ -411,7 +411,7 @@ async function captionCoverSnap(itemId, text) {
 // the new place, now — so the new stay has a photo and the history never has a row without
 // one. Adding the place to a thing that had none is not a move: no sighting is written.
 // 09-30d (independent tester #2): `undo` marks the history line and the link as an Undo, so "moved" never counts it.
-export async function changeLocation(item, location, placeSource = 'chosen', dest = null, { undo = false, said = undefined, saidAt = 0, saidBy = '', note = false, extra = [] } = {}) {
+export async function changeLocation(item, location, placeSource = 'chosen', dest = null, { undo = false, said = undefined, saidAt = 0, saidBy = '', note = false, extra = [], prep = undefined } = {}) {
   // Never a loop (bug #8, 09-27: the pencil went into the cabinet that was inside the pencil). Refused here, where every move passes.
   const to = dest || (location ? destOf(location, graph().byId.get(item.id) || item) : null);
   if (to && to.t === 'thing' && wouldLoop(item, to)) { logEvent('loop_refused', { itemId: item.id, to: to.id }); return false; }
@@ -429,7 +429,7 @@ export async function changeLocation(item, location, placeSource = 'chosen', des
     Object.assign(patch, { logId, photoCount: 1 });
   }
   await updateDoc(doc(col, item.id), patch);
-  await recordMove(item, location, undo ? 'undo' : placeSource, dest);
+  await recordMove(item, location, undo ? 'undo' : placeSource, dest, prep);
   return true;
 }
 
@@ -439,7 +439,7 @@ export function prevOf(item) {
   const it = graph().byId.get(item.id) || item; const e = openEdge(it.id);
   const hasPlace = !!(it.location || e || holderOf(it));
   const ww = hasPlace ? { said: '' } : wordsWhere(it); const nt = noteOf(it, hasPlace);
-  return { v2: true, location: it.location || '', dest: e ? e.to : null, words: ww.said || '', wordsAt: ww.at || 0, wordsBy: ww.by || '',
+  return { v2: true, location: it.location || '', dest: e ? e.to : null, prep: e && e.prep ? e.prep : null, words: ww.said || '', wordsAt: ww.at || 0, wordsBy: ww.by || '',
     note: nt.said || '', noteAt: nt.at || 0, noteBy: nt.by || '', lastSeenAt: it.lastSeenAt || 0,
     said: nt.said || ww.said || '', saidAt: nt.at || ww.at || 0, saidBy: nt.by || ww.by || '' };
 }
@@ -504,21 +504,21 @@ function placeText(location, item) {
 // decide the destination (graph.destOf): an exact name of another thing makes it a container;
 // anything else is a place by name. Nothing is inferred behind her back — this runs only on a save
 // she made. `how`: chosen · session · usual · guess · put · typed. Returns the new edge's id or null.
-export async function recordMove(item, location, how = 'chosen', dest = null) {
-  try { return await writeMove(item, location, how, dest); } catch (err) { console.error('recordMove', err); logEvent('edge_failed', { itemId: item && item.id, code: err.code || '' }); return null; } // the place copy already saved; the edge never blocks a move
+export async function recordMove(item, location, how = 'chosen', dest = null, prep = undefined) {
+  try { return await writeMove(item, location, how, dest, prep); } catch (err) { console.error('recordMove', err); logEvent('edge_failed', { itemId: item && item.id, code: err.code || '' }); return null; } // the place copy already saved; the edge never blocks a move
 }
-async function writeMove(item, location, how, dest) {
+async function writeMove(item, location, how, dest, prep) {
   if (!item || !item.id) return null;
   const now = Date.now();
   const cur = openEdge(item.id);
   const to = dest || (location ? destOf(location, graph().byId.get(item.id) || item) : null);
   if (to && to.t === 'thing' && wouldLoop(item, to)) { logEvent('loop_refused', { itemId: item.id, to: to.id, at: 'edge' }); return null; }
   const same = cur && to && cur.to && cur.to.t === to.t && (to.t === 'thing' ? cur.to.id === to.id : (cur.to.name || '').toLowerCase() === (to.name || '').toLowerCase());
-  if (same) return cur.id;
+  if (same) { if (prep !== undefined && (cur.prep || null) !== (prep || null)) await setPrep(cur, prep); return cur.id; }
   if (cur) await updateDoc(doc(col, cur.id), { until: now, closedBy: me() });
   if (!to) return null;
   const owner = item.owner || me();
-  const ref = await addDoc(col, { kind: 'edge', rel: 'in', from: item.id, to, since: now, until: null, how,
+  const ref = await addDoc(col, { kind: 'edge', rel: 'in', from: item.id, to, since: now, until: null, how, ...(prep ? { prep } : {}),
     owner, by: me(), private: !!item.private && owner === me(), roles: {}, sharedWith: [] });
   return ref.id;
 }
@@ -526,22 +526,39 @@ async function writeMove(item, location, how, dest) {
 // same "is in" edge a thing has, from the place doc's id (DECISIONS 2026-09-25: "is in" is an edge, never a field).
 // Closes the place's open edge when it changes; `to` null just closes it. Refuses a circle. Returns what it replaced
 // (for Undo) or undefined when nothing changed.
-export async function placeIn(place, to, how = 'chosen') {
+export async function placeIn(place, to, how = 'chosen', prep = undefined) {
   if (!place || !place.id) return undefined;
   const cur = openEdge(place.id);
   if (to && to.t === 'place' && !(to.name || '').trim()) to = null;
   if (to && placeWouldLoop(place.name, to)) { logEvent('loop_refused', { placeId: place.id, at: 'place' }); return undefined; }
   const same = cur && to && cur.to && cur.to.t === to.t && (to.t === 'thing' ? cur.to.id === to.id : (cur.to.name || '').toLowerCase() === (to.name || '').toLowerCase());
-  if (same || (!cur && !to)) return undefined;
+  if (same) { if (prep !== undefined && (cur.prep || null) !== (prep || null)) await setPrep(cur, prep); return undefined; }
+  if (!cur && !to) return undefined;
   const now = Date.now();
   if (cur) await updateDoc(doc(col, cur.id), { until: now, closedBy: me() });
   if (to) {
     const t = to.t === 'thing' ? { t: 'thing', id: to.id || (to.item && to.item.id), name: to.name || (to.item && to.item.name) || '' } : { t: 'place', name: to.name };
-    await addDoc(col, { kind: 'edge', rel: 'in', from: place.id, to: t, since: now, until: null, how, owner: place.owner || me(), by: me(), private: false, roles: {}, sharedWith: [] });
+    await addDoc(col, { kind: 'edge', rel: 'in', from: place.id, to: t, since: now, until: null, how, ...(prep ? { prep } : {}), owner: place.owner || me(), by: me(), private: false, roles: {}, sharedWith: [] });
   }
   logEvent('place_in', { placeId: place.id, to: to ? to.t : null, replaced: !!cur });
-  return { place: { id: place.id, name: place.name, owner: place.owner }, prev: cur ? cur.to : null };
+  return { place: { id: place.id, name: place.name, owner: place.owner }, prev: cur ? cur.to : null, prevPrep: cur && cur.prep ? cur.prep : undefined };
 }
+// 10-03 (Ravi/Tanya): the little word on a link — "on the Lab desk", "under it". Only words; the link itself never moves.
+// The link's owner writes the word; a helper (who may only close links) closes it and opens the same link with the word.
+export async function setPrep(edge, prep) {
+  if (!edge || !edge.id) return false;
+  const p = prep || null;
+  if ((edge.owner || me()) === me()) { await updateDoc(doc(col, edge.id), { prep: p }); }
+  else {
+    const now = Date.now();
+    await updateDoc(doc(col, edge.id), { until: now, closedBy: me() });
+    const { id: _id, until: _u, closedBy: _c, ...rest } = edge;
+    await addDoc(col, { ...rest, since: now, until: null, how: 'prep', by: me(), prep: p });
+  }
+  logEvent('prep_set', { prep: p || '' });
+  return true;
+}
+export async function setPrepFrom(fromId, prep) { const e = openEdge(fromId); return e ? setPrep(e, prep) : false; }
 // Places made before 09-29 by a new-place chain carry `parent` (a place id) that nothing read. The owner's phone turns
 // each into the edge above, once (a place that already has an open edge is left alone). Returns how many.
 export async function repairPlaceParents(data) {
@@ -590,15 +607,15 @@ const capName = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 // 09-29: a place on the chain with a link outside it is IN that link (an edge from the place). Before this, only a
 // brand-new place got a `parent` (read by nothing) and a known place's outer tier was dropped. Never the same place
 // twice on one chain, never a circle (placeIn checks the saved graph; `inChain` the links outside this one).
-async function placeOuterLink(place, outer, inChain, made) {
+async function placeOuterLink(place, outer, inChain, made, prep) {
   if (!place || !place.id) return;
   const key = 'p:' + (place.name || '').toLowerCase();
   // Q4 (Ravi 09-29): a place is never inside something that moves — the camera doesn't offer it; this is the backstop.
   if (outer && outer.dest && outer.dest.t === 'thing') { logEvent('place_in_box_refused', { placeId: place.id }); inChain.add(key); return; }
-  if (outer && !inChain.has(key)) { const r = await placeIn(place, outer.dest); if (r) made.placeMoves.push(r); }
+  if (outer && !inChain.has(key)) { const r = await placeIn(place, outer.dest, 'chosen', prep); if (r) made.placeMoves.push(r); }
   inChain.add(key);
 }
-export async function saveChain(chain = [], { owner = me(), places = [] } = {}) {
+export async function saveChain(chain = [], { owner = me(), places = [], cut = false } = {}) {
   const made = { items: [], places: [], moved: [], links: [], placeMoves: [] };
   const inChain = new Set(); // the places already on this chain, outside the link being saved
   const madeNames = new Map(); // 10-02 (tester r4 N5): a new place named twice in one chain is ONE place
@@ -613,9 +630,10 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
       const e0 = openEdge(it.id); const d0 = outer && outer.dest;
       const already = !!d0 && (e0 && e0.to ? e0.to.t === d0.t && (d0.t === 'thing' ? e0.to.id === d0.id : (e0.to.name || '').toLowerCase() === (d0.name || '').toLowerCase())
         : d0.t === 'place' && (it.location || '').toLowerCase() === (d0.name || '').toLowerCase());
+      if (outer && already && l.outPrep !== undefined) { const e1 = openEdge(it.id); if (e1 && (e1.prep || null) !== (l.outPrep || null)) await setPrep(e1, l.outPrep); }
       if (outer && !already && !(outer.dest && outer.dest.t === 'thing' && outer.dest.id === it.id)) {
         made.moved.push({ item: it, location: it.location || '', dest: openEdge(it.id) ? openEdge(it.id).to : null, lastSeenAt: it.lastSeenAt || 0 });
-        const ok = await changeLocation(it, outer.text, 'chosen', outer.dest);
+        const ok = await changeLocation(it, outer.text, 'chosen', outer.dest, { prep: l.outPrep });
         if (ok === false) throw Object.assign(new Error('That would put it inside itself'), { code: 'loop' }); // never a half-saved chain
       }
       // REQUIREMENTS_2026-09-27 R2: photos the camera attached to an already-logged thing on this
@@ -639,12 +657,12 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
       }
       const id = known && known.id ? known.id : await addPlace(name, places, l.placePhotos || [], owner, null);
       if (!known && id) { made.places.push(id); madeNames.set(key0, { id, name, owner }); (made.placeNames = made.placeNames || {})[id] = name; }
-      await placeOuterLink(known || { id, name, owner }, outer, inChain, made);
+      await placeOuterLink(known || { id, name, owner }, outer, inChain, made, l.outPrep);
       here = { text: name, dest: { t: 'place', name }, placeId: id };
       made.links[i] = null;
     } else if (l.moves) {
       const name = l.name || 'A box';
-      const id = await addItem({ name, photo: l.photo, thumb: l.thumb, extras: l.extras || [], owner, location: outer ? outer.text : '', dest: outer ? outer.dest : null, placeSource: 'chosen', holds: true, asWhere: true });
+      const id = await addItem({ name, photo: l.photo, thumb: l.thumb, extras: l.extras || [], owner, location: outer ? outer.text : '', dest: outer ? outer.dest : null, placeSource: 'chosen', holds: true, asWhere: true, prep: l.outPrep });
       made.items.push(id);
       logEvent('container_new', { itemId: id, via: 'camera' });
       here = { text: capName(name), dest: { t: 'thing', id, name } };
@@ -656,9 +674,16 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
       const known = placeNamed(name, places);
       const id = await addPlace(name, places, l.placePhotos || (l.placePhoto ? [l.placePhoto] : []), owner, null);
       if (!known && id) { made.places.push(id); (made.placeNames = made.placeNames || {})[id] = name; }
-      await placeOuterLink(known || { id, name, owner }, outer, inChain, made);
+      await placeOuterLink(known || { id, name, owner }, outer, inChain, made, l.outPrep);
       here = { text: name, dest: { t: 'place', name }, placeId: id };
       made.links[i] = { id, kind: 'place', unnamed: !!l.unnamed };
+    }
+    // 10-03 (Tanya): removing a level cuts outward — the outermost level she kept is in nothing now (its own link closes)
+    if (cut && i === chain.length - 1) {
+      if (here.dest.t === 'thing') { const it = graph().byId.get(here.dest.id); const e0 = it && openEdge(it.id);
+        if (it && (e0 || it.location)) { made.moved.push({ item: it, location: it.location || '', dest: e0 ? e0.to : null, lastSeenAt: it.lastSeenAt || 0 }); await changeLocation(it, '', 'chosen', null); } }
+      else if (here.placeId) { const pd = { id: here.placeId, name: here.text, owner }; const r = await placeIn(pd, null); if (r) made.placeMoves.push(r); }
+      inChain.add('cut');
     }
     outer = here;
   }
@@ -703,7 +728,7 @@ export async function undoChain({ itemId = null, isNew = false, prev = null, mad
     await purgeItem(it);
   };
   if (itemId && isNew) await drop(itemId);
-  else if (itemId && prev && prev.v2) { const it = g.byId.get(itemId); if (it) { await changeLocation(it, prev.location || '', 'chosen', prev.dest || null, { undo: true, said: prev.words || '', saidAt: prev.wordsAt || 0, saidBy: prev.wordsBy || '',
+  else if (itemId && prev && prev.v2) { const it = g.byId.get(itemId); if (it) { await changeLocation(it, prev.location || '', 'chosen', prev.dest || null, { undo: true, prep: prev.prep || null, said: prev.words || '', saidAt: prev.wordsAt || 0, saidBy: prev.wordsBy || '',
       extra: prev.note ? [{ w: 1, n: 1, said: prev.note, saidAt: prev.noteAt || 0, by: prev.noteBy || me(), undo: true }] : [] }); if (prev.lastSeenAt) await updateDoc(doc(col, itemId), { lastSeenAt: prev.lastSeenAt }).catch(() => {}); } }
   else if (itemId && prev) { const it = g.byId.get(itemId); if (it) { await changeLocation(it, prev.location || '', 'chosen', prev.dest || null, { undo: true, said: prev.said, saidAt: prev.saidAt || 0, saidBy: prev.saidBy || '', note: !!prev.saidNote }); if (prev.lastSeenAt) await updateDoc(doc(col, itemId), { lastSeenAt: prev.lastSeenAt }).catch(() => {}); } }
   // 10-01 (tester #2): photos a Move (or a re-log) added go too, and the cover it replaced comes back.
@@ -724,7 +749,7 @@ export async function undoChain({ itemId = null, isNew = false, prev = null, mad
   for (const pp of made.placePhotos || []) await updateDoc(doc(col, pp.id), { photos: pp.photos, updatedAt: Date.now() }).catch((e) => console.error('undo place photos', e));
   for (const m of made.moved || []) { const it = g.byId.get(m.item.id) || m.item; await changeLocation(it, m.location, 'chosen', m.dest, { undo: true }); if (m.lastSeenAt) await updateDoc(doc(col, it.id), { lastSeenAt: m.lastSeenAt }).catch(() => {}); }
   for (const id of made.items || []) await drop(id);
-  for (const pm of [...(made.placeMoves || [])].reverse()) await placeIn(pm.place, pm.prev, 'undo').catch(() => {});
+  for (const pm of [...(made.placeMoves || [])].reverse()) await placeIn(pm.place, pm.prev, 'undo', pm.prevPrep).catch(() => {});
   // 10-02 (tester r5): a place this save made is kept if anything else is in it now (another phone, or another of her saves)
   const ours = new Set([itemId, ...(made.items || []), ...(made.places || []), ...(made.moved || []).map((m) => m.item && m.item.id)].filter(Boolean));
   for (const id of made.places || []) {
@@ -747,7 +772,7 @@ async function syncEdgePrivacy(itemId, priv) {
 export async function setPromoted(item, on) { await updateItem(item.id, { promoted: !!on }); logEvent('promote', { itemId: item.id, on: !!on }); }
 
 
-export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [], placeSource = 'chosen', dest = null, said = undefined, note = false }) {
+export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [], placeSource = 'chosen', dest = null, said = undefined, note = false, prep = undefined }) {
   location = placeText(location, item);
   const now = Date.now();
   const logId = `log_${now}`;
@@ -759,7 +784,7 @@ export async function resnapItem(item, { photo, thumb, location, by = 'self', re
   });
   await addDoc(col, { kind: 'snap', owner: item.owner || me(), by: me(), itemId: item.id, logId, photo, thumb, location, at: now, caption: restingOn || '' }); // D3: its own caption
   await writeExtras(item.id, logId, extras, location, now, by, item.owner || me());
-  await recordMove(item, location, placeSource, dest);
+  await recordMove(item, location, placeSource, dest, prep);
   return { logId, at: now };
 }
 

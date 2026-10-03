@@ -3,6 +3,27 @@
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
 *Done* when closed. Updated 2026-10-03.
 
+## NOW — `20261003a`: usability pass 1 (Ravi + Tanya, 10-03)
+
+Rulings: DECISIONS 2026-10-03; `design/BOARD_2026-10-03_usability-1.md`. Built for Ravi to try. Ravi: "don't go through the
+full test cycle till I have tried out the new UI". Only a phone-size smoke walk has run (Chromium + WebKit, no page errors):
+`rig/walk_u1/walk.js`.
+
+- [ ] **Ravi: try `20261003a` on the phone.**
+  1. Home: the no-place badge, top left.
+  2. Item page: the folded Where box; tap the "on" pill and pick "under"; check Undo.
+  3. Move it: tap the place (the sheet opens), type, then Cancel and Done; add a note.
+  4. → sheet: Change, Remove (it asks first), Take it out (it asks first), rename, the word pill.
+  5. A new place's photo: ReCall's guess → tap its words → fix → Use this.
+- [ ] **After Ravi's try: the full test cycle.**
+  - Adapt the suites to the field being a button and typing happening in the sheet: `audit_ow`, `ow_adapter`, `audit_r1`,
+    the tester scripts. "New place:" is now "Add 'X' as a new place".
+  - New checks: the word stored, read and changed (owner and helper); cut outward plus Undo; rename from the sheet;
+    fixing the guess.
+  - Run an independent tester round.
+- [ ] Find and the save card still say "in" everywhere. Should they use the word too? (Not in pass 1.)
+- [ ] More usability sets from Ravi (he is sending them a few at a time).
+
 ## NOW — `20261002a`: one where, photo first (Ravi, 10-02)
 
 Rulings: DECISIONS 2026-10-02 (night). Boards: `design/BOARD_2026-10-02_one-where.md`. As built:

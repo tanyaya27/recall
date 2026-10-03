@@ -18,7 +18,7 @@ import { inThe } from '../lib/format.js';
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const low = (x) => (x || '').trim().toLowerCase();
 
-export default function InList({ item = null, items = [], places = [], said = '', current = null, placesOnly = false, selfPlace = '', title = 'What is it in?', onPick, onCancel, onClear = null, exclude = null }) {
+export default function InList({ item = null, items = [], places = [], said = '', current = null, placesOnly = false, selfPlace = '', title = 'What is it in?', onPick, onCancel, onClear = null, exclude = null, autoFocus = false }) {
   const [q, setQ] = useState('');
   const g = graph();
   const okBox = (b) => !placesOnly && (!item || (b.id !== item.id && !wouldLoop(item, b, g)));
@@ -61,7 +61,7 @@ export default function InList({ item = null, items = [], places = [], said = ''
       {k.t === 'thing' ? (k.item.thumb ? <img src={k.item.thumb} alt="" /> : <span className="no"><BoxIcon /></span>) : placePic(k.name) ? <img src={placePic(k.name)} alt="" /> : <span className="no"><PinIcon /></span>}
       <span className="tx"><b>{cap(nameOf(k))}</b><small>{why ? <span className="why">{why}</span> : null}{isCur(k) && <span className="wl-cur">Current place</span>}{k.t === 'thing' ? boxSub(k.item) : placeSub(k.name)}</small></span>
     </button>);
-  const newPlace = (n) => <button type="button" key={'new' + n} className="wl-new typed" onClick={() => onPick({ t: 'place', name: cap(n), isNew: true })}><PlusIcon /><span>New place: <b>{cap(n)}</b></span></button>;
+  const newPlace = (n) => <button type="button" key={'new' + n} className="wl-new typed" onClick={() => onPick({ t: 'place', name: cap(n), isNew: true })}><PlusIcon /><span>Add “<b>{cap(n)}</b>” as a new place</span></button>;
   return (
     <div className="sheet-back" onClick={onCancel} role="presentation">
       <div className="sheet where-list in-list" role="dialog" aria-modal="true" aria-labelledby="in-title" onClick={(e) => e.stopPropagation()}>
@@ -70,7 +70,7 @@ export default function InList({ item = null, items = [], places = [], said = ''
         {(fw.hits.length > 0 || fresh.length > 0) && <div className="wl-g">From what you said</div>}
         {fw.hits.map((k) => row(k, 'you said it'))}
         {fresh.map(newPlace)}
-        <div className="wl-search"><SearchIcon /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placesOnly ? 'Search your places' : 'Search your places and boxes'} aria-label="Search your places" enterKeyHint="go"
+        <div className="wl-search"><SearchIcon /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placesOnly ? 'Search, or type a new place' : 'Search, or type a new place'} aria-label="Search your places, or type a new place" enterKeyHint="go" autoFocus={autoFocus}
           onKeyDown={(e) => { if (e.key !== 'Enter' || !typed) return; e.preventDefault(); const m = all.filter(hit); if (m.length === 1) onPick(m[0]); else if (!exists && !hasSecret(typed) && !(exclude && exclude({ t: 'place', name: newName }))) onPick({ t: 'place', name: cap(newName), isNew: true }); }} /></div>
         {typed && !exists && !hasSecret(typed) && !(exclude && exclude({ t: 'place', name: newName })) && newPlace(newName)}
         {blocked ? <p className="wl-said in-blocked">{item && items.some((x) => normName(x.name) === normName(blocked) && x.id !== item.id && x.holds) ? `“${cap(blocked)}” is inside ${item.name ? cap(item.name) : 'it'} — it can’t go in there.` : items.some((x) => !x.deleted && normName(x.name) === normName(blocked)) ? `“${cap(blocked)}” is one of your items, not a place.` : `“${cap(blocked)}” can’t hold it — that would go round in a circle.`}</p> : null}
@@ -78,7 +78,7 @@ export default function InList({ item = null, items = [], places = [], said = ''
           {curK && !typed && row(curK)}
           {recent.length > 0 && <div className="wl-g">Recent</div>}
           {recent.map((k) => row(k))}
-          {rest.length > 0 && <div className="wl-g">{typed ? 'Your places' : placesOnly ? 'All your places' : 'All your places and boxes'} · {rest.length}</div>}
+          {rest.length > 0 && <div className="wl-g">{typed ? 'Your places that match' : placesOnly ? 'All your places' : 'All your places and boxes'} · {rest.length}</div>}
           {rest.map((k) => row(k))}
           {!all.length && !typed && !fresh.length && <p className="empty">No places yet — type a name above.</p>}
         </div>

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { hasSecret } from '../lib/sensitive.js';
-import { prevOf, changeLocation, saveChain, undoChain, renameItem, loadSnaps, removeSnap, setMainPhoto, setSnapCaption, setPlaceMainPhoto, removePlacePhoto, updateItem, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
+import { setPrepFrom, prevOf, changeLocation, saveChain, undoChain, renameItem, loadSnaps, removeSnap, setMainPhoto, setSnapCaption, setPlaceMainPhoto, removePlacePhoto, updateItem, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
-import { photoStamp, cap, inThe } from '../lib/format.js';
-import { contentsOf, chainOf, outerPlace, inPhrase, isContainer, whereChain, movedOf, saidNow, wordsWhere, noteOf } from '../lib/graph.js';
+import { photoStamp, cap, inThe, theOrQuoted } from '../lib/format.js';
+import { contentsOf, chainOf, outerPlace, inPhrase, isContainer, whereChain, movedOf, saidNow, wordsWhere, noteOf, whereSteps, usersOf, inferPrep } from '../lib/graph.js';
 import InList from './InList.jsx';
+import PrepPill from './PrepPill.jsx';
 import { me } from '../lib/auth.js';
 import { getPrefs } from '../lib/prefs.js';
 import { own } from './PhotoCard.jsx';
@@ -13,7 +14,7 @@ import ItemSheet from './ItemSheet.jsx';
 import TidySheet from './TidySheet.jsx';
 import PrivNote from './PrivNote.jsx';
 import PhotoViewer from './PhotoViewer.jsx';
-import { CameraIcon, TrashIcon, PencilIcon, LockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, PeopleIcon, NoteIcon, TagIcon, BoxIcon, PlusIcon } from './Icons.jsx';
+import { CameraIcon, TrashIcon, PencilIcon, LockIcon, PinIcon, PinWasIcon, ChevronLeftIcon, PeopleIcon, NoteIcon, TagIcon, BoxIcon, PlusIcon, ChevronDownIcon, ChevronUpIcon, CornerDownRightIcon } from './Icons.jsx';
 
 // ONE PAGE PER THING (Ravi 09-27, BOARD_2026-09-27_every-path.md §2; mockups/S11_fix_pages.jpg). Every tile — Home,
 // In it, Find, Not put away — opens this page. It replaces the 09-16 card's Edit mode and bottom bar, and the 09-25
@@ -49,6 +50,7 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   // "What's in this photo?" sheet over it ({ index, draft }). Declared here with the others: this component returns early below.
   const [viewer, setViewer] = useState(null);
   const [capEdit, setCapEdit] = useState(null);
+  const [whereOpen, setWhereOpen] = useState(false); // 10-03 (Tanya): the first level only; tap to see what it is in
   const [putting, setPutting] = useState(false); // 10-01: "Put it in a place or a box" — the one pick, from this page
   const stripRef = useRef(null);
   const showTimes = getPrefs().showTimes !== false; // Settings → Taking photos (09-27: it's for the whole app, #27)
@@ -198,6 +200,23 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   // Q1 (Ravi 09-29, tier audit): every tier, boxes then places (Drawer 3 › Oak cabinet › Office). The squares scroll
   // sideways; the words show every tier at once, wrapping, one separator between tiers.
   const tiers = whereChain(item);
+  // 10-03: each level with its little word ("on the Lab desk, which is in the Craft room"); a tap changes only the word
+  const steps = whereSteps(item);
+  const prepPill = (k) => {
+    const st = steps[k]; if (!st || (!st.prep && k === 0)) return null;
+    const label = k === 0 ? st.prep : st.prep ? `which is ${st.prep}` : 'which is';
+    const prevSt = k > 0 ? steps[k - 1] : null;
+    const n = prevSt ? usersOf(prevSt).length : 0;
+    const note = prevSt && n > 1 ? `For everything ${inferPrep(prevSt.name) || 'in'} ${theOrQuoted(prevSt.name)} · ${n} items` : '';
+    return <PrepPill label={label} value={st.prep} options={st.options} note={note} disabled={!canEdit || !st.edge}
+      onPick={async (w) => {
+        const before = (st.edge && st.edge.prep) || null; const from = st.fromId;
+        await setPrepFrom(from, w); bump((x) => x + 1);
+        logEvent('prep_pick', { itemId: item.id, level: k + 1, word: w });
+        const what = k === 0 ? `Now “${w} ${theOrQuoted(st.name)}”` : `${cap(theOrQuoted(prevSt.name))} is now ${w} ${theOrQuoted(st.name)}`;
+        onToast && onToast(what, async () => { await setPrepFrom(from, before); bump((x) => x + 1); });
+      }} />;
+  };
   const tierName = (t, i) => (t.t === 'thing' ? (i === 0 ? inPhrase(t.item) : inPhrase(t.item).replace(/^In /, 'in ')) : t.name);
   const whereB = tiers.length ? tierName(tiers[0], 0) : item.location;
   // 09-29h (Ravi: "Keep it consistent!!!"): every tier in words with the same "in" pill as the camera and the squares —
@@ -273,16 +292,36 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         {!hasPlace && said.said ? (
           <div className="tp-said"><q>{said.said}</q><small>{saidBy} · {photoStamp(said.at)}</small></div>
         ) : hasPlace ? (
+          <>
+          {/* 10-03 (Tanya, BOARD_2026-10-03_usability-1 X1/X2): W3 — the first level with its photo and its little word; what
+              that is in opens below it, each level with its photo, joined by "which is in" (T1–T3: tap a word to change it). */}
           <div className="tp-wone">
             {tiers[0] && tiers[0].t === 'thing' ? (tiers[0].item.thumb ? <img src={tiers[0].item.thumb} alt="" /> : <span className="no"><BoxIcon /></span>)
               : placePic(chainWords[0] || item.location) ? <button type="button" className="ph-open" aria-label={`Photos of ${chainWords[0] || item.location}`} onClick={() => setViewer({ kind: 'place', name: chainWords[0] || item.location, start: 0, nonce: 0 })}><img src={placePic(chainWords[0] || item.location)} alt="" /></button>
               : <span className="no"><PinIcon /></span>}
             <div className="tx">
-              <b className="tp-wname">{chainWords[0] || whereB}</b>
-              {chainWords.slice(1).map((n, i) => <small key={i} className="tp-win">{inThe(n)}</small>)}
+              <span className="tp-l1">{steps[0] ? prepPill(0) : null}<b className="tp-wname">{chainWords[0] || whereB}</b></span>
               <small>{whereS}</small>
             </div>
           </div>
+          {steps.length > 1 && (whereOpen ? (
+            <div className="tp-path">
+              {steps.slice(1).map((st, i) => (
+                <div key={i + 1} className="tp-lv">
+                  <div className="tp-conn">{prepPill(i + 1)}</div>
+                  <div className="tp-lvr">
+                    {st.t === 'thing' ? (st.item.thumb ? <img src={st.item.thumb} alt="" /> : <span className="no"><BoxIcon /></span>)
+                      : placePic(st.name) ? <button type="button" className="ph-open" aria-label={`Photos of ${st.name}`} onClick={() => setViewer({ kind: 'place', name: st.name, start: 0, nonce: 0 })}><img src={placePic(st.name)} alt="" /></button>
+                      : <span className="no"><PinIcon /></span>}
+                    <b>{st.name}</b>
+                  </div>
+                </div>))}
+              <button type="button" className="tp-exp" onClick={() => setWhereOpen(false)}><span>Show less</span><ChevronUpIcon /></button>
+            </div>
+          ) : (
+            <button type="button" className="tp-exp" aria-expanded="false" onClick={() => { setWhereOpen(true); logEvent('where_expand', { itemId: item.id, levels: steps.length }); }}>
+              <CornerDownRightIcon /><span>What {theOrQuoted(steps[0].name)} is in · {steps.length - 1} more</span><ChevronDownIcon /></button>))}
+          </>
         ) : <div className="tp-wh none">
           <span className="no-pin"><PinIcon /></span>
           <div className="tx"><b>No place yet</b><small>Put it away so you can find it</small></div>

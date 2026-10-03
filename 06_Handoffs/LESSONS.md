@@ -7,6 +7,15 @@ Keep entries short and imperative. The test of a good entry: would it have saved
 
 ---
 
+## 2026-10-03
+
+- **Never reuse a class name that a page style already owns.** The camera's "(previously was: …)" used class `was`, and the
+  page's `.was { display: flex }` row style broke the header inside the new sheets. Prefix new classes, e.g. `ow-…`, `es-…`,
+  `pp-…`.
+- **No `react-dom` in the app, only `react-dom/client`.** The import map maps only `react-dom/client`, so `createPortal`
+  isn't available. Place pop-ups inside the component, and measure the scrolling parent so they never get cut off
+  (`PrepPill.jsx`).
+
 ## Build & repo
 
 - **`docs/` is build output, not documentation.** GitHub Pages requires that exact folder

@@ -220,3 +220,11 @@ export function ListIcon() {
 export function ArrowRightIcon() {
   return (<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>);
 }
+// 10-03 (usability pass 1) — Lucide: map-pin-off (no place yet, Home), chevron-up, corner-down-right, sparkles (ReCall's guess)
+const L = (children, sw = 2) => (<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>);
+export function MapPinOffIcon() {
+  return L(<><path d="M12.75 7.09a3 3 0 0 1 2.16 2.16" /><path d="M17.072 17.072c-1.634 2.17-3.527 3.912-4.471 4.727a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 1.432-4.568" /><path d="m2 2 20 20" /><path d="M8.475 2.818A8 8 0 0 1 20 10c0 1.183-.31 2.377-.81 3.533" /><path d="M9.13 9.13a3 3 0 0 0 3.74 3.74" /></>, 2.5);
+}
+export function ChevronUpIcon() { return L(<path d="m18 15-6-6-6 6" />); }
+export function CornerDownRightIcon() { return L(<><path d="m15 10 5 5-5 5" /><path d="M4 4v7a4 4 0 0 0 4 4h12" /></>); }
+export function SparklesIcon() { return L(<><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /><path d="M20 2v4" /><path d="M22 4h-4" /></>); }

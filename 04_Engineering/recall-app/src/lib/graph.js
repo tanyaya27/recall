@@ -91,7 +91,7 @@ export const TIERS_SHOWN = 3;
 export function movedOf(item, g = G) {
   if (!item) return null;
   // an Undo puts it back: its link (how: 'undo') is not a move, and its history line cancels the line before it
-  const replaced = (id, e) => e.how !== 'undo' && (g.edges || []).some((x) => x.rel === 'in' && x.from === id && x.until && x.id !== e.id && Math.abs((x.until || 0) - (e.since || 0)) < 5000);
+  const replaced = (id, e) => e.how !== 'undo' && e.how !== 'prep' && (g.edges || []).some((x) => x.rel === 'in' && x.from === id && x.until && x.id !== e.id && Math.abs((x.until || 0) - (e.since || 0)) < 5000);
   let best = null;
   const h = []; (item.history || []).forEach((x) => { if (x.undo && h.length > 1) h.pop(); else if (!x.undo) h.push(x); });
   for (let i = h.length - 1; i > 0; i--) {
@@ -258,4 +258,57 @@ export function saidNow(item, g = G) {
   if (!s.said) return s;
   const e = item && item.id ? g.open.get(item.id) : null;
   return e && (e.since || 0) > (s.stmt || s.at) + 5000 ? { said: '', at: 0, by: '', stale: s } : s;
+}
+
+// ---------- 10-03 (Ravi/Tanya, usability pass 1 — BOARD_2026-10-03_usability-1.md): the little word on each link ----------
+// "on the Lab desk, which is in the Craft room". Stored on the link (edge.prep) when she chose it; otherwise read from the name.
+// The words offered depend on the place (Tanya: "too many may also be a problem, so we need contextual awareness").
+const SURF = new Set(['desk', 'table', 'shelf', 'shelves', 'counter', 'countertop', 'bench', 'workbench', 'bed', 'floor', 'windowsill', 'sill', 'dresser',
+  'nightstand', 'stand', 'ledge', 'mantel', 'mantelpiece', 'piano', 'top', 'tray', 'rack', 'couch', 'sofa', 'chair', 'stool', 'cart', 'island', 'sideboard',
+  'credenza', 'bookcase', 'bookshelf', 'board', 'worktop', 'tabletop', 'desktop']);
+const CONT = new Set(['box', 'boxes', 'drawer', 'drawers', 'bag', 'cupboard', 'cabinet', 'closet', 'bin', 'basket', 'tin', 'jar', 'case', 'pouch', 'purse',
+  'wallet', 'backpack', 'suitcase', 'chest', 'trunk', 'fridge', 'refrigerator', 'freezer', 'pocket', 'folder', 'envelope', 'safe', 'crate', 'tote',
+  'container', 'organizer', 'organiser', 'caddy', 'carton', 'locker', 'wardrobe', 'bucket', 'pot', 'mug', 'cup', 'bowl', 'binder', 'sleeve', 'holder']);
+const ROOM = new Set(['room', 'bedroom', 'kitchen', 'garage', 'bathroom', 'office', 'attic', 'basement', 'hall', 'hallway', 'den', 'study', 'pantry',
+  'laundry', 'porch', 'upstairs', 'downstairs', 'house', 'home', 'apartment', 'flat', 'shed', 'car', 'loft', 'lounge', 'foyer', 'entry', 'entryway',
+  'patio', 'yard', 'garden', 'cellar', 'nursery', 'playroom', 'mudroom', 'library', 'workshop', 'lab', 'studio', 'basement']);
+export const PREPS = ['on', 'in', 'under', 'behind', 'next to'];
+const POSN = /^\s*(under|underneath|behind|beside|by|near|next to|on top of|in front of|inside|below|above|between)\b/i;
+const JOIN = new Set(['with', 'on', 'in', 'by', 'of', 'from', 'near', 'under', 'behind', 'at', 'for', 'and', 'beside', 'inside', 'next']);
+const kindW = (w) => (SURF.has(w) ? 'surf' : CONT.has(w) ? 'cont' : ROOM.has(w) ? 'room' : '');
+// The head of the name decides: the last kind-word before "with / on / of …" ("Lab desk with electronics" is a desk,
+// "Top drawer of the desk" a drawer); failing that, any kind-word in it.
+function kindOfName(name) {
+  const ws = (name || '').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const cut = ws.findIndex((w, i) => i > 0 && JOIN.has(w)); const head = cut > 0 ? ws.slice(0, cut) : ws;
+  for (let i = head.length - 1; i >= 0; i--) { const k = kindW(head[i]); if (k) return k; }
+  for (const w of ws) { const k = kindW(w); if (k) return k; }
+  return '';
+}
+// The words offered for what something is put on/in/under …, likeliest first.
+export function prepOptions(targetName) {
+  const k = kindOfName(targetName);
+  return k === 'surf' ? ['on', 'under', 'behind', 'next to'] : k === 'cont' ? ['in', 'on', 'next to'] : k === 'room' ? ['in'] : ['in', 'on', 'under', 'behind', 'next to'];
+}
+export function inferPrep(targetName) { return POSN.test(targetName || '') ? '' : prepOptions(targetName)[0]; }
+// The word on one link: hers if she chose one (and it still fits a name that isn't itself "Under the sink"), else ReCall's.
+export function prepOf(edge, targetName) {
+  if (POSN.test(targetName || '')) return '';
+  const p = edge && edge.prep; return p && PREPS.includes(p) ? p : inferPrep(targetName);
+}
+// Each step of the where, outward, with the word that joins it to the step before and the link that holds that word.
+// [{ t, name, item?, id?, fromId, edge, prep, chosen, options }]
+export function whereSteps(item, g = G) {
+  const tiers = whereChain(item, g);
+  return tiers.map((t, k) => {
+    const prev = k === 0 ? { id: item.id } : tiers[k - 1].t === 'thing' ? { id: tiers[k - 1].item.id } : { id: tiers[k - 1].id };
+    const name = t.t === 'thing' ? (t.item.name ? t.item.name.charAt(0).toUpperCase() + t.item.name.slice(1) : 'A box') : t.name;
+    const edge = prev.id ? openEdge(prev.id, g) : null;
+    return { ...t, name, fromId: prev.id || null, edge, prep: prepOf(edge, name), chosen: !!(edge && edge.prep), options: POSN.test(name) ? [] : prepOptions(name) };
+  });
+}
+// Everything whose where passes through a place or box (for "For everything in the Craft room · 3 items").
+export function usersOf(step, g = G) {
+  const key = step.t === 'thing' ? 't' + step.item.id : 'p' + (step.name || '').trim().toLowerCase();
+  return g.items.filter((x) => !x.deleted && whereChain(x, g).some((t) => (t.t === 'thing' ? 't' + t.item.id : 'p' + (t.name || '').trim().toLowerCase()) === key));
 }

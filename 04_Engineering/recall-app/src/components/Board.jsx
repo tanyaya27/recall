@@ -3,7 +3,7 @@ import { useHold } from '../lib/hold.js';
 import { me } from '../lib/auth.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
-import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon, SwitchIcon, NoteIcon, BoxIcon, PinIcon } from './Icons.jsx';
+import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon, SwitchIcon, NoteIcon, BoxIcon, PinIcon, MapPinOffIcon } from './Icons.jsx';
 import { topLevel, contentsOf, holderOf, isContainer, saidOf, wordsWhere } from '../lib/graph.js';
 
 // Home — THE BOARD. Board decision 2026-09-05, Rules 1–3.
@@ -98,7 +98,9 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
                 })}>
                 {it.thumb ? <img src={it.thumb} alt={it.name || ''} /> : <span className="tile-written" aria-label="Written down, no photo"><NoteIcon /></span>}
                 {isPrivate(it) && <span className="tile-lock" aria-label="Private"><LockIcon /></span>}
-                {inside > 0 && <span className="inbadge"><BoxIcon /> {inside} inside</span>}
+                {/* 10-03 (Tanya, H2): no place yet — a pin with a slash, top left (the same things "Not put away" counts) */}
+                {!it.location && !holderOf(it) && !it.asWhere && !wordsWhere(it).said && <span className="tile-nop" aria-label="No place yet"><MapPinOffIcon /></span>}
+                {inside > 0 && <span className={'inbadge' + (!it.location && !holderOf(it) && !it.asWhere && !wordsWhere(it).said ? ' after-nop' : '')}><BoxIcon /> {inside} inside</span>}
                 {/* 10-01 (Tanya): "No need for a location on the main page … it just gets truncated and becomes useless." A tile
                     is the photo and the name; where it is lives on the item's page (and Find shows it). Things with no place at
                     all are counted in "Not put away" above. */}

@@ -6,6 +6,41 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-10-03 — Usability pass 1 (Ravi + Tanya) → `20261003a` (built for Ravi to try; full test cycle after)
+
+Ravi's first set of usability issues on `20261002a`. Boards and every ruling: `design/BOARD_2026-10-03_usability-1.md`.
+Screens: `design/mockups/OPTIONS_2026-10-03_usability-1.jpg`.
+
+- **Home: an item with no place gets a pin-with-a-slash badge, top left** (Tanya; Claude suggested top right). These are the
+  same things "Not put away" counts.
+- **Item page, "Where it is": W3 folded** (Tanya). Only the first level shows, with its photo and its little word ("on the Lab
+  desk"). "What the Lab desk is in · 2 more" opens the rest, each with its photo, joined by "which is in", and "Show less"
+  folds it again.
+- **The little words** are on, in, under, behind and next to (Tanya). Add more only if feedback asks for them. The words
+  offered depend on the place:
+  - a desk, table, shelf or counter offers on, under, behind and next to;
+  - a box, drawer or bag offers in, on and next to;
+  - a room offers only in;
+  - when ReCall can't tell, it offers all five.
+- **Changing a word** works like picking a reaction in a text message (Ravi). Tap the pill and a bar of words pops up; one
+  tap picks. A toast with Undo follows. A shared word (the Craft room's) says "For everything in the Craft room · N items".
+  It works on the item page and in the → sheet.
+  - **Storage:** the word is stored on the link (`edge.prep`); without one, it is read from the name. No migration. The
+    rules allow it for the owner. A helper closes the link and opens the same link with the word (`how: 'prep'`, never
+    counted as a move).
+- **Typing happens in a sheet of its own** (Ravi). That covers the place, the note, fixing ReCall's words, and renaming. The
+  sheet has its own Cancel and Done, and nothing behind it can be tapped. "Photos go to" changes only on Done. *Cost:* one
+  tap (Done) before the next photo, which reverses round 3's "typing stays on the camera". Tanya had no view, so Claude's
+  pick stands.
+- **→ sheet:**
+  - Every level has Change and Remove as stacked text buttons; the first level has "Take it out". Each asks first.
+  - **Removing or changing a middle level cuts outward** (Tanya): the levels closer to the item stay, and everything outward
+    goes from this path. The removed place itself is untouched. This overrides Sam's splice.
+  - "What is X in?" can make a new place: "Add 'X' as a new place".
+  - The place sheet and the levels sheet stay separate (Claude's pick, taken).
+- **ReCall's guess:** tap its words to fix them before Use this or Append (Ravi). "Append to mine" is now "Append".
+- **Rename a place or a box by tapping its name in the → sheet** (Tanya: yes).
+
 ## 2026-10-02 (night) — One where, photo first (Ravi) → `20261002a`
 
 Ravi's report (Walgreens brochure: typed "on my lab desk", the old place stayed, the page showed two wheres, Find answered the

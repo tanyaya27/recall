@@ -1495,3 +1495,100 @@ textarea.ow-input { resize: none; overflow: hidden; line-height: 1.3; display: b
 .tp-wone .ph-open { width: auto; height: auto; border-radius: 0.75rem; overflow: hidden; } /* the photo button is the photo's size (BUILD frame 9) */
 .ow-sheet .ow-clear { white-space: normal; overflow-wrap: anywhere; font-size: 1rem; }
 .ow-par .ow-close { font-style: normal; } /* no italic gap before ")" */
+
+/* ---------- 10-03 usability pass 1 (BOARD_2026-10-03_usability-1.md) ---------- */
+/* H2: no place yet — top left of the tile's photo */
+.tile .tile-nop { position: absolute; left: 0.5rem; top: 0.5rem; z-index: 2; width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--amber); color: #1F1D1A;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 6px rgba(0,0,0,0.45); pointer-events: none; }
+.tile .tile-nop svg { width: 20px; height: 20px; }
+.tile .inbadge.after-nop { left: 3.125rem; top: 0.875rem; }
+/* the little word: a pill; tapping pops a bar of words like a text reaction (T1–T3) */
+.pp { display: inline-flex; align-items: center; flex: none; border-radius: 999px; background: var(--amber-bg); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent);
+  font-size: 0.8125rem; font-weight: 700; padding: 0.125rem 0.625rem; line-height: 1.4; white-space: nowrap; min-height: 0; margin-right: 0.5rem; vertical-align: 0.125rem; }
+.pp-btn { cursor: pointer; min-height: 1.75rem; }
+.pp-btn.hot { background: var(--amber); color: #1F1D1A; }
+.pp-wrap { position: relative; display: inline-flex; }
+.pp-wrap.open { z-index: 60; }
+.pp-scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: -1; }
+.pp-wrap.open .pp-btn { position: relative; z-index: 2; }
+.pp-bar { position: absolute; left: -0.375rem; bottom: calc(100% + 0.625rem); z-index: 3; display: flex; gap: 0.25rem; padding: 0.3125rem; border-radius: 999px; white-space: nowrap;
+  background: #3A3630; border: 1px solid #6a5f4c; box-shadow: 0 6px 24px rgba(0,0,0,0.6); }
+.pp-bar::after { content: ""; position: absolute; left: 1.375rem; bottom: -0.4375rem; width: 0.75rem; height: 0.75rem; background: #3A3630; border-right: 1px solid #6a5f4c; border-bottom: 1px solid #6a5f4c; transform: rotate(45deg); }
+.pp-opt { min-height: 2.75rem; min-width: 2.75rem; padding: 0 0.75rem; border-radius: 999px; background: none; color: #F1ECE3; font-weight: 700; font-size: 0.9375rem; border: 0; }
+.pp-opt.cur { background: var(--amber); color: #1F1D1A; }
+.pp-note { position: absolute; left: 0; bottom: calc(100% + 0.375rem); background: #1F1D1A; color: var(--amber); font-size: 0.75rem; font-weight: 600; padding: 0.1875rem 0.5rem; border-radius: 0.5rem; white-space: nowrap; }
+/* X1/X2: the first level, then "What the Lab desk is in · 2 more" opens the rest */
+.tp-l1 { display: block; }
+.tp-l1 .tp-wname { display: inline !important; }
+.tp-exp { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 2.75rem; margin: 0.25rem 0 0.5rem; padding: 0.5rem 0.75rem; border: 1.5px solid var(--line); border-radius: 0.75rem;
+  background: none; color: var(--ink-soft); font-size: 0.9375rem; font-weight: 600; text-align: left; }
+.tp-exp span { flex: 1; } .tp-exp svg { flex: none; width: 18px; height: 18px; } .tp-exp svg:last-child { color: var(--accent); width: 20px; height: 20px; }
+.tp-path { margin: 0 0 0.25rem; }
+.tp-lv .tp-conn { margin: 0.125rem 0 0.125rem 1.6rem; padding: 0.375rem 0 0.375rem 1rem; border-left: 2px dashed color-mix(in srgb, var(--amber) 40%, transparent); }
+.tp-lvr { display: flex; align-items: center; gap: 0.75rem; }
+.tp-lvr img, .tp-lvr .no { flex: none; width: 3.25rem; height: 3.25rem; border-radius: 0.625rem; object-fit: cover; }
+.tp-lvr .no { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+.tp-lvr .ph-open { width: auto; height: auto; flex: none; padding: 0; border: 0; background: none; line-height: 0; border-radius: 0.625rem; overflow: hidden; }
+.tp-lvr b { font-size: 1.0625rem; line-height: 1.25; }
+/* E1–E4, G2, R2: typing happens in a sheet of its own; everything behind it is dimmed and can't be tapped */
+.es-back { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.72); }
+.es { position: fixed; left: 0; right: 0; display: flex; flex-direction: column; max-width: 35rem; margin: 0 auto; color: var(--ink); }
+.es-body { flex: 1; min-height: 0; overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 1rem) 1rem 0.5rem; }
+.es-title { font-size: 1.25rem; font-weight: 700; line-height: 1.3; margin: 0 0.125rem 0.625rem; color: #fff; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.es-title svg { width: 20px; height: 20px; color: var(--accent); }
+.es-title .ow-head { margin: 0; font-size: 1.125rem; display: block; }
+.es-field { background: rgba(0,0,0,0.35); }
+.es-field.rn { border: 2px solid var(--accent); background: rgba(140,196,178,0.08); }
+.es-field textarea.ow-input { overflow-y: auto; }
+.es-hint { font-size: 0.875rem; color: #D6D0C6; margin: 0.5rem 0.25rem; line-height: 1.4; }
+.es-hint.warn { color: #F5B942; }
+.es-hint s { opacity: 0.75; }
+.es-new { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 3rem; margin: 0.375rem 0 0.25rem; padding: 0 0.875rem; border: 2px solid var(--accent); border-radius: 0.75rem;
+  background: rgba(140,196,178,0.08); color: var(--accent); font-weight: 700; font-size: 1rem; text-align: left; }
+.es-new svg { flex: none; width: 18px; height: 18px; }
+.es-list { margin-top: 0.25rem; }
+.es-list .wl-row, .es .ow-pick { color: #fff; }
+.es-note { width: 100%; min-height: 6rem; padding: 0.75rem; border-radius: 0.875rem; border: 2px solid var(--accent); background: rgba(140,196,178,0.08); color: #fff; font: inherit; font-size: 1.0625rem; font-style: italic; resize: none; }
+.es-note.es-fix { min-height: 4rem; font-style: normal; font-weight: 700; }
+.es-bar { flex: none; display: flex; gap: 0.625rem; padding: 0.625rem 1rem calc(0.625rem + env(safe-area-inset-bottom, 0px)); background: #1F1D1A; border-top: 1px solid rgba(255,255,255,0.12); }
+.es-bar button { flex: 1; width: auto; min-height: 3rem; margin: 0; }
+.es-bar .es-cancel { flex: 0.8; }
+/* the camera's field is a button now: a tap opens the place sheet */
+.ow-tap { text-align: left; cursor: pointer; line-height: 1.3; overflow-wrap: anywhere; min-height: 2.75rem; }
+.ow-tap.ph { color: #CFC8BD; font-weight: 600; }
+.ow-note-set { display: block; width: 100%; min-height: 2.75rem; margin-top: 0.5rem; padding: 0.375rem 0.25rem; background: none; border: 0; text-align: left; color: #D6D0C6; font-size: 0.9375rem; }
+.ow-note-set .q { font-style: italic; } .ow-note-set b { color: var(--accent); }
+/* G1: ReCall's words look like something to tap */
+.ow-ai small svg { width: 13px; height: 13px; vertical-align: -2px; color: var(--accent); }
+.ow-ai .ow-ai-name { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 2.75rem; margin: 0.375rem 0 0.125rem; padding: 0.375rem 0.625rem; border-radius: 0.625rem;
+  border: 1.5px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.35); color: #fff; font-weight: 700; font-style: italic; font-size: 1.0625rem; text-align: left; line-height: 1.25; }
+.ow-ai .ow-ai-name span { flex: 1; } .ow-ai .ow-ai-name svg { flex: none; width: 16px; height: 16px; color: #F5B942; }
+.ow-ai-tip { font-size: 0.8125rem; color: #ddd; margin: 0 0 0.5rem; }
+/* S1: the → sheet — "It's on", the words on each link, Change / Remove stacked */
+.ow-its { display: flex; align-items: center; gap: 0.375rem; font-size: 0.9375rem; color: var(--ink-soft); margin: 0 0 0.375rem 0.125rem; }
+.ow-its .pp { margin-right: 0; }
+.ow-in { display: flex; align-items: center; margin: 0.375rem 0 0.375rem 1.375rem; }
+.ow-in .pp { margin-right: 0; }
+.ow-acts { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+.ow-acts button { min-height: 2.75rem; padding: 0 0.5rem; background: none; border: 0; font-weight: 700; font-size: 0.9375rem; }
+.ow-acts .ow-lvl-rm { color: #E89A8C; }
+.ow-rn { display: flex; align-items: center; gap: 0.375rem; padding: 0; min-height: 2.75rem; background: none; border: 0; color: inherit; text-align: left; }
+.ow-rn b { display: inline !important; font-size: 1.0625rem; }
+.ow-rn svg { flex: none; width: 15px; height: 15px; color: #F5B942; }
+.ow-nop svg { width: 1em; height: 1em; vertical-align: -0.15em; color: var(--amber); }
+.ow-warn { color: var(--amber); }
+.lc .pp-bar { z-index: 5; }
+.pp-pop { position: absolute; bottom: calc(100% + 0.625rem); z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 0.375rem; }
+.pp-pop.below { bottom: auto; top: calc(100% + 0.625rem); flex-direction: column-reverse; }
+.pp-pop .pp-bar { position: relative; left: auto; bottom: auto; }
+.pp-pop .pp-bar::after { left: var(--arrow, 1.375rem); }
+.pp-pop.below .pp-bar::after { bottom: auto; top: -0.4375rem; transform: rotate(225deg); }
+.pp-pop .pp-note { position: static; }
+.es-title { display: block; }
+.es-title svg { vertical-align: -3px; margin-right: 0.375rem; }
+.es-back { background: rgba(18,16,14,0.94); }
+.ow-par.was { display: inline; white-space: normal; overflow: visible; margin: 0; min-height: 0; gap: 0; font-weight: 600; } /* not the page's ".was" row */
+.ow-par.was span { overflow: visible; }
+.es-back { background: rgba(18,16,14,0.97); }
+.es-back { background: #121010; }
+.lc .sheet { background: rgba(34,32,30,0.98); } /* 10-03: confirms over the → sheet never show the buttons behind them */

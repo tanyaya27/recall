@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { compressPhoto, shrink } from '../lib/img.js';
 import { addItem, nameItem, resnapItem, changeLocation, findMatch, knownLocations, placeNamed, noteAlias, logEvent,
-  applyVerdict, saveChain, undoChain, isPrivate, addItemPhotos, prevOf } from '../lib/db.js';
+  applyVerdict, saveChain, undoChain, isPrivate, addItemPhotos, prevOf, renamePlace, renameItem, setPrepFrom } from '../lib/db.js';
 import { verdictOf, hasSecret } from '../lib/sensitive.js';
 import { normName } from '../lib/names.js';
 import { me } from '../lib/auth.js';
-import { holderOf, chainOf, openEdge, graph, placeOuter, TIERS_SHOWN, wouldLoop, placeWouldLoop, containers, atPlace } from '../lib/graph.js';
+import { holderOf, chainOf, openEdge, graph, placeOuter, TIERS_SHOWN, wouldLoop, placeWouldLoop, containers, atPlace, prepOptions, inferPrep, usersOf } from '../lib/graph.js';
 import { matchThings } from '../lib/speech.js';
 import { theOrQuoted } from '../lib/format.js';
 import { bareWhere, articleOff, deepBare, nameKey } from '../lib/where.js';
@@ -14,7 +14,9 @@ import PrivNote from './PrivNote.jsx';
 import Choice from './Choice.jsx';
 import Confirm from './Confirm.jsx';
 import PhotoViewer from './PhotoViewer.jsx';
-import { CameraIcon, CloseIcon, PinIcon, LockIcon, PencilIcon, SaveIcon, PlusIcon, BoxIcon, ArrowRightIcon } from './Icons.jsx';
+import EditSheet from './EditSheet.jsx';
+import PrepPill from './PrepPill.jsx';
+import { CameraIcon, CloseIcon, PinIcon, LockIcon, PencilIcon, SaveIcon, PlusIcon, BoxIcon, ArrowRightIcon, SparklesIcon, MapPinOffIcon } from './Icons.jsx';
 
 // 10-02 (Ravi; "one where, photo first" — BOARD_2026-10-02_one-where.md rounds 1–4, OPTIONS_2026-10-02_one-where-A4.jpg).
 // Release 1 kept "where" twice (her words + the In chip) with no rule between them: a Move by words kept the old place and Find
@@ -77,8 +79,18 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const pickRef = useRef(startPick); pickRef.current = pick;
   const pickTouched = useRef(false); // she set the where herself
   const [ups, setUps] = useState([]); // levels she set above the pick, outward (from the → sheet)
-  const [wtext, setWtext] = useState(''); // what she is typing in the where field
-  const [focus, setFocus] = useState(false);
+  // 10-03 (Ravi, usability pass 1 — BOARD_2026-10-03_usability-1.md E1–E4, G1–G2, S1–S4, R1–R2): typing happens in a sheet of
+  // its own (the place, the note, ReCall's words, a rename) with its own Cancel / Done; nothing behind it can be tapped, and
+  // nothing — "Photos go to" included — changes until Done. The → sheet: every level with Change and Remove (Take it out on
+  // the first), each asking first; removing a level cuts outward (Tanya). The little words (on / in / under …) are hers to pick.
+  const [ed, setEd] = useState(null);       // E1: { text, start } — the place sheet
+  const [noteEd, setNoteEd] = useState(null); // E3: the note's draft
+  const [fix, setFix] = useState(null);     // G2: ReCall's words, being fixed
+  const [rn, setRn] = useState(null);       // R2: { k, text } — rename a place or box from the → sheet
+  const [ask, setAsk] = useState(null);     // S2/S3: { kind: 'out' } | { kind: 'rm', j }
+  const [preps, setPreps] = useState({});   // the words she chose, by level (0 = the item's own)
+  const [cutOut, setCutOut] = useState(false); // she removed a level: the outermost level kept is in nothing
+  const focus = !!ed; const wtext = ed ? ed.text : '';
   // a private item's photos never land on a shared place by default (10-02): its Move photos stay its own unless she switches
   const privItem = !!(moveItem && isPrivate(moveItem));
   const [photoTo, setPhotoTo] = useState(moveItem && startPick && !privItem ? 'where' : 'item');
@@ -118,7 +130,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const setPick = (k, byHer = true) => {
     if (byHer) pickTouched.current = true;
     if (keyK(k) !== keyK(pickRef.current) || (k && k.blank) !== (pickRef.current && pickRef.current.blank)) { setGuess(null); if (lookT.current || looking) stopLooking('changed'); }
-    pickRef.current = k; setPickS(k); setUps([]);
+    pickRef.current = k; setPickS(k); setUps([]); setPreps({}); setCutOut(false);
     if (!k) setPhotoTo('item'); else if (byHer && !privItem && (moveItem || shotsRef.current.some((s) => s.to !== 'where'))) setPhotoTo('where');
   };
 
@@ -202,12 +214,14 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
       else setGuess({ name: r.name, merged: dedupe(r.merged || localMerge(typed, r.name)), typed, key });
     }, (err) => { if (my === guessGen.current) { lookingAsked.current = false; setLooking(false); } console.error('place guess', err); });
   }
-  function takeGuess(how) {
+  function takeGuess(how, text = null) {
     const gq = guess; if (!gq) return;
-    logEvent('place_guess_' + how, {});
+    logEvent('place_guess_' + how, { fixed: text !== null });
     decided.current.add(gq.key || ''); // once she chose, no more guesses for that name
     if (how === 'no') { setGuess(null); if (gq.filled) { pickRef.current = BLANK; setPickS(BLANK); decided.current.add('blank'); } return; }
-    const k = resolve(how === 'add' ? gq.merged : gq.name); decided.current.add(guessKey(k));
+    // G2 (Ravi 10-02): her fixed words are hers — Append joins them to what she typed, nothing said twice
+    const nm = text !== null ? text.trim() : gq.name; const mg = text !== null ? (gq.typed ? dedupe(localMerge(gq.typed, nm)) : nm) : gq.merged;
+    const k = resolve(how === 'add' ? mg : nm); decided.current.add(guessKey(k));
     setPick(k); setGuess(null);
   }
 
@@ -270,12 +284,19 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     if (hasSecret(text)) return { t: 'place', name: cap(b), isNew: true, bad: 'That looks private — not used as a place.' };
     return { t: 'place', name: cap(b), isNew: true };
   }
-  function onType(val) { setWtext(val); if (lookT.current || looking) stopLooking('typed'); const k = resolve(val); setPick(k); }
-  function onFocusWhere(e) { setFocus(true); focusRef.current = true; setWtext(pick && !pick.blank ? kName(pick) : ''); const el = e.target; setTimeout(() => { try { el.select(); } catch { /* fine */ } }, 0); logEvent('camera_where_focus', {}); }
-  function onBlurWhere() { setFocus(false); focusRef.current = false; setWtext(''); }
+  // E1: the place sheet. Nothing changes until Done (or a tap on one of her places); Cancel leaves everything as it was.
+  function openPlace() { if (lookT.current || looking) stopLooking('typed'); const t = pick && !pick.blank ? kName(pick) : ''; focusRef.current = true; setEd({ text: t, start: t }); logEvent('camera_where_focus', {}); }
+  function closePlace() { focusRef.current = false; setEd(null); }
+  function placeDone(k = undefined) {
+    const e = ed; closePlace(); if (!e) return;
+    if (k !== undefined) { setPick(k); logEvent('camera_where_pick', { t: k ? k.t : null, via: 'sheet' }); return; }
+    if (e.text === e.start) return; // she looked and changed nothing
+    const r = resolve(e.text); if (r && r.bad) return;
+    setPick(r); logEvent('camera_where_set', { isNew: !!(r && r.isNew), blank: !!(r && r.blank) });
+  }
 
   // Move it: Save waits for a change — a photo, a note, a different where, a level (09-30, Ravi; kept).
-  const changed = !moveItem || shots.length > 0 || !!noteNow || !sameKnown(pick, firstPick.current) || ups.length > 0;
+  const changed = !moveItem || shots.length > 0 || !!noteNow || !sameKnown(pick, firstPick.current) || ups.length > 0 || cutOut || Object.keys(preps).length > 0;
   const saveOff = busy || !started || needItemPhoto || !changed || typedSecret || !!(pick && (pick.blank || pick.bad));
 
   function retake() { logEvent('privacy_retake', { via: 'camera' }); gen.current++; setShots([]); setTag(undefined); setMatch(null); setAnswer(null); setNameOverride(''); setShareAnyway(false); tagP.current = null; setGuess(null); }
@@ -323,16 +344,25 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         const selfKeys = self ? ['t' + self.id] : [];
         for (let i = 0; i < ch.length; i++) { if (loopsOver(ch[i], [...selfKeys, ...ch.slice(0, i).map(keyK)])) throw Object.assign(new Error('loop'), { code: 'loop' }); }
         for (let i = 1; i < ch.length; i++) if (ch[i].t === 'thing' && ch[i - 1].t === 'place') throw Object.assign(new Error('loop'), { code: 'loop' }); // a place is never inside a box (Q4)
-        const kn = (k, photos) => (k.t === 'thing' ? { known: { t: 'thing', item: k.item }, ...(photos && photos.length ? { extraPhotos: photos } : {}) }
-          : { known: { t: 'place', name: k.name }, ...(photos && photos.length ? { placePhotos: photos } : {}) });
-        const r = await saveChain([kn(P, wShots), ...upsNow.map((k) => kn(k))], { owner: owner || me(), places });
+        const pw = P === pick ? preps : {}; // the words she chose belong to the levels she chose them on
+        const kn = (k, photos, i) => ({ ...(k.t === 'thing' ? { known: { t: 'thing', item: k.item }, ...(photos && photos.length ? { extraPhotos: photos } : {}) }
+          : { known: { t: 'place', name: k.name }, ...(photos && photos.length ? { placePhotos: photos } : {}) }), ...(i < upsNow.length && pw[i + 1] ? { outPrep: pw[i + 1] } : {}) });
+        const r = await saveChain([kn(P, wShots, 0), ...upsNow.map((k, i) => kn(k, null, i + 1))], { owner: owner || me(), places, cut: P === pick && cutOut });
         location = r.first ? r.first.text : ''; dest = r.first ? r.first.dest : null; made = r.made;
+        // a word on a level she didn't change (Craft room → Bedroom, already saved): onto that link as it is
+        const allLv = [P, ...upsNow, ...(P === pick && cutOut ? [] : outerKs(upsNow.length ? upsNow[upsNow.length - 1] : P))];
+        for (const j of Object.keys(pw).map(Number).filter((j) => j > upsNow.length && j < allLv.length)) {
+          const f = allLv[j - 1]; const id = f.t === 'thing' ? f.item.id : (placeNamed(f.name, places) || {}).id;
+          if (id) await setPrepFrom(id, pw[j]).catch((e) => console.error('prep', e));
+        }
       }
       const inChanged = !sameKnown(P, was);
+      const itemPrep = P && P === pick && preps[0] ? preps[0] : undefined;
       // a note: a new one when she wrote one; an old note was about the old place, so a new where clears it
       const said = noteNow ? noteNow : inChanged ? '' : undefined;
       const upsNow = P === pick ? ups : [];
-      const outer = (upsNow.length ? [...upsNow, ...outerKs(upsNow[upsNow.length - 1])] : outerKs(P)).map(kName);
+      const cutNow = P === pick && cutOut;
+      const outer = (upsNow.length ? [...upsNow, ...(cutNow ? [] : outerKs(upsNow[upsNow.length - 1]))] : cutNow ? [] : outerKs(P)).map(kName);
       const chain = P ? [kName(P), ...outer] : [];
       const pickThumb = !P ? null : wShots.length ? wShots[0].thumb : P.t === 'thing' ? P.item.thumb : (() => { const p = placeNamed(P.name, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; })();
       const l1 = P ? (outer.length ? '' : `In: ${kName(P)}`) : noteNow ? `“${noteNow}”` : '';
@@ -343,8 +373,8 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         if (iShots.length) {
           photos = { since: Date.now(), prev: { photo: moveItem.photo || null, thumb: moveItem.thumb || null, photoCount: moveItem.photoCount || 0, logId: moveItem.logId || '', restingOn: moveItem.restingOn || '' } };
           const cover = iShots[0]; const extras = iShots.slice(1).map((p) => ({ photo: p.photo, thumb: p.thumb }));
-          await resnapItem(moveItem, { photo: cover.photo, thumb: cover.thumb, extras, location, dest, placeSource: 'chosen', said, note: !!noteNow });
-        } else ok = await changeLocation(moveItem, location, 'chosen', dest, { said, note: !!noteNow });
+          await resnapItem(moveItem, { photo: cover.photo, thumb: cover.thumb, extras, location, dest, placeSource: 'chosen', said, note: !!noteNow, prep: itemPrep });
+        } else ok = await changeLocation(moveItem, location, 'chosen', dest, { said, note: !!noteNow, prep: itemPrep });
         if (orphanShots.length) { if (!photos) photos = { since: Date.now() - 1, prev: { photo: moveItem.photo || null, thumb: moveItem.thumb || null, photoCount: moveItem.photoCount || 0, logId: moveItem.logId || '', restingOn: moveItem.restingOn || '' } }; await addItemPhotos(graph().byId.get(moveItem.id) || moveItem, orphanShots); }
         logEvent('camera_move', { itemId: moveItem.id, ok, inChanged, note: !!noteNow, photos: iShots.length, wherePhotos: wShots.length, levels: upsNow.length });
         const bits = [iShots.length ? (iShots.length === 1 ? 'A new photo' : `${iShots.length} new photos`) : '', wShots.length ? `${wShots.length === 1 ? 'a photo' : `${wShots.length} photos`} of ${theOrQuoted(kName(P))}` : '', noteNow ? 'your note' : '', upsNow.length ? 'where it’s in' : ''].filter(Boolean);
@@ -354,11 +384,11 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         return;
       }
       const cover = iShots[0]; const extras = [...iShots.slice(1).map((p) => ({ photo: p.photo, thumb: p.thumb })), ...orphanShots];
-      const common = { photo: dropPhoto ? null : cover.photo, thumb: dropPhoto ? null : cover.thumb, extras: dropPhoto ? [] : extras, location, dest, restingOn: (tag && tag.restingOn) || '', placeSource: 'chosen', ...(owner ? { owner } : {}) };
+      const common = { photo: dropPhoto ? null : cover.photo, thumb: dropPhoto ? null : cover.thumb, extras: dropPhoto ? [] : extras, location, dest, restingOn: (tag && tag.restingOn) || '', placeSource: 'chosen', prep: itemPrep, ...(owner ? { owner } : {}) };
       let itemId; let isNew = false; let prev = null; let photos = null;
       if (isMatch) {
         prev = prevOf(isMatch);
-        if (dropPhoto) await changeLocation(isMatch, location, 'chosen', dest, { said, note: !!noteNow });
+        if (dropPhoto) await changeLocation(isMatch, location, 'chosen', dest, { said, note: !!noteNow, prep: itemPrep });
         else { photos = { since: Date.now(), prev: { photo: isMatch.photo || null, thumb: isMatch.thumb || null, photoCount: isMatch.photoCount || 0, logId: isMatch.logId || '', restingOn: isMatch.restingOn || '' } }; await resnapItem(isMatch, { ...common, said, note: !!noteNow }); }
         if (tag && tag.name) noteAlias(isMatch, tag.name);
         itemId = isMatch.id;
@@ -387,7 +417,7 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
         setSavedFlash(nm === 'Saved' ? 'Item' : nm); setTimeout(() => { if (mounted.current) setSavedFlash(''); }, 1500);
         setNextUndo(card.undo ? { name: nm === 'Saved' ? 'Item' : nm, undo: card.undo } : null);
         // the next item starts with the same where (a run of things into one box), shown in the field
-        gen.current++; guessGen.current++; setShots([]); setTag(undefined); setMatch(null); setAnswer(null); setNameOverride(''); setShareAnyway(false); setNote(''); setNoteOpen(false); setGuess(null); tagP.current = null;
+        gen.current++; guessGen.current++; setShots([]); setTag(undefined); setMatch(null); setAnswer(null); setNameOverride(''); setShareAnyway(false); setNote(''); setNoteOpen(false); setGuess(null); setPreps({}); setCutOut(false); tagP.current = null;
         const keep = P && !P.isNew ? P : P ? { t: P.t, name: P.name } : null; // a place just made is a place she has now
         firstPick.current = keep; pickRef.current = keep; setPickS(keep); setUps([]); setPhotoTo('item'); pickTouched.current = false; openedAt.current = Date.now();
         setBusy(false);
@@ -448,30 +478,33 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
   const wordsOf = (it) => { const h = (it && it.history) || []; for (let i = h.length - 1; i >= 0; i--) if (h[i] && h[i].w && !h[i].n) return (h[i].said || '').trim(); return ''; };
   const oldItem = moveItem || (match && answer === 'yes' ? match : null);
   const oldWords = oldItem && !firstPick.current && !hereKnown(oldItem) ? wordsOf(oldItem) : '';
-  const dirty = !sameKnown(pick, firstPick.current) || ups.length > 0 || !!(pick && pick.blank);
-  const dashed = focus || dirty;
-  const levelsOnly = !!pick && !pick.blank && sameKnown(pick, firstPick.current) && ups.length > 0;
-  const head = pick && pick.bad ? <><span className="ow-set bad">Can’t put it there.</span></>
-    : levelsOnly ? <><span className="ow-set">Set where {theOrQuoted(kName(pick))} is.</span></>
-    : dirty && (pick || prevK)
-    ? (pick ? <><span className="ow-set">{pick.isNew ? 'Set NEW place.' : 'Set place.'}</span>{prevK ? <> <span className="ow-par was">(previously was: <span className="ow-old">{kName(prevK)}</span><span className="ow-close">)</span></span></> : oldWords ? <> <span className="ow-par was">(previously: <span className="ow-old">“{oldWords}”</span><span className="ow-close">)</span></span></> : null}</>
-      : <><span className="ow-set">Not in anything.</span> <span className="ow-par was">(previously was: <span className="ow-old">{kName(prevK)}</span><span className="ow-close">)</span></span></>)
-    : <>{moveItem ? 'Where is it now?' : 'Where is it?'} <span className="ow-par">({(moveItem && firstPick.current) || oldWords ? 'type to set new place' : 'type to set a place'})</span></>;
-  const fieldVal = focus ? wtext : pick && !pick.blank ? kName(pick) : '';
-  // the field grows to show the whole name (up to 3 lines) — never "Kitchen cou" at Largest (walk 10-02)
-  useLayoutEffect(() => { const el = whereRef.current; if (!el) return; el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, Math.round(window.innerHeight * 0.4))}px`; el.style.overflowY = el.scrollHeight > window.innerHeight * 0.4 ? 'auto' : 'hidden'; });
+  const dirty = !sameKnown(pick, firstPick.current) || ups.length > 0 || cutOut || Object.keys(preps).length > 0 || !!(pick && pick.blank);
+  const dashed = dirty;
+  // the header says what will change: the where on the camera (k = pick) and, while she types, in the place sheet (k = what she typed)
+  const headFor = (k, levels) => {
+    const dk = !sameKnown(k, firstPick.current) || levels || !!(k && k.blank);
+    const levelsOnly = !!k && !k.blank && sameKnown(k, firstPick.current) && levels;
+    return k && k.bad ? <><span className="ow-set bad">Can’t put it there.</span></>
+      : levelsOnly ? <><span className="ow-set">Set where {theOrQuoted(kName(k))} is.</span></>
+      : dk && (k || prevK)
+      ? (k ? <><span className="ow-set">{k.isNew ? 'Set NEW place.' : 'Set place.'}</span>{prevK ? <> <span className="ow-par was">(previously was: <span className="ow-old">{kName(prevK)}</span><span className="ow-close">)</span></span></> : oldWords ? <> <span className="ow-par was">(previously: <span className="ow-old">“{oldWords}”</span><span className="ow-close">)</span></span></> : null}</>
+        : <><span className="ow-set">No place.</span> <span className="ow-par was">(previously was: <span className="ow-old">{kName(prevK)}</span><span className="ow-close">)</span></span></>)
+      : <>{moveItem ? 'Where is it now?' : 'Where is it?'} <span className="ow-par">({(moveItem && firstPick.current) || oldWords ? 'tap to set new place' : 'tap to set a place'})</span></>;
+  };
+  const head = headFor(pick, ups.length > 0 || cutOut || Object.keys(preps).length > 0);
   const pickThumbNow = !pick || pick.blank ? null : whereShots.length ? whereShots[whereShots.length - 1].thumb : pick.t === 'thing' ? pick.item.thumb : (() => { const p = placeNamed(pick.name, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; })();
-  // "2 of your places have “desk” — → to see them": the only line under the field, and only while she types a new name
   const placeNames = (() => { const seen = new Set(); return [...knownLocations(items, 999, places), ...places.map((p) => p.name)].filter((n) => { const k = (n || '').trim().toLowerCase(); if (!k || seen.has(k)) return false; seen.add(k); return true; }); })();
   const allK = [...placeNames.map((n) => ({ t: 'place', name: n })), ...containers(graph(), 999).filter((b) => !self || b.id !== self.id).map((b) => ({ t: 'thing', item: b }))];
-  let hint = null;
-  if (pick && pick.bad) hint = <div className="ow-hint bad" role="alert">{pick.bad}</div>; // at rest too (tester ow1 #13)
-  else if (focus && pick && pick.isNew && !pick.blank) {
-    const ws = normName(bareOf(wtext)).split(' ').filter((w) => w.length >= 3);
-    let best = null; ws.forEach((w) => { const hits = allK.filter((k) => normName(kName(k)).split(' ').includes(w)); if (hits.length && (!best || hits.length > best.n)) best = { w, n: hits.length, boxes: hits.filter((k) => k.t === 'thing').length }; });
-    const what = (b) => (b.boxes === 0 ? 'places' : b.boxes === b.n ? 'boxes' : 'places and boxes');
-    if (best) hint = <div className="ow-hint">{best.n} of your {what(best)} {best.n === 1 ? 'has' : 'have'} “{best.w}” — <b><ArrowRightIcon /> to see {best.n === 1 ? 'it' : 'them'}</b></div>;
-  }
+  const hint = pick && pick.bad ? <div className="ow-hint bad" role="alert">{pick.bad}</div> : null;
+  // E1: what she typed, read like Done would read it; her places that share a word with it first
+  const edK = ed && ed.text !== ed.start ? resolve(ed.text) : null;
+  const edList = ed ? (() => {
+    const ws = ed.text !== ed.start ? normName(bareOf(ed.text)).split(' ').filter((w) => w.length >= 2) : [];
+    const ok = allK.filter((k) => !(self && loopsOver(k, ['t' + self.id])));
+    const hit = (k) => ws.some((w) => normName(kName(k)).split(' ').some((x) => x.startsWith(w)));
+    const cur = ok.filter((k) => firstPick.current && sameKnown(k, firstPick.current));
+    return ws.length ? { hits: ok.filter(hit), rest: [] } : { hits: cur, rest: ok.filter((k) => !cur.includes(k)) };
+  })() : null;
   const whereLabel = !pick ? '' : pick.blank ? 'a new place' : `${kName(pick)}${pick.isNew && !pick.bad ? ' (new)' : ''}`;
   const itemLabel = cap(name) || (moveItem ? 'the item' : 'the item');
   const segs = [];
@@ -489,9 +522,9 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     </div>) : null;
 
   // ---- the → sheet: the name once, what it is in (every level), or pick another
-  const lvRows = lv ? (() => { const L = [lv.p, ...lv.u].filter(Boolean); if (!L.length) return []; const last = L[L.length - 1]; return [...L.map((k) => ({ k, saved: false })), ...outerKs(last).map((k) => ({ k, saved: true }))]; })() : [];
+  const lvRows = lv ? (() => { const L = [lv.p, ...lv.u].filter(Boolean); if (!L.length) return []; const last = L[L.length - 1]; return [...L.map((k) => ({ k, saved: false })), ...(lv.cut ? [] : outerKs(last).map((k) => ({ k, saved: true })))]; })() : [];
   const lvPic = (k) => (!k ? null : k.t === 'thing' ? k.item.thumb : (() => { const p = placeNamed(k.name, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; })());
-  const lvSub = (k, j) => (j === 0 ? (k.isNew ? 'a new place · made when you Save' : k.t === 'thing' ? 'a box · it’s in this' : 'it’s on / in this')
+  const lvSub = (k, j) => (j === 0 ? (k.isNew ? 'a new place · made when you Save' : firstPick.current && sameKnown(k, firstPick.current) ? 'where it is now' : k.t === 'thing' ? 'a box' : 'a place')
     : k.t === 'thing' ? 'a box' : (() => { const n = atPlace(k.name).length; return k.isNew ? 'a new place' : `a place · ${n ? `${n} item${n === 1 ? '' : 's'}` : 'nothing else here'}`; })());
   const pickList = lv ? (() => {
     const ws = normName(kName(lv.p)).split(' ').filter((w) => w.length >= 3);
@@ -500,13 +533,50 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
     return [...ok.filter(hit), ...ok.filter((k) => !hit(k))];
   })() : [];
   const lvSubK = lv && lv.sub ? (lv.sub.j === 0 ? null : lvRows[lv.sub.j - 1] ? lvRows[lv.sub.j - 1].k : null) : null;
+  // a level she changes brings its own outer levels, and the words from it outward are read again
+  const prepsBelow = (pw, j) => { const o = {}; Object.keys(pw || {}).map(Number).filter((x) => x < j).forEach((x) => { o[x] = pw[x]; }); return o; };
   function lvPick(k) {
     const j = lv.sub.j;
-    if (j === 0) { setLv({ p: k, u: [], sub: null }); return; }
-    setLv({ p: lvRows[0].k, u: [...lvRows.slice(1, j).map((r) => r.k), k], sub: null });
+    if (j === 0) { setLv({ p: k, u: [], sub: null, preps: {}, cut: false }); return; }
+    setLv({ ...lv, p: lvRows[0].k, u: [...lvRows.slice(1, j).map((r) => r.k), k], sub: null, preps: prepsBelow(lv.preps, j), cut: false });
     logEvent('camera_level_set', { level: j + 1, t: k.t, isNew: !!k.isNew });
   }
-  function lvDone() { const p = lv.p; const u = lv.u; setLv(null); pickTouched.current = true; if (keyK(p) !== keyK(pickRef.current)) setGuess(null); pickRef.current = p; setPickS(p); setUps(u); if (p && !privItem && (moveItem || itemShots.length)) setPhotoTo('where'); }
+  // S2 (Tanya): removing a level cuts outward — the level before it is in nothing; that level's own place is untouched
+  function lvRemove(j) { setAsk(null); setLv({ ...lv, p: lvRows[0].k, u: lvRows.slice(1, j).map((r) => r.k), sub: null, preps: prepsBelow(lv.preps, j), cut: true }); logEvent('camera_level_remove', { level: j + 1 }); }
+  function lvDone() { const p = lv.p; const u = lv.u; const pw = lv.preps || {}; const ct = !!lv.cut; setLv(null); pickTouched.current = true; if (keyK(p) !== keyK(pickRef.current)) setGuess(null); pickRef.current = p; setPickS(p); setUps(u); setPreps(pw); setCutOut(ct); if (p && !privItem && (moveItem || itemShots.length)) setPhotoTo('where'); }
+  // the word on each link of the sheet: hers (chosen here), else what is saved on that link, else ReCall's reading of the name
+  const idOfK = (k) => (!k || k.isNew ? null : k.t === 'thing' ? k.item.id : (placeNamed(k.name, places) || {}).id || null);
+  const lvWord = (j) => {
+    const r = lvRows[j]; if (!r) return '';
+    if (lv.preps && lv.preps[j]) return lv.preps[j];
+    const fromId = j === 0 ? (self && sameKnown(r.k, firstPick.current) ? self.id : null) : idOfK(lvRows[j - 1].k);
+    const e = fromId ? openEdge(fromId) : null;
+    const same = e && e.to && (r.k.t === 'thing' ? e.to.t === 'thing' && e.to.id === r.k.item.id : e.to.t === 'place' && (e.to.name || '').toLowerCase() === (r.k.name || '').toLowerCase());
+    return (same && e.prep) || inferPrep(kName(r.k)) || '';
+  };
+  const lvPill = (j) => {
+    const r = lvRows[j]; if (!r) return null; const w = lvWord(j);
+    const prev = j > 0 ? lvRows[j - 1].k : null;
+    const n = prev && !prev.isNew ? usersOf(prev.t === 'thing' ? { t: 'thing', item: prev.item } : { t: 'place', name: prev.name }).length : 0;
+    const note = prev && n > 1 ? `For everything ${inferPrep(kName(prev)) || 'in'} ${theOrQuoted(kName(prev))} · ${n} items` : '';
+    return <PrepPill label={j === 0 ? w : w ? `which is ${w}` : 'which is'} value={w} options={prepOptions(kName(r.k))} note={note}
+      onPick={(x) => { setLv((L) => ({ ...L, preps: { ...(L.preps || {}), [j]: x } })); logEvent('prep_pick', { level: j + 1, word: x, via: 'camera' }); }} />;
+  };
+  // R2: rename a place (or a box) she has, from its level — the new name shows everywhere it is used
+  async function doRename() {
+    const r0 = rn; setRn(null); if (!r0) return; const nm = r0.text.trim(); const old = kName(r0.k);
+    if (!nm || nm === old || hasSecret(nm)) return;
+    try {
+      if (r0.k.t === 'thing') await renameItem(graph().byId.get(r0.k.item.id) || r0.k.item, nm);
+      else { const pd = placeNamed(r0.k.name, places); if (!pd) return; await renamePlace(pd, nm, items); }
+      logEvent('place_rename', { via: 'camera', t: r0.k.t });
+      const swap = (k) => (k && keyK(k) === keyK(r0.k) ? (k.t === 'thing' ? { ...k, item: { ...k.item, name: nm } } : { ...k, name: nm }) : k);
+      setLv((L) => (L ? { ...L, p: swap(L.p), u: (L.u || []).map(swap) } : L));
+      if (pickRef.current && keyK(pickRef.current) === keyK(r0.k)) { pickRef.current = swap(pickRef.current); setPickS(pickRef.current); }
+      if (firstPick.current && keyK(firstPick.current) === keyK(r0.k)) firstPick.current = swap(firstPick.current);
+      setUps((u) => u.map(swap));
+    } catch (e) { console.error('rename', e); }
+  }
 
   return (
     <div className="lc lc-b lc-w1 lc-ow" role="dialog" aria-modal="true" aria-label={moveItem ? 'Move it' : 'Log item'}>
@@ -546,38 +616,37 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
             {guess && (
               <div className="ow-ai" role="group" aria-label="ReCall’s guess">
                 <button type="button" className="ow-ai-no" aria-label="Not this" onClick={() => takeGuess('no')}><CloseIcon /></button>
-                <small>ReCall thinks this is</small><b className="ow-ai-name">{cap(guess.name)}</b>
+                <small><SparklesIcon /> ReCall thinks this is</small>
+                {/* G1 (Ravi 10-02): the words can be fixed before they're used — "… and water bottle" → "… with electronics" */}
+                <button type="button" className="ow-ai-name" onClick={() => { setFix(cap(guess.name)); logEvent('place_guess_fix_open', {}); }}>
+                  <span>{cap(guess.name)}</span><PencilIcon /></button>
+                <p className="ow-ai-tip">Tap the words to fix them first.</p>
                 {guess.filled ? <p className="ow-ai-filled">Put in the field for you — change it, or tap ✕.</p> : !guess.typed ? (
                   <div className="two"><button type="button" className="ow-ai-use" onClick={() => takeGuess('use')}>Use this</button></div>) : (
                   <>
                     <div className="two">
                       {!resolve(guess.name).bad && <button type="button" className="ow-ai-use" onClick={() => takeGuess('use')}>Use this</button>}
-                      {!resolve(guess.merged).bad && <button type="button" className="ow-ai-add" onClick={() => takeGuess('add')}>Append to mine</button>}
+                      {!resolve(guess.merged).bad && <button type="button" className="ow-ai-add" onClick={() => takeGuess('add')}>Append</button>}
                     </div>
                     {!resolve(guess.merged).bad && <p className="ow-ai-merged">Append gives “{cap(guess.merged)}”</p>}
                   </>)}
-    
               </div>)}
             {identity}
             <div className="ow">
               <div className="ow-head">{head}</div>
               <div className={'ow-field' + (dashed ? ' dash' : '') + (pick && pick.bad ? ' bad' : '')}>
                 {pickThumbNow ? <img src={pickThumbNow} alt="" /> : <span className="ic">{pick && pick.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}
-                <textarea ref={whereRef} className="ow-input" rows={1} value={fieldVal} onChange={(e) => onType(e.target.value)} onFocus={onFocusWhere} onBlur={onBlurWhere}
-                  placeholder={pick && pick.blank ? 'New place — photograph it or type its name' : oldWords ? `“${oldWords}”` : 'Type a place'} aria-label="Where is it? Type a place"
-                  maxLength={120} enterKeyHint="done" autoCapitalize="sentences" autoComplete="off" disabled={busy}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }} />
-                <button type="button" className="ow-go" aria-label="More: pick one of your places, or what it is in" disabled={busy}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => { if (looking) stopLooking('more'); if (whereRef.current) whereRef.current.blur(); setLv({ p: pickRef.current && !pickRef.current.blank ? pickRef.current : null, u: ups, sub: null }); logEvent('camera_where_more', {}); }}><ArrowRightIcon /></button>
+                {/* E1: a tap opens the place sheet — typing never happens over the shutter and Save */}
+                <button type="button" className={'ow-input ow-tap' + (pick && !pick.blank ? '' : ' ph')} onClick={openPlace} disabled={busy} aria-label={`Where is it: ${pick && !pick.blank ? kName(pick) : 'no place yet'}. Tap to change`}>
+                  {pick && !pick.blank ? kName(pick) : pick && pick.blank ? 'New place — photograph it or tap to name it' : oldWords ? `“${oldWords}”` : 'Tap to set a place'}</button>
+                <button type="button" className="ow-go" aria-label="More: what it is in, every level" disabled={busy}
+                  onClick={() => { if (looking) stopLooking('more'); setLv({ p: pickRef.current && !pickRef.current.blank ? pickRef.current : null, u: ups, sub: null, preps: { ...preps }, cut: cutOut }); logEvent('camera_where_more', {}); }}><ArrowRightIcon /></button>
               </div>
               {hint}
-              {guess ? null : noteOpen || note ? (
-                <div className="ow-note-row"><input className="ow-note-in" autoFocus={noteOpen && !note} value={note} onChange={(e) => setNote(e.target.value)} placeholder="A note — “under the blue folder”"
-                  aria-label="A note" maxLength={240} enterKeyHint="done" autoComplete="off" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
-                  onBlur={() => { if (!note.trim()) setNoteOpen(false); }} /></div>
+              {guess ? null : note ? (
+                <button type="button" className="ow-note-set" onClick={() => setNoteEd(note)} disabled={busy}><span className="q">Note: “{note}”</span> <b>· Edit</b></button>
               ) : (
-                <button type="button" className="ow-note" onClick={() => setNoteOpen(true)} disabled={busy}><PlusIcon /> Add a note <span>(optional)</span></button>)}
+                <button type="button" className="ow-note" onClick={() => setNoteEd('')} disabled={busy}><PlusIcon /> Add a note <span>(optional)</span></button>)}
               {typedSecret && <PrivNote typedSecret />}
               {guess ? null : strip}
             </div>
@@ -602,21 +671,32 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           <div className="sheet ow-sheet" role="dialog" aria-modal="true" aria-labelledby="ow-t" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-title" id="ow-t">Where is it?</div>
             <div className="ow-scroll">
+            {lvRows.length ? <div className="ow-its">It’s {lvPill(0)}</div> : null}
             {lvRows.length ? lvRows.map((r, j) => (
               <div key={keyK(r.k) + j}>
-                {j > 0 && <div className="ow-in">which is in</div>}
+                {j > 0 && <div className="ow-in">{lvPill(j)}</div>}
                 <div className={'ow-lvl' + (j === 0 ? ' first' : '')}>
                   {lvPic(r.k) ? <img src={lvPic(r.k)} alt="" /> : <span className="no">{r.k.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}
-                  <span className="t"><b>{kName(r.k)}{r.k.isNew ? <em className="ow-new">NEW</em> : null}</b><small>{lvSub(r.k, j)}</small></span>
-                  <button type="button" className="ow-lvl-change" onClick={() => setLv({ ...lv, sub: { j } })}>Change</button>
+                  <span className="t">
+                    {/* R1: a place or box she has can be renamed here (tap its name) */}
+                    {!r.k.isNew && (r.k.t === 'thing' || placeNamed(r.k.name, places))
+                      ? <button type="button" className="ow-rn" onClick={() => setRn({ k: r.k, text: kName(r.k) })} aria-label={`Rename ${kName(r.k)}`}><b>{kName(r.k)}</b> <PencilIcon /></button>
+                      : <b>{kName(r.k)}{r.k.isNew ? <em className="ow-new">NEW</em> : null}</b>}
+                    <small>{lvSub(r.k, j)}</small></span>
+                  {/* S1: two text buttons, stacked — the safe one on top */}
+                  <span className="ow-acts">
+                    <button type="button" className="ow-lvl-change" onClick={() => setLv({ ...lv, sub: { j } })}>Change</button>
+                    {j === 0 ? <button type="button" className="ow-lvl-rm" onClick={() => setAsk({ kind: 'out' })}>{moveItem ? 'Take it out' : 'Remove'}</button>
+                      : <button type="button" className="ow-lvl-rm" onClick={() => setAsk({ kind: 'rm', j })}>Remove</button>}
+                  </span>
                 </div>
               </div>)) : (
               <div className="ow-lvl first none">
                 <span className="no"><PinIcon /></span><span className="t"><b>Not in anything yet</b><small>search, or name a new place</small></span>
-                <button type="button" className="ow-lvl-change" onClick={() => setLv({ ...lv, sub: { j: 0 } })}>Choose</button>
+                <span className="ow-acts"><button type="button" className="ow-lvl-change" onClick={() => setLv({ ...lv, sub: { j: 0 } })}>Choose</button></span>
               </div>)}
             {lvRows.length > 0 && lvRows.length < TIERS_SHOWN && ( /* 3 levels offered for adding; any depth stored and shown */
-              <><div className="ow-in">which is in</div>
+              <><div className="ow-in"><span className="pp">which is in</span></div>
                 <button type="button" className="ow-up" onClick={() => setLv({ ...lv, sub: { j: lvRows.length } })}><PlusIcon /> What is {theOrQuoted(kName(lvRows[lvRows.length - 1].k))} in? <span>(optional)</span></button></>)}
             <div className="wl-g ow-g">{lvRows.length ? 'Or pick one of your places instead' : 'Pick one of your places'} · {pickList.length}</div>
             <div className="ow-picks">
@@ -626,7 +706,6 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
                   <span className="tx"><b>{kName(k)}</b><small>{k.t === 'thing' ? 'a box' : (() => { const n = atPlace(k.name).filter((x) => !self || x.id !== self.id).length; return `a place · ${n ? `${n} item${n === 1 ? '' : 's'}` : 'nothing else here'}`; })()}{sameKnown(k, firstPick.current) && moveItem ? ' · where it was' : ''}</small></span>
                 </button>))}
             </div>
-            {moveItem && firstPick.current && pick ? <button type="button" className="btn-quiet ow-clear" onClick={() => { setPick(null); setLv(null); }}>Take it out of {theOrQuoted(kName(firstPick.current))} — no place</button> : null}
             </div>
             <div className="two ow-btns">
               <button type="button" className="btn-secondary ow-cancel" onClick={() => setLv(null)}>Cancel</button>
@@ -634,13 +713,28 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
             </div>
           </div>
         </div>)}
+      {lv && !lv.sub && ask && ask.kind === 'out' && (
+        <Confirm title={`Take it out of ${theOrQuoted(kName(lvRows[0] ? lvRows[0].k : firstPick.current))}?`}
+          body={<>{cap(name) || 'It'} will have <b>no place</b>. It will show with <span className="ow-nop"><MapPinOffIcon /></span> on Home until you put it somewhere.</>}
+          keepLabel="Keep it there" actionLabel="Take it out" onKeep={() => setAsk(null)}
+          onAction={() => { setAsk(null); setPick(null); setLv(null); logEvent('camera_take_out', {}); }} />)}
+      {lv && !lv.sub && ask && ask.kind === 'rm' && lvRows[ask.j] && (() => {
+        const j = ask.j; const gone = lvRows[j].k; const before = lvRows[j - 1].k; const after = lvRows.slice(j + 1).map((r) => r.k);
+        const n = !before.isNew ? usersOf(before.t === 'thing' ? { t: 'thing', item: before.item } : { t: 'place', name: before.name }).filter((x) => !self || x.id !== self.id).length : 0;
+        const w = lvWord(j) || 'in';
+        return <Confirm title={`Remove ${theOrQuoted(kName(gone))}?`}
+          body={<>{cap(theOrQuoted(kName(before)))} will no longer be {w} {theOrQuoted(kName(gone))}{after.length ? <> <b>or {after.map((k) => theOrQuoted(kName(k))).join(' or ')}</b></> : null}.
+            {after.length && !gone.isNew ? <> {cap(theOrQuoted(kName(gone)))} itself stays {lvWord(j + 1) || 'in'} {theOrQuoted(kName(after[0]))}.</> : null}
+            {n > 0 ? <span className="ow-warn"> This changes it for everything {inferPrep(kName(before)) || 'in'} {theOrQuoted(kName(before))} ({n + 1} items).</span> : null}</>}
+          keepLabel="Keep it" actionLabel="Remove" onKeep={() => setAsk(null)} onAction={() => lvRemove(j)} />;
+      })()}
       {lv && lv.sub && (
         <InList item={lv.sub.j === 0 ? self : lvSubK && lvSubK.t === 'thing' ? lvSubK.item : null} placesOnly={lv.sub.j > 0 && !!lvSubK && lvSubK.t === 'place'}
           selfPlace={lv.sub.j > 0 && lvSubK && lvSubK.t === 'place' && !lvSubK.isNew ? lvSubK.name : ''}
           items={items} places={places} said="" current={lvRows[lv.sub.j] ? lvRows[lv.sub.j].k : null}
           title={lv.sub.j === 0 ? 'Where is it?' : `What is ${theOrQuoted(kName(lvSubK))} in?`}
           exclude={(k) => (lv.sub.j === 0 ? !!self && loopsOver(k, ['t' + self.id]) : blockedFor(k, lvRows.slice(0, lv.sub.j).map((r) => r.k)))}
-          onPick={lvPick} onCancel={() => setLv({ ...lv, sub: null })} />)}
+          onPick={lvPick} onCancel={() => setLv({ ...lv, sub: null })} autoFocus />)}
       {sheet && sheet.preview !== undefined && pvList.length > 0 && (
         <PhotoViewer key={`pv${pvList.length}`} photos={pvList.map((p, j) => ({ key: j, src: p.photo }))} start={0}
           title={(i, n) => `${cap(name) || 'The item'} · photo ${i + 1} of ${n}`}
@@ -665,6 +759,69 @@ export default function LogCamera({ engine, items = [], places = [], owner = und
           { label: 'Yes, the same item', onClick: () => { const n = sheet.next; setSheet(null); sayYes(); save(n, 'yes'); } },
           { label: 'No, a new item', onClick: () => { const n = sheet.next; setSheet(null); setAnswer('no'); save(n, 'no'); } },
           { label: 'Cancel', onClick: () => setSheet(null) }]} onCancel={() => setSheet(null)} />)}
+      {ed && (
+        <EditSheet label="Where is it" title={<span className="ow-head">{edK ? headFor(edK, false) : moveItem ? 'Where is it now?' : 'Where is it?'}</span>}
+          onCancel={() => { closePlace(); logEvent('camera_where_cancel', {}); }} onDone={() => placeDone()} doneOff={!!(edK && edK.bad) || hasSecret(ed.text)}>
+          <div className={'ow-field dash es-field' + (edK && edK.bad ? ' bad' : '')}>
+            <span className="ic">{edK && edK.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>
+            <textarea className="ow-input" rows={2} autoFocus value={ed.text} onChange={(e) => setEd({ ...ed, text: e.target.value })}
+              onFocus={(e) => { const el = e.target; setTimeout(() => { try { el.select(); } catch { /* fine */ } }, 0); }}
+              placeholder="Type a place" aria-label="Where is it? Type a place" maxLength={120} enterKeyHint="done" autoCapitalize="sentences" autoComplete="off"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (!(edK && edK.bad) && !hasSecret(ed.text)) placeDone(); } }} />
+          </div>
+          {edK && edK.bad ? <div className="ow-hint bad" role="alert">{edK.bad}</div>
+            : hasSecret(ed.text) ? <PrivNote typedSecret />
+            : <p className="es-hint">Type a new place, or pick one of yours. Nothing changes until Done.</p>}
+          {edK && edK.isNew && !edK.blank && !edK.bad && !hasSecret(ed.text) && (
+            <button type="button" className="es-new" onClick={() => placeDone(edK)}><PlusIcon /> Add “{kName(edK)}” as a new place</button>)}
+          {edList && (edList.hits.length + edList.rest.length) > 0 && <div className="wl-g ow-g">{edK ? 'Or one of yours' : 'Your places'}</div>}
+          <div className="es-list">
+            {edList && [...edList.hits, ...edList.rest].slice(0, 40).map((k) => (
+              <button type="button" key={keyK(k)} className="wl-row ow-pick" onClick={() => placeDone(k)}>
+                {lvPic(k) ? <img src={lvPic(k)} alt="" /> : <span className="no">{k.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}
+                <span className="tx"><b>{kName(k)}</b><small>{firstPick.current && sameKnown(k, firstPick.current) ? 'where it is now' : k.t === 'thing' ? 'a box' : (() => { const n = atPlace(k.name).filter((x) => !self || x.id !== self.id).length; return `a place · ${n ? `${n} item${n === 1 ? '' : 's'}` : 'nothing else here'}`; })()}</small></span>
+              </button>))}
+          </div>
+        </EditSheet>)}
+      {noteEd !== null && (
+        <EditSheet label="A note" title="A note about where it is" onCancel={() => setNoteEd(null)}
+          onDone={() => { setNote(noteEd.trim()); setNoteEd(null); logEvent('camera_note', { len: noteEd.trim().length }); }} doneOff={hasSecret(noteEd)}>
+          <textarea className="es-note" rows={3} autoFocus value={noteEd} onChange={(e) => setNoteEd(e.target.value)} placeholder="“under the blue folder”" aria-label="A note" maxLength={240}
+            onFocus={(e) => { const el = e.target; const n = el.value.length; setTimeout(() => { try { el.setSelectionRange(n, n); } catch { /* fine */ } }, 0); }} />
+          {hasSecret(noteEd) ? <PrivNote typedSecret /> : <p className="es-hint">Optional. Shown under its photo. Nothing changes until Done.</p>}
+        </EditSheet>)}
+      {fix !== null && guess && (() => {
+        const t = fix.trim(); const r = t ? resolve(t) : null; const mg = guess.typed ? dedupe(localMerge(guess.typed, t)) : t; const rm = mg ? resolve(mg) : null;
+        const have = new Set(normName(t).split(' '));
+        return (
+          <EditSheet label="Fix ReCall’s words" title={<><SparklesIcon /> Fix ReCall’s words</>} onCancel={() => setFix(null)} doneLabel="Use this"
+            doneOff={!t || !!(r && r.bad) || hasSecret(t)} onDone={() => { setFix(null); takeGuess('use', t); }}
+            extra={guess.typed && !guess.filled ? <button type="button" className="btn-secondary es-append" disabled={!t || !!(rm && rm.bad) || hasSecret(t)} onMouseDown={(e) => e.preventDefault()} onClick={() => { setFix(null); takeGuess('add', t); }}>Append</button> : null}>
+            <textarea className="es-note es-fix" rows={2} autoFocus value={fix} onChange={(e) => setFix(e.target.value)} aria-label="ReCall’s words" maxLength={120}
+              onFocus={(e) => { const el = e.target; const n = el.value.length; setTimeout(() => { try { el.setSelectionRange(n, n); } catch { /* fine */ } }, 0); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (t && !(r && r.bad)) { setFix(null); takeGuess('use', t); } } }} />
+            <p className="es-hint">ReCall said: <i>{cap(guess.name).split(/\s+/).map((w, i) => <span key={i}>{i ? ' ' : ''}{have.has(normName(w)) ? w : <s>{w}</s>}</span>)}</i></p>
+            {r && r.bad ? <div className="ow-hint bad" role="alert">{r.bad}</div> : guess.typed && !guess.filled && t ? <p className="es-hint">Append gives “{cap(mg)}”.</p> : null}
+          </EditSheet>);
+      })()}
+      {rn && (() => {
+        const t = rn.text.trim(); const old = kName(rn.k);
+        const n = usersOf(rn.k.t === 'thing' ? { t: 'thing', item: rn.k.item } : { t: 'place', name: rn.k.name }).length;
+        const clash = t && normName(t) !== normName(old) && allK.some((k) => keyK(k) !== keyK(rn.k) && normName(kName(k)) === normName(t));
+        const have = new Set(normName(t).split(' '));
+        return (
+          <EditSheet label="Rename" title={rn.k.t === 'thing' ? 'Rename this box' : 'Rename this place'} onCancel={() => setRn(null)} onDone={doRename} doneOff={!t || clash || hasSecret(t)}>
+            <div className="ow-field es-field rn">
+              {lvPic(rn.k) ? <img src={lvPic(rn.k)} alt="" /> : <span className="ic">{rn.k.t === 'thing' ? <BoxIcon /> : <PinIcon />}</span>}
+              <textarea className="ow-input" rows={2} autoFocus value={rn.text} onChange={(e) => setRn({ ...rn, text: e.target.value })} aria-label="New name" maxLength={120}
+                onFocus={(e) => { const el = e.target; const k = el.value.length; setTimeout(() => { try { el.setSelectionRange(k, k); } catch { /* fine */ } }, 0); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (t && !clash) doRename(); } }} />
+            </div>
+            <p className="es-hint">Was: {old.split(/\s+/).map((w, i) => <span key={i}>{i ? ' ' : ''}{have.has(normName(w)) ? w : <s>{w}</s>}</span>)}</p>
+            {clash ? <div className="ow-hint bad" role="alert">You already have “{t}”.</div>
+              : <p className="es-hint warn">The new name shows everywhere this {rn.k.t === 'thing' ? 'box' : 'place'} is used{n ? `: ${n} item${n === 1 ? '' : 's'} ${rn.k.t === 'thing' ? 'in it' : inferPrep(old) === 'on' ? 'on it' : 'in it'}` : ''}.</p>}
+          </EditSheet>);
+      })()}
       {sheet === 'cancel' && <Confirm title={moveItem ? 'Leave without saving?' : 'Throw these photos away?'} body={moveItem ? 'Where it is stays as it was.' : 'Nothing from this item is saved.'} keepLabel="Keep going" actionLabel={moveItem ? 'Leave' : 'Throw away'}
         onKeep={() => setSheet(null)} onAction={() => { logEvent('capture_leave', { reason: 'cancel', via: 'camera' }); onCancel(); }} />}
     </div>
