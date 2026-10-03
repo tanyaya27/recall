@@ -149,10 +149,15 @@ Ravi's first set (10-03), on the live build:
   path: the Lab desk is now in nothing. The Craft room place itself is untouched and stays in the Bedroom. The same
   goes for *Change*: the new place brings its own outer levels. This overrides Sam's splice. S2 has been redrawn to
   read "…no longer be in the Craft room or the Bedroom."
-- **Rename a saved place by tapping its name in the → sheet: yes (Tanya).** To draw next pass.
+- **Rename a saved place by tapping its name in the → sheet: yes (Tanya).** Drawn as R1–R2.
+  - **R1:** each name has a pencil.
+  - **R2:** the rename sheet has the name, "Was: … ~~and water~~", and "The new name shows everywhere this place is
+    used: 2 items on it". It has its own Cancel and Done.
 - **No view (Tanya), so Claude's pick stands:** edit sheets cost one tap (Done) before the next photo. ReCall's guess
   is fixed in a sheet (G2).
 
-## Still open
-3. Can the shared lower-level words (T3) be changed from the item page, or only from the → sheet?
-5. Two sheets (place E1 and levels S1), or one?
+- **Claude's picks taken (Tanya, "go with your assumptions"):**
+  - A shared lower-level word (T3) can be changed from the item page, and the bar says who else it changes.
+  - The place sheet (E1) and the levels sheet (S1) stay separate.
+
+**Pass 1 is fully ruled.** No code until more passes are agreed.
