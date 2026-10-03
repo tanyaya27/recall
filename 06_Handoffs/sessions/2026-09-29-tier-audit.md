@@ -105,3 +105,14 @@ only places") — "OK to both". Built as `20260929d`; audit_tiers 40/40; all eig
 - Built; the tier suites retired, the rest adapted by three agents in parallel. The independent tester ran 6 rounds
   (REPORT_r1, r1b, r1c, r1d); every store bug found got a failing check, then a fix. Tanya: tiers 2–3 must be easy →
   "+ What is the … in?" on the camera. 631 checks green.
+
+## 10-02 (evening): delivery, live, and the verdict
+- First delivery to the Mac failed mid-way (the Mac went offline); the first push (39b08d4) carried only the 10-01 docs
+  and the mock, so the site stayed on 930f. Redelivered after a drift check (nothing had changed on the Mac; `rig/TESTING.md`
+  differs from Claude's copy and was left as the Mac's). The 13 tier-camera suites and `WhereList.jsx` moved to
+  `rig/retired/`. The BUILD jpg sent first was stale (made before the last fixes); replaced. Pushed as **8414a87 — live
+  as Build 20261001a.**
+- **Verdict, 10-02: "You have yet again, produced real shit."** No specifics given in this session. Not known yet: which
+  screens or flows, on whose phone. Nothing was changed after the verdict except these docs.
+- Next session: `06_Handoffs/PROMPT_2026-10-02_after-release-1.md`.
+

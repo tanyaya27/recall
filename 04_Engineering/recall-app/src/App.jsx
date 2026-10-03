@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSignedIn } from './lib/firebase.js';
 import { watchUser, finishSignIn } from './lib/auth.js';
-import { watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, repairPencilCabinet, repairPlaceParents, wantNames, watchNames, firstName, possessive, roleOn, putInto, changeLocation, setPromoted, undoChain, renameItem, renamePlace } from './lib/db.js';
+import { prevOf, watchAll, restoreItem, updateItem, addSnapToLog, softDeleteItem, moveToTop, visibleHere, setVisibility, logEvent, LOG_MAX, VISIBILITY_TOAST, addPlacePhotos, placeNamed, PLACE_PHOTOS, adoptLegacy, upsertUser, isPrivate, repairPrivateFlags, repairPencilCabinet, repairPlaceParents, wantNames, watchNames, firstName, possessive, roleOn, putInto, changeLocation, setPromoted, undoChain, renameItem, renamePlace } from './lib/db.js';
 import { me } from './lib/auth.js';
 import { getPrefs, savePrefs, openingMode } from './lib/prefs.js';
 import SeveralCamera from './components/SeveralCamera.jsx';
@@ -290,12 +290,16 @@ export default function App() {
   const doPutIn = async (box, list) => doPut({ t: 'thing', thing: box }, list);
   const doPut = async (dest, list) => {
     setPutIn(null);
-    const before = list.map((t) => ({ t, loc: t.location || '' }));
+    const before = list.map((t) => ({ t, prev: prevOf(t) }));
     let n = 0;
     if (dest.t === 'thing') n = await putInto(list, dest.thing);
     else { for (const t of list) { await changeLocation(t, dest.name, 'chosen'); n += 1; } logEvent('put_away', { place: dest.name, things: n }); }
     const where = dest.t === 'thing' ? `in the ${(dest.thing.name || 'box').replace(/^(my|the)\s+/i, '')}` : `at ${dest.name}`;
-    say(`Put ${n} ${where}`, async () => { for (const b of before) await changeLocation({ ...(items.find((x) => x.id === b.t.id) || b.t) }, b.loc, 'chosen'); logEvent('put_undo', { things: n }); });
+    const after = Date.now();
+    say(`Put ${n} ${where}`, async () => {
+      for (const b of before) { const r = await undoChain({ itemId: b.t.id, isNew: false, prev: b.prev, made: {}, after }); if (r === 'stale') { say('Not undone · it changed since'); logEvent('put_undo', { things: n, stale: true }); return; } }
+      logEvent('put_undo', { things: n });
+    });
   };
 
   // Private by default, when the verdict came after the save (Ravi 09-24): she is told right after

@@ -172,3 +172,13 @@ the functions: `./rules-test/run_ai_test.sh`.
 - **Retired 10-01** to `rig/retired/` (the camera they drove is gone): audit_where, repro_f3, audit_tiers, audit_pick,
   audit_card, audit_chain, probe_row, legacy_flow (the auto-answer adapter). Each adapted suite lists its retired checks
   at the top under "Retired 2026-10-01". `oracle.js` now checks the camera's In chip and her words.
+
+## One where (2026-10-02, `20261002a`)
+
+- `rig/audit_ow.js` — the one-where camera, Ravi's Walgreens sequence and every tester find (80 checks; `ENGINE=webkit WEBKIT_PATH=<webkit> node -r ./engine.js audit_ow.js` for Safari's engine).
+- The older suites drive the camera through `rig/ow_adapter.js`: `node -r ./ow_adapter.js audit.js` (→ then Change opens the
+  same In list; the adapter presses Done when that list closes). `audit_r1.js` is ported; removed rules are marked `// retired 10-02`.
+- Independent tester scripts: `rig/indep/t*.js` (round ow1, `lib.js`), `rig/indep2/n*.js` (round ow2). As-built screens:
+  `rig/walk_ow/build_shots.js` + `compose_build.py`; small-phone walk: `rig/walk_ow/walk.js`, `walk2.js` (375×667, Largest).
+- WebKit is not in the container by default: `PLAYWRIGHT_BROWSERS_PATH=<dir> npx playwright install webkit`.
+- Memory: the container has 8 GB — at most 3 browsers; never start a second background runner (LESSONS 10-02).

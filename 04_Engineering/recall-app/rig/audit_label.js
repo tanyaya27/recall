@@ -32,7 +32,7 @@ async function main() {
   // GUIDE_adapt.md helper (10-01): pick where it is in the camera's In list — an existing place/box by exact name, else a
   // new place by that name. (Replaces the 09-29 settleWhere + ☰ Choose place helpers; the tier camera is gone.)
   const pickPlace = async (name) => {
-    await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+    await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list');
     await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
     const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
     if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
@@ -100,7 +100,8 @@ async function main() {
   const snapsBefore = (await dump()).filter((d) => d.kind === 'snap').length;
   await page.click('.note-card .btn-primary'); await page.waitForSelector('.board'); await page.waitForTimeout(500);
   const key = (await items()).find((d) => d.name === 'bank locker key');
-  check('W3 saved with no photo: "Blue tin, top of the wardrobe" kept as her words (10-02: typed words are words, not a place), private, photoCount 0, written, no snap', key && key.location === '' && ((key.history || []).filter((h) => h.w).pop() || {}).said === 'blue tin, top of the wardrobe' && key.private === true && key.photoCount === 0 && key.written === true && !key.photo && (await dump()).filter((d) => d.kind === 'snap').length === snapsBefore, JSON.stringify(key && [key.location, key.private, key.photoCount, key.written]));
+  // 10-02 (night, one where; tester ow2 #11): Write it down reads "Somewhere else" like the camera's where field — a place, never words
+  check('W3 saved with no photo: "Blue tin, top of the wardrobe" is its place (one where, 10-02 night) — no words as a where, private, photoCount 0, written, no snap', key && /^blue tin, top of the wardrobe$/i.test(key.location) && !((key.history || []).some((h) => h.w && h.said)) && key.private === true && key.photoCount === 0 && key.written === true && !key.photo && (await dump()).filter((d) => d.kind === 'snap').length === snapsBefore, JSON.stringify(key && [key.location, key.private, key.photoCount, key.written]));
   check('W4 the board shows it as a written tile (no broken image)', await count('.tile .tile-written') === 1 && await page.evaluate(() => [...document.querySelectorAll('.tile img')].every((i) => i.getAttribute('src'))));
   await shot('4-board-written');
   await page.click('.tile:has-text("Bank locker key")'); await page.waitForSelector('.card.thing'); await page.waitForTimeout(400);

@@ -7,6 +7,7 @@ import { privateWhy, hasSecret } from '../lib/sensitive.js';
 import PrivNote, { PhoneOnly } from './PrivNote.jsx';
 import InList from './InList.jsx';
 import { containers, inPhrase } from '../lib/graph.js';
+import { bareWhere, articleOff, nameKey } from '../lib/where.js';
 import { BoxIcon, PinIcon } from './Icons.jsx';
 
 // Write it down, no photo (MVP #10, 2026-09-24). For the dark cupboard, the hiding place you'd
@@ -42,15 +43,22 @@ export default function NoteCard({ items = [], places = [], owner, presetPlace =
     setBusy(true);
     let loc = cap(place.trim()); let said;
     const boxed = dest && loc && cap(dest.name) === loc ? dest : null;
-    // 10-02 (tester C; Tanya 10-01): what she typed under "Somewhere else" is HER WORDS, kept as she said them — never turned
-    // into a place named like a sentence. Only an exact name of a place she has (any case) links to that place, as it's named.
+    // 10-02 (Ravi, one where; tester ow2 #11): what she types under "Somewhere else" is read like the camera's where field —
+    // a box or a place she has (exact name, "the/in/on/at" off) links to it; anything else is a NEW place by that name. Never words.
+    let boxedT = null;
     if (!boxed && typedHere) {
-      const hit = [...knownLocations(items, 999, places), ...places.map((p) => p.name)].find((n) => n.trim().toLowerCase() === loc.trim().toLowerCase());
-      if (hit) loc = hit; else { said = place.trim(); loc = ''; }
+      const b = bareWhere(place); const cands = [...new Set([articleOff(place), b].map(nameKey).filter(Boolean))];
+      const box = containers(undefined, 999).find((x) => !x.deleted && [x.name, ...(x.aliases || [])].some((n) => cands.includes(nameKey(n))));
+      const allP = [...knownLocations(items, 999, places), ...places.map((p) => p.name)];
+      let hit = null; for (const c of cands) { hit = allP.find((n) => nameKey(n) === c); if (hit) break; }
+      if (box) { boxedT = { t: 'thing', id: box.id, name: box.name || '' }; loc = cap(box.name || 'A box'); }
+      else if (hit) loc = hit;
+      else if (b) { loc = cap(b); await addPlace(loc, places, [], owner || me()); }
+      else loc = '';
     }
     if (!boxed && loc && newPlace && newPlace.toLowerCase() === loc.toLowerCase()) await addPlace(loc, places, [], owner || me()); // "New place: Attic" from the list is a place, made as one
     // Private from the first write, so it is never visible to anyone for a moment (09-24).
-    const id = await addItem({ name: name.trim(), location: loc, placeSource: loc ? 'chosen' : '', dest: boxed, said, ...(owner ? { owner } : {}), private: priv && mine, privateAuto: !touched && why ? why : '' });
+    const id = await addItem({ name: name.trim(), location: loc, placeSource: loc ? 'chosen' : '', dest: boxed || boxedT, said, ...(owner ? { owner } : {}), private: priv && mine, privateAuto: !touched && why ? why : '' });
     logEvent('capture', { initiatedBy: 'self', mode: 'written', itemId: id, hasPlace: !!loc, private: priv && mine, auto: !touched && !!why });
     onDone({ saved: true, name: cap(name.trim()), place: loc, itemId: id });
   }

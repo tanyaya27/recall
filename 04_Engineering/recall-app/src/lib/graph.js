@@ -236,6 +236,21 @@ export function saidOf(item) {
   for (let i = h.length - 1; i >= 0; i--) { const e = h[i]; if (e && e.w) return { said: (e.said || '').trim(), at: e.saidAt || e.at || 0, stmt: e.at || 0, by: e.by || '' }; }
   return { said: '', at: 0, stmt: 0, by: '' };
 }
+// 10-02 (Ravi, one where): words she adds on the camera are a NOTE (history entry n: 1) — never a where. Only her older words
+// (release 1, Write it down) can be a where, and only for an item with no place: the newest such statement.
+export function wordsWhere(item, g = G) {
+  const h = (item && item.history) || [];
+  for (let i = h.length - 1; i >= 0; i--) { const e = h[i]; if (e && e.w && !e.n) { const s = { said: (e.said || '').trim(), at: e.saidAt || e.at || 0, stmt: e.at || 0, by: e.by || '' }; const ed = item && item.id ? g.open.get(item.id) : null; return ed && (ed.since || 0) > s.stmt + 5000 ? { said: '', at: 0, by: '' } : s; } }
+  return { said: '', at: 0, by: '' };
+}
+// The note shown under the photo: on an item with a place, her newest current words (old words read as a note); with no
+// place, only a real note (the words that are its where show as its where instead).
+export function noteOf(item, hasPlace, g = G) {
+  if (hasPlace) return saidNow(item, g);
+  const h = (item && item.history) || [];
+  for (let i = h.length - 1; i >= 0; i--) { const e = h[i]; if (e && e.w) return e.n ? { said: (e.said || '').trim(), at: e.saidAt || e.at || 0, by: e.by || '' } : { said: '', at: 0, by: '' }; }
+  return { said: '', at: 0, by: '' };
+}
 // Her words, when they are still about where it is now: a link made after them (put in a box elsewhere, moved from a box's
 // page) is newer news, and the words are history then. Words with no link at all are always current.
 export function saidNow(item, g = G) {

@@ -1,0 +1,21 @@
+    console.log('\n######## T1 Log egg timer: In=Kitchen counter, +Linen closet, +Craft nook; Save; Undo');
+    await logStart('egg timer', 'real_spoon.jpg'); await openIn(); await pickIn('Kitchen counter'); await card('In');
+    await addTier(); console.log('   tier2 has boxes? tin', await listHas('Tin box'), 'wooden', await listHas('Wooden box'), 'KC itself', await listHas('Kitchen counter'));
+    await srchT('tin'); await srchT('kitchen'); await srchT('');
+    await pickIn('Linen closet'); await card('t2'); console.log(await HTML('.lc-card'));
+    await addTier(); console.log('   tier3: KC?', await listHas('Kitchen counter'), 'Linen?', await listHas('Linen closet')); await srchT('linen'); await srchT('kitchen counter'); await srchT('');
+    await pickIn('Craft nook'); await card('t3'); await shot('t1-3tiers');
+    await doSave(); await st4('T1 save', ['egg timer', 'spare batteries']); await shot('t1-saved');
+    await undo('T1'); await st4('T1 undo', ['spare batteries', 'kitchen counter']);
+    console.log('   KC place page:'); 
+
+    console.log('\n######## T2 box chain: In=Tin box, +Kitchen counter(place), +? ; and box-in-box');
+    await logStart('ruler', 'real_pencil.jpg'); await openIn(); await pickIn('Tin box'); await card('In tin');
+    await addTier(); console.log('   tier2 offers boxes? tool drawer', await listHas('Tool drawer'), 'shoe rack', await listHas('Shoe rack'), 'tin itself', await listHas('Tin box'), 'wooden', await listHas('Wooden box'));
+    await pickIn('Tool drawer'); await card('t2 tool drawer');
+    await addTier(); console.log('   tier3 offers tin?', await listHas('Tin box'), 'tool?', await listHas('Tool drawer'), 'shoe rack', await listHas('Shoe rack'));
+    await srchT('tin'); await srchT('tool drawer'); await srchT('');
+    await pickIn('Shoe rack'); await card('t3 shoe'); await shot('t2-boxes');
+    await doSave(); await st4('T2', ['ruler']);
+    await undo('T2'); await st4('T2 undo', ['tin box', 'tool drawer']);
+    console.log('   ', errs());

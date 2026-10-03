@@ -317,7 +317,7 @@ async function main() {
     // a place with no photos: nothing to open
     await seed([{ id: 'x1', kind: 'item', owner: 'margaret', by: 'margaret', private: false, roles: {}, sharedWith: [], name: 'stray bolt', location: 'Loft', photo: img('keys.jpg'), thumb: img('keys.jpg'), thumbV: 2, order: now0, createdAt: now0, lastSeenAt: now0 - 10 * M, logId: 'l_x1', photoCount: 1, history: [{ location: 'Loft', at: now0 }] }]);
     await openThing('Stray bolt');
-    check('D2 a place with no photos: nothing to tap (no button on the pin)', await count('.ph-open') === 0 && await count('.tp-wh .ch .no') === 1);
+    check('D2 a place with no photos: nothing to tap (no button on the pin)', await count('.ph-open') === 0 && (await count('.tp-wone .no') + await count('.tp-wh .ch .no')) === 1); // 10-02: one where (.tp-wone)
     // press-and-hold on the photo keeps its old behaviour (the item sheet), and no viewer opens
     const pbx = await box('.strip .photo-full');
     await page.mouse.move(pbx.x + pbx.w / 2, pbx.y + pbx.h / 2); await page.mouse.down(); await page.waitForTimeout(750); await page.mouse.up(); await page.waitForTimeout(300);
@@ -329,13 +329,13 @@ async function main() {
   // promises are kept: the place she gives is what Save writes, she can change it before saving, and the tag's caption lands on
   // the first photo (D3).
   const pickPlace = async (name) => {
-    await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+    await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list');
     await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
     const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
     if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
     await page.waitForTimeout(250);
   };
-  const chip = async () => (await page.locator('.w1-in.set .t').first().innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+  const chip = async () => { const v = await page.locator('.ow-input').first().inputValue().catch(() => ''); return v ? 'In: ' + v : ''; }; // 10-02: the where field
   const shootThing = async () => {
     await seed();
     AI = { name: 'lint brush', restingOn: 'on the orange carpet' }; SAME = { index: -1, sure: false };
@@ -354,7 +354,7 @@ async function main() {
     check('D3 the first photo of a NEW thing gets the tag\'s restingOn as its snap caption', !!cs && cs.caption === 'on the orange carpet' && lb.restingOn === 'on the orange carpet', JSON.stringify({ c: cs && cs.caption }));
     // she changes her mind before saving: the chip follows, and Save writes the new one
     await shootThing(); await pickPlace('Desk drawer');
-    await page.click('.w1-in-open'); await page.waitForSelector('.in-list');
+    await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list');
     const second = (await page.locator('.in-list .wl-row b').allInnerTexts()).map((x) => x.trim()).find((x) => x !== 'Desk drawer' && !/box|bin/i.test(x));
     await page.locator(`.in-list .wl-row:has(b:text-is("${second}"))`).first().click(); await page.waitForTimeout(400);
     check('D4 picking another place sets it (the chip follows); the item\'s photo stays the item\'s', (await chip()).startsWith('In: ' + second) && await count('.lc-band .lc-thing.sel img') === 1, second + ' / ' + await chip());

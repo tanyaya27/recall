@@ -197,7 +197,7 @@ async function runLook(look) {
     const placeNames = () => page.evaluate(() => window.__rig.dump().filter((d) => d.kind === 'place' && !d.deleted).map((d) => d.name));
     // the one In: a random row of the list, or a name typed (an existing one, or a new place)
     const inPick = async () => {
-      await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list'); await page.waitForTimeout(150);
+      await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list'); await page.waitForTimeout(150);
       const r = rnd();
       if (r < 0.45) { const n = await page.locator('.in-list .wl-row').count(); if (n) { await page.locator('.in-list .wl-row').nth(Math.floor(rnd() * n)).click(); await page.waitForTimeout(300); return; } }
       if (r > 0.92) { await tap('.in-list > .btn-quiet:has-text("Cancel")', { wait: 250 }); return; }
@@ -207,7 +207,7 @@ async function runLook(look) {
       if (await row.count()) await row.first().click(); else if (await page.locator('.in-list .wl-new').count()) await page.locator('.in-list .wl-new').first().click(); else await tap('.in-list > .btn-quiet:has-text("Cancel")', { wait: 250 });
       await page.waitForTimeout(300);
     };
-    const say = async () => { await page.fill('.w1-words input', pick(WORDS)); await page.waitForTimeout(120); };
+    const say = async () => { if (!(await page.locator('.ow-note-in').count())) { if (!(await page.locator('.ow-note').count())) return; await page.click('.ow-note'); } await page.fill('.ow-note-in', pick(WORDS)); await page.waitForTimeout(120); }; // 10-02: words are a note
     const leave = async () => { if (await page.locator('.lc').count()) { await tap('.lc-x', { wait: 400 }); const b = page.locator('button:has-text("Throw away"), button:has-text("Leave")'); if (await b.count()) await tap('button:has-text("Throw away"), button:has-text("Leave")', { wait: 400 }); } };
     const save = async () => { if (await page.locator('.lc-k.sv').isDisabled()) { await leave(); return false; } await tap('.lc-k.sv', { wait: 2400 });
       if (await page.locator('.choice, .sheet button:has-text("No, a new item")').count()) await tap('.sheet button:has-text("No, a new item")', { wait: 2000 }); return true; };
@@ -226,7 +226,7 @@ async function runLook(look) {
         if (r < 0.5) await inPick(); // a different In
         else if (r < 0.65) await say(); // her words only
         else if (r < 0.75) { await cam(pick(PHOTOS)); await tap('.lc-shutter', { wait: 600 }); } // a new photo only
-        else if (r < 0.85) { if (await page.locator('.w1-in.set .x').count()) await tap('.w1-in.set .x', { wait: 300 }); if (rnd() < 0.5) await say(); } // out of it (✕)
+        else if (r < 0.85) { if (await page.locator('.ow-go').count()) { await tap('.ow-go', { wait: 300 }); if (await page.locator('.ow-clear').count()) await tap('.ow-clear', { wait: 300 }); else if (await page.locator('.ow-cancel').count()) await tap('.ow-cancel', { wait: 300 }); } if (rnd() < 0.5) await say(); } // out of it (✕)
         else { await say(); await inPick(); }
         return (await save()) ? nm : null; },
       async moveBox() { const bx = await boxes(); if (!bx.length) return null; const nm = pick(bx); if (!(await moveOpen(nm))) return null; await inPick(); return (await save()) ? nm : null; },

@@ -4,7 +4,7 @@ import { me } from '../lib/auth.js';
 import { dayLine, cap } from '../lib/format.js';
 import Footer from './Footer.jsx';
 import { CameraIcon, SearchIcon, GearIcon, MenuIcon, LockIcon, SwitchIcon, NoteIcon, BoxIcon, PinIcon } from './Icons.jsx';
-import { topLevel, contentsOf, holderOf, isContainer, saidOf } from '../lib/graph.js';
+import { topLevel, contentsOf, holderOf, isContainer, saidOf, wordsWhere } from '../lib/graph.js';
 
 // Home — THE BOARD. Board decision 2026-09-05, Rules 1–3.
 //
@@ -80,7 +80,7 @@ export default function Board({ items, ready, whose = null, role = 'owner', remo
 
       {/* Log first, put away later (Ravi 09-27): the things with no place gather here; one tap starts putting them away. */}
       {/* REQUIREMENTS_2026-09-27 R6.1/6.2: asWhere containers don't count as things left to put away. */}
-      {!removed && canLog && onPutAway && (() => { const n = items.filter((x) => !x.location && !holderOf(x) && !x.asWhere && !saidOf(x).said).length; return n > 0 && (
+      {!removed && canLog && onPutAway && (() => { const n = items.filter((x) => !x.location && !holderOf(x) && !x.asWhere && !wordsWhere(x).said).length; return n > 0 && (
         <button type="button" className="notput" onClick={onPutAway}><PinIcon /> Not put away · {n}</button>); })()}
       {!removed && things.length > 0 && (
         <div className="board">

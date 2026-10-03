@@ -470,3 +470,28 @@ sounds good enough to keep resurfacing, so the reason is recorded rather than th
   re-test every path that writes "where", not only the new screen.
 - **2026-10-02 — An Undo on screen is a promise about the past.** It must check that nothing changed since (another
   phone), or it silently destroys newer work. Every Undo carries when its save finished.
+- **2026-10-02 — No git commands until the files are verified on the Mac.** The delivery broke off when the Mac went
+  offline; a push went out with 4 of ~250 files and the site stayed on the old build. Verify every file's hash on the
+  Mac first, then hand over the commands.
+- **2026-10-02 — Green checks and a clean tester round are not the bar.** 631 checks and six tester rounds passed, and
+  the build was still judged "real shit" on first use. The checks proved the store was right; they never asked whether
+  the app was simple to use. That needs a person, or a fresh-eyes walk against "Simplicity must rule everything", before
+  the phone.
+- **2026-10-02 — Two answers to one question is a model bug no store check can find.** Release 1 kept "where" twice (her
+  words and the In). Every check confirmed the store matched the ruling, and Find still answered the wrong place. Before
+  building, ask of every new field: which one does Find answer when they disagree?
+- **2026-10-02 — `normName` erases every non-Latin name.** Hindi names all became "" and matched each other (wrong place,
+  false "one of your items"). Use `nameKey()` (lib/where.js) for anything that compares names; test one non-Latin name.
+- **2026-10-02 — An Undo's stale check must cover every document the save touched, with no grace window.** That means
+  the item, its snaps, boxes it moved or photographed, places it made or photographed, and edges from those places. Her
+  own writes finish before `after`; a 2 s grace let Undo delete another phone's photo taken 0.3 s later.
+- **2026-10-02 — Undo restores what was on screen, not the newest history entry.** Taking "the last words entry" brought
+  back an out-of-date note and erased a words-only where. Capture `prevOf(item)` (where-words and note kept apart) before
+  the save.
+- **2026-10-02 — One background test runner, ever.** A rejected tool call had still started one. Two runners plus stale
+  browsers ran the 8 GB container out of memory (exit 137) and mixed results. Check `ps` before starting, kill stale
+  `headless_shell`, and keep to ≤3 browsers.
+- **2026-10-02 — A subagent can't write files.** Its report comes back as text; save it yourself (`rig/indep*/REPORT_*.md`).
+- **2026-10-02 — Walk at 375×667 with Largest text before the tester.** At that size the walk found the guess box under
+  the top bar, place names cut to "Kitchen cou", and the place photo covering the text. No check at 390×844 saw any of it.
+- **2026-10-03 — Send images by file card, not by staged path.** A JPEG committed from a staged path arrived re-encoded (different bytes), and only the hash check caught it. Commit images by the fileUuid of SendUserFile, then verify the hash.

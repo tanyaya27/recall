@@ -6,6 +6,52 @@ tempting to reverse later without knowing why it was made.
 
 Format: date — decision — why — what would change our mind.
 
+## 2026-10-02 (night) — One where, photo first (Ravi) → `20261002a`
+
+Ravi's report (Walgreens brochure: typed "on my lab desk", the old place stayed, the page showed two wheres, Find answered the
+old one) and the fresh-eyes walk (`WALK_2026-10-02_release1.md`). Boards: `design/BOARD_2026-10-02_one-where.md` (rounds 1–4).
+Screens: `design/mockups/OPTIONS_2026-10-02_one-where-A4.jpg` (ruled), as built `design/mockups/BUILD_2026-10-02a_one-where.jpg`.
+
+- **One where per item: the place or box it is in.** The item page shows it and Find answers it; nothing else is a where.
+  *Why:* release 1 stored two answers (words + In) with no rule between them, and Find answered the wrong one.
+- **Option A, revised four times by Ravi:** one field on the camera. At rest it shows where it is now, with a solid amber
+  border and "Where is it now? *(type to set new place)*". Tapping in makes the border dashed. Typing a name she has links
+  to it; anything else is a NEW place, made on Save. The header then says "**Set NEW place.** *(previously was:*
+  **Workbench or desk***)*": the first part amber, the bracket grey italic, the old name white. Nothing opens while she
+  types. **→** opens one sheet: the name once, every level with Change, "+ What is the X in?" under the last, and a pick
+  list. Saved levels can be changed there (Ravi's R4). Lucide icons. The boards and Claude
+  recommended B (photograph the place); Ravi chose A ("I think A is better").
+- **Photo-first** (Ravi: "Typing should be augmentation of the photo(s)"). Photos go to what the strip names: the item,
+  or the place or box in the field. They are held until Save and go to the place shown at Save, so the order is hers. A
+  photo of a place she has adds to that place's photos.
+  - **A private item's Move photos stay its own.** Claude found this while building: a passport photo would otherwise
+    land on a shared place.
+- **ReCall's guess on a NEW place's photos.** Ravi asked for it; Ravi's rules 1–5 and the "looking" line came in his next
+  message.
+  - Rules: one guess for the set; asked about 1½ s after the last shutter tap; "ReCall is looking at …" with ✕; anything
+    she does on purpose cancels it; the box never changes under her finger; no guess for a place she has or a name she
+    already decided on.
+  - Buttons: Use this · **Append to mine** (merged by the AI so it repeats nothing she typed, then de-duplicated) ·
+    ✕ Not this. An empty field gets filled by the guess (Ravi), and a guess she can't use is never offered.
+  - *Objections recorded:*
+    - Priyanka: AI back on the camera. Her conditions became checks.
+    - Maya: this pulls forward release 2's privacy gate, since photos of her home go to the AI service. Still open.
+    - Devin: the empty-field fill and Append. Ravi kept both.
+- **Words are a NOTE** ("+ Add a note"), stored as a history entry with `n: 1`, shown under the photo, never a where. An
+  old words-only item keeps its words as its where. Write it down → "Somewhere else" now reads like the field.
+- **Typing rules** (tester rounds ow1 and ow2):
+  - only in/on/at/into/onto/inside and the/my/a are stripped, so "Under the sink" stays a name;
+  - filler alone is no place;
+  - names in any script work;
+  - the item itself, an item that isn't a box, or something inside it is "Can’t put it there." with the reason;
+  - a place and a box with the same name: the one it is in now wins;
+  - "+" is offered while fewer than 3 levels are set (TIERS_SHOWN); deeper chains are still stored and shown.
+- **Undo restores what was on screen** (where, where-words and note kept apart, last seen; photos added to a place or a
+  box). It never rolls back something newer: an item photo, a place's photo or name, an edge from a place it made.
+- **Kept on purpose:** after Save + Next, the next item's photos go to the item; the strip lets her switch.
+- *Would change our mind:* the guess is wrong often enough that people stop reading it, or Margaret misses the place photo
+  because she types first.
+
 ## 2026-10-02 — Release 1 as built (`20261001a`): tiers 2–3 on the camera; the tester's rounds
 
 - **Tiers 2 and 3 on the camera** (Tanya: "it does not look to be easy to add the 2nd or 3rd … we design for n-tiers but

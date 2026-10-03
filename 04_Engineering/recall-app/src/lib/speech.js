@@ -80,7 +80,7 @@ const FILLER = new Set(['my', 'the', 'a', 'an', 'is', 'are', 'was', 'were', 'whe
 //   3  a description word starts with the query word (3+ letters)
 //   4  a place / resting-on word starts with the query word (3+ letters)
 // Two-letter queries search names only — "ta" must not return everything on a table.
-function toks(s) { return (s || '').toLowerCase().split(/[^a-z0-9']+/).map((t) => t.replace(/^'+|'+$/g, '')).filter(Boolean); } // quotes around a word ('Queen of Night') are not part of it
+function toks(s) { return (s || '').toLowerCase().split(/[^\p{L}\p{M}\p{N}']+/u).map((t) => t.replace(/^'+|'+$/g, '')).filter(Boolean); } // quotes around a word ('Queen of Night') are not part of it
 function editDistance(a, b) {
   if (Math.abs(a.length - b.length) > 2) return 3;
   const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
@@ -98,11 +98,11 @@ function wordTier(w, it) {
   if (w.length >= 4 && names.some((t) => t.length >= 4 && (editDistance(t, w) <= 2 || sharedPrefix(t, w) >= 4 || (sharedPrefix(t, w) >= 3 && Math.min(t.length, w.length) <= 6)))) return 2;
   if (w.length < 3) return 0;
   if (toks(`${it.description || ''} ${it.details || ''}`).some((t) => t.startsWith(w))) return 3; // + what the label says (MVP #9)
-  if (toks(`${it.location || ''} ${it.restingOn || ''} ${saidOf(it).said}`).some((t) => t.startsWith(w))) return 4;
+  if (toks(`${it.location || ''} ${it.restingOn || ''} ${saidOf(it).said}`).some((t) => t.startsWith(w))) return 4; // her notes are found too
   return 0;
 }
 export function matchThings(items, query) {
-  const words = (query || '').toLowerCase().replace(/[^a-z0-9'\s]/g, ' ').split(/\s+/)
+  const words = (query || '').toLowerCase().replace(/[^\p{L}\p{M}\p{N}'\s]/gu, ' ').split(/\s+/)
     .filter((w) => w.length >= 2 && !FILLER.has(w));
   if (!words.length) return [];
   return items.map((it) => {

@@ -1,12 +1,48 @@
 # Open items
 
 Running list of outstanding to-dos. Newest at the top of each section; strike or move to
-*Done* when closed. Updated 2026-10-01.
+*Done* when closed. Updated 2026-10-03.
+
+## NOW — `20261002a`: one where, photo first (Ravi, 10-02)
+
+Rulings: DECISIONS 2026-10-02 (night). Boards: `design/BOARD_2026-10-02_one-where.md`. As built:
+`design/mockups/BUILD_2026-10-02a_one-where.jpg`.
+Tester reports: `rig/indep/REPORT_ow1.md`, `rig/indep2/REPORT_ow2.md`. Suites: `rig/audit_ow.js` (new), plus every older
+suite through `rig/ow_adapter.js`.
+
+- [x] The 10-02 verdict: Ravi's screens (Walgreens brochure), the walk (`WALK_2026-10-02_release1.md`), the diagnosis (the
+  model). He decided against a rollback.
+- [x] One where field on the camera, the → sheet with every level, photos to the place shown, ReCall's guess with the
+  "looking" line, notes, item page with one where, Write it down reads like the field, Undo fixes (tester ow1 and ow2).
+- [ ] **Ravi + Tanya: phone check of `20261002a`.**
+  1. Brochure → Move it → type "on my lab desk" → Done → photograph the desk (wait for "ReCall is looking…") → Append to
+     mine.
+  2. → + What is the Lab desk in? → Office → Done → Save.
+  3. Item page: one where, with Undo.
+  4. Find "brochure".
+  5. Log a new item: photo → type a place → photo of the place → Save.
+- [ ] **Privacy before wide use** (Maya): a plain line on which photos go to the AI service (item photos and now place
+  photos), and whether they are kept. Check the provider's retention terms.
+- [ ] Home's first-run line says "tap **Find item**", but at Largest on a small phone the footer shows icons only (walk).
+- [ ] A place's photos can be dropped silently by the ~700 KB byte guard: the strip says 6, 5 are kept (tester ow2 #16).
+- [ ] Undo leaves hidden "moved" sightings on the item (pre-existing; tester ow1 #10 / ow2 #17).
+- [ ] An 80-character place name scrolls inside the field at Largest on a small phone; the field stops at 40% of the
+  screen.
+- [ ] Walk "later" list:
+  - "moved … · last seen …" shows two times;
+  - Home's Undo card covers tiles;
+  - a place without a photo shows an empty pin box on the save card;
+  - the note's hint is cut at Largest.
+- [ ] Release 2 (next): ReCall's take on the item page; the privacy statement and switches first.
 
 ## NOW — `20261001a`: release 1 "Words, and one pick" (Tanya, 10-01/02)
 
 Rulings: DECISIONS 2026-10-01 and 10-02. As built: `design/mockups/BUILD_2026-10-01a_words-and-one-pick.jpg`.
 Tester: `rig/indep/REPORT_r1.md` … `REPORT_r1f.md` (6 rounds; round 6 found no store-changing bug — the gate is met). 631 checks green.
+
+- [x] **FIRST: the 10-02 verdict — "You have yet again, produced real shit."** → answered by `20261002a` (one where, photo first); see the section above. Live since 10-02 (8414a87). What is wrong
+  was not said yet. Find out (their screens/steps) before building anything; walk the live build as a first-time user
+  against Tanya's "Simplicity must rule everything". Rolling back to `20260930f` is one revert — their call, not Claude's.
 
 - [x] The camera: the item's photos, her words (typed or said), one optional "What is it in?" — no tiers, no Choose place,
   no "This photo is…", no AI place matching, no Before → Now. The chip is what's saved; ✕ takes it off.

@@ -88,7 +88,12 @@ module.exports = ({ page, PORT, tap }) => {
         if (!s || !s.said) return ''; const e = d.find((x) => x.kind === 'edge' && !x.deleted && x.from === it.id && !x.until); return e && (e.since || 0) > s.at + 5000 ? '' : s.said; }, name);
       const { tile } = await openItem(name);
       const pg = await page.evaluate(() => {
-        const sd = document.querySelector('.tp-said q'); const said = sd ? sd.innerText.trim().replace(/^[“"]|[”"]$/g, '') : '';
+        const sd = document.querySelector('.tp-said q'); const nt = document.querySelector('.tp-note');
+        const said = sd ? sd.innerText.trim().replace(/^[“"]|[”"]$/g, '') : nt ? ((nt.innerText.match(/“([^”]*)”/) || [])[1] || '').trim() : '';
+        // 10-02 (one where): a place shows as ONE where — its photo, its name, then "in the …" for each level outward
+        const one = document.querySelector('.tp-wone');
+        if (one) { const words = [(one.querySelector('.tp-wname') || {}).innerText || '', ...[...one.querySelectorAll('.tp-win')].map((x) => x.innerText.trim().replace(/^in (the )?/, '').replace(/^[“"]|[”"]$/g, ''))];
+          const sm = [...one.querySelectorAll('.tx small')].filter((x) => !x.classList.contains('tp-win')); return { none: false, one: true, words, squares: words.length, pillsSq: words.length - 1, pillsW: words.length - 1, plainSeparators: false, when: sm.length ? sm[sm.length - 1].innerText : '', said }; }
         const w = document.querySelector('.tp-wh'); if (!w) return { none: true, words: [], squares: 0, said, missing: true };
         const chainEl = w.querySelector('.tp-chain');
         const words = chainEl ? [...chainEl.querySelectorAll('.cp')].map((c) => [...c.children].filter((x) => !x.classList.contains('in')).map((x) => x.innerText).join(' ')) : [(w.querySelector('.tx b') || {}).innerText || ''];
@@ -98,8 +103,13 @@ module.exports = ({ page, PORT, tap }) => {
       let chip; const mv = page.locator('.tp-btn:has-text("Move it"), .tp-btn:has-text("Put it somewhere")');
       if (await mv.count()) {
         await mv.first().click(); await page.waitForSelector('.lc'); await page.waitForTimeout(600);
-        chip = await page.evaluate(() => { const c = document.querySelector('.lc .w1-in.set .w1-in-open .t'); if (!c) return null; const k = c.cloneNode(true); const sm = k.querySelector('small'); const outer = sm ? sm.innerText.trim() : '';
-          k.querySelectorAll('small, .lab, em').forEach((x) => x.remove()); return { first: k.textContent.trim(), outer: !outer || /^a (box|place)$/.test(outer) ? [] : outer.split(' · ').map((s) => s.trim()) }; });
+        // 10-02 (one where): the field says the first level; → shows every level (the store's chain)
+        const first = await page.locator('.ow-input').first().inputValue().catch(() => null);
+        let outer = [];
+        if (first && await page.locator('.ow-go').count()) { await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.waitForTimeout(200);
+          outer = (await page.evaluate(() => [...document.querySelectorAll('.ow-sheet .ow-lvl:not(.none) .t b')].map((b) => { const k = b.cloneNode(true); k.querySelectorAll('em').forEach((x) => x.remove()); return k.textContent.trim(); }))).slice(1);
+          await page.click('.ow-sheet .ow-cancel'); await page.waitForTimeout(200); }
+        chip = first === null ? null : first ? { first, outer } : '';
         await page.click('.lc-x'); await page.waitForTimeout(350);
         if (await page.locator('button:has-text("Leave"), button:has-text("Throw away")').count()) { await page.locator('button:has-text("Leave"), button:has-text("Throw away")').first().click(); await page.waitForTimeout(300); }
       }
@@ -124,7 +134,7 @@ module.exports = ({ page, PORT, tap }) => {
         if (/^seen /i.test(w) && t.lastMove > t.lastPhoto + 2000) bad.push(`${label}${name} — item page says "${w}", but it moved after its last photo (nobody saw it there)`);
         if (/^moved /i.test(w) && !t.lastMove) bad.push(`${label}${name} — item page says "${w}", but it never moved`);
       }
-      if (chip === null) bad.push(`${label}${name} — Move it opens with no "In" chip, the store says [${t.chain.join(' in ')}]`);
+      if (chip === null || chip === '') bad.push(`${label}${name} — Move it opens with no where in the field, the store says [${t.chain.join(' in ')}]`);
       else if (chip) { const got = [chip.first, ...chip.outer].map(norm); if (JSON.stringify(got) !== JSON.stringify(want)) say('Move it "In" chip', [chip.first, ...chip.outer]); }
       return bad;
   }

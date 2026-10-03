@@ -195,18 +195,18 @@ async function runLook(look) {
     const move = async (nm = '3D model of plant sensor') => { await openThing(nm); await tap(MOVE, { wait: 900 }); };
     // 10-01: where = her words + ONE "In" (the In list). Pick by exact name, else a new place by that name.
     const pickPlace = async (name) => {
-      await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+      await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list');
       await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
       const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
       if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
       await page.waitForTimeout(250);
     };
-    const openIn = async () => { await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list'); await page.waitForTimeout(250); };
+    const openIn = async () => { await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list'); await page.waitForTimeout(250); };
     const leave = async () => { await tap('.lc-x', { wait: 400 }); if (await page.locator('button:has-text("Throw away"), button:has-text("Leave")').count()) await tap('button:has-text("Throw away"), button:has-text("Leave")', { wait: 400 }); };
     const placePage = async (nm) => { await home(); await tap('.menu-btn', { wait: 400 }); await tap('.drawer-row:has-text("Places")', { wait: 700 }); await tap(`.loc-row:has(b:text-is("${nm}"))`, { wait: 700 }); };
     const placeWhere = async (pl, to) => { await placePage(pl); await tap('.pl-where', { wait: 450 }); await page.waitForSelector('.in-list'); await page.fill('.in-list .wl-search input', to); await page.waitForTimeout(200);
       const row = page.locator(`.in-list .wl-row:has(b:text-is("${to}"))`); if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click(); await page.waitForTimeout(900); };
-    const chip = () => page.evaluate(() => ((document.querySelector('.lc .w1-in.set') || {}).innerText || '').replace(/\n/g, ' '));
+    const chip = () => page.evaluate(() => { const i = document.querySelector('.lc .ow-input'); return i && i.value ? 'In: ' + i.value : ''; }); // 10-02: the where field
     const H = 3600e3; const now = Date.now();
     const tail = (s) => (s || '').slice(-40);
     // Ravi's house, as on his phone: the 3D model is in the White cardboard box, in the Ikea shelving unit, in the Living room.
@@ -225,7 +225,7 @@ async function runLook(look) {
 
     // ---- P1: one photo viewer, one place for "photo 1 of N" — the item page (a place's photos) and the camera (the item's) ----
     await openThing('3D model of plant sensor');
-    await page.locator('.tp-wh .ph-open').first().click(); await page.waitForTimeout(500);
+    await page.locator('.tp-wone .ph-open, .tp-wh .ph-open').first().click(); await page.waitForTimeout(500);
     const v1 = await page.evaluate(() => { const m = document.querySelector('.d2-pv .d2-meta'); const im = document.querySelector('.d2-pv .d2-slide img'); return { there: !!m, text: m ? m.innerText : '', above: m && im ? m.getBoundingClientRect().bottom <= im.getBoundingClientRect().top + 2 : null }; });
     await snap('item page: a place photo in the viewer');
     await page.keyboard.press('Escape'); await page.waitForTimeout(300);
@@ -255,8 +255,8 @@ async function runLook(look) {
     await move(); await cam('real_painting.jpg'); await tap('.lc-shutter', { wait: 900 }); await pickPlace('Foyer'); await tap('.lc-k.sv', { wait: 2600 });
     await placeWhere('Foyer', 'In air');
     const ph = await page.evaluate(() => { const d = window.__rig.dump(); const f = d.find((x) => x.kind === 'place' && x.name === 'Foyer'); return { air: d.find((x) => x.kind === 'place' && x.name === 'In air').photos.length, foyer: f ? (f.photos || []).length : null }; });
-    check('P4', 'saved: the photo taken in Move it went onto neither the Foyer nor "In air" (camera photos are the item\'s)', ph.air === airPhotos0 && ph.foyer === 0, JSON.stringify({ airPhotos0, ...ph }));
-    await move(); const c6 = await chip(); await snap('P6 chip in Foyer in In air'); await leave();
+    check('P4', 'saved: the photo taken in Move it went to the Foyer (the place shown at Save, 10-02), not to "In air"', ph.air === airPhotos0 && ph.foyer === 1, JSON.stringify({ airPhotos0, ...ph })); // 10-02 (Ravi): photos go to the place shown at Save — the Foyer
+    await move(); let c6 = await chip(); await tap('.ow-go', { wait: 400 }); c6 += ' ' + (await page.locator('.ow-sheet .ow-lvl .t b').allInnerTexts()).slice(1).join(' ') + ' ' + await page.locator('.ow-sheet').innerText(); await snap('P6 chip in Foyer in In air'); await tap('.ow-sheet .ow-cancel', { wait: 300 }); await leave();
     await placePage('Foyer'); const w6 = await page.evaluate(() => (document.querySelector('.pl-where') || {}).innerText || '');
     check('P6', 'a place called "In air" is never "the in air" — not on the In chip (Foyer, in …), not on the Foyer\'s "Where this place is"', /Foyer/.test(c6) && /In air/.test(c6) && !/the in air/i.test(c6) && /In air/.test(w6) && !/the in air/i.test(w6), JSON.stringify({ chip: c6, where: w6 }));
 
@@ -303,11 +303,11 @@ async function runLook(look) {
     await snap('T1 keyboard up typing Pan');
     check('T1', 'the In list, keyboard up, "Pan" typed: the search and the Pantry shelf row sit above the keyboard', t1.row !== null && t1.row <= t1.limit && t1.input <= t1.limit, JSON.stringify(t1));
     await page.evaluate(() => window.__kb(0)); await tap('.in-list > .btn-quiet:has-text("Cancel")', { wait: 300 });
-    await page.locator('.w1-words input').click(); await page.evaluate(() => window.__kb(380)); await page.waitForTimeout(250);
+    await page.locator('.ow-input').click(); await page.locator('.ow-input').fill(''); await page.evaluate(() => window.__kb(380)); await page.waitForTimeout(250);
     await page.keyboard.type('top shelf', { delay: 30 }); await page.waitForTimeout(300);
-    const t1w = await page.evaluate(() => { const i = document.querySelector('.w1-words input').getBoundingClientRect(); return { input: Math.round(i.bottom), top: Math.round(i.top), limit: window.innerHeight - 380 }; });
+    const t1w = await page.evaluate(() => { const i = document.querySelector('.ow-input').getBoundingClientRect(); return { input: Math.round(i.bottom), top: Math.round(i.top), limit: window.innerHeight - 380 }; });
     await snap('T1 keyboard up typing words');
-    check('T1', 'her words field, keyboard up, typing: the field sits above the keyboard (and on the screen)', t1w.input <= t1w.limit && t1w.top >= 0, JSON.stringify(t1w));
+    check('T1', 'the where field (10-02), keyboard up, typing: the field sits above the keyboard (and on the screen)', t1w.input <= t1w.limit && t1w.top >= 0, JSON.stringify(t1w));
     await page.evaluate(() => window.__kb(0)); await leave();
     // T1b: Largest text on a small iPhone, no keyboard: the first row of the In list is on the screen
     await page.setViewportSize({ width: 375, height: 667 }); await setPrefs({ size: 'largest' });

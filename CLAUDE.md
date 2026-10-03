@@ -69,7 +69,9 @@ Full background lives in the numbered folders — see `README.md` for the index.
 
 ## Current status (update me)
 
-> **2026-10-02 — `20261001a` built (NOT pushed): release 1 "Words, and one pick" (Tanya) — the camera takes the item's photos, her words and one optional "What is it in?" (+ up to 2 tiers above it, outward only); no tier squares, no AI place matching; Home tiles photo + name; one list of where everywhere. 631 checks green; tester 6 rounds.**
+> **2026-10-03 — `20261002a` built (NOT pushed until Ravi's commands run): one where, photo first (Ravi, 10-02) — one where field on the camera (type a place or pick it; → for every level and the pick list), photos go to the place shown, ReCall's guess on a new place's photos (Use this · Append to mine · ✕), words are notes. 80 + ~500 older checks green in Chromium and WebKit; two independent tester rounds (`rig/indep/REPORT_ow1.md`, `rig/indep2/REPORT_ow2.md`); walk at 375×667 Largest. Next: Ravi + Tanya phone check (OPEN_ITEMS). Session: `06_Handoffs/sessions/2026-10-02-one-where.md`.**
+>
+> **2026-10-02 — `20261001a` live 10-02 (8414a87): release 1 "Words, and one pick" (Tanya) — the camera takes the item's photos, her words and one optional "What is it in?" (+ up to 2 tiers above it, outward only); no tier squares, no AI place matching; Home tiles photo + name; one list of where everywhere. 631 checks green; tester 6 rounds. Verdict 10-02: "real shit" again, specifics not yet given — start from `06_Handoffs/PROMPT_2026-10-02_after-release-1.md`.**
 >
 > **2026-09-30 (night) — `20260930f` built (NOT pushed): a photo on a tier asks "This photo is…"; Choose place new-place-first; a pick shows Before → Now; no 3-s timer (ReCall only suggests); Save waits for a change; Ravi's shutter marks. 883 checks green.**
 >

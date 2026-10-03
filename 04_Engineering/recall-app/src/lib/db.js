@@ -77,7 +77,7 @@ export async function moveToTop(item, items) {
 //      ("glasses" ↔ "reading glasses"); a wrong soft match costs one tap on the card.
 // Names are normalised: lowercase, "your/the/my" dropped, trailing s dropped.
 import { normName } from './names.js';
-import { setGraph, graph, openEdge, destOf, wouldLoop, contentsOf, placeWouldLoop, saidOf } from './graph.js';
+import { setGraph, graph, openEdge, destOf, wouldLoop, contentsOf, placeWouldLoop, saidOf, wordsWhere, noteOf, holderOf } from './graph.js';
 export { normName };
 function namesOf(it) { return [it.name, ...(it.aliases || [])].map(normName).filter(Boolean); }
 export function findByName(items, name, { strict = false } = {}) {
@@ -311,16 +311,16 @@ export const ROLE_BLURB = { viewer: 'Sees your items and where they are. Cannot 
 // 10-01 (Tanya): one where statement in the history — her words (maybe ''), when, who. `said` undefined = not a statement.
 // `saidAt`/`saidBy`: the same words carried over to a new In ("Put it in a place or a box") keep when and who said them.
 const whereEntry = (location, at, said, extra = {}) => ({ location, at, by: me(), ...extra, ...(said === undefined || said === null ? {} : { w: 1, said: String(said).trim(), by: me() }) });
-export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '', dest = null, holds = undefined, asWhere = false, said = undefined }) {
+export async function addItem({ name = '', location = '', description = '', photo = null, thumb = null, by = 'self', restingOn = '', naming = false, aliases = [], extras = [], owner = me(), placeSource = '', details = '', private: priv = false, privateAuto = '', dest = null, holds = undefined, asWhere = false, said = undefined, note = false }) {
   location = placeText(location, null);
   const now = Date.now();
   const logId = `log_${now}`;
   const keep = !!priv && owner === me();
   const ref = await addDoc(col, {
     kind: 'item', ...ownership(owner), ...(keep ? { private: true, privateAuto: privateAuto || '' } : {}), name, aliases, location, description, photo, thumb, thumbV: THUMB_V, restingOn,
-    needsPlace: !location && !(said || '').trim(), naming, placeSource: location ? (placeSource || 'chosen') : '',
+    needsPlace: !location && (note || !(said || '').trim()), naming, placeSource: location ? (placeSource || 'chosen') : '',
     order: now, pinnedOrder: null, createdAt: now, updatedAt: now, lastSeenAt: now, capturedBy: by,
-    history: [whereEntry(location, now, said)], logId, photoCount: photo ? 1 + extras.length : 0, details: details || '', written: !photo,
+    history: [whereEntry(location, now, said, note ? { n: 1 } : {})], logId, photoCount: photo ? 1 + extras.length : 0, details: details || '', written: !photo,
     ...(holds === undefined ? {} : { holds: !!holds }),
     // REQUIREMENTS_2026-09-27 R6.1: a box made because it was named as WHERE something else goes (the camera's
     // outward chain) is not a chore to put away — it's marked so Not put away and the board can leave it alone.
@@ -411,15 +411,17 @@ async function captionCoverSnap(itemId, text) {
 // the new place, now — so the new stay has a photo and the history never has a row without
 // one. Adding the place to a thing that had none is not a move: no sighting is written.
 // 09-30d (independent tester #2): `undo` marks the history line and the link as an Undo, so "moved" never counts it.
-export async function changeLocation(item, location, placeSource = 'chosen', dest = null, { undo = false, said = undefined, saidAt = 0, saidBy = '' } = {}) {
+export async function changeLocation(item, location, placeSource = 'chosen', dest = null, { undo = false, said = undefined, saidAt = 0, saidBy = '', note = false, extra = [] } = {}) {
   // Never a loop (bug #8, 09-27: the pencil went into the cabinet that was inside the pencil). Refused here, where every move passes.
   const to = dest || (location ? destOf(location, graph().byId.get(item.id) || item) : null);
   if (to && to.t === 'thing' && wouldLoop(item, to)) { logEvent('loop_refused', { itemId: item.id, to: to.id }); return false; }
   if (!dest) location = placeText(location, item);
   const now = Date.now();
-  const history = [...(item.history || []), { ...whereEntry(location, now, said, undo ? { undo: true } : {}), ...(said !== undefined && saidAt ? { saidAt, by: saidBy || me() } : {}) }].slice(-100);
+  const history = [...(item.history || []), { ...whereEntry(location, now, said, { ...(undo ? { undo: true } : {}), ...(note && said ? { n: 1 } : {}) }), ...(said !== undefined && saidAt ? { saidAt, by: saidBy || me() } : {}) },
+    ...extra.map((e) => ({ location, at: now, ...e }))].slice(-100);
   const moved = !!item.location && !!location && item.location.toLowerCase() !== location.toLowerCase();
-  const words = said !== undefined && said !== null ? String(said).trim() : saidOf(item).said;
+  // only words that are a where (not a note) keep it out of "Not put away" (10-02)
+  const words = said !== undefined && said !== null && !note ? String(said).trim() : wordsWhere({ ...item, history }).said;
   const patch = { location, needsPlace: !location && !words, history, lastSeenAt: now, updatedAt: now, placeSource: location ? placeSource : '' };
   if (moved && item.photo) {
     const logId = `log_${now}`;
@@ -429,6 +431,17 @@ export async function changeLocation(item, location, placeSource = 'chosen', des
   await updateDoc(doc(col, item.id), patch);
   await recordMove(item, location, undo ? 'undo' : placeSource, dest);
   return true;
+}
+
+// 10-02 (tester ow2 #2, #3): what Undo puts back about an item — where it is, its where-words (an old words-only item) and
+// its note, kept apart, as they are NOW on screen (a note that was already out of date is not brought back).
+export function prevOf(item) {
+  const it = graph().byId.get(item.id) || item; const e = openEdge(it.id);
+  const hasPlace = !!(it.location || e || holderOf(it));
+  const ww = hasPlace ? { said: '' } : wordsWhere(it); const nt = noteOf(it, hasPlace);
+  return { v2: true, location: it.location || '', dest: e ? e.to : null, words: ww.said || '', wordsAt: ww.at || 0, wordsBy: ww.by || '',
+    note: nt.said || '', noteAt: nt.at || 0, noteBy: nt.by || '', lastSeenAt: it.lastSeenAt || 0,
+    said: nt.said || ww.said || '', saidAt: nt.at || ww.at || 0, saidBy: nt.by || ww.by || '' };
 }
 
 // Private = shared with no one (Only me), on every device of the owner. Making a thing private
@@ -607,7 +620,10 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
       }
       // REQUIREMENTS_2026-09-27 R2: photos the camera attached to an already-logged thing on this
       // chain (l.extraPhotos, Stage 2) join it as extra photos — same mechanism as any other extra shot.
-      if (l.extraPhotos && l.extraPhotos.length) await addItemPhotos(it, l.extraPhotos);
+      if (l.extraPhotos && l.extraPhotos.length) { // 10-02: Undo takes these back (tester ow1 #3)
+        (made.boxPhotos = made.boxPhotos || []).push({ id: it.id, since: Date.now(), prev: { photoCount: it.photoCount || (it.photo ? 1 : 0), logId: it.logId || '' } });
+        await addItemPhotos(it, l.extraPhotos);
+      }
       here = { text: capName(it.name || 'A box'), dest: { t: 'thing', id: it.id, name: it.name || '' } };
       made.links[i] = null; // an already-known link never needs the "Unnamed" marker (R3.3)
     } else if (l.known) {
@@ -616,8 +632,13 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
       const name = l.known.name;
       const key0 = name.trim().toLowerCase();
       const known = placeNamed(name, places) || madeNames.get(key0) || null;
+      // 10-02 (one where): photos taken of a place she has join its photos; Undo puts its photos back as they were
+      if (known && known.id && l.placePhotos && l.placePhotos.length && (known.owner || me()) === me()) {
+        (made.placePhotos = made.placePhotos || []).push({ id: known.id, photos: known.photos || [] });
+        await addPlacePhotos(known, l.placePhotos);
+      }
       const id = known && known.id ? known.id : await addPlace(name, places, l.placePhotos || [], owner, null);
-      if (!known && id) { made.places.push(id); madeNames.set(key0, { id, name, owner }); }
+      if (!known && id) { made.places.push(id); madeNames.set(key0, { id, name, owner }); (made.placeNames = made.placeNames || {})[id] = name; }
       await placeOuterLink(known || { id, name, owner }, outer, inChain, made);
       here = { text: name, dest: { t: 'place', name }, placeId: id };
       made.links[i] = null;
@@ -634,7 +655,7 @@ export async function saveChain(chain = [], { owner = me(), places = [] } = {}) 
       const name = capName(l.name || 'A place');
       const known = placeNamed(name, places);
       const id = await addPlace(name, places, l.placePhotos || (l.placePhoto ? [l.placePhoto] : []), owner, null);
-      if (!known && id) made.places.push(id);
+      if (!known && id) { made.places.push(id); (made.placeNames = made.placeNames || {})[id] = name; }
       await placeOuterLink(known || { id, name, owner }, outer, inChain, made);
       here = { text: name, dest: { t: 'place', name }, placeId: id };
       made.links[i] = { id, kind: 'place', unnamed: !!l.unnamed };
@@ -662,8 +683,19 @@ export async function undoChain({ itemId = null, isNew = false, prev = null, mad
     const lastOf = (id) => { const x = g.byId.get(id); return x ? Math.max(0, x.lastSeenAt || 0, ...(x.history || []).map((h) => h.at || 0)) : 0; };
     const ids = [itemId, ...(made.moved || []).map((m) => m.item && m.item.id)].filter(Boolean);
     const placeIds = (made.placeMoves || []).map((pm) => pm.place && pm.place.id).filter(Boolean);
-    const newer = ids.some((id) => lastOf(id) > after + 2000) || (g.edges || []).some((e) => placeIds.includes(e.from) && ((e.since || 0) > after + 2000 || (e.until || 0) > after + 2000));
-    if (newer) { logEvent('undo_refused_stale', { itemId }); return 'stale'; }
+    // 10-02 (tester ow1 #1, #2): a place this save made or added photos to, and a box it added photos to, changed since
+    // (another phone's photo, a rename) → nothing is undone
+    const touched = [...(made.placePhotos || []).map((p) => p.id), ...(made.places || [])];
+    const placeNewer = touched.some((id) => { const pd = (g.places || []).find((p) => p.id === id); if (!pd) return false;
+      return (pd.updatedAt || 0) > after || (pd.photos || []).some((ph) => (ph.at || 0) > after) // her own writes all finish before `after` (tester ow2 #6)
+        || (g.edges || []).some((e) => e.from === id && ((e.since || 0) > after || (e.until || 0) > after)) // put inside something since (ow2 #5)
+        || (made.placeNames && made.placeNames[id] && (pd.name || '').trim().toLowerCase() !== made.placeNames[id].trim().toLowerCase()); });
+    const boxNewer = (made.boxPhotos || []).some((b) => { const x = g.byId.get(b.id); return x && ((x.updatedAt || 0) > after + 2000 || lastOf(b.id) > after + 2000); });
+    const newer = placeNewer || boxNewer || ids.some((id) => lastOf(id) > after + 2000) || (g.edges || []).some((e) => placeIds.includes(e.from) && ((e.since || 0) > after + 2000 || (e.until || 0) > after + 2000));
+    // another phone's photo of the item itself since (ow2 #4): Add photo writes a snap and photoCount, no history
+    let photoNewer = false;
+    if (!newer && itemId && !isNew) { try { const sn = await getDocs(query(col, where('kind', '==', 'snap'), where('itemId', '==', itemId))); photoNewer = sn.docs.some((d) => (d.data().at || 0) > after && !d.data().moved); } catch (e) { console.error('undo check', e); } }
+    if (newer || photoNewer) { logEvent('undo_refused_stale', { itemId }); return 'stale'; }
   }
   const drop = async (id) => {
     const it = g.byId.get(id) || { id };
@@ -671,7 +703,9 @@ export async function undoChain({ itemId = null, isNew = false, prev = null, mad
     await purgeItem(it);
   };
   if (itemId && isNew) await drop(itemId);
-  else if (itemId && prev) { const it = g.byId.get(itemId); if (it) { await changeLocation(it, prev.location || '', 'chosen', prev.dest || null, { undo: true, said: prev.said, saidAt: prev.saidAt || 0, saidBy: prev.saidBy || '' }); if (prev.lastSeenAt) await updateDoc(doc(col, itemId), { lastSeenAt: prev.lastSeenAt }).catch(() => {}); } }
+  else if (itemId && prev && prev.v2) { const it = g.byId.get(itemId); if (it) { await changeLocation(it, prev.location || '', 'chosen', prev.dest || null, { undo: true, said: prev.words || '', saidAt: prev.wordsAt || 0, saidBy: prev.wordsBy || '',
+      extra: prev.note ? [{ w: 1, n: 1, said: prev.note, saidAt: prev.noteAt || 0, by: prev.noteBy || me(), undo: true }] : [] }); if (prev.lastSeenAt) await updateDoc(doc(col, itemId), { lastSeenAt: prev.lastSeenAt }).catch(() => {}); } }
+  else if (itemId && prev) { const it = g.byId.get(itemId); if (it) { await changeLocation(it, prev.location || '', 'chosen', prev.dest || null, { undo: true, said: prev.said, saidAt: prev.saidAt || 0, saidBy: prev.saidBy || '', note: !!prev.saidNote }); if (prev.lastSeenAt) await updateDoc(doc(col, itemId), { lastSeenAt: prev.lastSeenAt }).catch(() => {}); } }
   // 10-01 (tester #2): photos a Move (or a re-log) added go too, and the cover it replaced comes back.
   if (itemId && !isNew && photos && photos.since) {
     try {
@@ -680,6 +714,14 @@ export async function undoChain({ itemId = null, isNew = false, prev = null, mad
       if (photos.prev) await updateDoc(doc(col, itemId), photos.prev);
     } catch (e) { console.error('undo photos', e); }
   }
+  for (const bp of made.boxPhotos || []) {
+    try {
+      const snaps = await getDocs(query(col, where('kind', '==', 'snap'), where('itemId', '==', bp.id)));
+      await Promise.all(snaps.docs.filter((d) => (d.data().at || 0) >= bp.since).map((d) => deleteDoc(d.ref)));
+      await updateDoc(doc(col, bp.id), bp.prev);
+    } catch (e) { console.error('undo box photos', e); }
+  }
+  for (const pp of made.placePhotos || []) await updateDoc(doc(col, pp.id), { photos: pp.photos, updatedAt: Date.now() }).catch((e) => console.error('undo place photos', e));
   for (const m of made.moved || []) { const it = g.byId.get(m.item.id) || m.item; await changeLocation(it, m.location, 'chosen', m.dest, { undo: true }); if (m.lastSeenAt) await updateDoc(doc(col, it.id), { lastSeenAt: m.lastSeenAt }).catch(() => {}); }
   for (const id of made.items || []) await drop(id);
   for (const pm of [...(made.placeMoves || [])].reverse()) await placeIn(pm.place, pm.prev, 'undo').catch(() => {});
@@ -705,12 +747,12 @@ async function syncEdgePrivacy(itemId, priv) {
 export async function setPromoted(item, on) { await updateItem(item.id, { promoted: !!on }); logEvent('promote', { itemId: item.id, on: !!on }); }
 
 
-export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [], placeSource = 'chosen', dest = null, said = undefined }) {
+export async function resnapItem(item, { photo, thumb, location, by = 'self', restingOn = '', extras = [], placeSource = 'chosen', dest = null, said = undefined, note = false }) {
   location = placeText(location, item);
   const now = Date.now();
   const logId = `log_${now}`;
-  const history = [...(item.history || []), whereEntry(location, now, said)].slice(-100);
-  const words = said !== undefined && said !== null ? String(said).trim() : saidOf(item).said;
+  const history = [...(item.history || []), whereEntry(location, now, said, note && said ? { n: 1 } : {})].slice(-100);
+  const words = said !== undefined && said !== null && !note ? String(said).trim() : wordsWhere({ ...item, history }).said;
   await updateDoc(doc(col, item.id), {
     photo, thumb, thumbV: THUMB_V, location, restingOn, needsPlace: !location && !words, placeSource: location ? placeSource : '',
     lastSeenAt: now, updatedAt: now, history, capturedBy: by, logId, photoCount: 1 + extras.length,

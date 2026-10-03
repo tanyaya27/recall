@@ -34,14 +34,14 @@
     const logItem = async (name, photo = 'real_slippers.jpg') => { await home(); AI = { name }; await cam(photo); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 }); };
     // Pick where it is in the camera's In list: an existing place/box by exact name, else a new place by that name.
     const pickPlace = async (name) => {
-      await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+      await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list');
       await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
       const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
       if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
       await page.waitForTimeout(250);
     };
-    const words = async (s) => { await page.fill('.w1-words input', s); await page.waitForTimeout(150); };
-    const chipText = () => page.evaluate(() => ((document.querySelector('.lc .w1-in.set') || {}).innerText || '').replace(/\n/g, ' '));
+    const words = async (s) => { if (!(await page.locator('.ow-note-in').count())) await page.click('.ow-note'); await page.fill('.ow-note-in', s); await page.waitForTimeout(150); }; // 10-02: words are a note
+    const chipText = () => page.evaluate(() => { const i = document.querySelector('.lc .ow-input'); return i && i.value ? 'In: ' + i.value : ''; }); // 10-02: the where field
     // the place page's own lists (Move / Move all) are still the Choose place list (WhereList)
     const choose = async (name) => {
       await page.waitForSelector('.where-list');

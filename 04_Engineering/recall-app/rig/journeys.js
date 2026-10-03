@@ -200,14 +200,14 @@ async function runLook(look) {
     const logItem = async (name, photo = 'real_slippers.jpg') => { await home(); AI = { name }; await cam(photo); await tap(LOG, { wait: 800 }); await tap('.lc-shutter', { wait: 1300 }); };
     // Pick where it is in the camera's In list: an existing place/box by exact name, else a new place by that name.
     const pickPlace = async (name) => {
-      await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+      await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list');
       await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
       const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
       if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
       await page.waitForTimeout(250);
     };
-    const words = async (s) => { await page.fill('.w1-words input', s); await page.waitForTimeout(150); };
-    const chipText = () => page.evaluate(() => ((document.querySelector('.lc .w1-in.set') || {}).innerText || '').replace(/\n/g, ' '));
+    const words = async (s) => { if (!(await page.locator('.ow-note-in').count())) await page.click('.ow-note'); await page.fill('.ow-note-in', s); await page.waitForTimeout(150); }; // 10-02: words are a note
+    const chipText = () => page.evaluate(() => { const i = document.querySelector('.lc .ow-input'); return i && i.value ? 'In: ' + i.value : ''; }); // 10-02: the where field
     // the place page's own lists (Move / Move all) are still the Choose place list (WhereList)
     const choose = async (name) => {
       await page.waitForSelector('.where-list');
@@ -247,7 +247,9 @@ async function runLook(look) {
       await placeWhere('White cardboard box', 'Ikea shelving unit');
       await agree('the White cardboard box in the Ikea shelving unit', '3D model of plant sensor');
       // next day: the shelf is there (on the chip's line) → the Ikea shelving unit's own where: Office (typed, keyboard up)
-      await move('3D model of plant sensor'); const ch = await chipText();
+      await move('3D model of plant sensor'); let ch = await chipText();
+      // 10-02 (one where): the field says the first level; → lists what it is in
+      await tap('.ow-go', { wait: 400 }); ch += ' ' + (await page.locator('.ow-sheet .ow-lvl .t b').allInnerTexts()).slice(1).map((n) => 'in the ' + n).join(' '); await tap('.ow-sheet .ow-cancel', { wait: 300 });
       check(J, 'second visit: Move it opens on the White cardboard box, "in the Ikea shelving unit" under it', /White cardboard box/.test(ch) && /in the Ikea shelving unit/.test(ch), ch);
       await tap('.lc-x', { wait: 400 });
       await placeWhere('Ikea shelving unit', 'Office');
@@ -258,7 +260,7 @@ async function runLook(look) {
       await move('3D model of plant sensor'); await words('top shelf, at the back'); await save();
       const note = await page.evaluate(() => ((document.querySelector('.tp-moved') || {}).innerText || '').replace(/\n/g, ' | '));
       const s1 = await page.evaluate(() => { const it = window.__rig.dump().find((d) => d.kind === 'item' && d.name === '3D model of plant sensor'); const h = (it.history || []).filter((x) => x.w); return h.length ? h[h.length - 1].said : ''; });
-      check(J, 'a words-only Move: the words are saved, and the page says "Saved just now · Your words saved" with Undo', s1 === 'top shelf, at the back' && /Saved just now/.test(note) && /Your words saved/.test(note) && /Undo/.test(note), JSON.stringify({ s1, note }));
+      check(J, 'a words-only Move: the words are saved (a note, 10-02), and the page says "Saved just now · Your note saved" with Undo', s1 === 'top shelf, at the back' && /Saved just now/.test(note) && /Your note saved/.test(note) && /Undo/.test(note), JSON.stringify({ s1, note }));
       if (await page.locator('.tp-moved .u').count()) await tap('.tp-moved .u', { wait: 1500 });
       const s = await page.evaluate(() => { const it = window.__rig.dump().find((d) => d.kind === 'item' && d.name === '3D model of plant sensor'); const h = (it.history || []).filter((x) => x.w); return h.length ? h[h.length - 1].said : ''; });
       check(J, 'Undo of that Move: her words are gone again', !s, JSON.stringify({ said: s }));
@@ -435,12 +437,12 @@ async function runLook(look) {
       const st = await page.evaluate(() => { const it = window.__rig.dump().find((d) => d.kind === 'item' && !d.deleted && d.name === 'sewing kit'); return it ? { loc: it.location || '', w: (it.history || []).filter((x) => x.w).map((x) => x.said) } : null; });
       check(J, 'saved with her words only: no place, and the words are in its history as said', !!st && !st.loc && st.w.length === 1 && st.w[0] === 'in the blue basket under the stairs', JSON.stringify(st));
       const n1 = await npa();
-      check(J, '"Not put away" does not count an item that has her words', n1 === n0, `${n0} -> ${n1}`);
+      check(J, '10-02 (night): an item with only a note IS "Not put away" (a note is never a where; tester ow1 #5)', n1 === n0 + 1, `${n0} -> ${n1}`);
       await O.openItem('sewing kit');
-      const pg = await page.evaluate(() => ({ said: (document.querySelector('.tp-said q') || {}).innerText || '', by: (document.querySelector('.tp-said small') || {}).innerText || '', put: !!document.querySelector('.tp-put') }));
-      check(J, 'the item page: "You said" with her words, and "Put it in a place or a box"', /blue basket under the stairs/.test(pg.said) && /You said/.test(pg.by) && pg.put, JSON.stringify(pg));
+      const pg = await page.evaluate(() => ({ note: (document.querySelector('.tp-note') || {}).innerText || '', where: (document.querySelector('.tp-blk[aria-labelledby="tp-where"]') || {}).innerText || '', put: !!document.querySelector('.tp-put') }));
+      check(J, 'the item page: her words as a note under the photo, "No place yet", no "Put it in a place or a box" (10-02)', /blue basket under the stairs/.test(pg.note) && /No place yet/.test(pg.where) && !pg.put, JSON.stringify(pg));
       await agree('words only', 'sewing kit');
-      await move('sewing kit'); await pickPlace('Linen closet'); await save();
+      await move('sewing kit'); await pickPlace('Linen closet'); await page.waitForTimeout(400); if (await page.locator('.ow-sheet').count()) await page.screenshot({ path: 'shots/j19_dbg.png' }); await save();
       await agree('then put In the Linen closet', 'sewing kit');
     });
   }

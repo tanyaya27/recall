@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { hasSecret } from '../lib/sensitive.js';
-import { changeLocation, saveChain, undoChain, renameItem, loadSnaps, removeSnap, setMainPhoto, setSnapCaption, setPlaceMainPhoto, removePlacePhoto, updateItem, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
+import { prevOf, changeLocation, saveChain, undoChain, renameItem, loadSnaps, removeSnap, setMainPhoto, setSnapCaption, setPlaceMainPhoto, removePlacePhoto, updateItem, softDeleteItem, setVisibility, isPrivate, logEvent, LOG_MAX, VISIBILITY_TOAST, roleOn, firstName, wantNames, watchNames, setHolds, placeNamed } from '../lib/db.js';
 import { useHold } from '../lib/hold.js';
 import { photoStamp, cap, inThe } from '../lib/format.js';
-import { contentsOf, chainOf, outerPlace, inPhrase, isContainer, whereChain, movedOf, saidNow } from '../lib/graph.js';
+import { contentsOf, chainOf, outerPlace, inPhrase, isContainer, whereChain, movedOf, saidNow, wordsWhere, noteOf } from '../lib/graph.js';
 import InList from './InList.jsx';
 import { me } from '../lib/auth.js';
 import { getPrefs } from '../lib/prefs.js';
@@ -178,14 +178,17 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
   const placePic = (n) => { const p = placeNamed(n, places); return p && p.photos && p.photos.length ? p.photos[0].thumb : null; };
   const hasPlace = chain.length > 0 || !!item.location;
   // 10-01 (Tanya): her own words for where it is — shown as she said them, dated, with who said them.
-  const said = saidNow(item);
+  // 10-02 (one where): with no place, her older words are its where; anything she adds on the camera is a note
+  const said = hasPlace ? saidNow(item) : wordsWhere(item);
   const saidBy = said.by && said.by !== me() ? `${firstName(said.by) || 'Someone'} said` : 'You said';
+  const note = noteOf(item, hasPlace);
+  const noteBy = note.by && note.by !== me() ? firstName(note.by) || 'Someone' : 'You';
   async function putIt(k) {
     setPutting(false);
     const r = await saveChain([{ known: k.t === 'thing' ? { t: 'thing', item: k.item } : { t: 'place', name: k.name } }], { owner: item.owner || me(), places });
     if (!r.first) return;
     // her words stay — they were about this same spot; the In is new information next to them
-    const prev = { location: item.location || '', dest: null, said: said.said || '', saidAt: said.at, saidBy: said.by, lastSeenAt: item.lastSeenAt || 0 };
+    const prev = prevOf(item);
     const ok = await changeLocation(item, r.first.text, 'chosen', r.first.dest, { said: said.said || undefined, saidAt: said.at, saidBy: said.by });
     const after = Date.now();
     logEvent('put_from_page', { itemId: item.id, t: k.t, isNew: !!k.isNew, ok });
@@ -260,6 +263,8 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
           </div>
         )}
         {item.details && <div className="label-line"><TagIcon /><span>{item.details}</span></div>}
+        {/* 10-02 (Ravi, one where): her words are a note about the item where it is — under the photo, never a second where */}
+        {note.said ? <div className="tp-note">Note: “{note.said}” · {noteBy} · {photoStamp(note.at)}</div> : null}
       </div>
 
       {/* Where it is (#16, #22, #24): the chain as photos and the words; one way to change it, the camera. */}
@@ -267,24 +272,21 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
         <h2 id="tp-where">Where it is</h2>
         {!hasPlace && said.said ? (
           <div className="tp-said"><q>{said.said}</q><small>{saidBy} · {photoStamp(said.at)}</small></div>
-        ) : <div className={'tp-wh' + (hasPlace ? '' : ' none') + (hasPlace && tiers.length > 1 ? ' multi' : '')}>
-          {hasPlace ? (
-            <div className={'ch' + (tiers.length > 2 ? ' scroll' : '')}>
-              {tiers.map((t, i) => (
-                <span key={(t.t === 'thing' ? 't' + t.item.id : 'p' + t.name) + i} className="st">{i > 0 && <span className="in">in</span>}
-                  {t.t === 'thing' ? (t.item.thumb ? <img src={t.item.thumb} alt="" /> : <span className="no"><BoxIcon /></span>)
-                    : placePic(t.name) ? <button type="button" className="ph-open" aria-label={`Photos of ${t.name}`} onClick={() => setViewer({ kind: 'place', name: t.name, start: 0, nonce: 0 })}><img src={placePic(t.name)} alt="" /></button>
-                    : <span className="no"><PinIcon /></span>}</span>))}
+        ) : hasPlace ? (
+          <div className="tp-wone">
+            {tiers[0] && tiers[0].t === 'thing' ? (tiers[0].item.thumb ? <img src={tiers[0].item.thumb} alt="" /> : <span className="no"><BoxIcon /></span>)
+              : placePic(chainWords[0] || item.location) ? <button type="button" className="ph-open" aria-label={`Photos of ${chainWords[0] || item.location}`} onClick={() => setViewer({ kind: 'place', name: chainWords[0] || item.location, start: 0, nonce: 0 })}><img src={placePic(chainWords[0] || item.location)} alt="" /></button>
+              : <span className="no"><PinIcon /></span>}
+            <div className="tx">
+              <b className="tp-wname">{chainWords[0] || whereB}</b>
+              {chainWords.slice(1).map((n, i) => <small key={i} className="tp-win">{inThe(n)}</small>)}
+              <small>{whereS}</small>
             </div>
-          ) : <span className="no-pin"><PinIcon /></span>}
-          <div className="tx">
-            {hasPlace && tiers.length > 1
-              ? <b className="tp-chain">{chainWords.map((n, i) => <span key={i} className="cp">{i > 0 && <span className="in">in</span>}<span className={i ? 'n2' : 'n1'}>{n}</span></span>)}</b>
-              : <b>{hasPlace ? whereB : 'No place yet'}</b>}
-            <small>{hasPlace ? whereS : 'Put it away so you can find it'}</small>
           </div>
+        ) : <div className="tp-wh none">
+          <span className="no-pin"><PinIcon /></span>
+          <div className="tx"><b>No place yet</b><small>Put it away so you can find it</small></div>
         </div>}
-        {hasPlace && said.said ? <div className="tp-said under"><q>{said.said}</q><small>{saidBy} · {photoStamp(said.at)}</small></div> : null}
         {/* 09-30 (Ravi, 2C): the Move just made, said here — no card over the page, no timer, gone when you leave. */}
         {moveNote && (
           <div className="tp-moved" role="status">
@@ -296,7 +298,6 @@ export default function ThingCard({ item, items = [], places = [], onBack, onAdd
           ? <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page' }); onMove(item); }}><PinIcon /><span>Move it</span></button>
           : said.said ? <button type="button" className="btn-secondary tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page', words: true }); onMove(item); }}><PinIcon /><span>Move it</span></button>
           : <button type="button" className="btn-secondary amber tp-btn" onClick={() => { logEvent('move_open', { itemId: item.id, via: 'page', first: true }); onMove(item); }}><PinIcon /><span>Put it somewhere</span></button>)}
-        {canEdit && !hasPlace && said.said ? <button type="button" className="btn-quiet tp-btn tp-put" onClick={() => { logEvent('put_from_page_open', { itemId: item.id }); setPutting(true); }}>Put it in a place or a box</button> : null}
       </section>
 
       {/* In it: only on a container (#12, Ravi 09-27). Each opens its own page; Back returns here. */}

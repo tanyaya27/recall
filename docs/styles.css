@@ -1397,3 +1397,101 @@ html, body { overflow-x: hidden; }
 .w1-new { white-space: nowrap; }
 /* the In list over the camera is solid — the card under it never shows through (build screens 10-02) */
 .lc .sheet.in-list { background: #22201E; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* 10-02 (Ravi) — one where, photo first (BOARD_2026-10-02_one-where.md, OPTIONS_2026-10-02_one-where-A4.jpg) */
+.ow { margin: 0.125rem; }
+.ow-head { font-size: 1rem; font-weight: 700; line-height: 1.3; margin: 0.125rem 0.125rem 0.5rem; }
+.ow-par { font-weight: 600; font-style: italic; color: #F5B942; font-size: 0.9375rem; }
+.ow-par.was { color: #D6D0C6; }
+.ow-field { display: flex; align-items: center; gap: 0.5rem; min-height: 3.5rem; padding: 0.3125rem 0.3125rem 0.3125rem 0.5rem; border-radius: 0.875rem;
+  border: 2px solid #F5B942; background: rgba(245,185,66,0.12); }
+.ow-field.dash { border-style: dashed; border-width: 2.5px; }
+.ow-field.bad { border-color: #FF8A7A; }
+.ow-field > img, .ow-field > .ic { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 9px; object-fit: cover; }
+.ow-field > .ic { display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.12); color: #F5B942; }
+.ow-field > .ic svg { width: 20px; height: 20px; }
+.ow-input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #fff; font: inherit; font-size: 1.125rem; font-weight: 700; padding: 0.625rem 0; }
+.ow-input::placeholder { color: #CFC8BD; font-weight: 600; }
+.ow-go { flex: none; width: 3rem; height: 3rem; border-radius: 0.75rem; background: #F5B942; color: #1F1D1A; display: inline-flex; align-items: center; justify-content: center; }
+.ow-go svg { width: 1.5rem; height: 1.5rem; }
+.ow-hint { font-size: 0.875rem; color: #D6D0C6; margin: 0.375rem 0.25rem 0; line-height: 1.35; }
+.ow-hint b { color: #8CC4B2; white-space: nowrap; } .ow-hint b svg { vertical-align: -0.15em; }
+.ow-hint.bad { color: #FFB4A8; }
+.ow-note { display: flex; align-items: center; gap: 0.375rem; width: 100%; min-height: 2.75rem; margin-top: 0.5rem; padding: 0 0.75rem; border-radius: 0.75rem;
+  border: 1.5px dashed rgba(255,255,255,0.4); background: none; color: #fff; font-weight: 700; font-size: 0.9375rem; text-align: left; }
+.ow-note span { font-weight: 400; color: #D6D0C6; }
+.ow-note-row { margin-top: 0.5rem; }
+.ow-note-in { width: 100%; min-height: 2.75rem; padding: 0 0.75rem; border-radius: 0.75rem; border: 1.5px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.08); color: #fff; font: inherit; font-size: 1rem; font-style: italic; }
+.ow-note-in::placeholder { color: #CFC8BD; }
+.ow-to { display: flex; align-items: center; flex-wrap: wrap; gap: 0.375rem; margin: 0.5rem 0.125rem 0.125rem; font-size: 0.8125rem; color: #D6D0C6; }
+.ow-to .lab { display: inline-flex; align-items: center; gap: 0.25rem; } .ow-to .lab svg { width: 15px; height: 15px; }
+.ow-to .seg { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2rem; padding: 0 0.625rem; border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.35);
+  background: none; color: #fff; font-size: 0.875rem; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ow-to .seg.on { border-color: #F5B942; color: #F5B942; background: rgba(245,185,66,0.14); }
+.ow-to .seg em { font-style: normal; font-size: 0.75rem; min-width: 1.25rem; height: 1.25rem; border-radius: 999px; background: rgba(255,255,255,0.18); color: #fff; display: inline-flex; align-items: center; justify-content: center; padding: 0 0.3rem; }
+.ow-ai { position: absolute; left: 1.25rem; right: 1.25rem; top: 0.875rem; z-index: 3; padding: 0.75rem 0.875rem; border-radius: 1rem; color: #fff;
+  background: rgba(20,20,20,0.62); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.35); }
+.ow-ai small { font-size: 0.8125rem; color: #ddd; } .ow-ai b { display: block; font-size: 1.1875rem; margin: 0.125rem 0 0.625rem; line-height: 1.25; }
+.ow-ai .two { display: flex; gap: 0.5rem; }
+.ow-ai .two button { flex: 1; min-height: 2.75rem; border-radius: 0.75rem; font-weight: 700; font-size: 0.9375rem; border: 2px solid #fff; color: #fff; background: rgba(0,0,0,0.35); }
+.ow-ai .two .ow-ai-use { background: #8CC4B2; border-color: #8CC4B2; color: #1F1D1A; }
+.ow-ai-merged, .ow-ai-filled { font-size: 0.8125rem; color: #ddd; margin: 0.375rem 0 0; }
+.ow-ai-no { display: flex; align-items: center; gap: 0.25rem; margin: 0.375rem auto 0; min-height: 2.25rem; padding: 0 0.75rem; background: none; color: #ddd; font-size: 0.875rem; }
+.ow-ai-no svg { width: 14px; height: 14px; }
+/* the → sheet */
+.ow-sheet { max-height: 88vh; display: flex; flex-direction: column; }
+.ow-lvl { display: flex; align-items: center; gap: 0.625rem; padding: 0.5rem 0.625rem; border-radius: 0.875rem; border: 1.5px solid var(--line); }
+.ow-lvl.first { border: 2px solid var(--accent); }
+.ow-lvl img, .ow-lvl .no { flex: none; width: 44px; height: 44px; border-radius: 10px; object-fit: cover; }
+.ow-lvl .no { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+.ow-lvl .t { flex: 1; min-width: 0; } .ow-lvl .t b { display: block; font-size: 1.0625rem; } .ow-lvl .t small { color: var(--ink-soft); font-size: 0.8125rem; }
+.ow-new { font-style: normal; font-size: 0.6875rem; font-weight: 800; background: var(--amber-bg); color: var(--amber); border-radius: 6px; padding: 0.1rem 0.35rem; margin-left: 0.375rem; vertical-align: 0.1em; }
+.ow-lvl-change { flex: none; min-height: 2.75rem; padding: 0 0.5rem; background: none; color: var(--accent); font-weight: 700; font-size: 0.9375rem; }
+.ow-in { font-size: 0.8125rem; color: var(--ink-soft); margin: 0.25rem 0 0.25rem 1.375rem; }
+.ow-up { display: flex; align-items: center; gap: 0.375rem; width: 100%; min-height: 2.75rem; padding: 0 0.75rem; border-radius: 0.75rem; border: 1.5px dashed var(--line);
+  background: none; color: var(--ink); font-weight: 700; font-size: 0.9375rem; text-align: left; }
+.ow-up span { font-weight: 400; color: var(--ink-soft); }
+.ow-g { margin-top: 0.875rem; }
+.ow-scroll { overflow-y: auto; min-height: 6rem; flex: 1 1 auto; }
+.ow-none { color: var(--ink-soft); margin: 0.25rem 0; }
+.ow-btns { display: flex; gap: 0.5rem; margin-top: 0.75rem; } .ow-btns > * { flex: 1; }
+/* the item page: one where, the note under the photo */
+.tp-wone { display: flex; gap: 0.75rem; align-items: center; margin: 0.25rem 0 0.5rem; }
+.tp-wone img, .tp-wone .no { flex: none; width: 5.5rem; height: 5.5rem; border-radius: 0.75rem; object-fit: cover; }
+.tp-wone .no { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+.tp-wone .tx { min-width: 0; } .tp-wone .tp-wname { display: block; font-size: 1.25rem; font-weight: 700; line-height: 1.25; }
+.tp-wone small { display: block; color: var(--ink-soft); font-size: 0.875rem; margin-top: 0.125rem; }
+.tp-note { font-size: 0.875rem; color: var(--ink-soft); font-style: italic; margin: 0.375rem 0.125rem 0; }
+.ow-set { color: #F5B942; } /* 10-02 (Ravi): the change about to happen is amber, like the dashed field */
+.ow-par .ow-old { color: #fff; font-style: normal; font-weight: 600; } /* the old place: white, upright — not colour alone (09-30) */
+.ow-looking { display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 0.5rem 0.625rem 0.875rem; }
+.ow-looking .t { flex: 1; font-weight: 700; font-size: 1rem; }
+.ow-looking .spin { flex: none; width: 1.25rem; height: 1.25rem; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: #F5B942; animation: owspin 0.9s linear infinite; }
+@keyframes owspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ow-looking .spin { animation-duration: 2.5s; } }
+.ow-look-x { flex: none; width: 2.75rem; height: 2.75rem; border-radius: 50%; background: rgba(255,255,255,0.14); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.ow-look-x svg { width: 16px; height: 16px; }
+.lc-card .ow-ai { position: static; left: auto; right: auto; top: auto; margin: 0 0 0.625rem; background: rgba(0,0,0,0.45); }
+.ow-sheet .ow-scroll { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+.ow-sheet .ow-btns { flex: none; padding-top: 0.5rem; }
+.ow-set.bad { color: #FFB4A8; }
+/* 10-02 walk (375×667, Largest): the card never runs under the top bar; the name is never cut */
+.lc-ow .lc-card { max-height: calc(100% - 1.25rem); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+textarea.ow-input { resize: none; overflow: hidden; line-height: 1.3; display: block; align-self: center; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ow-field { align-items: center; }
+.ow-par .ow-old { white-space: normal; }
+.tp-wone .ph-open { flex: none; padding: 0; border: 0; background: none; line-height: 0; }
+.ow-lvl .t b { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.25rem; overflow-wrap: anywhere; }
+.ow-lvl .ow-new { margin-left: 0; }
+.ow-sheet .ow-clear { display: block; width: 100%; margin-top: 0.5rem; text-align: left; }
+.tile .tile-sub.place { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+/* the guess box, compact (ow2 G1): ✕ "Not this" in the corner, tighter rows — the field stays on screen at Largest */
+.ow-ai { padding: 0.5rem 3rem 0.625rem 0.75rem; position: relative; }
+.lc-card .ow-ai { position: relative; }
+.ow-ai b { margin: 0 0 0.375rem; font-size: 1.0625rem; }
+.ow-ai .two button { min-height: 2.75rem; }
+.ow-ai-merged, .ow-ai-filled { margin-top: 0.25rem; }
+.ow-ai .ow-ai-no { position: absolute; top: 0.375rem; right: 0.375rem; margin: 0; width: 2.75rem; height: 2.75rem; min-height: 0; padding: 0; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.14); color: #fff; }
+.ow-ai .ow-ai-no svg { width: 18px; height: 18px; }
+.tp-wone .ph-open { width: auto; height: auto; border-radius: 0.75rem; overflow: hidden; } /* the photo button is the photo's size (BUILD frame 9) */
+.ow-sheet .ow-clear { white-space: normal; overflow-wrap: anywhere; font-size: 1rem; }
+.ow-par .ow-close { font-style: normal; } /* no italic gap before ")" */

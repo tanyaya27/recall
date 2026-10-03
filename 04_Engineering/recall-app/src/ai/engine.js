@@ -276,6 +276,34 @@ Reply with ONLY a JSON object, no other text:
       index: n >= 1 && n <= candidates.length ? n - 1 : -1, sure: out.sure === true };
   }
 
+  // 10-02 (Ravi, BOARD_2026-10-02_one-where.md round 4): she is photographing a NEW place on the camera. Name what the
+  // photo shows, and — when she already typed a name — merge the two into one short, grammatical name that never repeats
+  // what she typed ("lab desk" + "lab bench with a laptop" → "Lab desk with a laptop"). Only ever SHOWN; she taps to use it.
+  // Returns { name, merged } (merged = name when she typed nothing).
+  async placeGuess(photoDataUrl, { typed = '', sensitivity = 'personal' } = {}) {
+    const t = (typed || '').trim().slice(0, 80);
+    const photos = (Array.isArray(photoDataUrl) ? photoDataUrl : [photoDataUrl]).filter(Boolean).slice(-4); // 10-02 (Ravi): one guess for the set
+    const prompt =
+`PLACE GUESS. Someone is saving where they keep things at home and just photographed ${photos.length > 1 ? `(${photos.length} photos, all of the SAME spot)` : ''} a spot or a container
+(a desk, a shelf, a drawer, a box, a room). TYPED: "${t}"
+
+1. NAME what the photo shows the way its owner would say it, at most FIVE words: "lab bench with a laptop",
+   "linen closet shelf", "desk drawer". Not "a room" or "an object".
+2. MERGED: ${t ? `one short name (at most SIX words) that keeps what they typed ("${t}") and adds only what the photo adds.
+   Never repeat a word or idea they already typed. It must read as natural English, e.g. typed "lab desk" + photo of a
+   lab bench with a laptop → "lab desk with a laptop". If the photo adds nothing useful, MERGED is exactly what they typed.` : 'the same as NAME.'}
+
+Reply with ONLY a JSON object, no other text:
+{"name": "<1-5 words>", "merged": "<1-6 words>"}`;
+    const text = photos.length > 1 && this.provider.visionJSONMulti
+      ? await this.provider.visionJSONMulti(this.cfg, [...photos.flatMap((ph, i) => [{ text: `PHOTO ${i + 1} of ${photos.length}:` }, { image: ph }]), { text: prompt }], { sensitivity })
+      : await this.provider.visionJSON(this.cfg, prompt, photos[photos.length - 1], { sensitivity });
+    const out = parseJSON(text);
+    const clean = (s) => (typeof s === 'string' ? s.trim().replace(/[.\s]+$/, '').slice(0, 60) : '');
+    const name = clean(out.name);
+    return { name, merged: clean(out.merged) || (t ? '' : name) };
+  }
+
   // Does the new photo show THIS saved thing? Used when a photo is added to an existing
   // item (round 5, Ravi): a person who is not in the right frame of mind may add a coffee
   // cup to the folder. Returns { same, seen } — `seen` is what the new photo mainly shows.

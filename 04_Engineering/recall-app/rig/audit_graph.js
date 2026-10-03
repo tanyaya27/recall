@@ -37,14 +37,14 @@ async function main() {
   const page = await ctx.newPage();
   // 10-01 (release 1): pick where it is in the camera's In list — an existing place/box by exact name, else a new place by that name.
   const pickPlace = async (name) => {
-    await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list');
+    await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list');
     await page.fill('.in-list .wl-search input', name); await page.waitForTimeout(200);
     const row = page.locator(`.in-list .wl-row:has(b:text-is("${name}"))`);
     if (await row.count()) await row.first().click(); else await page.locator('.in-list .wl-new').first().click();
     await page.waitForTimeout(250);
   };
-  const openIn = async () => { await page.click(await page.locator('.w1-in.set').count() ? '.w1-in-open' : 'button.w1-in'); await page.waitForSelector('.in-list'); };
-  const chip = async () => (await page.locator('.w1-in.set .t').first().innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+  const openIn = async () => { await page.click('.ow-go'); await page.waitForSelector('.ow-sheet'); await page.click('.ow-sheet .ow-lvl-change >> nth=0'); await page.waitForSelector('.in-list'); };
+  const chip = async () => { const v = await page.locator('.ow-input').first().inputValue().catch(() => ''); return v ? 'In: ' + v : ''; }; // 10-02: the where field
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/camera/.test(m.text())) errors.push('console: ' + m.text().slice(0, 160)); });
   const shot = async (n) => { await page.waitForTimeout(250); await page.screenshot({ path: `shots/graph-${n}.png` }); };
@@ -131,7 +131,7 @@ async function main() {
   const ov = await page.evaluate(() => { const sh = document.querySelector('.in-list').getBoundingClientRect(); return [...document.querySelectorAll('.in-list .wl-row')].map((b) => Math.round(sh.right - b.getBoundingClientRect().right)); });
   check('J2c the list stays inside the sheet (no row runs off the right edge)', ov.every((g) => g >= 8), JSON.stringify(ov));
   await shot('0-wherelist');
-  await page.click('.in-list .btn-quiet'); await page.click('.lc-x'); await page.waitForTimeout(250);
+  await page.click('.in-list .btn-quiet'); await page.waitForTimeout(300); await page.click('.lc-x'); await page.waitForTimeout(250);
   check('J3 a thing that is not a container keeps a short page (no In it block)', await count('#tp-in') === 0);
   await home();
   // ---- Not put away: a list of those things; each opens its page (#13, #14)
@@ -143,12 +143,12 @@ async function main() {
   await page.click('.np-row:has-text("Coffee can")'); await page.waitForSelector('.thing-page');
   check('J6 a row opens that thing\'s page: amber "No place yet" and Put it somewhere', /No place yet/.test(await text('.tp-wh b')) && await count('.tp-btn.amber:has-text("Put it somewhere")') === 1);
   await page.click('.tp-btn:has-text("Put it somewhere")'); await page.waitForSelector('.lc'); await page.waitForTimeout(350);
-  check('J7 Put it somewhere → the camera: "Where is the coffee can?" (in the band), the can already there; In not set yet', /Where is the\s*coffee can\?/i.test(await text('.lc-band')) && await count('.lc-band .lc-thing.sel img') === 1 && await count('button.w1-in') === 1 && await count('.w1-in.set') === 0);
+  check('J7 Put it somewhere → the camera: "Where is the coffee can?" (in the band), the can already there; In not set yet', /Where is the\s*coffee can\?/i.test(await text('.lc-band')) && await count('.lc-band .lc-thing.sel img') === 1 && (await page.locator('.ow-input').inputValue()) === '' && /\(type to set a place\)/.test(await text('.ow-head'))); // 10-02: the where field
   await shot('0c-putsomewhere');
   await pickPlace('Hall table');
   check('J7b one verb on the button ("Save"); the chip says "In: Hall table"', (await text('.lc-k.sv')).trim() === 'Save' && /^In: Hall table\b/.test(await chip()), await chip());
   await page.click('.lc-k.sv'); await page.waitForSelector('.lc', { state: 'detached' }); await page.waitForTimeout(600);
-  check('J8 saved: at the Hall table (a place edge); the page says so, with Undo', (await byName('coffee can')).location === 'Hall table' && (await openTo('u'))[0].to.name === 'Hall table' && /Hall table/.test(await text('.tp-wh b')) && /Put away just now/.test(await text('.tp-moved')) && await count('.tp-moved .u') === 1); // 09-30 (Ravi 2C): said on the page, with Undo
+  check('J8 saved: at the Hall table (a place edge); the page says so, with Undo', (await byName('coffee can')).location === 'Hall table' && (await openTo('u'))[0].to.name === 'Hall table' && /Hall table/.test(await text('.tp-wone .tp-wname, .tp-wh b')) && /Put away just now/.test(await text('.tp-moved')) && await count('.tp-moved .u') === 1); // 09-30 (Ravi 2C): said on the page, with Undo
   await page.waitForTimeout(600); await page.click('.tp-moved .u'); await page.waitForTimeout(900);
   check('J9 Undo: no place again', !(await byName('coffee can')).location && /No place yet/.test(await text('.tp-wh b')));
   await home();
@@ -156,11 +156,11 @@ async function main() {
   // ---- a box's page: what is in it, one level at a time; Back returns
   await page2('Memorabilia box');
   let gi = await grid();
-  check('G3 tap the box: ITS page — "In the memorabilia box · 3" (the wooden box, the yearbook, the letters); Where it is: Crawl space', gi.length === 3 && gi.some((x) => /Wooden box/.test(x)) && /· 3/.test(await text('#tp-in')) && /Crawl space/.test(await text('.tp-wh b')), gi.join(' | '));
+  check('G3 tap the box: ITS page — "In the memorabilia box · 3" (the wooden box, the yearbook, the letters); Where it is: Crawl space', gi.length === 3 && gi.some((x) => /Wooden box/.test(x)) && /· 3/.test(await text('#tp-in')) && /Crawl space/.test(await text('.tp-wone .tp-win, .tp-wone .tp-wname, .tp-wh b')), gi.join(' | '));
   await shot('2-memo-page');
   await page.click('.tp-grid button:has-text("Wooden box")'); await page.waitForSelector('.thing-head .name:has-text("Wooden box")');
   check('G4 …the wooden box inside opens its own page ("In the wooden box · 2")', /In the wooden box · 2/i.test(await text('#tp-in')));
-  check('G5 its Where it is: "Memorabilia box (in) Crawl space" (09-29h: the "in" pill), with the box\'s photo', /^Memorabilia box\s*in\s*Crawl space$/.test((await text('.tp-wh .tp-chain')).replace(/\n/g, ' ').trim()) && await count('.tp-wh .tp-chain .in') === 1 && await count('.tp-wh .ch img') >= 1, await text('.tp-wh .tx'));
+  check('G5 its Where it is: "Memorabilia box (in) Crawl space" (09-29h: the "in" pill), with the box\'s photo', /^Memorabilia box$/.test(await text('.tp-wone .tp-wname')) && (await page.locator('.tp-wone .tp-win').allInnerTexts()).join('|') === 'in the Crawl space' && await count('.tp-wone img') >= 1, await text('.tp-wone .tx')); // 10-02: one where — the first level's photo and name, then "in the …"
   check('G6 a container page offers Put items in and Log something in (and nothing starts a job from a child page\'s footer)', await count('.tp-btn:has-text("Put items in")') === 1 && await count('.tp-btn:has-text("Log something in")') === 1 && await count('.footer') === 0);
   await shot('3-wood-page');
   await page.click('.thing-head .chev'); await page.waitForSelector('.thing-head .name:has-text("Memorabilia box")');
@@ -170,7 +170,7 @@ async function main() {
   await page.evaluate(() => { const fs = window.__rigfs; return fs.updateDoc(fs.doc(fs.collection(null, 'recall_items'), 'c'), { promoted: true }); });
   await page.waitForTimeout(300);
   await page2('Baseball card');
-  check('G9 the page: "Wooden box (in) Memorabilia box (in) Crawl space", with both boxes\' photos', /^Wooden box\s*in\s*Memorabilia box\s*in\s*Crawl space$/.test((await text('.tp-wh .tp-chain')).replace(/\n/g, ' ').trim()) && await count('.tp-wh .ch img') >= 2, await text('.tp-wh .tx'));
+  check('G9 the page: "Wooden box (in) Memorabilia box (in) Crawl space", with both boxes\' photos', /^Wooden box$/.test(await text('.tp-wone .tp-wname')) && (await page.locator('.tp-wone .tp-win').allInnerTexts()).join('|') === 'in the Memorabilia box|in the Crawl space' && await count('.tp-wone img') >= 1, await text('.tp-wone .tx')); // 10-02: one where
   check('G9b a thing inside a box, not itself a container, offers no "Put items in" (the pencil case)', await count('#tp-in') === 0);
   await shot('4-card');
   await home();
@@ -216,7 +216,7 @@ async function main() {
   await openIn();
   const lw = await text('.in-list');
   check('L1 moving the memorabilia box: the wooden box inside it is never offered, nor the box itself (no loops, #8)', (await count('.in-list .wl-row:has(b:text-is("Wooden box"))')) === 0 && (await count('.in-list .wl-row:has(b:text-is("Memorabilia box"))')) === 0, lw.replace(/\n/g, ' / ').slice(0, 200));
-  await page.click('.in-list .btn-quiet'); await page.click('.lc-x'); await page.waitForTimeout(250);
+  await page.click('.in-list .btn-quiet'); await page.waitForTimeout(300); await page.click('.lc-x'); await page.waitForTimeout(250);
   await moveVia('Garage shelf', null);
   const me2 = await openTo('m');
   check('G20 the memorabilia box moved: its open edge is now "Garage shelf" (old one closed)', me2.length === 1 && me2[0].to.t === 'place' && me2[0].to.name === 'Garage shelf' && (await edges()).some((e) => e.id === 'em' && e.until), JSON.stringify(me2.map((e) => e.to)));
@@ -245,7 +245,7 @@ async function main() {
     if (await count('.lc-ask button:has-text("No, a new item")')) { await page.click('.lc-ask button:has-text("No, a new item")'); await page.waitForTimeout(200); } };
   await shootOne();
   // 10-01: "What is it in?" opens the In list — places and boxes (a box with its photo).
-  check('I2 the camera: "What is it in?" (no In) until one is picked; Save is always one word, beside the shutter', await count('button.w1-in') === 1 && await count('.w1-in.set') === 0 && /What is it in\?/.test(await text('button.w1-in')) && (await text('.lc-k.sv')).trim() === 'Save');
+  check('I2 the camera: "What is it in?" (no In) until one is picked; Save is always one word, beside the shutter', (await page.locator('.ow-input').inputValue()) === '' && /\(type to set a place\)/.test(await text('.ow-head')) && (await text('.lc-k.sv')).trim() === 'Save');
   await openIn();
   const wrows = await page.evaluate(() => [...document.querySelectorAll('.in-list .wl-row')].map((r) => ({ b: r.querySelector('b').innerText, s: r.querySelector('small').innerText, img: !!r.querySelector('img') })));
   const boxRow = wrows.find((r) => /^a box · /.test(r.s)); const boxChip = boxRow ? boxRow.b : '';
@@ -253,7 +253,7 @@ async function main() {
   await page.click('.in-list .btn-quiet'); await page.waitForTimeout(250);
   await shot('14-camera-chips');
   await pickPlace(boxChip);
-  check('I3 choose the box: the chip says "In: <box>" (a box)', new RegExp('^In: ' + boxChip + '\\b').test(await chip()) && await count('.w1-in.set') === 1, boxChip + ' / ' + await chip());
+  check('I3 choose the box: the chip says "In: <box>" (a box)', new RegExp('^In: ' + boxChip + '\\b').test(await chip()) && (await page.locator('.ow-input').inputValue()) !== '', boxChip + ' / ' + await chip());
   await page.click('.lc-k.sv'); await page.waitForTimeout(1500);
   const boxDoc = await byName(boxChip.toLowerCase());
   let bc = (await items()).find((d) => d.name === 'bottle cap' && d.location === boxChip);
@@ -290,7 +290,7 @@ async function main() {
   await page.click('.lc-shutter'); await page.waitForTimeout(900);
   check('K0b …the second photo is of the item too (band shows 2)', /^2$/.test((await text('.lc-band .lc-thing .lv-n')).trim()), await text('.lc-band .lc-thing .lv-n'));
   await pickPlace("Dona Homer's tin box");
-  check('K1 typed a new name in the In list: the chip says "In: Dona Homer\'s tin box", marked new', /^In: Dona Homer's tin box(?![a-z])/.test(await chip()) && await count('.w1-in.set .w1-new') === 1, await chip());
+  check('K1 typed a new name in the In list: the chip says "In: Dona Homer\'s tin box", marked new', /^In: Dona Homer's tin box(?![a-z])/.test(await chip()) && /Set NEW place/.test(await text('.ow-head')), await chip());
   await shot('17-new-place');
   await page.click('.lc-k.sv'); await page.waitForTimeout(1800);
   const tinItem = await byName("Dona Homer's tin box");
